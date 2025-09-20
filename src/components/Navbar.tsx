@@ -41,6 +41,9 @@ export default function Navbar() {
             <Link to="/courses">
               <Button variant="ghost">Courses</Button>
             </Link>
+            <Link to="/roadmaps">
+              <Button variant="ghost">Roadmaps</Button>
+            </Link>
             <Link to="/solution-requests">
               <Button variant="ghost">Solution Requests</Button>
             </Link>

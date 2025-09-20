@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import Courses from "./pages/Courses";
+import Roadmaps from "./pages/Roadmaps";
 import SolutionRequests from "./pages/SolutionRequests";
 import Forum from "./pages/Forum";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/roadmaps" element={<Roadmaps />} />
             <Route path="/solution-requests" element={<SolutionRequests />} />
             <Route path="/forum" element={<Forum />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
