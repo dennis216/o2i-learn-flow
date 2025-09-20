@@ -48,6 +48,10 @@ const Roadmaps = () => {
   const [newRoadmapDescription, setNewRoadmapDescription] = useState("");
   const [newChapterTitle, setNewChapterTitle] = useState("");
   const [newChapterDescription, setNewChapterDescription] = useState("");
+  const [showCreateSubChapter, setShowCreateSubChapter] = useState(false);
+  const [selectedChapterForSubChapter, setSelectedChapterForSubChapter] = useState<string | null>(null);
+  const [newSubChapterTitle, setNewSubChapterTitle] = useState("");
+  const [newSubChapterDescription, setNewSubChapterDescription] = useState("");
 
   const isAdmin = profile?.role === "admin";
 
@@ -194,6 +198,45 @@ const Roadmaps = () => {
       toast({
         title: "Error",
         description: "Failed to create chapter",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createSubChapter = async () => {
+    if (!newSubChapterTitle.trim() || !selectedChapterForSubChapter) return;
+
+    try {
+      const chapterSubChapters = getSubChaptersForChapter(selectedChapterForSubChapter);
+      const { data, error } = await supabase
+        .from("sub_chapters")
+        .insert([
+          {
+            chapter_id: selectedChapterForSubChapter,
+            title: newSubChapterTitle,
+            description: newSubChapterDescription,
+            order_index: chapterSubChapters.length,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSubChapters([...subChapters, data]);
+      setNewSubChapterTitle("");
+      setNewSubChapterDescription("");
+      setShowCreateSubChapter(false);
+      setSelectedChapterForSubChapter(null);
+      toast({
+        title: "Success",
+        description: "Sub-chapter created successfully",
+      });
+    } catch (error) {
+      console.error("Error creating sub-chapter:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create sub-chapter",
         variant: "destructive",
       });
     }
@@ -417,24 +460,48 @@ const Roadmaps = () => {
                                   {subChapter.description}
                                 </p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Brain className="h-4 w-4 text-blue-500" />
-                                <Video className="h-4 w-4 text-green-500" />
-                                <Target className="h-4 w-4 text-purple-500" />
-                              </div>
+                           <div className="flex items-center gap-2">
+                             <Brain className="h-4 w-4 text-blue-500" />
+                             <Video className="h-4 w-4 text-green-500" />
+                             <Target className="h-4 w-4 text-purple-500" />
+                           </div>
                             </div>
                           </div>
                         ))}
-                        {chapterSubChapters.length === 0 && (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p>No sub-chapters yet.</p>
-                            {isAdmin && (
-                              <p className="text-sm mt-2">
-                                Add sub-chapters to organize the content.
-                              </p>
-                            )}
-                          </div>
-                        )}
+                         {chapterSubChapters.length === 0 && (
+                           <div className="text-center py-8 text-muted-foreground">
+                             <p>No sub-chapters yet.</p>
+                             {isAdmin && (
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => {
+                                   setSelectedChapterForSubChapter(chapter.id);
+                                   setShowCreateSubChapter(true);
+                                 }}
+                                 className="mt-2"
+                               >
+                                 <Plus className="h-4 w-4 mr-2" />
+                                 Add First Sub-Chapter
+                               </Button>
+                             )}
+                           </div>
+                         )}
+                         {isAdmin && chapterSubChapters.length > 0 && (
+                           <div className="mt-4 pt-4 border-t">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => {
+                                 setSelectedChapterForSubChapter(chapter.id);
+                                 setShowCreateSubChapter(true);
+                               }}
+                             >
+                               <Plus className="h-4 w-4 mr-2" />
+                               Add Sub-Chapter
+                             </Button>
+                           </div>
+                         )}
                       </div>
                     </CardContent>
                   </CollapsibleContent>
@@ -442,9 +509,44 @@ const Roadmaps = () => {
               </Card>
             );
           })}
-        </div>
+         </div>
 
-        {chapters.length === 0 && (
+         {/* Sub-Chapter Creation Dialog */}
+         <Dialog open={showCreateSubChapter} onOpenChange={setShowCreateSubChapter}>
+           <DialogContent>
+             <DialogHeader>
+               <DialogTitle>Create New Sub-Chapter</DialogTitle>
+               <DialogDescription>
+                 Add a new sub-chapter to organize your content.
+               </DialogDescription>
+             </DialogHeader>
+             <div className="space-y-4">
+               <div>
+                 <Label htmlFor="sub-chapter-title">Title</Label>
+                 <Input
+                   id="sub-chapter-title"
+                   value={newSubChapterTitle}
+                   onChange={(e) => setNewSubChapterTitle(e.target.value)}
+                   placeholder="e.g., Right Triangle Basics"
+                 />
+               </div>
+               <div>
+                 <Label htmlFor="sub-chapter-description">Description</Label>
+                 <Textarea
+                   id="sub-chapter-description"
+                   value={newSubChapterDescription}
+                   onChange={(e) => setNewSubChapterDescription(e.target.value)}
+                   placeholder="Describe the sub-chapter content..."
+                 />
+               </div>
+               <Button onClick={createSubChapter} className="w-full">
+                 Create Sub-Chapter
+               </Button>
+             </div>
+           </DialogContent>
+         </Dialog>
+
+         {chapters.length === 0 && (
           <div className="text-center py-12">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-muted-foreground">No chapters available</h3>
