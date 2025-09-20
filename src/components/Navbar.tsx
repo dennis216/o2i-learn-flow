@@ -50,26 +50,30 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/profile">
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
+                <div className="relative group">
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/profile">
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
+                  </Button>
+                  <div className="absolute right-0 top-full mt-1 hidden group-hover:block bg-background border border-border rounded-md shadow-lg min-w-[120px] z-50">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleSignOut}
+                      className="w-full justify-start rounded-none hover:bg-accent"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" asChild>
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/auth">Sign Up</Link>
-                </Button>
-              </div>
+              <Button asChild>
+                <Link to="/auth">Sign In / Sign Up</Link>
+              </Button>
             )}
           </div>
         </div>
