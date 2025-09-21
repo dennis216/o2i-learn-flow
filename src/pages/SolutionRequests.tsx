@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Image as ImageIcon, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
@@ -21,10 +23,23 @@ interface SolutionRequest {
   solution_text: string;
   solution_image_url: string;
   created_at: string;
+  problem_type: string;
+  is_public: boolean;
   profiles: {
     full_name: string;
   };
 }
+
+const problemTypes = [
+  { value: 'geometry', label: 'Geometry' },
+  { value: 'algebra', label: 'Algebra' },
+  { value: 'calculus', label: 'Calculus' },
+  { value: 'number_theory', label: 'Number Theory' },
+  { value: 'combinatorics', label: 'Combinatorics' },
+  { value: 'pre_calculus', label: 'Pre-Calculus' },
+  { value: 'statistics', label: 'Statistics' },
+  { value: 'other', label: 'Other' }
+];
 
 export default function SolutionRequests() {
   const [requests, setRequests] = useState<SolutionRequest[]>([]);
@@ -102,6 +117,8 @@ export default function SolutionRequests() {
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
+    const problemType = formData.get('problemType') as string;
+    const isPublic = formData.get('isPublic') === 'on';
     const imageFile = formData.get('image') as File;
 
     let imageUrl = null;
@@ -123,6 +140,8 @@ export default function SolutionRequests() {
           user_id: user.id,
           title,
           description,
+          problem_type: problemType as any,
+          is_public: isPublic,
           image_url: imageUrl
         });
 
@@ -225,40 +244,63 @@ export default function SolutionRequests() {
                     Upload an image of your math problem and describe what you need help with.
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Problem Title</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      placeholder="e.g., Calculus Integration Problem"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      placeholder="Describe what you're struggling with or what specific help you need..."
-                      rows={3}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="image">Upload Problem Image</Label>
-                    <Input
-                      id="image"
-                      name="image"
-                      type="file"
-                      accept="image/*"
-                      className="cursor-pointer"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Upload a clear image of your math problem
-                    </p>
-                  </div>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Problem Title</Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        placeholder="e.g., Calculus Integration Problem"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="problemType">Problem Type</Label>
+                      <Select name="problemType" required>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select problem type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {problemTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        placeholder="Describe what you're struggling with or what specific help you need..."
+                        rows={3}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="image">Upload Problem Image</Label>
+                      <Input
+                        id="image"
+                        name="image"
+                        type="file"
+                        accept="image/*"
+                        className="cursor-pointer"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Upload a clear image of your math problem
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="isPublic" name="isPublic" />
+                      <Label htmlFor="isPublic" className="text-sm">
+                        Allow other O2I users to view the solution to your problem. Your information will remain anonymous.
+                      </Label>
+                    </div>
                   
                   <Button type="submit" className="w-full" disabled={uploading}>
                     {uploading ? (

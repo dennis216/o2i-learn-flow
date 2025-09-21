@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Plus, User, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ForumPost {
   id: string;
@@ -39,6 +40,7 @@ export default function Forum() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchPosts();
@@ -290,7 +292,11 @@ export default function Forum() {
                       </div>
                     </div>
                     
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/forum/${post.id}`)}
+                    >
                       View Discussion
                     </Button>
                   </div>

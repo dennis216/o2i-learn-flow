@@ -148,6 +148,33 @@ export type Database = {
           },
         ]
       }
+      discussion_posts: {
+        Row: {
+          content: string
+          created_at: string
+          forum_post_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          forum_post_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          forum_post_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       forum_posts: {
         Row: {
           category: string | null
@@ -353,6 +380,8 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          is_public: boolean | null
+          problem_type: Database["public"]["Enums"]["problem_type"] | null
           solution_image_url: string | null
           solution_text: string | null
           status: string | null
@@ -365,6 +394,8 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_public?: boolean | null
+          problem_type?: Database["public"]["Enums"]["problem_type"] | null
           solution_image_url?: string | null
           solution_text?: string | null
           status?: string | null
@@ -377,6 +408,8 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_public?: boolean | null
+          problem_type?: Database["public"]["Enums"]["problem_type"] | null
           solution_image_url?: string | null
           solution_text?: string | null
           status?: string | null
@@ -576,7 +609,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      problem_type:
+        | "geometry"
+        | "algebra"
+        | "calculus"
+        | "number_theory"
+        | "combinatorics"
+        | "pre_calculus"
+        | "statistics"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -703,6 +744,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      problem_type: [
+        "geometry",
+        "algebra",
+        "calculus",
+        "number_theory",
+        "combinatorics",
+        "pre_calculus",
+        "statistics",
+        "other",
+      ],
+    },
   },
 } as const
