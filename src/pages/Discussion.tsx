@@ -76,7 +76,7 @@ export default function Discussion() {
           content,
           created_at,
           user_id,
-          profiles!discussion_posts_user_id_fkey (full_name)
+          profiles!inner (full_name)
         `)
         .eq('forum_post_id', postId)
         .order('created_at', { ascending: true });
