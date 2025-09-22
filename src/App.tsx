@@ -13,6 +13,7 @@ import Roadmaps from "./pages/Roadmaps";
 import SolutionRequests from "./pages/SolutionRequests";
 import Forum from "./pages/Forum";
 import Discussion from "./pages/Discussion";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

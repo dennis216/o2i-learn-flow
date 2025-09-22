@@ -16,6 +16,7 @@ import { Upload, Image as ImageIcon, Clock, CheckCircle, AlertCircle, Plus } fro
 
 interface SolutionRequest {
   id: string;
+  user_id: string;
   title: string;
   description: string;
   image_url: string;
@@ -46,6 +47,8 @@ export default function SolutionRequests() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [problemTypeValue, setProblemTypeValue] = useState<string>('');
+  const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -63,11 +66,30 @@ export default function SolutionRequests() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching requests:', error);
-      } else {
-        setRequests(data || []);
-      }
+if (error) {
+  console.error('Error fetching requests:', error);
+} else {
+  const reqs = data || [];
+  setRequests(reqs);
+  // Auto-mark solved if a solution exists
+  const toSolve = reqs.filter((r: any) => (r.solution_text || r.solution_image_url) && r.status !== 'solved');
+  if (toSolve.length > 0) {
+    try {
+      await Promise.all(
+        toSolve.map((r: any) =>
+          supabase.from('solution_requests').update({ status: 'solved' }).eq('id', r.id)
+        )
+      );
+      const { data: refreshed } = await supabase
+        .from('solution_requests')
+        .select(`*, profiles:user_id (full_name)`) 
+        .order('created_at', { ascending: false });
+      setRequests(refreshed || reqs);
+    } catch (e) {
+      // silently ignore if user lacks permission per RLS
+    }
+  }
+}
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -114,12 +136,17 @@ export default function SolutionRequests() {
     e.preventDefault();
     if (!user) return;
 
-    const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const problemType = formData.get('problemType') as string;
-    const isPublic = formData.get('isPublic') === 'on';
-    const imageFile = formData.get('image') as File;
+const formData = new FormData(e.currentTarget);
+const title = formData.get('title') as string;
+const description = formData.get('description') as string;
+const imageFile = formData.get('image') as File;
+
+// Validate dropdown selections
+if (!problemTypeValue) {
+  toast({ title: 'Select a problem type', variant: 'destructive' });
+  return;
+}
+const isPublic = visibility === 'public';
 
     let imageUrl = null;
     if (imageFile && imageFile.size > 0) {
@@ -133,17 +160,17 @@ export default function SolutionRequests() {
       imageUrl = await handleImageUpload(changeEvent as any);
     }
 
-    try {
-      const { error } = await supabase
-        .from('solution_requests')
-        .insert({
-          user_id: user.id,
-          title,
-          description,
-          problem_type: problemType as any,
-          is_public: isPublic,
-          image_url: imageUrl
-        });
+try {
+  const { error } = await supabase
+    .from('solution_requests')
+    .insert({
+      user_id: user.id,
+      title,
+      description,
+      problem_type: problemTypeValue as any,
+      is_public: isPublic,
+      image_url: imageUrl
+    });
 
       if (error) {
         throw error;
@@ -167,18 +194,19 @@ export default function SolutionRequests() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'in_progress':
+      return 'bg-blue-100 text-blue-800';
+    case 'completed':
+    case 'solved':
+      return 'bg-green-100 text-green-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -186,7 +214,8 @@ export default function SolutionRequests() {
         return <Clock className="h-4 w-4" />;
       case 'in_progress':
         return <AlertCircle className="h-4 w-4" />;
-      case 'completed':
+case 'completed':
+      case 'solved':
         return <CheckCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -255,21 +284,21 @@ export default function SolutionRequests() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="problemType">Problem Type</Label>
-                      <Select name="problemType" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select problem type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {problemTypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+<div className="space-y-2">
+  <Label htmlFor="problemType">Problem Type</Label>
+  <Select value={problemTypeValue} onValueChange={setProblemTypeValue}>
+    <SelectTrigger>
+      <SelectValue placeholder="Select problem type" />
+    </SelectTrigger>
+    <SelectContent>
+      {problemTypes.map((type) => (
+        <SelectItem key={type.value} value={type.value}>
+          {type.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="description">Description</Label>
@@ -295,12 +324,18 @@ export default function SolutionRequests() {
                       </p>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="isPublic" name="isPublic" />
-                      <Label htmlFor="isPublic" className="text-sm">
-                        Allow other O2I users to view the solution to your problem. Your information will remain anonymous.
-                      </Label>
-                    </div>
+<div className="space-y-2">
+  <Label>Visibility</Label>
+  <Select value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'private')}>
+    <SelectTrigger>
+      <SelectValue placeholder="Choose public or private" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="private">Private (only you can see the solution)</SelectItem>
+      <SelectItem value="public">Public (shown as anonymous to others)</SelectItem>
+    </SelectContent>
+  </Select>
+</div>
                   
                   <Button type="submit" className="w-full" disabled={uploading}>
                     {uploading ? (
@@ -343,9 +378,9 @@ export default function SolutionRequests() {
                     </Badge>
                   </div>
                   <CardTitle className="line-clamp-2">{request.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    By {request.profiles?.full_name || 'Anonymous'}
-                  </CardDescription>
+<CardDescription className="line-clamp-2">
+  {request.is_public ? 'By Anonymous' : (user?.id === request.user_id ? 'By You' : 'Private request')}
+</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {request.image_url && (
@@ -364,14 +399,14 @@ export default function SolutionRequests() {
                     </p>
                   )}
                   
-                  {request.solution_text && (
-                    <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-                      <h4 className="font-semibold text-green-800 mb-1">Solution:</h4>
-                      <p className="text-sm text-green-700 line-clamp-3">
-                        {request.solution_text}
-                      </p>
-                    </div>
-                  )}
+{request.solution_text && (request.is_public || user?.id === request.user_id) && (
+  <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+    <h4 className="font-semibold text-green-800 mb-1">Solution:</h4>
+    <p className="text-sm text-green-700 line-clamp-3">
+      {request.solution_text}
+    </p>
+  </div>
+)}
                   
                   <div className="text-xs text-muted-foreground">
                     Submitted {new Date(request.created_at).toLocaleDateString()}
