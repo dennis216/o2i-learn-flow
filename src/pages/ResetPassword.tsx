@@ -17,20 +17,59 @@ export default function ResetPassword() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const run = async () => {
+    const trySessionFromUrl = async () => {
       try {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        // Try exchanging code if present (OAuth/code flow)
+        const { data } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (data?.session) {
           setMode('reset');
-        }
-        if (error) {
-          // ignore when no code present
+          // Clean URL from auth params
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+          return;
         }
       } catch {
-        // ignore
+        // ignore when no code present
+      }
+
+      // Fallback: handle hash tokens (e.g., #type=recovery&access_token=...)
+      const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : '';
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const access_token = params.get('access_token');
+      const refresh_token = params.get('refresh_token');
+
+      if (type === 'recovery') {
+        try {
+          if (access_token && refresh_token) {
+            const { data: setData } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (setData?.session) {
+              setMode('reset');
+              window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+            }
+          } else {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData.session) {
+              setMode('reset');
+              window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+            }
+          }
+        } catch {
+          // ignore
+        }
       }
     };
-    run();
+
+    trySessionFromUrl();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || session) {
+        setMode('reset');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleRequest = async (e: React.FormEvent) => {

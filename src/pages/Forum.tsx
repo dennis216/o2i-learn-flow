@@ -16,14 +16,13 @@ import { useNavigate } from 'react-router-dom';
 
 interface ForumPost {
   id: string;
+  user_id: string;
   title: string;
   content: string;
   category: string;
   created_at: string;
-  profiles: {
-    full_name: string;
-  };
   post_replies: { count: number }[];
+  display_name?: string;
 }
 
 const categories = [
@@ -52,7 +51,6 @@ export default function Forum() {
         .from('forum_posts')
         .select(`
           *,
-          profiles:user_id (full_name),
           post_replies(count)
         `)
         .order('created_at', { ascending: false });
@@ -66,7 +64,23 @@ export default function Forum() {
       if (error) {
         console.error('Error fetching posts:', error);
       } else {
-        setPosts(data || []);
+        const posts = data || [];
+        if (posts.length === 0) {
+          setPosts([]);
+        } else {
+          const userIds = Array.from(new Set(posts.map((p: any) => p.user_id).filter(Boolean)));
+          const { data: profilesData } = await supabase
+            .from('public_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          const nameMap = new Map((profilesData || []).map((p: any) => [p.user_id, p.full_name]));
+          setPosts(
+            posts.map((p: any) => ({
+              ...p,
+              display_name: nameMap.get(p.user_id) || 'User',
+            }))
+          );
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -270,7 +284,7 @@ export default function Forum() {
                     </Badge>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      {post.profiles?.full_name || 'Anonymous'}
+                      {post.display_name}
                     </div>
                   </div>
                   <CardTitle className="text-left">{post.title}</CardTitle>

@@ -13,22 +13,20 @@ import { MessageSquare, User, Clock, ArrowLeft, Send } from 'lucide-react';
 
 interface ForumPost {
   id: string;
+  user_id: string;
   title: string;
   content: string;
   category: string;
   created_at: string;
-  profiles: {
-    full_name: string;
-  };
+  author_name?: string;
 }
 
 interface DiscussionPost {
   id: string;
+  user_id: string;
   content: string;
   created_at: string;
-  profiles: {
-    full_name: string;
-  };
+  author_name?: string;
 }
 
 export default function Discussion() {
@@ -53,10 +51,7 @@ export default function Discussion() {
       // Fetch the main forum post
       const { data: post, error: postError } = await supabase
         .from('forum_posts')
-        .select(`
-          *,
-          profiles:user_id (full_name)
-        `)
+        .select(`*`)
         .eq('id', postId)
         .single();
 
@@ -66,17 +61,21 @@ export default function Discussion() {
         return;
       }
 
-      setForumPost(post);
+      const { data: author } = await supabase
+        .from('public_profiles')
+        .select('full_name')
+        .eq('user_id', post.user_id)
+        .single();
+      setForumPost({ ...post, author_name: author?.full_name || 'User' });
 
       // Fetch discussion posts  
       const { data: discussions, error: discussionsError } = await supabase
         .from('discussion_posts')
         .select(`
           id,
-          content,
-          created_at,
           user_id,
-          profiles!inner (full_name)
+          content,
+          created_at
         `)
         .eq('forum_post_id', postId)
         .order('created_at', { ascending: true });
@@ -84,7 +83,20 @@ export default function Discussion() {
       if (discussionsError) {
         console.error('Error fetching discussions:', discussionsError);
       } else {
-        setDiscussionPosts(discussions || []);
+        const replies = discussions || [];
+        if (replies.length) {
+          const userIds = Array.from(new Set(replies.map((r: any) => r.user_id)));
+          const { data: profs } = await supabase
+            .from('public_profiles')
+            .select('user_id, full_name')
+            .in('user_id', userIds);
+          const nameMap = new Map((profs || []).map((p: any) => [p.user_id, p.full_name]));
+          setDiscussionPosts(
+            replies.map((r: any) => ({ ...r, author_name: nameMap.get(r.user_id) || 'User' }))
+          );
+        } else {
+          setDiscussionPosts([]);
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -218,7 +230,7 @@ export default function Discussion() {
               </Badge>
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <User className="h-4 w-4" />
-                {forumPost.profiles?.full_name || 'Anonymous'}
+                {forumPost.author_name}
               </div>
             </div>
             <CardTitle className="text-2xl">{forumPost.title}</CardTitle>
@@ -254,7 +266,7 @@ export default function Discussion() {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4" />
-                      {post.profiles?.full_name || 'Anonymous'}
+                      {post.author_name}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="h-4 w-4" />
