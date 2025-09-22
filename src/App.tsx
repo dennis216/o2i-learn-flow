@@ -35,6 +35,7 @@ const App = () => (
             <Route path="/solution-requests" element={<SolutionRequests />} />
             <Route path="/forum" element={<Forum />} />
             <Route path="/forum/:postId" element={<Discussion />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

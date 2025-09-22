@@ -11,7 +11,7 @@ import { Book } from 'lucide-react';
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -69,7 +69,7 @@ export default function Auth() {
       } else {
         toast({
           title: "Account created!",
-          description: "Please check your email to verify your account.",
+          description: "You're signed in and ready to go.",
         });
         navigate('/');
       }
@@ -135,6 +135,26 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
+                  <div className="flex justify-end">
+                    <Link to="/reset-password" className="text-sm text-primary hover:underline">Forgot password?</Link>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={async () => {
+                        setIsLoading(true);
+                        const { error } = await signInWithGoogle();
+                        if (error) {
+                          toast({ title: 'Google sign-in failed', description: error.message, variant: 'destructive' });
+                        }
+                        setIsLoading(false);
+                      }}
+                    >
+                      Continue with Google
+                    </Button>
+                  </div>
                 </form>
               </TabsContent>
               
