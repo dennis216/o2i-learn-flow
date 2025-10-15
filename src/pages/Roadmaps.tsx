@@ -10,6 +10,22 @@ import { Plus, ChevronDown, ChevronRight, BookOpen, Video, Brain, Target } from 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { z } from "zod";
+
+const roadmapSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().max(1000, "Description must be less than 1000 characters"),
+});
+
+const chapterSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().max(1000, "Description must be less than 1000 characters"),
+});
+
+const subChapterSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().max(1000, "Description must be less than 1000 characters"),
+});
 
 interface Roadmap {
   id: string;
@@ -132,17 +148,27 @@ const Roadmaps = () => {
   };
 
   const createRoadmap = async () => {
-    if (!newRoadmapTitle.trim()) return;
-
     try {
+      const validation = roadmapSchema.safeParse({
+        title: newRoadmapTitle,
+        description: newRoadmapDescription,
+      });
+
+      if (!validation.success) {
+        toast({
+          title: "Validation Error",
+          description: validation.error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from("roadmaps")
-        .insert([
-          {
-            title: newRoadmapTitle,
-            description: newRoadmapDescription,
-          },
-        ])
+        .insert([{
+          title: validation.data.title,
+          description: validation.data.description,
+        }])
         .select()
         .single();
 
@@ -167,16 +193,30 @@ const Roadmaps = () => {
   };
 
   const createChapter = async () => {
-    if (!newChapterTitle.trim() || !selectedRoadmap) return;
+    if (!selectedRoadmap) return;
 
     try {
+      const validation = chapterSchema.safeParse({
+        title: newChapterTitle,
+        description: newChapterDescription,
+      });
+
+      if (!validation.success) {
+        toast({
+          title: "Validation Error",
+          description: validation.error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from("chapters")
         .insert([
           {
             roadmap_id: selectedRoadmap,
-            title: newChapterTitle,
-            description: newChapterDescription,
+            title: validation.data.title,
+            description: validation.data.description,
             order_index: chapters.length,
           },
         ])
@@ -204,17 +244,31 @@ const Roadmaps = () => {
   };
 
   const createSubChapter = async () => {
-    if (!newSubChapterTitle.trim() || !selectedChapterForSubChapter) return;
+    if (!selectedChapterForSubChapter) return;
 
     try {
+      const validation = subChapterSchema.safeParse({
+        title: newSubChapterTitle,
+        description: newSubChapterDescription,
+      });
+
+      if (!validation.success) {
+        toast({
+          title: "Validation Error",
+          description: validation.error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const chapterSubChapters = getSubChaptersForChapter(selectedChapterForSubChapter);
       const { data, error } = await supabase
         .from("sub_chapters")
         .insert([
           {
             chapter_id: selectedChapterForSubChapter,
-            title: newSubChapterTitle,
-            description: newSubChapterDescription,
+            title: validation.data.title,
+            description: validation.data.description,
             order_index: chapterSubChapters.length,
           },
         ])
