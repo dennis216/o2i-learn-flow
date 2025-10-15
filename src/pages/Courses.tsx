@@ -4,7 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Clock, DollarSign, User } from 'lucide-react';
+import { BookOpen, Clock, DollarSign, User, PlayCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface CourseVideo {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  duration: number;
+  order_index: number;
+}
 
 interface Course {
   id: string;
@@ -17,11 +27,13 @@ interface Course {
   profiles: {
     full_name: string;
   };
+  course_videos?: CourseVideo[];
 }
 
 export default function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -30,7 +42,8 @@ export default function Courses() {
           .from('courses')
           .select(`
             *,
-            profiles:instructor_id (full_name)
+            profiles:instructor_id (full_name),
+            course_videos (*)
           `)
           .order('created_at', { ascending: false });
 
@@ -140,13 +153,104 @@ export default function Courses() {
                       {course.price === 0 ? 'Free' : `$${course.price}`}
                     </div>
                   </div>
-                  <Button className="w-full">
+                  <Button className="w-full" onClick={() => setSelectedCourse(course)}>
                     <BookOpen className="h-4 w-4 mr-2" />
                     View Course
                   </Button>
+                  {course.course_videos && course.course_videos.length > 0 && (
+                    <div className="mt-2 text-sm text-muted-foreground flex items-center">
+                      <PlayCircle className="h-4 w-4 mr-1" />
+                      {course.course_videos.length} video{course.course_videos.length > 1 ? 's' : ''}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Course Detail Modal */}
+        {selectedCourse && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-3xl mb-2">{selectedCourse.title}</CardTitle>
+                    <CardDescription>{selectedCourse.description}</CardDescription>
+                  </div>
+                  <Button variant="ghost" onClick={() => setSelectedCourse(null)}>✕</Button>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Badge className={getLevelColor(selectedCourse.level)} variant="secondary">
+                    {selectedCourse.level}
+                  </Badge>
+                  <Badge variant="outline">{selectedCourse.subject}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="videos" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="videos">Videos</TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="videos" className="space-y-4 mt-4">
+                    {selectedCourse.course_videos && selectedCourse.course_videos.length > 0 ? (
+                      selectedCourse.course_videos
+                        .sort((a, b) => a.order_index - b.order_index)
+                        .map((video) => (
+                          <Card key={video.id}>
+                            <CardHeader>
+                              <CardTitle className="text-lg">{video.title}</CardTitle>
+                              {video.description && (
+                                <CardDescription>{video.description}</CardDescription>
+                              )}
+                            </CardHeader>
+                            <CardContent>
+                              <video 
+                                controls 
+                                className="w-full rounded-lg"
+                                src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
+                              >
+                                Your browser does not support the video tag.
+                              </video>
+                              {video.duration && (
+                                <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No videos available for this course yet.</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="details" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold mb-2">Instructor</h3>
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2" />
+                          {selectedCourse.profiles?.full_name || 'Unknown Instructor'}
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold mb-2">Price</h3>
+                        <div className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          {selectedCourse.price === 0 ? 'Free' : `$${selectedCourse.price}`}
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
