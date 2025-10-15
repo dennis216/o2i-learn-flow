@@ -8,9 +8,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Book } from 'lucide-react';
+import { z } from 'zod';
+
+const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+
+const signUpSchema = z.object({
+  fullName: z.string().trim().min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
+  email: z.string().trim().email('Invalid email address').max(255, 'Email is too long'),
+  password: passwordSchema
+});
+
+const signInSchema = z.object({
+  email: z.string().trim().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required')
+});
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -18,12 +38,26 @@ export default function Auth() {
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setPasswordError('');
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
     try {
+      // Validate input
+      const validation = signInSchema.safeParse({ email, password });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await signIn(email, password);
       if (error) {
         toast({
@@ -52,6 +86,7 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setPasswordError('');
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
@@ -59,6 +94,22 @@ export default function Auth() {
     const fullName = formData.get('fullName') as string;
 
     try {
+      // Validate input
+      const validation = signUpSchema.safeParse({ fullName, email, password });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        if (firstError.path.includes('password')) {
+          setPasswordError(firstError.message);
+        }
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await signUp(email, password, fullName);
       if (error) {
         toast({
@@ -188,7 +239,14 @@ export default function Auth() {
                       type="password"
                       placeholder="Create a password"
                       required
+                      onChange={() => setPasswordError('')}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Must be 8+ characters with uppercase, lowercase, number, and special character
+                    </p>
+                    {passwordError && (
+                      <p className="text-xs text-destructive">{passwordError}</p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Sign Up'}
