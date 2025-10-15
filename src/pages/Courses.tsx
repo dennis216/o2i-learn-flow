@@ -24,7 +24,7 @@ interface Course {
   subject: string;
   price: number;
   image_url: string;
-  profiles: {
+  public_profiles: {
     full_name: string;
   };
   course_videos?: CourseVideo[];
@@ -42,7 +42,7 @@ export default function Courses() {
           .from('courses')
           .select(`
             *,
-            profiles:instructor_id (full_name),
+            public_profiles!instructor_id (full_name),
             course_videos (*)
           `)
           .order('created_at', { ascending: false });
@@ -146,7 +146,7 @@ export default function Courses() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
                     <div className="flex items-center">
                       <User className="h-4 w-4 mr-1" />
-                      {course.profiles?.full_name || 'Unknown Instructor'}
+                      {course.public_profiles?.full_name || 'Unknown Instructor'}
                     </div>
                     <div className="flex items-center">
                       <DollarSign className="h-4 w-4 mr-1" />
@@ -236,7 +236,7 @@ export default function Courses() {
                         <h3 className="font-semibold mb-2">Instructor</h3>
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-2" />
-                          {selectedCourse.profiles?.full_name || 'Unknown Instructor'}
+                          {selectedCourse.public_profiles?.full_name || 'Unknown Instructor'}
                         </div>
                       </div>
                       <div>
