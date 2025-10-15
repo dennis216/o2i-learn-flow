@@ -119,10 +119,11 @@ export default function Auth() {
         });
       } else {
         toast({
-          title: "Account created!",
-          description: "You're signed in and ready to go.",
+          title: "Check your email!",
+          description: "We've sent you a confirmation link. Please check your inbox and click the link to verify your account.",
+          duration: 8000,
         });
-        navigate('/');
+        // Don't navigate immediately - user needs to confirm email first
       }
     } catch (error) {
       toast({
@@ -210,6 +211,11 @@ export default function Auth() {
               </TabsContent>
               
               <TabsContent value="signup">
+                <div className="mb-4 p-3 bg-muted rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    📧 After signing up, you'll receive a confirmation email. Please verify your email address to complete registration.
+                  </p>
+                </div>
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">Full Name</Label>
