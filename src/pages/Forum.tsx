@@ -124,7 +124,6 @@ export default function Forum() {
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const content = formData.get('content') as string;
-    const category = formData.get('category') as string;
 
     try {
       const { error } = await supabase
@@ -133,7 +132,7 @@ export default function Forum() {
           user_id: user.id,
           title,
           content,
-          category,
+          category: 'general',
           tags: currentTags.length > 0 ? currentTags : null
         });
 
@@ -234,22 +233,6 @@ export default function Forum() {
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select name="category" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
                     <div className="space-y-2">
                       <Label htmlFor="title">Title</Label>
                       <Input
