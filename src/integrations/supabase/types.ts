@@ -128,7 +128,15 @@ export type Database = {
           updated_at?: string
           video_url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "course_videos_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       courses: {
         Row: {
