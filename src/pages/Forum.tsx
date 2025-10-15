@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Plus, User, Clock } from 'lucide-react';
+import { MessageSquare, Plus, User, Clock, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ForumPost {
@@ -20,6 +20,7 @@ interface ForumPost {
   title: string;
   content: string;
   category: string;
+  tags?: string[];
   created_at: string;
   post_replies: { count: number }[];
   display_name?: string;
@@ -34,20 +35,41 @@ const categories = [
 
 export default function Forum() {
   const [posts, setPosts] = useState<ForumPost[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [currentTags, setCurrentTags] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchPosts();
-  }, [selectedCategory]);
+  }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredPosts(posts);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = posts.filter((post) => {
+      const titleMatch = post.title.toLowerCase().includes(query);
+      const userMatch = post.display_name?.toLowerCase().includes(query);
+      const tagMatch = post.tags?.some(tag => tag.toLowerCase().includes(query));
+      
+      return titleMatch || userMatch || tagMatch;
+    });
+
+    setFilteredPosts(filtered);
+  }, [searchQuery, posts]);
 
   const fetchPosts = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('forum_posts')
         .select(`
           *,
@@ -55,18 +77,13 @@ export default function Forum() {
         `)
         .order('created_at', { ascending: false });
 
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory);
-      }
-
-      const { data, error } = await query;
-
       if (error) {
         console.error('Error fetching posts:', error);
       } else {
         const posts = data || [];
         if (posts.length === 0) {
           setPosts([]);
+          setFilteredPosts([]);
         } else {
           const userIds = Array.from(new Set(posts.map((p: any) => p.user_id).filter(Boolean)));
           const { data: profilesData } = await supabase
@@ -74,12 +91,12 @@ export default function Forum() {
             .select('user_id, full_name')
             .in('user_id', userIds);
           const nameMap = new Map((profilesData || []).map((p: any) => [p.user_id, p.full_name]));
-          setPosts(
-            posts.map((p: any) => ({
-              ...p,
-              display_name: nameMap.get(p.user_id) || 'User',
-            }))
-          );
+          const postsWithNames = posts.map((p: any) => ({
+            ...p,
+            display_name: nameMap.get(p.user_id) || 'User',
+          }));
+          setPosts(postsWithNames);
+          setFilteredPosts(postsWithNames);
         }
       }
     } catch (error) {
@@ -87,6 +104,17 @@ export default function Forum() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !currentTags.includes(tagInput.trim())) {
+      setCurrentTags([...currentTags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setCurrentTags(currentTags.filter(tag => tag !== tagToRemove));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -105,7 +133,8 @@ export default function Forum() {
           user_id: user.id,
           title,
           content,
-          category
+          category,
+          tags: currentTags.length > 0 ? currentTags : null
         });
 
       if (error) {
@@ -118,6 +147,8 @@ export default function Forum() {
       });
 
       setIsDialogOpen(false);
+      setCurrentTags([]);
+      setTagInput('');
       fetchPosts();
       (e.target as HTMLFormElement).reset();
     } catch (error) {
@@ -239,6 +270,40 @@ export default function Forum() {
                         required
                       />
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="tags">Tags</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="tags"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTag();
+                            }
+                          }}
+                          placeholder="Add tags (press Enter)"
+                        />
+                        <Button type="button" onClick={handleAddTag} variant="outline">
+                          Add
+                        </Button>
+                      </div>
+                      {currentTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {currentTags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="gap-1">
+                              {tag}
+                              <X 
+                                className="h-3 w-3 cursor-pointer" 
+                                onClick={() => handleRemoveTag(tag)}
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     
                     <Button type="submit" className="w-full">
                       <MessageSquare className="h-4 w-4 mr-2" />
@@ -249,33 +314,36 @@ export default function Forum() {
               </Dialog>
             )}
             
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative w-full sm:w-96">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by title, user, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
         </div>
 
-        {posts.length === 0 ? (
+        {filteredPosts.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">No posts yet</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              {searchQuery ? 'No posts found' : 'No posts yet'}
+            </h3>
             <p className="text-muted-foreground">
-              {user ? "Be the first to start a conversation!" : "Sign in to create posts and join discussions"}
+              {searchQuery 
+                ? 'Try a different search term' 
+                : user 
+                  ? "Be the first to start a conversation!" 
+                  : "Sign in to create posts and join discussions"
+              }
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            {posts.map((post) => (
+            {filteredPosts.map((post) => (
               <Card key={post.id} className="hover:shadow-lg transition-shadow duration-300">
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">
@@ -288,6 +356,15 @@ export default function Forum() {
                     </div>
                   </div>
                   <CardTitle className="text-left">{post.title}</CardTitle>
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {post.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-4 line-clamp-3">
