@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Clock, DollarSign, User, PlayCircle } from 'lucide-react';
+import { BookOpen, Clock, DollarSign, User, PlayCircle, Maximize } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface CourseVideo {
@@ -35,6 +35,16 @@ export default function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+
+  const handleFullscreen = (videoId: string) => {
+    const video = videoRefs.current[videoId];
+    if (video) {
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -211,13 +221,24 @@ export default function Courses() {
                               )}
                             </CardHeader>
                             <CardContent>
-                              <video 
-                                controls 
-                                className="w-full rounded-lg"
-                                src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
-                              >
-                                Your browser does not support the video tag.
-                              </video>
+                              <div className="relative group">
+                                <video 
+                                  ref={(el) => videoRefs.current[video.id] = el}
+                                  controls 
+                                  className="w-full rounded-lg"
+                                  src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
+                                >
+                                  Your browser does not support the video tag.
+                                </video>
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => handleFullscreen(video.id)}
+                                >
+                                  <Maximize className="h-4 w-4" />
+                                </Button>
+                              </div>
                               {video.duration && (
                                 <div className="flex items-center mt-2 text-sm text-muted-foreground">
                                   <Clock className="h-4 w-4 mr-1" />
