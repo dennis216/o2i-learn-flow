@@ -11,6 +11,7 @@ interface CourseVideo {
   id: string;
   title: string;
   description: string;
+  subtitle?: string;
   video_url: string;
   duration: number;
   order_index: number;
@@ -202,8 +203,11 @@ export default function Courses() {
                           <Card key={video.id}>
                             <CardHeader>
                               <CardTitle className="text-lg">{video.title}</CardTitle>
+                              {video.subtitle && (
+                                <p className="text-sm font-medium text-muted-foreground mt-1">{video.subtitle}</p>
+                              )}
                               {video.description && (
-                                <CardDescription>{video.description}</CardDescription>
+                                <CardDescription className="mt-2">{video.description}</CardDescription>
                               )}
                             </CardHeader>
                             <CardContent>
