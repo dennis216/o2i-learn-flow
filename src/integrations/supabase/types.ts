@@ -102,6 +102,7 @@ export type Database = {
           duration: number | null
           id: string
           order_index: number
+          subtitle: string | null
           title: string
           updated_at: string
           video_url: string
@@ -113,6 +114,7 @@ export type Database = {
           duration?: number | null
           id?: string
           order_index?: number
+          subtitle?: string | null
           title: string
           updated_at?: string
           video_url: string
@@ -124,6 +126,7 @@ export type Database = {
           duration?: number | null
           id?: string
           order_index?: number
+          subtitle?: string | null
           title?: string
           updated_at?: string
           video_url?: string
