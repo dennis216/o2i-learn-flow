@@ -222,22 +222,38 @@ export default function Courses() {
                             </CardHeader>
                             <CardContent>
                               <div className="relative group">
-                                <video 
-                                  ref={(el) => videoRefs.current[video.id] = el}
-                                  controls 
-                                  className="w-full rounded-lg"
-                                  src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
-                                >
-                                  Your browser does not support the video tag.
-                                </video>
-                                <Button
-                                  variant="secondary"
-                                  size="icon"
-                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => handleFullscreen(video.id)}
-                                >
-                                  <Maximize className="h-4 w-4" />
-                                </Button>
+                                {video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be') ? (
+                                  <iframe
+                                    className="w-full aspect-video rounded-lg"
+                                    src={`https://www.youtube.com/embed/${
+                                      video.video_url.includes('youtu.be') 
+                                        ? video.video_url.split('youtu.be/')[1]?.split('?')[0]
+                                        : video.video_url.split('v=')[1]?.split('&')[0]
+                                    }`}
+                                    title={video.title}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                  />
+                                ) : (
+                                  <>
+                                    <video 
+                                      ref={(el) => videoRefs.current[video.id] = el}
+                                      controls 
+                                      className="w-full rounded-lg"
+                                      src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
+                                    >
+                                      Your browser does not support the video tag.
+                                    </video>
+                                    <Button
+                                      variant="secondary"
+                                      size="icon"
+                                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handleFullscreen(video.id)}
+                                    >
+                                      <Maximize className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                               {video.duration && (
                                 <div className="flex items-center mt-2 text-sm text-muted-foreground">
