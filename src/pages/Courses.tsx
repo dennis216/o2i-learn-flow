@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Clock, DollarSign, User, PlayCircle, Maximize } from 'lucide-react';
+import { BookOpen, Clock, DollarSign, User, PlayCircle, Maximize, ChevronDown, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface CourseVideo {
   id: string;
@@ -207,63 +208,86 @@ export default function Courses() {
                   </TabsList>
                   <TabsContent value="videos" className="space-y-4 mt-4">
                     {selectedCourse.course_videos && selectedCourse.course_videos.length > 0 ? (
-                      selectedCourse.course_videos
-                        .sort((a, b) => a.order_index - b.order_index)
-                        .map((video) => (
-                          <Card key={video.id}>
-                            <CardHeader>
-                              <CardTitle className="text-lg">{video.title}</CardTitle>
-                              {video.subtitle && (
-                                <p className="text-sm font-medium text-muted-foreground mt-1">{video.subtitle}</p>
-                              )}
-                              {video.description && (
-                                <CardDescription className="mt-2">{video.description}</CardDescription>
-                              )}
-                            </CardHeader>
-                            <CardContent>
-                              <div className="relative group">
-                                {video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be') ? (
-                                  <iframe
-                                    className="w-full aspect-video rounded-lg"
-                                    src={`https://www.youtube.com/embed/${
-                                      video.video_url.includes('youtu.be') 
-                                        ? video.video_url.split('youtu.be/')[1]?.split('?')[0]
-                                        : video.video_url.split('v=')[1]?.split('&')[0]
-                                    }`}
-                                    title={video.title}
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                  />
-                                ) : (
-                                  <>
-                                    <video 
-                                      ref={(el) => videoRefs.current[video.id] = el}
-                                      controls 
-                                      className="w-full rounded-lg"
-                                      src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
-                                    >
-                                      Your browser does not support the video tag.
-                                    </video>
-                                    <Button
-                                      variant="secondary"
-                                      size="icon"
-                                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => handleFullscreen(video.id)}
-                                    >
-                                      <Maximize className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                )}
+                      (() => {
+                        // Group videos by subtitle (unit)
+                        const sortedVideos = [...selectedCourse.course_videos].sort((a, b) => a.order_index - b.order_index);
+                        const groupedVideos = sortedVideos.reduce((acc, video) => {
+                          const unit = video.subtitle || 'Other Videos';
+                          if (!acc[unit]) {
+                            acc[unit] = [];
+                          }
+                          acc[unit].push(video);
+                          return acc;
+                        }, {} as Record<string, CourseVideo[]>);
+
+                        return Object.entries(groupedVideos).map(([unit, videos]) => (
+                          <Collapsible key={unit} defaultOpen className="border rounded-lg">
+                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="secondary" className="font-semibold">
+                                  {videos.length} lesson{videos.length > 1 ? 's' : ''}
+                                </Badge>
+                                <h3 className="font-semibold text-lg">{unit}</h3>
                               </div>
-                              {video.duration && (
-                                <div className="flex items-center mt-2 text-sm text-muted-foreground">
-                                  <Clock className="h-4 w-4 mr-1" />
-                                  {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        ))
+                              <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="px-4 pb-4 space-y-4">
+                              {videos.map((video) => (
+                                <Card key={video.id} className="border-muted">
+                                  <CardHeader className="pb-2">
+                                    <CardTitle className="text-base">{video.title}</CardTitle>
+                                    {video.description && (
+                                      <CardDescription className="mt-1">{video.description}</CardDescription>
+                                    )}
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="relative group">
+                                      {video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be') ? (
+                                        <iframe
+                                          className="w-full aspect-video rounded-lg"
+                                          src={`https://www.youtube.com/embed/${
+                                            video.video_url.includes('youtu.be') 
+                                              ? video.video_url.split('youtu.be/')[1]?.split('?')[0]
+                                              : video.video_url.split('v=')[1]?.split('&')[0]
+                                          }`}
+                                          title={video.title}
+                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                          allowFullScreen
+                                        />
+                                      ) : (
+                                        <>
+                                          <video 
+                                            ref={(el) => videoRefs.current[video.id] = el}
+                                            controls 
+                                            className="w-full rounded-lg"
+                                            src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
+                                          >
+                                            Your browser does not support the video tag.
+                                          </video>
+                                          <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => handleFullscreen(video.id)}
+                                          >
+                                            <Maximize className="h-4 w-4" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                    {video.duration && (
+                                      <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                                        <Clock className="h-4 w-4 mr-1" />
+                                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                      </div>
+                                    )}
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ));
+                      })()
                     ) : (
                       <div className="text-center py-12">
                         <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
