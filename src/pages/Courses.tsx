@@ -7,6 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Clock, DollarSign, User, PlayCircle, Maximize, ChevronDown, ChevronRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import apCalculusThumbnail from '@/assets/ap-calculus-thumbnail.jpg';
+
+// Map course IDs to their thumbnail images
+const courseThumbnails: Record<string, string> = {
+  'fccc7540-0c29-43be-8682-ae90ff2534cb': apCalculusThumbnail, // AP Calculus
+};
 
 interface CourseVideo {
   id: string;
@@ -137,11 +143,17 @@ export default function Courses() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
               <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                {course.image_url && (
-                  <div className="h-48 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center">
+                <div className="h-48 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center overflow-hidden">
+                  {courseThumbnails[course.id] || course.image_url ? (
+                    <img 
+                      src={courseThumbnails[course.id] || course.image_url} 
+                      alt={course.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
                     <BookOpen className="h-16 w-16 text-primary" />
-                  </div>
-                )}
+                  )}
+                </div>
                 <CardHeader>
                   <div className="flex justify-between items-start mb-2">
                     <Badge className={getLevelColor(course.level)} variant="secondary">
