@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,44 +14,95 @@ interface AITutorSidebarProps {
   onSeek: (seconds: number) => void;
 }
 
+// Get transcript segments within a time window (±60 seconds)
+const getContextWindow = (
+  transcript: TranscriptEntry[] | null,
+  currentTime: number,
+  windowSize: number = 60
+): TranscriptEntry[] => {
+  if (!transcript) return [];
+  return transcript.filter(
+    (entry) => entry.s >= currentTime - windowSize && entry.s <= currentTime + windowSize
+  );
+};
+
+// Format context for AI prompt
+const formatContextForAI = (
+  relevantSegments: TranscriptEntry[],
+  currentTime: number
+): string => {
+  if (relevantSegments.length === 0) return '';
+  
+  return relevantSegments
+    .map((seg) => `[${formatTime(seg.s)}] ${seg.t}`)
+    .join('\n');
+};
+
 // Mock AI response function - to be replaced with Supabase Edge Function
 const mockAIResponse = async (
   message: string,
   transcript: TranscriptEntry[] | null,
-  currentTime: number
+  currentTime: number,
+  isExplainScene: boolean = false
 ): Promise<string> => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   
-  // Get relevant context from transcript around current time
-  const contextWindow = 30; // seconds before and after
-  const relevantTranscript = transcript?.filter(
-    (entry) => entry.s >= currentTime - contextWindow && entry.s <= currentTime + contextWindow
-  ) || [];
+  // Get relevant context from transcript around current time (±60 seconds)
+  const relevantTranscript = getContextWindow(transcript, currentTime, 60);
+  const contextText = formatContextForAI(relevantTranscript, currentTime);
   
-  const contextText = relevantTranscript.map((e) => e.t).join(' ');
-  
-  // Simple mock responses with timestamps
-  if (message.toLowerCase().includes('explain')) {
-    return `Based on what's being discussed around [${formatTime(currentTime)}], the concept here relates to the fundamental principles being taught. 
+  // Find the closest transcript entry to current time
+  const closestEntry = relevantTranscript.reduce((closest, entry) => {
+    if (!closest) return entry;
+    return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
+  }, relevantTranscript[0]);
 
-The key points are:
+  if (isExplainScene) {
+    if (!closestEntry) {
+      return `I don't have transcript data for this moment at [${formatTime(currentTime)}]. Try seeking to a different part of the video or ask me a specific question!`;
+    }
+    
+    return `**📍 Current Scene at [${formatTime(currentTime)}]**
+
+**What's happening:** ${closestEntry.t}
+
+**Context from nearby segments:**
+${relevantTranscript.slice(0, 3).map(seg => `• [${formatTime(seg.s)}] ${seg.t}`).join('\n')}
+
+**Key takeaway:** This section covers ${closestEntry.t.toLowerCase().includes('limit') ? 'limit concepts' : closestEntry.t.toLowerCase().includes('derivative') ? 'derivative techniques' : 'fundamental calculus principles'}. 
+
+Would you like me to explain this concept in more detail?`;
+  }
+  
+  if (message.toLowerCase().includes('explain')) {
+    return `Based on what's being discussed around [${formatTime(currentTime)}]:
+
+${closestEntry ? `**Current topic:** ${closestEntry.t}` : 'No specific topic detected.'}
+
+**Key points:**
 1. Understanding the core concept at [${formatTime(Math.max(0, currentTime - 15))}]
 2. Application examples shown at [${formatTime(currentTime + 10)}]
 
-${contextText ? `Current context: "${contextText.slice(0, 100)}..."` : 'No transcript context available for this section.'}`;
+${contextText ? `**Transcript context:**\n${contextText}` : 'No transcript context available for this section.'}`;
   }
   
   if (message.toLowerCase().includes('example')) {
     return `Here's an example related to the video content at [${formatTime(currentTime)}]:
 
-The instructor demonstrates this concept step by step. You can revisit the explanation at [${formatTime(Math.max(0, currentTime - 20))}].`;
+The instructor demonstrates this concept step by step. You can revisit the explanation at [${formatTime(Math.max(0, currentTime - 20))}].
+
+${closestEntry ? `**Related concept:** ${closestEntry.t}` : ''}`;
   }
   
   return `I understand you're asking about "${message}". 
 
-Based on the current video position at [${formatTime(currentTime)}], I can help explain this concept. The relevant section starts around [${formatTime(Math.max(0, currentTime - 10))}].
+Based on the current video position at [${formatTime(currentTime)}]:
 
-${contextText ? `Related content: "${contextText.slice(0, 150)}..."` : 'Feel free to ask more specific questions about the material!'}`;
+${closestEntry ? `**Currently discussing:** ${closestEntry.t}` : 'No specific topic at this timestamp.'}
+
+The relevant section starts around [${formatTime(Math.max(0, currentTime - 10))}].
+
+${contextText ? `**Related content:**\n${contextText}` : 'Feel free to ask more specific questions about the material!'}`;
 };
 
 const formatTime = (seconds: number): string => {
@@ -104,7 +155,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     {
       id: '1',
       role: 'assistant',
-      content: `Hi! I'm your AI tutor for "${videoTitle}". Ask me anything about the video content, and I'll help explain concepts with references to specific moments in the video.`,
+      content: `Hi! I'm your AI tutor for "${videoTitle}". Ask me anything about the video content, or click **"Explain Current Scene"** to get context about what's happening right now!`,
       timestamp: new Date(),
     },
   ]);
@@ -119,22 +170,23 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     }
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+  const handleSendMessage = async (customMessage?: string, isExplainScene: boolean = false) => {
+    const messageContent = customMessage || inputValue.trim();
+    if (!messageContent || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputValue.trim(),
+      content: isExplainScene ? `🎬 Explain what's happening at ${formatTime(currentTime)}` : messageContent,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
+    if (!customMessage) setInputValue('');
     setIsLoading(true);
 
     try {
-      const response = await mockAIResponse(userMessage.content, transcript, currentTime);
+      const response = await mockAIResponse(messageContent, transcript, currentTime, isExplainScene);
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -158,6 +210,10 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     }
   };
 
+  const handleExplainScene = () => {
+    handleSendMessage('Explain current scene', true);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -167,7 +223,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
 
   return (
     <Card className="h-full flex flex-col border-l-0 rounded-l-none">
-      <CardHeader className="pb-3 border-b">
+      <CardHeader className="pb-3 border-b flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Bot className="h-5 w-5 text-primary" />
           AI Tutor
@@ -175,9 +231,20 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
         <p className="text-sm text-muted-foreground">
           Current position: {formatTime(currentTime)}
         </p>
+        {/* Explain Current Scene Button */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-2 w-full gap-2"
+          onClick={handleExplainScene}
+          disabled={isLoading}
+        >
+          <Sparkles className="h-4 w-4" />
+          Explain Current Scene
+        </Button>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="space-y-4">
             {messages.map((message) => (
@@ -223,7 +290,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
           </div>
         </ScrollArea>
         
-        <div className="p-4 border-t">
+        <div className="p-4 border-t flex-shrink-0">
           <div className="flex gap-2">
             <Input
               value={inputValue}
@@ -233,7 +300,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
               disabled={isLoading}
               className="flex-1"
             />
-            <Button onClick={handleSendMessage} disabled={isLoading || !inputValue.trim()}>
+            <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()}>
               <Send className="h-4 w-4" />
             </Button>
           </div>
