@@ -1,57 +1,24 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Clock, DollarSign, User, PlayCircle, Maximize, ChevronDown, ChevronRight } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BookOpen } from 'lucide-react';
+import { CourseCard } from '@/components/courses/CourseCard';
+import { CourseDetailModal } from '@/components/courses/CourseDetailModal';
+import { Course, TranscriptEntry } from '@/components/courses/types';
 import apCalculusThumbnail from '@/assets/ap-calculus-thumbnail.jpg';
 
 // Map course IDs to their thumbnail images
 const courseThumbnails: Record<string, string> = {
-  'fccc7540-0c29-43be-8682-ae90ff2534cb': apCalculusThumbnail, // AP Calculus
+  'fccc7540-0c29-43be-8682-ae90ff2534cb': apCalculusThumbnail,
 };
 
-interface CourseVideo {
-  id: string;
-  title: string;
-  description: string;
-  subtitle?: string;
-  video_url: string;
-  duration: number;
-  order_index: number;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  level: string;
-  subject: string;
-  price: number;
-  image_url: string;
-  public_profiles: {
-    full_name: string;
-  };
-  course_videos?: CourseVideo[];
-}
+const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
 export default function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
-
-  const handleFullscreen = (videoId: string) => {
-    const video = videoRefs.current[videoId];
-    if (video) {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      }
-    }
-  };
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -68,7 +35,15 @@ export default function Courses() {
         if (error) {
           console.error('Error fetching courses:', error);
         } else {
-          setCourses(data || []);
+          // Transform the data to properly type transcripts
+          const transformedData = data?.map((course) => ({
+            ...course,
+            course_videos: course.course_videos?.map((video: any) => ({
+              ...video,
+              transcript: video.transcript as TranscriptEntry[] | null,
+            })),
+          })) as Course[];
+          setCourses(transformedData || []);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -79,19 +54,6 @@ export default function Courses() {
 
     fetchCourses();
   }, []);
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'beginner':
-        return 'bg-green-100 text-green-800';
-      case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'advanced':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   if (loading) {
     return (
@@ -135,200 +97,27 @@ export default function Courses() {
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">No courses available yet</h3>
-            <p className="text-muted-foreground">
-              Check back soon for exciting new math courses!
-            </p>
+            <p className="text-muted-foreground">Check back soon for exciting new math courses!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <Card key={course.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div className="h-48 bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center overflow-hidden">
-                  {courseThumbnails[course.id] || course.image_url ? (
-                    <img 
-                      src={courseThumbnails[course.id] || course.image_url} 
-                      alt={course.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <BookOpen className="h-16 w-16 text-primary" />
-                  )}
-                </div>
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge className={getLevelColor(course.level)} variant="secondary">
-                      {course.level}
-                    </Badge>
-                    <Badge variant="outline">{course.subject}</Badge>
-                  </div>
-                  <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {course.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                    <div className="flex items-center">
-                      <User className="h-4 w-4 mr-1" />
-                      {course.public_profiles?.full_name || 'Unknown Instructor'}
-                    </div>
-                    <div className="flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      {course.price === 0 ? 'Free' : `$${course.price}`}
-                    </div>
-                  </div>
-                  <Button className="w-full" onClick={() => setSelectedCourse(course)}>
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View Course
-                  </Button>
-                  {course.course_videos && course.course_videos.length > 0 && (
-                    <div className="mt-2 text-sm text-muted-foreground flex items-center">
-                      <PlayCircle className="h-4 w-4 mr-1" />
-                      {course.course_videos.length} video{course.course_videos.length > 1 ? 's' : ''}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <CourseCard
+                key={course.id}
+                course={course}
+                thumbnail={courseThumbnails[course.id]}
+                onSelect={setSelectedCourse}
+              />
             ))}
           </div>
         )}
 
-        {/* Course Detail Modal */}
         {selectedCourse && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-3xl mb-2">{selectedCourse.title}</CardTitle>
-                    <CardDescription>{selectedCourse.description}</CardDescription>
-                  </div>
-                  <Button variant="ghost" onClick={() => setSelectedCourse(null)}>✕</Button>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Badge className={getLevelColor(selectedCourse.level)} variant="secondary">
-                    {selectedCourse.level}
-                  </Badge>
-                  <Badge variant="outline">{selectedCourse.subject}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="videos" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="videos">Videos</TabsTrigger>
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="videos" className="space-y-4 mt-4">
-                    {selectedCourse.course_videos && selectedCourse.course_videos.length > 0 ? (
-                      (() => {
-                        // Group videos by subtitle (unit)
-                        const sortedVideos = [...selectedCourse.course_videos].sort((a, b) => a.order_index - b.order_index);
-                        const groupedVideos = sortedVideos.reduce((acc, video) => {
-                          const unit = video.subtitle || 'Other Videos';
-                          if (!acc[unit]) {
-                            acc[unit] = [];
-                          }
-                          acc[unit].push(video);
-                          return acc;
-                        }, {} as Record<string, CourseVideo[]>);
-
-                        return Object.entries(groupedVideos).map(([unit, videos]) => (
-                          <Collapsible key={unit} defaultOpen className="border rounded-lg">
-                            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <Badge variant="secondary" className="font-semibold">
-                                  {videos.length} lesson{videos.length > 1 ? 's' : ''}
-                                </Badge>
-                                <h3 className="font-semibold text-lg">{unit}</h3>
-                              </div>
-                              <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="px-4 pb-4 space-y-4">
-                              {videos.map((video) => (
-                                <Card key={video.id} className="border-muted">
-                                  <CardHeader className="pb-2">
-                                    <CardTitle className="text-base">{video.title}</CardTitle>
-                                    {video.description && (
-                                      <CardDescription className="mt-1">{video.description}</CardDescription>
-                                    )}
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="relative group">
-                                      {video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be') ? (
-                                        <iframe
-                                          className="w-full aspect-video rounded-lg"
-                                          src={`https://www.youtube.com/embed/${
-                                            video.video_url.includes('youtu.be') 
-                                              ? video.video_url.split('youtu.be/')[1]?.split('?')[0]
-                                              : video.video_url.split('v=')[1]?.split('&')[0]
-                                          }`}
-                                          title={video.title}
-                                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                          allowFullScreen
-                                        />
-                                      ) : (
-                                        <>
-                                          <video 
-                                            ref={(el) => videoRefs.current[video.id] = el}
-                                            controls 
-                                            className="w-full rounded-lg"
-                                            src={`https://lxoaeaewcrshjkigzyqe.supabase.co/storage/v1/object/public/${video.video_url}`}
-                                          >
-                                            Your browser does not support the video tag.
-                                          </video>
-                                          <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => handleFullscreen(video.id)}
-                                          >
-                                            <Maximize className="h-4 w-4" />
-                                          </Button>
-                                        </>
-                                      )}
-                                    </div>
-                                    {video.duration && (
-                                      <div className="flex items-center mt-2 text-sm text-muted-foreground">
-                                        <Clock className="h-4 w-4 mr-1" />
-                                        {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                      </div>
-                                    )}
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ));
-                      })()
-                    ) : (
-                      <div className="text-center py-12">
-                        <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No videos available for this course yet.</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                  <TabsContent value="details" className="space-y-4 mt-4">
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold mb-2">Instructor</h3>
-                        <div className="flex items-center">
-                          <User className="h-4 w-4 mr-2" />
-                          {selectedCourse.public_profiles?.full_name || 'Unknown Instructor'}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold mb-2">Price</h3>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          {selectedCourse.price === 0 ? 'Free' : `$${selectedCourse.price}`}
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
+          <CourseDetailModal
+            course={selectedCourse}
+            onClose={() => setSelectedCourse(null)}
+            supabaseUrl={SUPABASE_URL}
+          />
         )}
       </div>
     </div>
