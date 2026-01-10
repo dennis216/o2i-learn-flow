@@ -162,18 +162,24 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
     );
   }
 
-  // Desktop layout with resizable panels
+  // Desktop layout with resizable panels (70/30 split)
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-      <ResizablePanel defaultSize={65} minSize={40}>
-        <div className="p-4">
+    <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border">
+      <ResizablePanel defaultSize={70} minSize={50}>
+        <div className="p-4 h-full flex flex-col">
           {VideoPlayer}
+          <div className="mt-4">
+            <h3 className="font-semibold text-lg">{video.title}</h3>
+            {video.description && (
+              <p className="text-muted-foreground text-sm mt-1">{video.description}</p>
+            )}
+          </div>
         </div>
       </ResizablePanel>
       
       <ResizableHandle withHandle />
       
-      <ResizablePanel defaultSize={35} minSize={25}>
+      <ResizablePanel defaultSize={30} minSize={20}>
         <AITutorSidebar
           videoTitle={video.title}
           transcript={video.transcript || null}
