@@ -18,7 +18,7 @@ interface AITutorSidebarProps {
 const getContextWindow = (
   transcript: TranscriptEntry[] | null,
   currentTime: number,
-  windowSize: number = 60
+  windowSize: number = 7
 ): TranscriptEntry[] => {
   if (!transcript) return [];
   return transcript.filter(
