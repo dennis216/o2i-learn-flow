@@ -104,6 +104,7 @@ export type Database = {
           order_index: number
           subtitle: string | null
           title: string
+          transcript: Json | null
           updated_at: string
           video_url: string
         }
@@ -116,6 +117,7 @@ export type Database = {
           order_index?: number
           subtitle?: string | null
           title: string
+          transcript?: Json | null
           updated_at?: string
           video_url: string
         }
@@ -128,6 +130,7 @@ export type Database = {
           order_index?: number
           subtitle?: string | null
           title?: string
+          transcript?: Json | null
           updated_at?: string
           video_url?: string
         }
