@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChatMessage, TranscriptEntry } from './types';
+import { toast } from 'sonner';
 
 interface AITutorSidebarProps {
   videoTitle: string;
@@ -14,237 +15,113 @@ interface AITutorSidebarProps {
   onSeek: (seconds: number) => void;
 }
 
-// Get transcript segments within a time window (±60 seconds)
-const getContextWindow = (
-  transcript: TranscriptEntry[] | null,
-  currentTime: number,
-  windowSize: number = 15
-): TranscriptEntry[] => {
-  if (!transcript) return [];
-  return transcript.filter(
-    (entry) => entry.s >= currentTime - windowSize && entry.s <= currentTime + windowSize
-  );
-};
+const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
-// Format context for AI prompt
-const formatContextForAI = (
-  relevantSegments: TranscriptEntry[],
-  currentTime: number
-): string => {
-  if (relevantSegments.length === 0) return '';
-  
-  return relevantSegments
-    .map((seg) => `[${formatTime(seg.s)}] ${seg.t}`)
-    .join('\n');
-};
-
-// Build system prompt with embedded video context
-const buildSystemPrompt = (
-  relevantSegments: TranscriptEntry[],
-  currentTime: number,
-  videoTitle: string
-): string => {
-  const contextText = formatContextForAI(relevantSegments, currentTime);
-  
-  return `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle}".
-
-CURRENT VIDEO CONTEXT (±15 seconds around playback position [${formatTime(currentTime)}]):
-${contextText || 'No transcript data available for this moment.'}
-
-INSTRUCTIONS:
-1. Use your calculus knowledge to EXPLAIN the mathematical steps mentioned in the transcript
-2. When referencing video moments, use [MM:SS] timestamp format so students can click to seek
-3. Break down complex concepts step-by-step
-4. Provide additional examples when helpful
-5. If the transcript mentions a formula or technique, explain WHY it works mathematically`;
-};
-
-// Get math-specific explanation based on transcript content
-const getMathExplanation = (transcriptText: string): string => {
-  const text = transcriptText.toLowerCase();
-  
-  if (text.includes('limit') || text.includes('substitute')) {
-    return `**Mathematical Explanation:**
-When evaluating limits by direct substitution, we simply plug in the value of x directly into the function. This works when the function is continuous at that point.
-
-**Key Steps:**
-1. Identify the value x is approaching
-2. Substitute that value into every x in the expression
-3. Simplify to get your answer
-
-If you get an indeterminate form (like 0/0), you'll need techniques like factoring, rationalization, or L'Hôpital's Rule.`;
-  }
-  
-  if (text.includes('sin(x)/x') || text.includes('trig')) {
-    return `**Mathematical Explanation:**
-The fundamental trigonometric limit states: lim(x→0) sin(x)/x = 1
-
-**Why This Works:**
-Using the Squeeze Theorem: cos(x) ≤ sin(x)/x ≤ 1 for small x
-As x→0, both bounds approach 1, so sin(x)/x must equal 1.
-
-**Key Technique:**
-When you have sin(kx)/mx, multiply by k/k to get: (k/m) · sin(kx)/(kx) = k/m · 1 = k/m`;
-  }
-  
-  if (text.includes('squeeze theorem') || text.includes('bound')) {
-    return `**Mathematical Explanation:**
-The Squeeze Theorem states: If g(x) ≤ f(x) ≤ h(x) near a point c, and lim g(x) = lim h(x) = L, then lim f(x) = L.
-
-**Application:**
-1. Find lower and upper bound functions
-2. Show both bounds approach the same limit L
-3. Conclude the middle function also approaches L
-
-**Common Use:** For oscillating functions like x·sin(1/x), bound by -|x| and |x|.`;
-  }
-  
-  if (text.includes('derivative') || text.includes('f(x+h)')) {
-    return `**Mathematical Explanation:**
-The limit definition of the derivative is: f'(x) = lim(h→0) [f(x+h) - f(x)]/h
-
-**Steps to Apply:**
-1. Write f(x+h) by substituting (x+h) for every x
-2. Subtract f(x) from f(x+h)
-3. Divide the result by h
-4. Take the limit as h→0
-
-This gives the instantaneous rate of change at point x.`;
-  }
-  
-  if (text.includes('chain rule')) {
-    return `**Mathematical Explanation:**
-Chain Rule: If y = f(g(x)), then dy/dx = f'(g(x)) · g'(x)
-
-**Memory Aid:** "Derivative of outside, times derivative of inside"
-
-**Steps:**
-1. Identify the outer function f and inner function g
-2. Differentiate the outer function, keeping inner unchanged
-3. Multiply by the derivative of the inner function`;
-  }
-  
-  if (text.includes('product') || text.includes('quotient')) {
-    return `**Mathematical Explanation:**
-**Product Rule:** d/dx[f·g] = f'g + fg'
-
-**Quotient Rule:** d/dx[f/g] = (g·f' - f·g')/g²
-Memory: "Low d-high minus high d-low, over low squared"
-
-**Steps for Quotient:**
-1. Identify numerator (high) and denominator (low)
-2. Derivative of top times bottom, minus top times derivative of bottom
-3. Divide by bottom squared`;
-  }
-  
-  if (text.includes('implicit')) {
-    return `**Mathematical Explanation:**
-Implicit differentiation is used when y is not isolated.
-
-**Key Rule:** When differentiating a y term, apply chain rule and multiply by dy/dx.
-
-**Steps:**
-1. Differentiate both sides with respect to x
-2. Every time you differentiate y, attach dy/dx
-3. Solve algebraically for dy/dx`;
-  }
-  
-  if (text.includes('continuity') || text.includes('continuous')) {
-    return `**Mathematical Explanation:**
-A function is continuous at x=c if:
-1. f(c) is defined
-2. lim(x→c) f(x) exists
-3. lim(x→c) f(x) = f(c)
-
-**Types of Discontinuities:**
-- Removable (hole): Limit exists but ≠ f(c)
-- Jump: Left and right limits differ
-- Infinite: Limit is ±∞ (asymptote)`;
-  }
-  
-  if (text.includes('ivt') || text.includes('intermediate value')) {
-    return `**Mathematical Explanation:**
-The Intermediate Value Theorem states: If f is continuous on [a,b] and k is between f(a) and f(b), then there exists at least one c in (a,b) where f(c) = k.
-
-**Application:**
-1. Verify f is continuous on the interval
-2. Calculate f(a) and f(b)
-3. Show k is between these values
-4. Conclude c exists (you may not know its exact value)`;
-  }
-  
-  return `**Mathematical Insight:**
-This concept is fundamental to calculus. Focus on understanding the underlying principles and practice applying them to different problem types.`;
-};
-
-// Mock AI response function - to be replaced with Supabase Edge Function
-const mockAIResponse = async (
+// Stream AI response from edge function
+const streamAIResponse = async (
   message: string,
   transcript: TranscriptEntry[] | null,
   currentTime: number,
-  isExplainScene: boolean = false,
-  videoTitle: string = ''
-): Promise<string> => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  
-  // Get relevant context using tight ±15 second window
-  const relevantTranscript = getContextWindow(transcript, currentTime, 15);
-  const contextText = formatContextForAI(relevantTranscript, currentTime);
-  
-  // Find the closest transcript entry to current time
-  const closestEntry = relevantTranscript.reduce((closest, entry) => {
-    if (!closest) return entry;
-    return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
-  }, relevantTranscript[0]);
+  isExplainScene: boolean,
+  videoTitle: string,
+  onDelta: (text: string) => void,
+  onDone: () => void,
+  onError: (error: string) => void
+): Promise<void> => {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        transcript,
+        currentTime,
+        videoTitle,
+        isExplainScene,
+      }),
+    });
 
-  // System prompt would be sent to LLM - shown here for debugging
-  const systemPrompt = buildSystemPrompt(relevantTranscript, currentTime, videoTitle);
-  console.log('System Prompt for AI:', systemPrompt);
-
-  if (isExplainScene) {
-    if (!closestEntry) {
-      return `I don't have transcript data for [${formatTime(currentTime)}]. 
-
-Try seeking to one of these timestamps where I have context, or ask me a general calculus question!`;
+    if (!response.ok) {
+      if (response.status === 429) {
+        onError('Rate limit exceeded. Please wait a moment and try again.');
+        return;
+      }
+      if (response.status === 402) {
+        onError('AI credits exhausted. Please add credits to continue.');
+        return;
+      }
+      const errorData = await response.json().catch(() => ({}));
+      onError(errorData.error || 'Failed to get AI response');
+      return;
     }
-    
-    const mathExplanation = getMathExplanation(closestEntry.t);
-    
-    return `**📍 Scene Analysis at [${formatTime(currentTime)}]**
 
-**What the instructor is saying:**
-"${closestEntry.t}"
+    if (!response.body) {
+      onError('No response stream available');
+      return;
+    }
 
-${mathExplanation}
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-**📎 Nearby Context:**
-${relevantTranscript.map(seg => `• [${formatTime(seg.s)}] ${seg.t}`).join('\n')}
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-Would you like me to work through a specific example?`;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process line by line
+      let newlineIndex: number;
+      while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        let line = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        if (line.startsWith(':') || line.trim() === '') continue;
+        if (!line.startsWith('data: ')) continue;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === '[DONE]') {
+          onDone();
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) onDelta(content);
+        } catch {
+          // Incomplete JSON, put back and wait for more
+          buffer = line + '\n' + buffer;
+          break;
+        }
+      }
+    }
+
+    // Final flush
+    if (buffer.trim()) {
+      for (let raw of buffer.split('\n')) {
+        if (!raw) continue;
+        if (raw.endsWith('\r')) raw = raw.slice(0, -1);
+        if (raw.startsWith(':') || raw.trim() === '') continue;
+        if (!raw.startsWith('data: ')) continue;
+        const jsonStr = raw.slice(6).trim();
+        if (jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) onDelta(content);
+        } catch { /* ignore */ }
+      }
+    }
+
+    onDone();
+  } catch (error) {
+    console.error('Stream error:', error);
+    onError(error instanceof Error ? error.message : 'Connection error');
   }
-  
-  // For user questions, provide context-aware responses
-  if (closestEntry) {
-    const mathExplanation = getMathExplanation(closestEntry.t);
-    
-    return `Based on what's being discussed at [${formatTime(currentTime)}]:
-
-**Current Topic:** ${closestEntry.t}
-
-${mathExplanation}
-
-**Your Question:** "${message}"
-
-${contextText ? `**Video Context:**\n${contextText}` : ''}
-
-Would you like me to clarify any specific part?`;
-  }
-  
-  return `I understand you're asking about "${message}".
-
-I don't have specific transcript data for [${formatTime(currentTime)}], but I can help with general calculus concepts!
-
-Try clicking "Explain Current Scene" when the video is at a transcribed moment, or seek to a different timestamp.`
 };
 
 const formatTime = (seconds: number): string => {
@@ -327,29 +204,49 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     if (!customMessage) setInputValue('');
     setIsLoading(true);
 
-    try {
-      const response = await mockAIResponse(messageContent, transcript, currentTime, isExplainScene, videoTitle);
-      
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+    // Create assistant message placeholder for streaming
+    const assistantMessageId = (Date.now() + 1).toString();
+    let assistantContent = '';
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMessageId,
         role: 'assistant',
-        content: response,
+        content: '',
         timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
+      },
+    ]);
+
+    await streamAIResponse(
+      messageContent,
+      transcript,
+      currentTime,
+      isExplainScene,
+      videoTitle,
+      (delta) => {
+        assistantContent += delta;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg
+          )
+        );
+      },
+      () => {
+        setIsLoading(false);
+      },
+      (error) => {
+        toast.error(error);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? { ...msg, content: `Sorry, I encountered an error: ${error}` }
+              : msg
+          )
+        );
+        setIsLoading(false);
+      }
+    );
   };
 
   const handleExplainScene = () => {
