@@ -1,10 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Maximize, MessageCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 interface VideoPlayerWithTutorProps {
   video: CourseVideo;
@@ -14,8 +21,11 @@ interface VideoPlayerWithTutorProps {
 export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTutorProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const playerRef = useRef<any>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
 
   const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
@@ -30,23 +40,77 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
 
   const youtubeId = isYouTube ? getYouTubeId(video.video_url) : '';
 
+  // Load YouTube Iframe API
+  useEffect(() => {
+    if (!isYouTube) return;
+
+    // Load the YouTube API script if not already loaded
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+    }
+
+    // Initialize player when API is ready
+    const initPlayer = () => {
+      if (playerContainerRef.current && window.YT && window.YT.Player) {
+        playerRef.current = new window.YT.Player(playerContainerRef.current, {
+          videoId: youtubeId,
+          playerVars: {
+            enablejsapi: 1,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: () => {
+              setPlayerReady(true);
+            },
+          },
+        });
+      }
+    };
+
+    if (window.YT && window.YT.Player) {
+      initPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => {
+      if (playerRef.current?.destroy) {
+        playerRef.current.destroy();
+      }
+    };
+  }, [isYouTube, youtubeId]);
+
+  // Poll YouTube player for current time every 500ms
+  useEffect(() => {
+    if (!isYouTube || !playerReady) return;
+
+    intervalRef.current = setInterval(() => {
+      if (playerRef.current?.getCurrentTime) {
+        const time = playerRef.current.getCurrentTime();
+        setCurrentTime(time);
+      }
+    }, 500);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isYouTube, playerReady]);
+
   // Handle seek for both YouTube and native video
-  const handleSeek = (seconds: number) => {
-    if (isYouTube && iframeRef.current?.contentWindow) {
-      // YouTube iframe API postMessage
-      iframeRef.current.contentWindow.postMessage(
-        JSON.stringify({
-          event: 'command',
-          func: 'seekTo',
-          args: [seconds, true],
-        }),
-        '*'
-      );
+  const handleSeek = useCallback((seconds: number) => {
+    if (isYouTube && playerRef.current?.seekTo) {
+      playerRef.current.seekTo(seconds, true);
+      setCurrentTime(seconds);
     } else if (videoRef.current) {
       videoRef.current.currentTime = seconds;
+      setCurrentTime(seconds);
     }
-    setCurrentTime(seconds);
-  };
+  }, [isYouTube]);
 
   // Track video time for native video
   useEffect(() => {
@@ -61,25 +125,6 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
     return () => videoElement.removeEventListener('timeupdate', handleTimeUpdate);
   }, []);
 
-  // Track YouTube video time via postMessage
-  useEffect(() => {
-    if (!isYouTube) return;
-
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data.event === 'infoDelivery' && data.info?.currentTime !== undefined) {
-          setCurrentTime(data.info.currentTime);
-        }
-      } catch {
-        // Ignore non-JSON messages
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [isYouTube]);
-
   const handleFullscreen = () => {
     if (videoRef.current?.requestFullscreen) {
       videoRef.current.requestFullscreen();
@@ -89,13 +134,9 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
   const VideoPlayer = (
     <div className="relative group">
       {isYouTube ? (
-        <iframe
-          ref={iframeRef}
+        <div 
+          ref={playerContainerRef}
           className="w-full aspect-video rounded-lg"
-          src={`https://www.youtube.com/embed/${youtubeId}?enablejsapi=1&origin=${window.location.origin}`}
-          title={video.title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
         />
       ) : (
         <>
