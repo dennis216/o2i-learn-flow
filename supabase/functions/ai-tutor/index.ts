@@ -29,35 +29,51 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Filter transcript to ±15 seconds around current time
-    const relevantTranscript: TranscriptEntry[] = transcript?.filter(
-      (entry: TranscriptEntry) => entry.s >= currentTime - 15 && entry.s <= currentTime + 15
-    ) || [];
+    // Use ENTIRE transcript for short videos, with currentTime indicator
+    const fullTranscript: TranscriptEntry[] = transcript || [];
+    
+    // Format full transcript with marker for current position
+    const formatTranscriptWithPosition = (entries: TranscriptEntry[], currentPos: number): string => {
+      if (entries.length === 0) return 'No transcript data available for this video.';
+      
+      return entries.map((seg) => {
+        const timestamp = formatTime(seg.s);
+        // Mark the closest entry to current time
+        const isNearCurrent = Math.abs(seg.s - currentPos) <= 5;
+        const marker = isNearCurrent ? ' ◀ CURRENTLY WATCHING' : '';
+        return `[${timestamp}] ${seg.t}${marker}`;
+      }).join('\n');
+    };
 
-    // Format context for the AI
-    const contextText = relevantTranscript.length > 0
-      ? relevantTranscript.map((seg) => `[${formatTime(seg.s)}] ${seg.t}`).join('\n')
-      : 'No transcript data available for this moment.';
+    const contextText = formatTranscriptWithPosition(fullTranscript, currentTime);
+
+    // Find closest transcript entry to current time
+    const closestEntry = fullTranscript.reduce((closest: TranscriptEntry | null, entry: TranscriptEntry) => {
+      if (!closest) return entry;
+      return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
+    }, null);
 
     // Build system prompt that combines transcript with calculus knowledge
     const systemPrompt = `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle || 'AP Calculus'}".
 
 ## YOUR ROLE
 You are a supportive, knowledgeable calculus tutor. Your job is to:
-1. Use the provided transcript context to understand what the instructor is teaching at this moment
-2. Combine this with your deep knowledge of AP Calculus to EXPLAIN WHY the mathematical steps are correct
-3. Break down complex concepts into understandable pieces
-4. Provide the mathematical reasoning behind each technique
+1. Use the provided transcript to understand the FULL context of what the instructor is teaching
+2. Pay special attention to the section marked "◀ CURRENTLY WATCHING" - this is where the student is right now at [${formatTime(currentTime)}]
+3. Combine the transcript with your deep knowledge of AP Calculus to EXPLAIN WHY the mathematical steps are correct
+4. Break down complex concepts into understandable pieces
+5. Provide the mathematical reasoning behind each technique
 
-## CURRENT VIDEO CONTEXT (±15 seconds around [${formatTime(currentTime)}]):
+## FULL VIDEO TRANSCRIPT (Student is currently at [${formatTime(currentTime)}]):
 ${contextText}
 
 ## RESPONSE GUIDELINES
-1. **Reference timestamps**: When mentioning video moments, use [MM:SS] format so students can click to seek
-2. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
-3. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps
-4. **Connect concepts**: Relate current material to foundational calculus principles
-5. **Be encouraging**: Use a supportive, tutoring tone
+1. **Focus on current moment**: Prioritize explaining the section near [${formatTime(currentTime)}] but use the full transcript for context
+2. **Reference timestamps**: When mentioning video moments, use [MM:SS] format so students can click to seek
+3. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
+4. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps
+5. **Connect concepts**: Relate current material to foundational calculus principles
+6. **Be encouraging**: Use a supportive, tutoring tone
 
 ## CALCULUS KNOWLEDGE TO DRAW FROM
 - Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
@@ -75,15 +91,10 @@ When explaining a concept from the transcript, show the student WHY it works by 
     // Build user message
     let userMessage = message;
     if (isExplainScene) {
-      const closestEntry = relevantTranscript.reduce((closest: TranscriptEntry | null, entry: TranscriptEntry) => {
-        if (!closest) return entry;
-        return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
-      }, null);
-      
       if (closestEntry) {
         userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. The instructor is saying: "${closestEntry.t}"
 
-Explain WHY this mathematical step or concept is correct. Break it down so I can understand the reasoning behind it.`;
+Explain WHY this mathematical step or concept is correct. Break it down so I can understand the reasoning behind it. Use the full transcript context to give me a complete picture.`;
       } else {
         userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. I don't have specific transcript data for this moment, but help me understand the calculus concepts that might be discussed.`;
       }
