@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Book, LogOut, User, Shield } from 'lucide-react';
+import { Book, LogOut, User, Shield, Target, Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,6 +64,18 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             <Link to="/courses">
               <Button variant="ghost">Courses</Button>
+            </Link>
+            <Link to="/practice">
+              <Button variant="ghost">
+                <Target className="h-4 w-4 mr-2" />
+                Practice
+              </Button>
+            </Link>
+            <Link to="/ai-tutor">
+              <Button variant="ghost">
+                <Bot className="h-4 w-4 mr-2" />
+                AI Tutor
+              </Button>
             </Link>
             <Link to="/roadmaps">
               <Button variant="ghost">Roadmaps</Button>
