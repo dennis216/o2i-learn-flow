@@ -47,12 +47,14 @@ Generate ONE practice problem that:
 2. Has similar difficulty level
 3. Is slightly different from any examples in the transcript (change numbers, functions, or context)
 4. Is self-contained and clearly stated
+5. Include a detailed step-by-step solution
 
 ## RESPONSE FORMAT
 Return ONLY a JSON object with this exact structure:
 {
   "question": "The full problem statement, clearly written",
-  "topic": "Brief topic name (e.g., 'Chain Rule', 'Related Rates', 'Limits')"
+  "topic": "Brief topic name (e.g., 'Chain Rule', 'Related Rates', 'Limits')",
+  "solution": "Step-by-step solution with clear explanations. Use line breaks between steps. Format: Step 1: [explanation]\\nStep 2: [explanation]\\n... Final Answer: [answer]"
 }
 
 Do not include any markdown formatting, code blocks, or extra text. Just the raw JSON object.`;
