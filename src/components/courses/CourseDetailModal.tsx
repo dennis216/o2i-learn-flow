@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, User, PlayCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ interface CourseDetailModalProps {
   course: Course;
   onClose: () => void;
   supabaseUrl: string;
+  autoSelectVideoId?: string | null;
 }
 
 const getLevelColor = (level: string) => {
@@ -27,8 +28,18 @@ const getLevelColor = (level: string) => {
   }
 };
 
-export function CourseDetailModal({ course, onClose, supabaseUrl }: CourseDetailModalProps) {
+export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVideoId }: CourseDetailModalProps) {
   const [selectedVideo, setSelectedVideo] = useState<CourseVideo | null>(null);
+
+  // Auto-select video if provided
+  useEffect(() => {
+    if (autoSelectVideoId && course.course_videos) {
+      const videoToSelect = course.course_videos.find(v => v.id === autoSelectVideoId);
+      if (videoToSelect) {
+        setSelectedVideo(videoToSelect);
+      }
+    }
+  }, [autoSelectVideoId, course.course_videos]);
 
   // Group videos by subtitle (unit)
   const groupedVideos = (() => {

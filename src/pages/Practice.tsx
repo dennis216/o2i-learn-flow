@@ -55,7 +55,23 @@ export default function Practice() {
         if (error) {
           console.error('Error fetching videos:', error);
         } else {
-          const transformedData = (data || []).map((video: any) => ({
+          // Filter for AP Calculus only and exclude Lecture/Introduction videos
+          const filteredData = (data || []).filter((video: any) => {
+            const courseTitle = video.courses?.title?.toLowerCase() || '';
+            const videoTitle = video.title?.toLowerCase() || '';
+            
+            // Only show AP Calculus videos
+            const isAPCalc = courseTitle.includes('ap calc') || courseTitle.includes('ap calculus');
+            
+            // Exclude Lecture or Introduction videos
+            const isExcluded = videoTitle.includes('lecture') || 
+                              videoTitle.includes('introduction') ||
+                              videoTitle.startsWith('intro');
+            
+            return isAPCalc && !isExcluded;
+          });
+
+          const transformedData = filteredData.map((video: any) => ({
             ...video,
             transcript: video.transcript as TranscriptEntry[] | null,
             course: video.courses,
@@ -122,7 +138,7 @@ export default function Practice() {
             {videos.map((video) => {
               const youtubeId = extractYouTubeId(video.video_url);
               const thumbnailUrl = youtubeId 
-                ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`
+                ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
                 : '/placeholder.svg';
 
               return (

@@ -158,7 +158,7 @@ export default function PracticeQuestion() {
 
   const youtubeId = extractYouTubeId(video.video_url);
   const thumbnailUrl = youtubeId 
-    ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`
+    ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
     : '/placeholder.svg';
 
   return (
@@ -197,7 +197,7 @@ export default function PracticeQuestion() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <Button asChild size="lg" className="flex-1">
-            <Link to={`/courses?video=${video.id}`}>
+            <Link to={`/courses?video=${video.id}&autoplay=true`}>
               <Play className="h-5 w-5 mr-2" />
               Go to Solution (Video Lesson)
             </Link>

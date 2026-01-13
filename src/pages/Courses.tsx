@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,9 +17,11 @@ const courseThumbnails: Record<string, string> = {
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
 export default function Courses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [autoSelectVideoId, setAutoSelectVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -44,6 +47,20 @@ export default function Courses() {
             })),
           })) as Course[];
           setCourses(transformedData || []);
+
+          // Handle ?video=videoId parameter - auto-select the course containing this video
+          const videoId = searchParams.get('video');
+          if (videoId && transformedData) {
+            const courseWithVideo = transformedData.find(course => 
+              course.course_videos?.some(v => v.id === videoId)
+            );
+            if (courseWithVideo) {
+              setSelectedCourse(courseWithVideo);
+              setAutoSelectVideoId(videoId);
+              // Clear the URL parameter
+              setSearchParams({});
+            }
+          }
         }
       } catch (error) {
         console.error('Error:', error);
@@ -53,7 +70,7 @@ export default function Courses() {
     };
 
     fetchCourses();
-  }, []);
+  }, [searchParams, setSearchParams]);
 
   if (loading) {
     return (
@@ -115,8 +132,12 @@ export default function Courses() {
         {selectedCourse && (
           <CourseDetailModal
             course={selectedCourse}
-            onClose={() => setSelectedCourse(null)}
+            onClose={() => {
+              setSelectedCourse(null);
+              setAutoSelectVideoId(null);
+            }}
             supabaseUrl={SUPABASE_URL}
+            autoSelectVideoId={autoSelectVideoId}
           />
         )}
       </div>
