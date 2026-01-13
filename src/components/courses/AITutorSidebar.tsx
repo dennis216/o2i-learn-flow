@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChatMessage, TranscriptEntry } from './types';
 import { toast } from 'sonner';
+import MarkdownWithMath from '@/components/MarkdownWithMath';
 
 interface AITutorSidebarProps {
   videoTitle: string;
@@ -130,17 +131,21 @@ const formatTime = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-// Parse timestamps from AI response and make them clickable
-const parseMessageContent = (content: string, onSeek: (seconds: number) => void) => {
+// Parse timestamps from AI response and make them clickable, while preserving markdown
+const parseMessageWithTimestamps = (content: string, onSeek: (seconds: number) => void) => {
   const timestampRegex = /\[(\d{1,2}):(\d{2})\]/g;
-  const parts: (string | JSX.Element)[] = [];
+  const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match;
+  let keyIndex = 0;
 
   while ((match = timestampRegex.exec(content)) !== null) {
-    // Add text before the timestamp
+    // Add text before the timestamp (rendered with markdown)
     if (match.index > lastIndex) {
-      parts.push(content.slice(lastIndex, match.index));
+      const textBefore = content.slice(lastIndex, match.index);
+      parts.push(
+        <MarkdownWithMath key={`text-${keyIndex++}`} content={textBefore} className="inline" />
+      );
     }
 
     const minutes = parseInt(match[1], 10);
@@ -149,9 +154,9 @@ const parseMessageContent = (content: string, onSeek: (seconds: number) => void)
 
     parts.push(
       <Badge
-        key={match.index}
+        key={`ts-${keyIndex++}`}
         variant="secondary"
-        className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors mx-1"
+        className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors mx-1 inline-flex"
         onClick={() => onSeek(totalSeconds)}
       >
         {match[0]}
@@ -161,12 +166,19 @@ const parseMessageContent = (content: string, onSeek: (seconds: number) => void)
     lastIndex = match.index + match[0].length;
   }
 
-  // Add remaining text
+  // Add remaining text (rendered with markdown)
   if (lastIndex < content.length) {
-    parts.push(content.slice(lastIndex));
+    parts.push(
+      <MarkdownWithMath key={`text-${keyIndex++}`} content={content.slice(lastIndex)} className="inline" />
+    );
   }
 
-  return parts;
+  // If no timestamps found, render entire content with markdown
+  if (parts.length === 0) {
+    return <MarkdownWithMath content={content} />;
+  }
+
+  return <div className="inline">{parts}</div>;
 };
 
 export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: AITutorSidebarProps) {
@@ -303,10 +315,10 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
                       : 'bg-muted'
                   }`}
                 >
-                  <div className="text-sm whitespace-pre-wrap">
+                  <div className="text-sm">
                     {message.role === 'assistant'
-                      ? parseMessageContent(message.content, onSeek)
-                      : message.content}
+                      ? parseMessageWithTimestamps(message.content, onSeek)
+                      : <div className="whitespace-pre-wrap">{message.content}</div>}
                   </div>
                 </div>
                 {message.role === 'user' && (

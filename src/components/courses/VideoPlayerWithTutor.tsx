@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Maximize, MessageCircle, X } from 'lucide-react';
+import { Maximize, MessageCircle, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
@@ -161,43 +161,51 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
     </div>
   );
 
-  // Mobile layout with FAB
+  // Mobile layout - stacked: video on top, chat below
   if (isMobile) {
     return (
-      <div className="relative">
-        {VideoPlayer}
+      <div className="flex flex-col h-full">
+        {/* Video on top */}
+        <div className="flex-shrink-0">
+          {VideoPlayer}
+          <div className="p-3">
+            <h3 className="font-semibold text-base">{video.title}</h3>
+            {video.description && (
+              <p className="text-muted-foreground text-sm mt-1">{video.description}</p>
+            )}
+          </div>
+        </div>
         
-        {/* Floating Action Button */}
-        <Button
-          className="fixed bottom-4 right-4 z-50 rounded-full h-14 w-14 shadow-lg"
-          onClick={() => setShowMobileTutor(true)}
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-
-        {/* Mobile Tutor Drawer */}
-        {showMobileTutor && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
-            <div className="fixed inset-x-0 bottom-0 top-20 bg-background border-t rounded-t-xl overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-semibold">AI Tutor</h3>
-                <Button variant="ghost" size="icon" onClick={() => setShowMobileTutor(false)}>
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <AITutorSidebar
-                  videoTitle={video.title}
-                  transcript={video.transcript || null}
-                  currentTime={currentTime}
-                  onSeek={(seconds) => {
-                    handleSeek(seconds);
-                    setShowMobileTutor(false);
-                  }}
-                />
-              </div>
+        {/* AI Tutor below - collapsible on mobile */}
+        {showMobileTutor ? (
+          <div className="flex-1 border-t min-h-[300px]">
+            <div className="flex items-center justify-between p-3 border-b bg-muted/50">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" />
+                AI Tutor
+              </h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowMobileTutor(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="h-[350px]">
+              <AITutorSidebar
+                videoTitle={video.title}
+                transcript={video.transcript || null}
+                currentTime={currentTime}
+                onSeek={handleSeek}
+              />
             </div>
           </div>
+        ) : (
+          <Button 
+            className="m-3 gap-2" 
+            variant="outline"
+            onClick={() => setShowMobileTutor(true)}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Open AI Tutor
+          </Button>
         )}
       </div>
     );

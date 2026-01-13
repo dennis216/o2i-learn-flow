@@ -4,9 +4,9 @@ import { Send, Bot, User, Loader2, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import MarkdownWithMath from '@/components/MarkdownWithMath';
 
 interface ChatMessage {
   id: string;
@@ -134,21 +134,24 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasHandledPrefill = useRef(false);
 
   // Handle prefilled question from Practice page
   useEffect(() => {
     const state = location.state as { prefilledQuestion?: string; topic?: string; fromPractice?: boolean } | null;
-    if (state?.prefilledQuestion && state?.fromPractice) {
+    if (state?.prefilledQuestion && state?.fromPractice && !hasHandledPrefill.current) {
+      hasHandledPrefill.current = true;
+      
       // Add a welcome message about the practice question
       const welcomeMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: `📝 I see you have a practice question${state.topic ? ` about **${state.topic}**` : ''}! I'll help you work through it step by step.`,
+        content: `📝 I see you have a practice question${state.topic ? ` about **${state.topic}**` : ''}! Let me help you work through it step by step.`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, welcomeMessage]);
       
-      // Automatically send the prefilled question
+      // Automatically send the prefilled question as the first user message
       setTimeout(() => {
         handleSendMessage(state.prefilledQuestion);
       }, 500);
@@ -242,10 +245,10 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <Bot className="h-8 w-8 text-primary" />
+              <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 flex-wrap">
                 AI Tutor
                 <Badge variant="secondary" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
@@ -267,35 +270,42 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-5 w-5 text-primary" />
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                 )}
                 <div
-                  className={`max-w-[75%] rounded-2xl p-4 ${
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-4 ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
                   }`}
                 >
-                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                    {message.content}
-                  </div>
+                  {message.role === 'assistant' ? (
+                    <MarkdownWithMath 
+                      content={message.content} 
+                      className="text-sm leading-relaxed"
+                    />
+                  ) : (
+                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                      {message.content}
+                    </div>
+                  )}
                 </div>
                 {message.role === 'user' && (
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary-foreground" />
+                  <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary flex items-center justify-center">
+                    <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
                   </div>
                 )}
               </div>
             ))}
             {isLoading && messages[messages.length - 1]?.content === '' && (
-              <div className="flex gap-4 justify-start">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-primary" />
+              <div className="flex gap-3 sm:gap-4 justify-start">
+                <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
                 <div className="bg-muted rounded-2xl p-4">
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -319,7 +329,8 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
                   disabled={isLoading}
                 >
                   <BookOpen className="h-3 w-3 mr-1" />
-                  {question}
+                  <span className="hidden sm:inline">{question}</span>
+                  <span className="sm:hidden">{question.length > 25 ? question.slice(0, 25) + '...' : question}</span>
                 </Button>
               ))}
             </div>
