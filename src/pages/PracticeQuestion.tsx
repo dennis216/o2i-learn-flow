@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Play, Sparkles, Bot, Loader2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { TranscriptEntry } from '@/components/courses/types';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ interface VideoData {
 interface GeneratedQuestion {
   question: string;
   topic: string;
+  solution?: string;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -45,6 +47,7 @@ export default function PracticeQuestion() {
   const [loading, setLoading] = useState(true);
   const [generatedQuestion, setGeneratedQuestion] = useState<GeneratedQuestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showSolution, setShowSolution] = useState(false);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -104,7 +107,9 @@ export default function PracticeQuestion() {
       setGeneratedQuestion({
         question: data.question,
         topic: data.topic || video.title,
+        solution: data.solution,
       });
+      setShowSolution(false); // Reset solution visibility for new question
     } catch (error) {
       console.error('Error generating question:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to generate question');
@@ -209,10 +214,41 @@ export default function PracticeQuestion() {
               </CardTitle>
               <p className="text-sm text-muted-foreground">Topic: {generatedQuestion.topic}</p>
             </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none text-foreground mb-6">
+            <CardContent className="space-y-4">
+              <div className="prose prose-sm max-w-none text-foreground">
                 <p className="whitespace-pre-wrap text-lg">{generatedQuestion.question}</p>
               </div>
+              
+              {/* Show Solution Collapsible */}
+              {generatedQuestion.solution && (
+                <Collapsible open={showSolution} onOpenChange={setShowSolution}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4" />
+                        {showSolution ? 'Hide Solution' : 'Show Solution'}
+                      </span>
+                      {showSolution ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <div className="rounded-lg border bg-card p-4">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                        Step-by-Step Solution
+                      </h4>
+                      <div className="prose prose-sm max-w-none text-muted-foreground">
+                        <p className="whitespace-pre-wrap">{generatedQuestion.solution}</p>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
               <Button onClick={handleAskAITutor} size="lg" className="w-full">
                 <Bot className="h-5 w-5 mr-2" />
                 Ask AI Tutor for Help
