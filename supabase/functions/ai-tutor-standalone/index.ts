@@ -80,14 +80,26 @@ serve(async (req) => {
 - Separation of variables
 - Exponential growth and decay
 
+## CRITICAL LATEX FORMATTING RULES
+You MUST follow these rules exactly for proper math rendering:
+
+1. **Always add spaces around math**: Write "the limit is $\\frac{a}{b}$" NOT "the limit is$\\frac{a}{b}$"
+2. **Use single backslash**: Write $\\frac{1}{2}$ NOT $\\\\frac{1}{2}$
+3. **Display math on own line**: For important formulas, use $$...$$ on its own line:
+
+The derivative of $x^n$ is:
+
+$$\\frac{d}{dx}[x^n] = nx^{n-1}$$
+
+4. **Inline math with spaces**: The derivative $f'(x) = 2x$ gives us the slope.
+5. **Never glue text to math**: WRONG: "equals$x^2$" CORRECT: "equals $x^2$"
+
 ## RESPONSE FORMAT
-- Use proper LaTeX notation for all mathematical expressions: inline math with $...$ and display math with $$...$$
-- Examples: $\\frac{d}{dx}[x^n] = nx^{n-1}$, $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$
-- Show your work step by step
+- Show your work step by step with clear explanations
 - Highlight key formulas and rules being used
 - End with a summary or key takeaway when helpful
 - If the student seems confused, offer to explain a simpler prerequisite concept
-- Always respond in English
+- Always respond in English only
 
 Remember: Your goal is to help students truly UNDERSTAND calculus, not just get answers.`;
 
