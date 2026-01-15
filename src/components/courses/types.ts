@@ -14,6 +14,8 @@ export interface CourseVideo {
   duration: number;
   order_index: number;
   transcript?: TranscriptEntry[] | null;
+  notes_url?: string | null;
+  exam_tips?: string | null;
 }
 
 export interface Course {
@@ -22,6 +24,7 @@ export interface Course {
   description: string;
   level: string;
   subject: string;
+  category: 'High School' | 'Contest';
   price: number;
   image_url: string;
   public_profiles: {
