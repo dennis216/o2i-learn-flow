@@ -81,11 +81,13 @@ serve(async (req) => {
 - Exponential growth and decay
 
 ## RESPONSE FORMAT
-- Use clear mathematical notation
+- Use proper LaTeX notation for all mathematical expressions: inline math with $...$ and display math with $$...$$
+- Examples: $\\frac{d}{dx}[x^n] = nx^{n-1}$, $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$
 - Show your work step by step
 - Highlight key formulas and rules being used
 - End with a summary or key takeaway when helpful
 - If the student seems confused, offer to explain a simpler prerequisite concept
+- Always respond in English
 
 Remember: Your goal is to help students truly UNDERSTAND calculus, not just get answers.`;
 

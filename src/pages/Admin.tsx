@@ -208,14 +208,26 @@ const Admin = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
+                <Label htmlFor="subject">Subject / Course Type</Label>
+                <Select
                   value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  placeholder="e.g., mathematics"
+                  onValueChange={(value) => setFormData({ ...formData, subject: value })}
                   required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AP Calculus">AP Calculus</SelectItem>
+                    <SelectItem value="Pre-Calc 12">Pre-Calc 12</SelectItem>
+                    <SelectItem value="Pre-Calc 11">Pre-Calc 11</SelectItem>
+                    <SelectItem value="Pre-Calc 10">Pre-Calc 10</SelectItem>
+                    <SelectItem value="mathematics">Mathematics (General)</SelectItem>
+                    <SelectItem value="algebra">Algebra</SelectItem>
+                    <SelectItem value="geometry">Geometry</SelectItem>
+                    <SelectItem value="statistics">Statistics</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

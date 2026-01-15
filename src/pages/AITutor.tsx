@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 
 interface ChatMessage {
@@ -211,7 +210,8 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
         setIsLoading(false);
       },
       (error) => {
-        toast.error(error);
+        console.error('AI Tutor error:', error);
+        // Show gentle inline error instead of disruptive toast
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
