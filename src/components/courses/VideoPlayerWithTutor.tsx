@@ -3,6 +3,7 @@ import { Maximize, MessageCircle, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
+import { StudyHub } from './StudyHub';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -213,29 +214,34 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
 
   // Desktop layout with resizable panels (70/30 split)
   return (
-    <ResizablePanelGroup direction="horizontal" className="min-h-[600px] rounded-lg border">
-      <ResizablePanel defaultSize={70} minSize={50}>
-        <div className="p-4 h-full flex flex-col">
-          {VideoPlayer}
-          <div className="mt-4">
-            <h3 className="font-semibold text-lg">{video.title}</h3>
-            {video.description && (
-              <p className="text-muted-foreground text-sm mt-1">{video.description}</p>
-            )}
+    <div className="space-y-0">
+      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
+        <ResizablePanel defaultSize={70} minSize={50}>
+          <div className="p-4 h-full flex flex-col">
+            {VideoPlayer}
+            <div className="mt-4">
+              <h3 className="font-semibold text-lg">{video.title}</h3>
+              {video.description && (
+                <p className="text-muted-foreground text-sm mt-1">{video.description}</p>
+              )}
+            </div>
           </div>
-        </div>
-      </ResizablePanel>
-      
-      <ResizableHandle withHandle />
-      
-      <ResizablePanel defaultSize={30} minSize={20}>
-        <AITutorSidebar
-          videoTitle={video.title}
-          transcript={video.transcript || null}
-          currentTime={currentTime}
-          onSeek={handleSeek}
-        />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+        </ResizablePanel>
+        
+        <ResizableHandle withHandle />
+        
+        <ResizablePanel defaultSize={30} minSize={20}>
+          <AITutorSidebar
+            videoTitle={video.title}
+            transcript={video.transcript || null}
+            currentTime={currentTime}
+            onSeek={handleSeek}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+
+      {/* Study Hub below the video player */}
+      <StudyHub video={video} currentTime={currentTime} />
+    </div>
   );
 }
