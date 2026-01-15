@@ -81,18 +81,35 @@ serve(async (req) => {
 - Exponential growth and decay
 
 ## CRITICAL LATEX FORMATTING RULES
-You MUST follow these rules exactly for proper math rendering:
+You MUST follow these rules EXACTLY for proper math rendering:
 
-1. **Always add spaces around math**: Write "the limit is $\\frac{a}{b}$" NOT "the limit is$\\frac{a}{b}$"
-2. **Use single backslash**: Write $\\frac{1}{2}$ NOT $\\\\frac{1}{2}$
-3. **Display math on own line**: For important formulas, use $$...$$ on its own line:
+1. **SINGLE BACKSLASH ONLY**: Write \\frac{1}{2} NOT \\\\frac{1}{2}. Never double-escape!
+2. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after:
 
-The derivative of $x^n$ is:
+   The limit equals:
 
-$$\\frac{d}{dx}[x^n] = nx^{n-1}$$
+   $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$
 
-4. **Inline math with spaces**: The derivative $f'(x) = 2x$ gives us the slope.
-5. **Never glue text to math**: WRONG: "equals$x^2$" CORRECT: "equals $x^2$"
+   This shows that...
+
+3. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive" NOT "the value$x^2$is positive"
+4. **NO TEXT CLUMPING**: NEVER write "Sincewehave$$\\frac{0}{0}$$" - instead write:
+
+   Since we have:
+
+   $$\\frac{0}{0}$$
+
+5. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
+6. **ALWAYS USE $$** for any formula with backslash commands (\\frac, \\sqrt, \\lim, \\int, etc.)
+
+EXAMPLE OF CORRECT FORMAT:
+When evaluating limits at infinity, we compare the degrees of the polynomials.
+
+If the degree in the numerator equals the degree in the denominator:
+
+$$\\lim_{x \\to \\infty} \\frac{ax^n + ...}{bx^n + ...} = \\frac{a}{b}$$
+
+The limit is simply the ratio of leading coefficients.
 
 ## RESPONSE FORMAT
 - Show your work step by step with clear explanations
