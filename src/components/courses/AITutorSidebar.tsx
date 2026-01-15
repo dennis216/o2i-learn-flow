@@ -248,7 +248,8 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
         setIsLoading(false);
       },
       (error) => {
-        toast.error(error);
+        console.error('AI Tutor error:', error);
+        // Show gentle inline error instead of disruptive toast
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId

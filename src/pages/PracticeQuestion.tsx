@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { TranscriptEntry } from '@/components/courses/types';
-import { toast } from 'sonner';
+import MarkdownWithMath from '@/components/MarkdownWithMath';
 
 interface VideoData {
   id: string;
@@ -62,7 +62,7 @@ export default function PracticeQuestion() {
 
         if (error) {
           console.error('Error fetching video:', error);
-          toast.error('Failed to load lesson');
+          // Silently log error instead of toast
         } else if (data) {
           setVideo({
             ...data,
@@ -81,8 +81,8 @@ export default function PracticeQuestion() {
 
   const handleGenerateQuestion = async () => {
     if (!video?.transcript || video.transcript.length === 0) {
-      toast.error('No transcript available for this lesson');
-      return;
+      // Still generate question even without transcript, AI can use title
+      console.log('No transcript available, generating based on title');
     }
 
     setIsGenerating(true);
@@ -112,7 +112,7 @@ export default function PracticeQuestion() {
       setShowSolution(false); // Reset solution visibility for new question
     } catch (error) {
       console.error('Error generating question:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to generate question');
+      // Silent error - log to console instead of disruptive toast
     } finally {
       setIsGenerating(false);
     }
@@ -216,7 +216,7 @@ export default function PracticeQuestion() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="prose prose-sm max-w-none text-foreground">
-                <p className="whitespace-pre-wrap text-lg">{generatedQuestion.question}</p>
+                <MarkdownWithMath content={generatedQuestion.question} className="text-lg" />
               </div>
               
               {/* Show Solution Collapsible */}
@@ -242,7 +242,7 @@ export default function PracticeQuestion() {
                         Step-by-Step Solution
                       </h4>
                       <div className="prose prose-sm max-w-none text-muted-foreground">
-                        <p className="whitespace-pre-wrap">{generatedQuestion.solution}</p>
+                        <MarkdownWithMath content={generatedQuestion.solution} />
                       </div>
                     </div>
                   </CollapsibleContent>

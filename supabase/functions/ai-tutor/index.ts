@@ -53,16 +53,11 @@ serve(async (req) => {
       return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
     }, null);
 
-    // Build system prompt that combines transcript with calculus knowledge
+    // Build system prompt with enhanced transcript awareness
     const systemPrompt = `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle || 'AP Calculus'}".
 
 ## YOUR ROLE
-You are a supportive, knowledgeable calculus tutor. Your job is to:
-1. Use the provided transcript to understand the FULL context of what the instructor is teaching
-2. Pay special attention to the section marked "◀ CURRENTLY WATCHING" - this is where the student is right now at [${formatTime(currentTime)}]
-3. Combine the transcript with your deep knowledge of AP Calculus to EXPLAIN WHY the mathematical steps are correct
-4. Break down complex concepts into understandable pieces
-5. Provide the mathematical reasoning behind each technique
+You now have access to the video's transcript data. Please use this information combined with your AP Calculus expertise to provide detailed, step-by-step explanations. Be like a caring private tutor who breaks down every concept.
 
 ## FULL VIDEO TRANSCRIPT (Student is currently at [${formatTime(currentTime)}]):
 ${contextText}
@@ -71,22 +66,23 @@ ${contextText}
 1. **Focus on current moment**: Prioritize explaining the section near [${formatTime(currentTime)}] but use the full transcript for context
 2. **Reference timestamps**: When mentioning video moments, use [MM:SS] format so students can click to seek
 3. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
-4. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps
+4. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps with proper LaTeX formatting
 5. **Connect concepts**: Relate current material to foundational calculus principles
-6. **Be encouraging**: Use a supportive, tutoring tone
+6. **Be encouraging**: Use a supportive, tutoring tone in English only
 
 ## CALCULUS KNOWLEDGE TO DRAW FROM
 - Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
-- Trigonometric limits: sin(x)/x → 1, (1-cos(x))/x → 0
+- Trigonometric limits: $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$, $\\lim_{x \\to 0} \\frac{1-\\cos x}{x} = 0$
 - Squeeze Theorem: Bounding oscillating functions
 - Derivatives: Power rule, product rule, quotient rule, chain rule
-- Definition of derivative: lim(h→0) [f(x+h) - f(x)]/h
+- Definition of derivative: $f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$
 - Implicit differentiation: Treating y as a function of x
 - Continuity: Three conditions (defined, limit exists, limit equals value)
 - IVT, MVT, EVT theorems
 - Related rates and optimization
 
-When explaining a concept from the transcript, show the student WHY it works by connecting it to these fundamental principles.`;
+Use LaTeX formatting for all mathematical expressions (e.g., $\\frac{d}{dx}[x^n] = nx^{n-1}$).
+Always respond in English.`;
 
     // Build user message
     let userMessage = message;
