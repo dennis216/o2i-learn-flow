@@ -19,34 +19,49 @@ const preprocessMathContent = (content: string): string => {
   
   let processed = content;
   
-  // Fix double-escaped backslashes (\\frac -> \frac) that come from JSON
-  // Only fix within math delimiters
+  // Step 1: Normalize any wonky spacing around display math delimiters
+  // Handle cases like "text$$formula$$more" or "text $$ formula $$ more"
+  
+  // First, protect display math blocks by marking them
+  const displayMathBlocks: string[] = [];
   processed = processed.replace(/\$\$([^$]+)\$\$/g, (match, inner) => {
-    const fixed = inner.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
-    return `$$${fixed}$$`;
+    // Fix double-escaped backslashes within the block
+    const fixed = inner.replace(/\\\\([a-zA-Z]+)/g, '\\$1').trim();
+    displayMathBlocks.push(fixed);
+    return `%%DISPLAY_MATH_${displayMathBlocks.length - 1}%%`;
   });
   
+  // Step 2: Fix inline math - handle double-escaping and spacing
   processed = processed.replace(/\$([^$\n]+)\$/g, (match, inner) => {
-    // Don't process if it looks like a display math that was split
-    if (inner.startsWith('$') || inner.endsWith('$')) return match;
-    const fixed = inner.replace(/\\\\([a-zA-Z]+)/g, '\\$1');
+    // Don't process if it looks like a placeholder
+    if (inner.startsWith('%') || inner.includes('DISPLAY_MATH')) return match;
+    const fixed = inner.replace(/\\\\([a-zA-Z]+)/g, '\\$1').trim();
     return `$${fixed}$`;
   });
   
-  // Add space before inline math when preceded by letter/word
-  processed = processed.replace(/([a-zA-Z0-9,.:;!?])(\$[^$\n]+\$)/g, '$1 $2');
+  // Step 3: Add spacing around inline math to prevent text clumping
+  // Before: "Sincewehave$formula$" -> "Since we have $formula$"
+  processed = processed.replace(/([a-zA-Z0-9,.:;!?)])(\$[^$\n]+\$)/g, '$1 $2');
+  processed = processed.replace(/(\$[^$\n]+\$)([a-zA-Z(])/g, '$1 $2');
   
-  // Add space after inline math when followed by letter/word
-  processed = processed.replace(/(\$[^$\n]+\$)([a-zA-Z])/g, '$1 $2');
+  // Step 4: Restore display math blocks with proper line breaks
+  displayMathBlocks.forEach((block, index) => {
+    // Ensure proper line breaks before and after display math
+    processed = processed.replace(
+      `%%DISPLAY_MATH_${index}%%`,
+      `\n\n$$${block}$$\n\n`
+    );
+  });
   
-  // Ensure display math ($$...$$) has line breaks for proper rendering
-  // Add newline before $$ if preceded by text (not already newline)
-  processed = processed.replace(/([^\n])\$\$/g, '$1\n\n$$');
+  // Step 5: Clean up excessive newlines (more than 2 consecutive)
+  processed = processed.replace(/\n{3,}/g, '\n\n');
   
-  // Add newline after $$ if followed by text (not already newline)  
-  processed = processed.replace(/\$\$([^\n])/g, '$$\n\n$1');
+  // Step 6: Fix cases where text runs directly into formulas
+  // Pattern: "word$$" or "$$word" should have spacing
+  processed = processed.replace(/([a-zA-Z0-9,.:;!?)])\s*\n\n\$\$/g, '$1\n\n$$');
+  processed = processed.replace(/\$\$\n\n([a-zA-Z])/g, '$$\n\n$1');
   
-  return processed;
+  return processed.trim();
 };
 
 export default function MarkdownWithMath({ content, className = '' }: MarkdownWithMathProps) {
