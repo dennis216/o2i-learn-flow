@@ -100,7 +100,9 @@ export type Database = {
           created_at: string
           description: string | null
           duration: number | null
+          exam_tips: string | null
           id: string
+          notes_url: string | null
           order_index: number
           subtitle: string | null
           title: string
@@ -113,7 +115,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number | null
+          exam_tips?: string | null
           id?: string
+          notes_url?: string | null
           order_index?: number
           subtitle?: string | null
           title: string
@@ -126,7 +130,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: number | null
+          exam_tips?: string | null
           id?: string
+          notes_url?: string | null
           order_index?: number
           subtitle?: string | null
           title?: string
