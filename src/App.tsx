@@ -18,6 +18,7 @@ import Admin from "./pages/Admin";
 import Practice from "./pages/Practice";
 import PracticeQuestion from "./pages/PracticeQuestion";
 import AITutor from "./pages/AITutor";
+import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/forum/:postId" element={<Discussion />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/team" element={<Team />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
