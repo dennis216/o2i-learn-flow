@@ -17,9 +17,10 @@ declare global {
 interface VideoPlayerWithTutorProps {
   video: CourseVideo;
   supabaseUrl: string;
+  courseSubject?: string;
 }
 
-export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTutorProps) {
+export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject }: VideoPlayerWithTutorProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -241,7 +242,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl }: VideoPlayerWithTuto
       </ResizablePanelGroup>
 
       {/* Study Hub below the video player */}
-      <StudyHub video={video} currentTime={currentTime} />
+      <StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} />
     </div>
   );
 }

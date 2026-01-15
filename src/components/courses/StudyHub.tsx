@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Brain, ClipboardList } from 'lucide-react';
+import { FileText, Brain, ClipboardList, FlaskConical } from 'lucide-react';
 import { CourseVideo } from './types';
 import { NotesAndPDF } from './study-hub/NotesAndPDF';
 import { AISummary } from './study-hub/AISummary';
 import { ExamPrep } from './study-hub/ExamPrep';
+import { InteractiveLab } from './study-hub/InteractiveLab';
 
 interface StudyHubProps {
   video: CourseVideo;
   currentTime: number;
+  courseSubject?: string;
 }
 
-export function StudyHub({ video, currentTime }: StudyHubProps) {
+export function StudyHub({ video, currentTime, courseSubject }: StudyHubProps) {
   const [activeTab, setActiveTab] = useState('notes');
 
   return (
@@ -49,6 +51,13 @@ export function StudyHub({ video, currentTime }: StudyHubProps) {
             <ClipboardList className="h-4 w-4 mr-2" />
             Exam Prep
           </TabsTrigger>
+          <TabsTrigger
+            value="lab"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+          >
+            <FlaskConical className="h-4 w-4 mr-2" />
+            Interactive Lab
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="notes" className="p-4 mt-0">
@@ -61,6 +70,10 @@ export function StudyHub({ video, currentTime }: StudyHubProps) {
 
         <TabsContent value="exam" className="p-4 mt-0">
           <ExamPrep video={video} />
+        </TabsContent>
+
+        <TabsContent value="lab" className="p-4 mt-0">
+          <InteractiveLab video={video} courseSubject={courseSubject} />
         </TabsContent>
       </Tabs>
     </div>

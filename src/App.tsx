@@ -19,6 +19,7 @@ import Practice from "./pages/Practice";
 import PracticeQuestion from "./pages/PracticeQuestion";
 import AITutor from "./pages/AITutor";
 import Team from "./pages/Team";
+import Playground from "./pages/Playground";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/practice" element={<Practice />} />
             <Route path="/practice/:videoId" element={<PracticeQuestion />} />
             <Route path="/ai-tutor" element={<AITutor />} />
+            <Route path="/playground" element={<Playground />} />
             <Route path="/roadmaps" element={<Roadmaps />} />
             <Route path="/solution-requests" element={<SolutionRequests />} />
             <Route path="/forum" element={<Forum />} />

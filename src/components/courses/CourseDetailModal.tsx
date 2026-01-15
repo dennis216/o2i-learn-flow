@@ -94,7 +94,7 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                       Back to List
                     </Button>
                   </div>
-                  <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} />
+                  <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} />
                 </div>
               ) : course.course_videos && course.course_videos.length > 0 ? (
                 Object.entries(groupedVideos).map(([unit, videos]) => (
