@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import { CourseVideo } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 
@@ -15,10 +16,17 @@ interface ExamPrepProps {
 
 interface MockQuestion {
   id: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
   question: string;
   solution: string;
   showSolution: boolean;
 }
+
+const DIFFICULTY_COLORS = {
+  Easy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  Medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  Hard: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+};
 
 export function ExamPrep({ video }: ExamPrepProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -43,41 +51,83 @@ export function ExamPrep({ video }: ExamPrepProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: `Based on the video content, create exactly 5 original practice problems that would appear on an exam. Format your response EXACTLY as follows:
+          message: `Based on the video content, create exactly 5 original exam-style practice problems.
 
----QUESTION 1---
-[Write the question here. Use LaTeX for all math: $inline$ or $$display$$]
+CRITICAL FORMATTING RULES:
+1. Every mathematical expression MUST be on its own line with $$ delimiters
+2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after
+3. Use $$...$$ for display math (fractions, integrals, equations)
+4. Each question and solution must be clearly separated
 
----SOLUTION 1---
-[Write the complete step-by-step solution with explanations. Use LaTeX for all math.]
+FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 
----QUESTION 2---
-[Question 2]
+===QUESTION_1===
+DIFFICULTY: Easy
 
----SOLUTION 2---
-[Solution 2]
+[Write the problem statement here. When including math, put it on a new line:]
 
----QUESTION 3---
-[Question 3]
+$$\\frac{x^2}{2}$$
 
----SOLUTION 3---
-[Solution 3]
+[Continue with more text if needed]
+===END_QUESTION_1===
 
----QUESTION 4---
-[Question 4]
+===SOLUTION_1===
+**Step 1:** [Explanation text]
 
----SOLUTION 4---
-[Solution 4]
+$$[math expression]$$
 
----QUESTION 5---
-[Question 5]
+**Step 2:** [Next step explanation]
 
----SOLUTION 5---
-[Solution 5]
+$$[resulting expression]$$
 
-Important:
-- Make problems progressively harder (easy → medium → hard)
-- Use proper LaTeX formatting for ALL math expressions
+**Final Answer:**
+
+$$[final answer]$$
+===END_SOLUTION_1===
+
+===QUESTION_2===
+DIFFICULTY: Easy
+
+[Question 2 content]
+===END_QUESTION_2===
+
+===SOLUTION_2===
+[Solution 2 content]
+===END_SOLUTION_2===
+
+===QUESTION_3===
+DIFFICULTY: Medium
+
+[Question 3 content]
+===END_QUESTION_3===
+
+===SOLUTION_3===
+[Solution 3 content]
+===END_SOLUTION_3===
+
+===QUESTION_4===
+DIFFICULTY: Medium
+
+[Question 4 content]
+===END_QUESTION_4===
+
+===SOLUTION_4===
+[Solution 4 content]
+===END_SOLUTION_4===
+
+===QUESTION_5===
+DIFFICULTY: Hard
+
+[Question 5 content]
+===END_QUESTION_5===
+
+===SOLUTION_5===
+[Solution 5 content]
+===END_SOLUTION_5===
+
+IMPORTANT REMINDERS:
+- Always leave a blank line before and after every $$ block
+- Never write things like "Sincewehavea$$\\frac{0}{0}$$" - instead write "Since we have a\\n\\n$$\\frac{0}{0}$$\\n\\n"
 - Include a variety of problem types (conceptual, computational, application)
 - Respond in English only`,
           transcript: video.transcript,
@@ -119,21 +169,45 @@ Important:
         }
       }
 
-      // Parse questions and solutions
+      // Parse questions and solutions with new format
       const parsedQuestions: MockQuestion[] = [];
       for (let i = 1; i <= 5; i++) {
         const questionMatch = fullContent.match(
-          new RegExp(`---QUESTION ${i}---([\\s\\S]*?)(?=---SOLUTION ${i}---|$)`, 'i')
+          new RegExp(`===QUESTION_${i}===([\\s\\S]*?)===END_QUESTION_${i}===`, 'i')
         );
         const solutionMatch = fullContent.match(
-          new RegExp(`---SOLUTION ${i}---([\\s\\S]*?)(?=---QUESTION ${i + 1}---|$)`, 'i')
+          new RegExp(`===SOLUTION_${i}===([\\s\\S]*?)===END_SOLUTION_${i}===`, 'i')
         );
 
-        if (questionMatch) {
+        // Fallback to old format if new format not found
+        const oldQuestionMatch = !questionMatch ? fullContent.match(
+          new RegExp(`---QUESTION ${i}---([\\s\\S]*?)(?=---SOLUTION ${i}---|$)`, 'i')
+        ) : null;
+        const oldSolutionMatch = !solutionMatch ? fullContent.match(
+          new RegExp(`---SOLUTION ${i}---([\\s\\S]*?)(?=---QUESTION ${i + 1}---|$)`, 'i')
+        ) : null;
+
+        const questionContent = questionMatch?.[1] || oldQuestionMatch?.[1];
+        const solutionContent = solutionMatch?.[1] || oldSolutionMatch?.[1];
+
+        if (questionContent) {
+          // Extract difficulty from question content
+          const difficultyMatch = questionContent.match(/DIFFICULTY:\s*(Easy|Medium|Hard)/i);
+          let difficulty: 'Easy' | 'Medium' | 'Hard' = i <= 2 ? 'Easy' : i <= 4 ? 'Medium' : 'Hard';
+          if (difficultyMatch) {
+            difficulty = difficultyMatch[1] as 'Easy' | 'Medium' | 'Hard';
+          }
+
+          // Remove difficulty line from question text
+          const cleanQuestion = questionContent
+            .replace(/DIFFICULTY:\s*(Easy|Medium|Hard)\s*/i, '')
+            .trim();
+
           parsedQuestions.push({
             id: i,
-            question: questionMatch[1].trim(),
-            solution: solutionMatch ? solutionMatch[1].trim() : 'Solution not available',
+            difficulty,
+            question: cleanQuestion,
+            solution: solutionContent?.trim() || 'Solution not available',
             showSolution: false,
           });
         }
@@ -211,20 +285,21 @@ Important:
       </div>
 
       <div className="space-y-4">
-        {questions.map((q, index) => (
+        {questions.map((q) => (
           <Card key={q.id} className="overflow-hidden">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <span className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
+              <CardTitle className="text-base flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
                   {q.id}
                 </span>
-                <span className="text-muted-foreground text-sm">
-                  {index === 0 ? 'Easy' : index < 3 ? 'Medium' : 'Hard'}
-                </span>
+                <Badge className={DIFFICULTY_COLORS[q.difficulty]}>
+                  <Target className="h-3 w-3 mr-1" />
+                  {q.difficulty}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-lg">
                 <MarkdownWithMath content={q.question} />
               </div>
 
@@ -245,8 +320,10 @@ Important:
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="mt-3 p-4 bg-muted/50 rounded-lg border-l-4 border-primary">
-                    <h4 className="font-semibold text-sm mb-2 text-primary">Solution:</h4>
+                  <div className="mt-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border-l-4 border-green-500">
+                    <h4 className="font-semibold text-sm mb-3 text-green-700 dark:text-green-400">
+                      Step-by-Step Solution:
+                    </h4>
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <MarkdownWithMath content={q.solution} />
                     </div>
