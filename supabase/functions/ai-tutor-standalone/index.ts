@@ -37,15 +37,35 @@ serve(async (req) => {
       );
     }
 
-    const { message } = await req.json();
+    const { message, selectedTopic, videoContext } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Build context-aware introduction
+    let contextSection = '';
+    
+    if (videoContext?.title) {
+      contextSection = `
+## CURRENT LESSON CONTEXT
+The student is currently studying: **${videoContext.title}**
+Subject area: ${videoContext.subject || 'Mathematics'}
+${videoContext.transcript ? `\nLesson transcript excerpt:\n${videoContext.transcript.slice(0, 2000)}` : ''}
+
+Prioritize answering questions related to this lesson. Reference specific concepts from the lesson when relevant.
+`;
+    }
+
+    // Topic-specific focus
+    const topicFocus = selectedTopic && selectedTopic !== 'general' 
+      ? `\n## SELECTED FOCUS AREA\nThe student has selected "${selectedTopic}" as their focus. Prioritize this subject area in your responses and tailor examples accordingly.\n`
+      : '';
+
     // Build comprehensive O2I All-in-One Math Tutor system prompt
     const systemPrompt = `You are the O2I All-in-One Math Tutor, an expert mathematics assistant helping students with a wide range of math topics. You support:
+${contextSection}${topicFocus}
 
 ## COURSES YOU HELP WITH
 

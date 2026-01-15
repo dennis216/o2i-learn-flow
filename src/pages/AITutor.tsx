@@ -1,12 +1,45 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Sparkles, BookOpen } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, BookOpen, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
+
+// Subject/topic options for the selector
+const TOPIC_OPTIONS = [
+  { value: 'general', label: 'General Math Help', category: 'General' },
+  { value: 'ap-calc', label: 'AP Calculus', category: 'High School' },
+  { value: 'ap-stats', label: 'AP Statistics', category: 'High School' },
+  { value: 'ap-precalc', label: 'AP Precalculus', category: 'High School' },
+  { value: 'sat-math', label: 'SAT Math', category: 'High School' },
+  { value: 'algebra-1', label: 'Algebra 1', category: 'High School' },
+  { value: 'algebra-2', label: 'Algebra 2', category: 'High School' },
+  { value: 'geometry', label: 'Geometry', category: 'High School' },
+  { value: 'counting-prob', label: 'Counting & Probability', category: 'High School' },
+  { value: 'amc-10', label: 'AMC 10', category: 'Contest' },
+  { value: 'amc-12', label: 'AMC 12', category: 'Contest' },
+  { value: 'euclid', label: 'Euclid Contest', category: 'Contest' },
+  { value: 'fermat', label: 'Fermat Contest', category: 'Contest' },
+  { value: 'cayley', label: 'Cayley Contest', category: 'Contest' },
+  { value: 'pascal', label: 'Pascal Contest', category: 'Contest' },
+  { value: 'gauss', label: 'Gauss Contest', category: 'Contest' },
+];
+
+interface VideoContext {
+  title: string;
+  subject: string;
+  transcript?: string;
+}
 
 interface ChatMessage {
   id: string;
@@ -20,6 +53,8 @@ const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 // Stream AI response from edge function
 const streamAIResponse = async (
   message: string,
+  selectedTopic: string,
+  videoContext: VideoContext | null,
   onDelta: (text: string) => void,
   onDone: () => void,
   onError: (error: string) => void
@@ -38,7 +73,11 @@ const streamAIResponse = async (
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ 
+        message,
+        selectedTopic,
+        videoContext,
+      }),
     });
 
     if (!response.ok) {
@@ -128,28 +167,70 @@ const streamAIResponse = async (
 
 export default function AITutor() {
   const location = useLocation();
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
-
-• **High School Courses** — AP Calc, AP Stats, SAT Math, Algebra, Geometry, Pre-Calculus
-• **Contest Prep** — AMC 10/12, Euclid, Fermat, Cayley, Pascal, Gauss
-
-Ask me any conceptual questions or paste a problem you're working on!`,
-      timestamp: new Date(),
-    },
-  ]);
+  const [selectedTopic, setSelectedTopic] = useState('general');
+  const [videoContext, setVideoContext] = useState<VideoContext | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasHandledPrefill = useRef(false);
+  const hasInitialized = useRef(false);
+
+  // Initialize greeting based on context
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const state = location.state as { 
+      prefilledQuestion?: string; 
+      topic?: string; 
+      fromPractice?: boolean;
+      videoTitle?: string;
+      videoSubject?: string;
+      videoTranscript?: string;
+    } | null;
+
+    // Set video context if coming from a video page
+    if (state?.videoTitle && state?.videoSubject) {
+      setVideoContext({
+        title: state.videoTitle,
+        subject: state.videoSubject,
+        transcript: state.videoTranscript,
+      });
+      
+      // Auto-select topic based on video subject
+      const matchedTopic = TOPIC_OPTIONS.find(
+        opt => opt.label.toLowerCase().includes(state.videoSubject.toLowerCase())
+      );
+      if (matchedTopic) {
+        setSelectedTopic(matchedTopic.value);
+      }
+    }
+
+    // Build initial greeting message
+    let greeting = `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
+
+• **High School Courses** — AP Calc, AP Stats, SAT Math, Algebra, Geometry, Pre-Calculus
+• **Contest Prep** — AMC 10/12, Euclid, Fermat, Cayley, Pascal, Gauss`;
+
+    if (state?.videoTitle) {
+      greeting += `\n\n📺 I see you're studying **${state.videoTitle}**. Feel free to ask questions about this lesson!`;
+    } else {
+      greeting += `\n\nAsk me any conceptual questions or paste a problem you're working on!`;
+    }
+
+    setMessages([{
+      id: '1',
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+    }]);
+  }, [location.state]);
 
   // Handle prefilled question from Practice page
   useEffect(() => {
     const state = location.state as { prefilledQuestion?: string; topic?: string; fromPractice?: boolean } | null;
-    if (state?.prefilledQuestion && state?.fromPractice && !hasHandledPrefill.current) {
+    if (state?.prefilledQuestion && state?.fromPractice && !hasHandledPrefill.current && messages.length > 0) {
       hasHandledPrefill.current = true;
       
       // Add a welcome message about the practice question
@@ -169,7 +250,7 @@ Ask me any conceptual questions or paste a problem you're working on!`,
       // Clear the state so it doesn't re-trigger on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, messages.length]);
 
   useEffect(() => {
     // Scroll to bottom when new messages arrive
@@ -209,6 +290,8 @@ Ask me any conceptual questions or paste a problem you're working on!`,
 
     await streamAIResponse(
       messageContent,
+      selectedTopic,
+      videoContext,
       (delta) => {
         assistantContent += delta;
         setMessages((prev) =>
@@ -254,23 +337,55 @@ Ask me any conceptual questions or paste a problem you're working on!`,
       {/* Header */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 flex-wrap">
+                  O2I AI Tutor
+                  <Badge variant="secondary" className="text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    All-in-One Math
+                  </Badge>
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Your personal math assistant for courses & contests
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 flex-wrap">
-                O2I AI Tutor
-                <Badge variant="secondary" className="text-xs">
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  All-in-One Math
-                </Badge>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Your personal math assistant for courses & contests
-              </p>
+            
+            {/* Topic Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Topic:</span>
+              <Select value={selectedTopic} onValueChange={setSelectedTopic}>
+                <SelectTrigger className="w-[180px] bg-background">
+                  <SelectValue placeholder="Select topic" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border shadow-lg z-50">
+                  <SelectItem value="general">General Math Help</SelectItem>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">High School</div>
+                  {TOPIC_OPTIONS.filter(t => t.category === 'High School').map(topic => (
+                    <SelectItem key={topic.value} value={topic.value}>{topic.label}</SelectItem>
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Contest</div>
+                  {TOPIC_OPTIONS.filter(t => t.category === 'Contest').map(topic => (
+                    <SelectItem key={topic.value} value={topic.value}>{topic.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          
+          {/* Video Context Badge */}
+          {videoContext && (
+            <div className="mt-3 flex items-center gap-2">
+              <Badge variant="outline" className="text-xs bg-primary/5">
+                📺 Studying: {videoContext.title}
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
 
