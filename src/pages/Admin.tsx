@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Users } from "lucide-react";
 
 interface Course {
   id: string;
@@ -46,6 +47,15 @@ interface PracticeProblem {
   video_id: string | null;
   image_url: string | null;
   created_at: string;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  bio: string | null;
+  photo_url: string | null;
+  order_index: number;
 }
 
 // Subject options matching PDF categories
@@ -82,6 +92,7 @@ const Admin = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -115,13 +126,25 @@ const Admin = () => {
   const [practiceImageFile, setPracticeImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Team member form
+  const [teamFormData, setTeamFormData] = useState({
+    name: "",
+    role: "",
+    bio: "",
+    order_index: "0",
+  });
+  const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
+  const [uploadingTeamPhoto, setUploadingTeamPhoto] = useState(false);
+
   // Edit states
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingVideo, setEditingVideo] = useState<CourseVideo | null>(null);
   const [editingProblem, setEditingProblem] = useState<PracticeProblem | null>(null);
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editVideoDialogOpen, setEditVideoDialogOpen] = useState(false);
   const [editProblemDialogOpen, setEditProblemDialogOpen] = useState(false);
+  const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false);
 
   // JSON validation state
   const [transcriptValid, setTranscriptValid] = useState<boolean | null>(null);
@@ -141,6 +164,7 @@ const Admin = () => {
       fetchCourses();
       fetchVideos();
       fetchPracticeProblems();
+      fetchTeamMembers();
     }
   }, [isAdmin]);
 
@@ -243,6 +267,20 @@ const Admin = () => {
     }
   };
 
+  const fetchTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("*")
+        .order("order_index", { ascending: true });
+
+      if (error) throw error;
+      setTeamMembers(data || []);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+    }
+  };
+
   // ===== DELETE FUNCTIONS =====
   const deleteCourse = async (courseId: string) => {
     try {
@@ -277,6 +315,18 @@ const Admin = () => {
       fetchPracticeProblems();
     } catch (error: any) {
       console.error("Error deleting practice problem:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const deleteTeamMember = async (memberId: string) => {
+    try {
+      const { error } = await supabase.from("team_members").delete().eq("id", memberId);
+      if (error) throw error;
+      toast({ title: "Team member deleted successfully" });
+      fetchTeamMembers();
+    } catch (error: any) {
+      console.error("Error deleting team member:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
@@ -368,6 +418,34 @@ const Admin = () => {
     }
   };
 
+  const updateTeamMember = async () => {
+    if (!editingTeamMember) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("team_members")
+        .update({
+          name: editingTeamMember.name,
+          role: editingTeamMember.role,
+          bio: editingTeamMember.bio,
+          photo_url: editingTeamMember.photo_url,
+          order_index: editingTeamMember.order_index,
+        })
+        .eq("id", editingTeamMember.id);
+
+      if (error) throw error;
+      toast({ title: "Team member updated successfully" });
+      setEditTeamDialogOpen(false);
+      setEditingTeamMember(null);
+      fetchTeamMembers();
+    } catch (error: any) {
+      console.error("Error updating team member:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // ===== IMAGE UPLOAD =====
   const uploadPracticeImage = async (file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
@@ -384,6 +462,24 @@ const Admin = () => {
     }
 
     const { data } = supabase.storage.from('practice-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  const uploadTeamPhoto = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `photos/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('team-photos')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage.from('team-photos').getPublicUrl(filePath);
     return data.publicUrl;
   };
 
@@ -534,6 +630,51 @@ const Admin = () => {
     }
   };
 
+  const handleTeamSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSubmitting(true);
+    setUploadingTeamPhoto(true);
+
+    try {
+      let photoUrl: string | null = null;
+
+      // Upload photo if provided
+      if (teamPhotoFile) {
+        photoUrl = await uploadTeamPhoto(teamPhotoFile);
+      }
+
+      const { error } = await supabase.from("team_members").insert({
+        name: teamFormData.name,
+        role: teamFormData.role,
+        bio: teamFormData.bio || null,
+        photo_url: photoUrl,
+        order_index: parseInt(teamFormData.order_index) || 0,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Team member added!" });
+
+      setTeamFormData({
+        name: "",
+        role: "",
+        bio: "",
+        order_index: "0",
+      });
+      setTeamPhotoFile(null);
+
+      fetchTeamMembers();
+    } catch (error: any) {
+      console.error("Error creating team member:", error);
+      toast({ title: "Error", description: error.message || "Failed to create team member.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+      setUploadingTeamPhoto(false);
+    }
+  };
+
   const testAIForVideo = async (video: CourseVideo) => {
     setAiPreviewVideo(video);
     setAiPreviewOpen(true);
@@ -591,10 +732,11 @@ const Admin = () => {
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice Problems</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="manage">Manage Videos</TabsTrigger>
           <TabsTrigger value="manage-courses">Manage Courses</TabsTrigger>
         </TabsList>
@@ -1281,6 +1423,184 @@ const Admin = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Team Management Tab */}
+        <TabsContent value="team">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Add Team Member
+                </CardTitle>
+                <CardDescription>Add a new team member to display on the team page</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleTeamSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="team_name">Name *</Label>
+                    <Input
+                      id="team_name"
+                      value={teamFormData.name}
+                      onChange={(e) => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                      placeholder="e.g., John Smith"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="team_role">Role *</Label>
+                    <Input
+                      id="team_role"
+                      value={teamFormData.role}
+                      onChange={(e) => setTeamFormData({ ...teamFormData, role: e.target.value })}
+                      placeholder="e.g., Head Instructor"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="team_bio">Bio</Label>
+                    <Textarea
+                      id="team_bio"
+                      value={teamFormData.bio}
+                      onChange={(e) => setTeamFormData({ ...teamFormData, bio: e.target.value })}
+                      placeholder="A short bio about this team member..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="team_order">Display Order</Label>
+                    <Input
+                      id="team_order"
+                      type="number"
+                      value={teamFormData.order_index}
+                      onChange={(e) => setTeamFormData({ ...teamFormData, order_index: e.target.value })}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">Lower numbers appear first</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Profile Photo</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setTeamPhotoFile(e.target.files?.[0] || null)}
+                        className="flex-1"
+                      />
+                      {teamPhotoFile && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTeamPhotoFile(null)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {teamPhotoFile && (
+                      <p className="text-xs text-green-600">
+                        <CheckCircle className="inline h-3 w-3 mr-1" />
+                        {teamPhotoFile.name} selected
+                      </p>
+                    )}
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {uploadingTeamPhoto ? "Uploading Photo..." : "Adding..."}
+                      </>
+                    ) : (
+                      "Add Team Member"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Existing Team Members</CardTitle>
+                <CardDescription>Manage your team members</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {teamMembers.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No team members yet</p>
+                  ) : (
+                    teamMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="p-4 border rounded-lg flex items-center gap-4 hover:bg-accent/30 transition-colors"
+                      >
+                        <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                          {member.photo_url ? (
+                            <img
+                              src={member.photo_url}
+                              alt={member.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold truncate">{member.name}</h3>
+                          <p className="text-sm text-primary">{member.role}</p>
+                          {member.bio && (
+                            <p className="text-sm text-muted-foreground line-clamp-1">{member.bio}</p>
+                          )}
+                          <span className="text-xs text-muted-foreground">Order: {member.order_index}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingTeamMember(member);
+                              setEditTeamDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Team Member?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteTeamMember(member.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Edit Course Dialog */}
@@ -1574,6 +1894,68 @@ const Admin = () => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Team Member Dialog */}
+      <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogDescription>Update team member details</DialogDescription>
+          </DialogHeader>
+          {editingTeamMember && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  value={editingTeamMember.name}
+                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Input
+                  value={editingTeamMember.role}
+                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, role: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Bio</Label>
+                <Textarea
+                  value={editingTeamMember.bio || ""}
+                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, bio: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Photo URL</Label>
+                <Input
+                  value={editingTeamMember.photo_url || ""}
+                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, photo_url: e.target.value })}
+                  placeholder="https://..."
+                />
+                {editingTeamMember.photo_url && (
+                  <img src={editingTeamMember.photo_url} alt="Preview" className="w-16 h-16 rounded-full object-cover" />
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Order Index</Label>
+                <Input
+                  type="number"
+                  value={editingTeamMember.order_index}
+                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, order_index: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTeamDialogOpen(false)}>Cancel</Button>
+            <Button onClick={updateTeamMember} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

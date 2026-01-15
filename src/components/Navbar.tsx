@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Book, LogOut, User, Shield, Target, Bot, Menu } from 'lucide-react';
+import { Book, LogOut, User, Shield, Target, Bot, Menu, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -64,6 +64,12 @@ export default function Navbar() {
       <Link to="/forum" onClick={closeMobileMenu}>
         <Button variant="ghost" className={mobile ? "w-full justify-start" : ""}>
           Forum
+        </Button>
+      </Link>
+      <Link to="/team" onClick={closeMobileMenu}>
+        <Button variant="ghost" className={mobile ? "w-full justify-start" : ""}>
+          <Users className="h-4 w-4 mr-2" />
+          Team
         </Button>
       </Link>
       {isAdmin && (
