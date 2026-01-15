@@ -359,30 +359,36 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           solution: string | null
           sub_chapter_id: string | null
           title: string
           updated_at: string
+          video_id: string | null
         }
         Insert: {
           chapter_id?: string | null
           content: string
           created_at?: string
           id?: string
+          image_url?: string | null
           solution?: string | null
           sub_chapter_id?: string | null
           title: string
           updated_at?: string
+          video_id?: string | null
         }
         Update: {
           chapter_id?: string | null
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           solution?: string | null
           sub_chapter_id?: string | null
           title?: string
           updated_at?: string
+          video_id?: string | null
         }
         Relationships: [
           {
@@ -397,6 +403,13 @@ export type Database = {
             columns: ["sub_chapter_id"]
             isOneToOne: false
             referencedRelation: "sub_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_problems_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "course_videos"
             referencedColumns: ["id"]
           },
         ]

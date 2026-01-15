@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Upload, Image } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Course {
   id: string;
@@ -37,6 +38,40 @@ interface CourseVideo {
   courses?: { title: string };
 }
 
+interface PracticeProblem {
+  id: string;
+  title: string;
+  content: string;
+  solution: string | null;
+  video_id: string | null;
+  image_url: string | null;
+  created_at: string;
+}
+
+// Subject options matching PDF categories
+const HIGH_SCHOOL_SUBJECTS = [
+  "AP Calc", "AP Stats", "AP Precalc", "SAT",
+  "M1", "M2", "Geo 1 (Intro)", "Geo 2 (Int)",
+  "Alg 1 (Intro)", "Alg 2 (Int)",
+  "Counting & Prob 1", "Counting & Prob 2"
+];
+
+const CONTEST_SUBJECTS = [
+  "AMC 10", "AMC 12", "Euclid", "Fermat", "Cayley", "Pascal", "Gauss"
+];
+
+// Helper to extract YouTube video ID
+const getYouTubeVideoId = (url: string): string | null => {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+  return match ? match[1] : null;
+};
+
+// Helper to get YouTube thumbnail URL
+const getYouTubeThumbnail = (videoUrl: string): string => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "/placeholder.svg";
+};
+
 const Admin = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,11 +81,13 @@ const Admin = () => {
   const [submitting, setSubmitting] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<CourseVideo[]>([]);
+  const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     level: "",
     subject: "",
+    category: "High School",
     price: "0.00",
   });
 
@@ -66,6 +103,25 @@ const Admin = () => {
     notes_url: "",
     order_index: "0",
   });
+
+  // Practice problem form
+  const [practiceFormData, setPracticeFormData] = useState({
+    title: "",
+    content: "",
+    solution: "",
+    video_id: "",
+    image_url: "",
+  });
+  const [practiceImageFile, setPracticeImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Edit states
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editingVideo, setEditingVideo] = useState<CourseVideo | null>(null);
+  const [editingProblem, setEditingProblem] = useState<PracticeProblem | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editVideoDialogOpen, setEditVideoDialogOpen] = useState(false);
+  const [editProblemDialogOpen, setEditProblemDialogOpen] = useState(false);
 
   // JSON validation state
   const [transcriptValid, setTranscriptValid] = useState<boolean | null>(null);
@@ -84,18 +140,20 @@ const Admin = () => {
     if (isAdmin) {
       fetchCourses();
       fetchVideos();
+      fetchPracticeProblems();
     }
   }, [isAdmin]);
 
   // Validate JSON when transcript changes
   useEffect(() => {
-    if (!videoFormData.transcript.trim()) {
+    const transcript = editingVideo ? (editingVideo.transcript ? JSON.stringify(editingVideo.transcript) : "") : videoFormData.transcript;
+    if (!transcript.trim()) {
       setTranscriptValid(null);
       setTranscriptError("");
       return;
     }
     try {
-      const parsed = JSON.parse(videoFormData.transcript);
+      const parsed = JSON.parse(transcript);
       if (!Array.isArray(parsed)) {
         throw new Error("Transcript must be an array of objects");
       }
@@ -108,7 +166,7 @@ const Admin = () => {
       setTranscriptValid(false);
       setTranscriptError(err.message);
     }
-  }, [videoFormData.transcript]);
+  }, [videoFormData.transcript, editingVideo]);
 
   const checkAdminStatus = async () => {
     if (!user) {
@@ -117,7 +175,6 @@ const Admin = () => {
     }
 
     try {
-      // Use has_role RPC function - not hardcoded email
       const { data, error } = await supabase.rpc("has_role", {
         _user_id: user.id,
         _role: "admin",
@@ -172,6 +229,165 @@ const Admin = () => {
     }
   };
 
+  const fetchPracticeProblems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("practice_problems")
+        .select("id, title, content, solution, video_id, image_url, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setPracticeProblems(data || []);
+    } catch (error) {
+      console.error("Error fetching practice problems:", error);
+    }
+  };
+
+  // ===== DELETE FUNCTIONS =====
+  const deleteCourse = async (courseId: string) => {
+    try {
+      const { error } = await supabase.from("courses").delete().eq("id", courseId);
+      if (error) throw error;
+      toast({ title: "Course deleted successfully" });
+      fetchCourses();
+      fetchVideos(); // Videos may be affected
+    } catch (error: any) {
+      console.error("Error deleting course:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const deleteVideo = async (videoId: string) => {
+    try {
+      const { error } = await supabase.from("course_videos").delete().eq("id", videoId);
+      if (error) throw error;
+      toast({ title: "Video deleted successfully" });
+      fetchVideos();
+    } catch (error: any) {
+      console.error("Error deleting video:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const deletePracticeProblem = async (problemId: string) => {
+    try {
+      const { error } = await supabase.from("practice_problems").delete().eq("id", problemId);
+      if (error) throw error;
+      toast({ title: "Practice problem deleted successfully" });
+      fetchPracticeProblems();
+    } catch (error: any) {
+      console.error("Error deleting practice problem:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // ===== UPDATE FUNCTIONS =====
+  const updateCourse = async () => {
+    if (!editingCourse) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({
+          title: editingCourse.title,
+          description: editingCourse.description,
+          level: editingCourse.level,
+          subject: editingCourse.subject,
+          price: editingCourse.price,
+        })
+        .eq("id", editingCourse.id);
+
+      if (error) throw error;
+      toast({ title: "Course updated successfully" });
+      setEditDialogOpen(false);
+      setEditingCourse(null);
+      fetchCourses();
+    } catch (error: any) {
+      console.error("Error updating course:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updateVideo = async () => {
+    if (!editingVideo) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("course_videos")
+        .update({
+          title: editingVideo.title,
+          subtitle: editingVideo.subtitle,
+          video_url: editingVideo.video_url,
+          transcript: editingVideo.transcript,
+          exam_tips: editingVideo.exam_tips,
+          notes_url: editingVideo.notes_url,
+          order_index: editingVideo.order_index,
+        })
+        .eq("id", editingVideo.id);
+
+      if (error) throw error;
+      toast({ title: "Video updated successfully" });
+      setEditVideoDialogOpen(false);
+      setEditingVideo(null);
+      fetchVideos();
+    } catch (error: any) {
+      console.error("Error updating video:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updatePracticeProblem = async () => {
+    if (!editingProblem) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("practice_problems")
+        .update({
+          title: editingProblem.title,
+          content: editingProblem.content,
+          solution: editingProblem.solution,
+          video_id: editingProblem.video_id,
+          image_url: editingProblem.image_url,
+        })
+        .eq("id", editingProblem.id);
+
+      if (error) throw error;
+      toast({ title: "Practice problem updated successfully" });
+      setEditProblemDialogOpen(false);
+      setEditingProblem(null);
+      fetchPracticeProblems();
+    } catch (error: any) {
+      console.error("Error updating practice problem:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ===== IMAGE UPLOAD =====
+  const uploadPracticeImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `practice/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('practice-images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      return null;
+    }
+
+    const { data } = supabase.storage.from('practice-images').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  // ===== CREATE FUNCTIONS =====
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -183,33 +399,28 @@ const Admin = () => {
         description: formData.description,
         level: formData.level,
         subject: formData.subject,
+        category: formData.category,
         price: parseFloat(formData.price),
         instructor_id: user.id,
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Course created successfully!",
-      });
+      toast({ title: "Success", description: "Course created successfully!" });
 
       setFormData({
         title: "",
         description: "",
         level: "",
         subject: "",
+        category: "High School",
         price: "0.00",
       });
 
       fetchCourses();
     } catch (error) {
       console.error("Error creating course:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create course.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to create course.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -219,13 +430,8 @@ const Admin = () => {
     e.preventDefault();
     if (!user || !videoFormData.course_id) return;
 
-    // Validate transcript JSON if provided
     if (videoFormData.transcript.trim() && !transcriptValid) {
-      toast({
-        title: "Invalid JSON",
-        description: "Please fix the transcript JSON format.",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid JSON", description: "Please fix the transcript JSON format.", variant: "destructive" });
       return;
     }
 
@@ -250,10 +456,7 @@ const Admin = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Video added successfully!",
-      });
+      toast({ title: "Success", description: "Video added successfully!" });
 
       setVideoFormData({
         course_id: "",
@@ -270,13 +473,64 @@ const Admin = () => {
       fetchVideos();
     } catch (error: any) {
       console.error("Error adding video:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add video.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to add video.", variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePracticeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSubmitting(true);
+    setUploadingImage(true);
+
+    try {
+      let imageUrl = practiceFormData.image_url;
+
+      // Upload custom image if provided
+      if (practiceImageFile) {
+        const uploadedUrl = await uploadPracticeImage(practiceImageFile);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      } else if (!imageUrl && practiceFormData.video_id) {
+        // Use YouTube thumbnail as default
+        const video = videos.find(v => v.id === practiceFormData.video_id);
+        if (video) {
+          imageUrl = getYouTubeThumbnail(video.video_url);
+        }
+      }
+
+      const { error } = await supabase.from("practice_problems").insert({
+        title: practiceFormData.title,
+        content: practiceFormData.content,
+        solution: practiceFormData.solution || null,
+        video_id: practiceFormData.video_id || null,
+        image_url: imageUrl || null,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Practice problem created!" });
+
+      setPracticeFormData({
+        title: "",
+        content: "",
+        solution: "",
+        video_id: "",
+        image_url: "",
+      });
+      setPracticeImageFile(null);
+
+      fetchPracticeProblems();
+    } catch (error: any) {
+      console.error("Error creating practice problem:", error);
+      toast({ title: "Error", description: error.message || "Failed to create practice problem.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+      setUploadingImage(false);
     }
   };
 
@@ -329,16 +583,20 @@ const Admin = () => {
     return null;
   }
 
+  const subjectOptions = formData.category === "High School" ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-      <p className="text-muted-foreground mb-8">Manage courses, videos, and content</p>
+      <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
+          <TabsTrigger value="practice">Practice Problems</TabsTrigger>
           <TabsTrigger value="manage">Manage Videos</TabsTrigger>
+          <TabsTrigger value="manage-courses">Manage Courses</TabsTrigger>
         </TabsList>
 
         {/* Add Video Tab */}
@@ -351,7 +609,6 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleVideoSubmit} className="space-y-4">
-                  {/* Course Selection - Dynamic from database */}
                   <div className="space-y-2">
                     <Label htmlFor="course_id">Associate with Course *</Label>
                     <Select
@@ -427,7 +684,6 @@ const Admin = () => {
                     />
                   </div>
 
-                  {/* Transcript JSON Input */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="transcript">Transcript (JSON)</Label>
@@ -457,7 +713,6 @@ const Admin = () => {
                     </p>
                   </div>
 
-                  {/* Exam Tips with LaTeX Preview */}
                   <div className="space-y-2">
                     <Label htmlFor="exam_tips">Exam Tips (Markdown + LaTeX)</Label>
                     <Textarea
@@ -469,7 +724,6 @@ const Admin = () => {
                     />
                   </div>
 
-                  {/* LaTeX Preview */}
                   {videoFormData.exam_tips && (
                     <div className="space-y-2">
                       <Label className="text-sm text-muted-foreground">LaTeX Preview:</Label>
@@ -479,7 +733,6 @@ const Admin = () => {
                     </div>
                   )}
 
-                  {/* Notes/PDF URL */}
                   <div className="space-y-2">
                     <Label htmlFor="notes_url">Notes/PDF URL</Label>
                     <Input
@@ -488,9 +741,6 @@ const Admin = () => {
                       onChange={(e) => setVideoFormData({ ...videoFormData, notes_url: e.target.value })}
                       placeholder="https://example.com/notes.pdf"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Link to PDF notes or supplementary materials
-                    </p>
                   </div>
 
                   <Button type="submit" className="w-full" disabled={submitting}>
@@ -507,7 +757,6 @@ const Admin = () => {
               </CardContent>
             </Card>
 
-            {/* Quick Reference */}
             <div className="space-y-4">
               <Card>
                 <CardHeader>
@@ -550,34 +799,73 @@ const Admin = () => {
 
         {/* Create Course Tab */}
         <TabsContent value="courses">
-          <div className="grid gap-8 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Create New Course</CardTitle>
-                <CardDescription>Add a new course to the platform</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+          <Card className="max-w-2xl">
+            <CardHeader>
+              <CardTitle>Create New Course</CardTitle>
+              <CardDescription>Add a new course to the platform</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value, subject: "" })}
                       required
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High School">High School</SelectItem>
+                        <SelectItem value="Contest">Contest</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={4}
-                    />
+                    <Label htmlFor="subject">Subject</Label>
+                    <Select
+                      value={formData.subject}
+                      onValueChange={(value) => setFormData({ ...formData, subject: value })}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjectOptions.map((subject) => (
+                          <SelectItem key={subject} value={subject}>
+                            {subject}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="level">Level</Label>
                     <Select
@@ -597,29 +885,6 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="subject">Subject / Course Type</Label>
-                    <Select
-                      value={formData.subject}
-                      onValueChange={(value) => setFormData({ ...formData, subject: value })}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subject" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AP Calculus">AP Calculus</SelectItem>
-                        <SelectItem value="Pre-Calc 12">Pre-Calc 12</SelectItem>
-                        <SelectItem value="Pre-Calc 11">Pre-Calc 11</SelectItem>
-                        <SelectItem value="Pre-Calc 10">Pre-Calc 10</SelectItem>
-                        <SelectItem value="mathematics">Mathematics (General)</SelectItem>
-                        <SelectItem value="algebra">Algebra</SelectItem>
-                        <SelectItem value="geometry">Geometry</SelectItem>
-                        <SelectItem value="statistics">Statistics</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="price">Price</Label>
                     <Input
                       id="price"
@@ -631,15 +896,138 @@ const Admin = () => {
                       required
                     />
                   </div>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Course"
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Practice Problems Tab */}
+        <TabsContent value="practice">
+          <div className="grid gap-8 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add Practice Problem</CardTitle>
+                <CardDescription>Create a new practice problem linked to a video</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePracticeSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="practice_title">Title *</Label>
+                    <Input
+                      id="practice_title"
+                      value={practiceFormData.title}
+                      onChange={(e) => setPracticeFormData({ ...practiceFormData, title: e.target.value })}
+                      placeholder="e.g., Limit at Infinity Problem"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="practice_video">Link to Video</Label>
+                    <Select
+                      value={practiceFormData.video_id}
+                      onValueChange={(value) => setPracticeFormData({ ...practiceFormData, video_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a video (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {videos.map((video) => (
+                          <SelectItem key={video.id} value={video.id}>
+                            {video.title} ({video.courses?.title || "No course"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      If no image is uploaded, the video thumbnail will be used as default.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="practice_content">Problem Content (Markdown + LaTeX) *</Label>
+                    <Textarea
+                      id="practice_content"
+                      value={practiceFormData.content}
+                      onChange={(e) => setPracticeFormData({ ...practiceFormData, content: e.target.value })}
+                      rows={4}
+                      placeholder="Find $$\lim_{x \to \infty} \frac{3x^2 + 2x}{x^2 - 1}$$"
+                      required
+                    />
+                  </div>
+
+                  {practiceFormData.content && (
+                    <div className="p-4 border rounded-lg bg-muted/30">
+                      <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+                      <MarkdownWithMath content={practiceFormData.content} />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="practice_solution">Solution (Markdown + LaTeX)</Label>
+                    <Textarea
+                      id="practice_solution"
+                      value={practiceFormData.solution}
+                      onChange={(e) => setPracticeFormData({ ...practiceFormData, solution: e.target.value })}
+                      rows={4}
+                      placeholder="Step 1: Divide top and bottom by $$x^2$$..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Custom Image (Optional)</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setPracticeImageFile(e.target.files?.[0] || null)}
+                        className="flex-1"
+                      />
+                      {practiceImageFile && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPracticeImageFile(null)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {practiceImageFile && (
+                      <p className="text-xs text-green-600">
+                        <CheckCircle className="inline h-3 w-3 mr-1" />
+                        {practiceImageFile.name} selected
+                      </p>
+                    )}
+                    {!practiceImageFile && practiceFormData.video_id && (
+                      <p className="text-xs text-muted-foreground">
+                        <Image className="inline h-3 w-3 mr-1" />
+                        Will use video thumbnail as default
+                      </p>
+                    )}
+                  </div>
 
                   <Button type="submit" className="w-full" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
+                        {uploadingImage ? "Uploading Image..." : "Creating..."}
                       </>
                     ) : (
-                      "Create Course"
+                      "Create Practice Problem"
                     )}
                   </Button>
                 </form>
@@ -648,35 +1036,67 @@ const Admin = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Existing Courses</CardTitle>
-                <CardDescription>All courses on the platform</CardDescription>
+                <CardTitle>Existing Practice Problems</CardTitle>
+                <CardDescription>Manage your practice problems</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {courses.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No courses yet</p>
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  {practiceProblems.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No practice problems yet</p>
                   ) : (
-                    courses.map((course) => (
+                    practiceProblems.map((problem) => (
                       <div
-                        key={course.id}
-                        className="p-4 border rounded-lg space-y-2 hover:bg-accent/50 transition-colors"
+                        key={problem.id}
+                        className="p-4 border rounded-lg space-y-2 hover:bg-accent/30 transition-colors"
                       >
-                        <h3 className="font-semibold">{course.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {course.description}
-                        </p>
-                        <div className="flex gap-2 text-xs">
-                          <span className="px-2 py-1 bg-primary/10 text-primary rounded">
-                            {course.level}
-                          </span>
-                          <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
-                            {course.subject}
-                          </span>
-                          <span className="px-2 py-1 bg-accent text-accent-foreground rounded">
-                            ${course.price}
-                          </span>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{problem.title}</h3>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {problem.content.slice(0, 100)}...
+                            </p>
+                            {problem.image_url && (
+                              <img 
+                                src={problem.image_url} 
+                                alt="Problem thumbnail"
+                                className="w-16 h-12 object-cover rounded mt-2"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProblem(problem);
+                                setEditProblemDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Practice Problem?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deletePracticeProblem(problem.id)}>
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">ID: {course.id}</p>
                       </div>
                     ))
                   )}
@@ -691,7 +1111,7 @@ const Admin = () => {
           <Card>
             <CardHeader>
               <CardTitle>All Videos</CardTitle>
-              <CardDescription>Manage existing videos and test AI integration</CardDescription>
+              <CardDescription>Manage existing videos, edit transcripts, and test AI integration</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-[700px] overflow-y-auto">
@@ -705,7 +1125,7 @@ const Admin = () => {
                     >
                       <div className="space-y-1 flex-1">
                         <h3 className="font-semibold">{video.title}</h3>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                           <span className="px-2 py-0.5 bg-primary/10 rounded">
                             {video.courses?.title || "No course"}
                           </span>
@@ -726,9 +1146,25 @@ const Admin = () => {
                               <FileText className="h-3 w-3" /> Tips
                             </span>
                           )}
+                          {video.notes_url && (
+                            <span className="text-purple-600 flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> PDF
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingVideo(video);
+                            setEditVideoDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -737,6 +1173,27 @@ const Admin = () => {
                           <Play className="h-4 w-4 mr-1" />
                           Test AI
                         </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Video?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this video and all associated practice problems.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteVideo(video.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))
@@ -744,53 +1201,381 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* AI Test Dialog */}
-          <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>AI Tutor Test: {aiPreviewVideo?.title}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                {aiTestResult.loading && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Testing AI connection...
-                  </div>
-                )}
-                {aiTestResult.error && (
-                  <div className="p-4 bg-destructive/10 border border-destructive rounded-lg">
-                    <p className="text-destructive font-mono text-sm">{aiTestResult.error}</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Check edge function deployment and logs for details.
-                    </p>
-                  </div>
-                )}
-                {aiTestResult.success && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="h-5 w-5" />
-                      AI Connected Successfully
+        {/* Manage Courses Tab */}
+        <TabsContent value="manage-courses">
+          <Card>
+            <CardHeader>
+              <CardTitle>All Courses</CardTitle>
+              <CardDescription>Edit or delete existing courses</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-[700px] overflow-y-auto">
+                {courses.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No courses yet</p>
+                ) : (
+                  courses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="p-4 border rounded-lg flex items-start justify-between hover:bg-accent/30 transition-colors"
+                    >
+                      <div className="space-y-2 flex-1">
+                        <h3 className="font-semibold">{course.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {course.description}
+                        </p>
+                        <div className="flex gap-2 text-xs flex-wrap">
+                          <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                            {course.level}
+                          </span>
+                          <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded">
+                            {course.subject}
+                          </span>
+                          <span className="px-2 py-1 bg-accent text-accent-foreground rounded">
+                            ${course.price}
+                          </span>
+                          <span className="px-2 py-1 bg-muted rounded">
+                            {videos.filter(v => v.course_id === course.id).length} videos
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingCourse(course);
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Course?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this course. Videos associated with it will remain but will be unlinked.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteCourse(course.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="text-sm font-medium mb-2">AI Response:</p>
-                      <MarkdownWithMath content={aiTestResult.response || ""} />
-                    </div>
-                  </div>
+                  ))
                 )}
-                {aiPreviewVideo?.transcript && (
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm font-medium mb-2">Transcript Preview:</p>
-                    <pre className="text-xs overflow-x-auto">
-                      {JSON.stringify(aiPreviewVideo.transcript, null, 2).slice(0, 500)}...
-                    </pre>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Edit Course Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Course</DialogTitle>
+            <DialogDescription>Update course details</DialogDescription>
+          </DialogHeader>
+          {editingCourse && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={editingCourse.title}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={editingCourse.description}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Level</Label>
+                  <Select
+                    value={editingCourse.level}
+                    onValueChange={(value) => setEditingCourse({ ...editingCourse, level: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Price</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingCourse.price}
+                    onChange={(e) => setEditingCourse({ ...editingCourse, price: parseFloat(e.target.value) })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={updateCourse} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Video Dialog */}
+      <Dialog open={editVideoDialogOpen} onOpenChange={setEditVideoDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Video</DialogTitle>
+            <DialogDescription>Update video details, transcript, and PDF links</DialogDescription>
+          </DialogHeader>
+          {editingVideo && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input
+                    value={editingVideo.title}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, title: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Subtitle/Unit</Label>
+                  <Input
+                    value={editingVideo.subtitle || ""}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, subtitle: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Video URL</Label>
+                  <Input
+                    value={editingVideo.video_url}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, video_url: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Order Index</Label>
+                  <Input
+                    type="number"
+                    value={editingVideo.order_index}
+                    onChange={(e) => setEditingVideo({ ...editingVideo, order_index: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Notes/PDF URL</Label>
+                <Input
+                  value={editingVideo.notes_url || ""}
+                  onChange={(e) => setEditingVideo({ ...editingVideo, notes_url: e.target.value })}
+                  placeholder="https://example.com/notes.pdf"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Transcript (JSON)</Label>
+                <Textarea
+                  value={editingVideo.transcript ? JSON.stringify(editingVideo.transcript, null, 2) : ""}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      setEditingVideo({ ...editingVideo, transcript: parsed });
+                    } catch {
+                      // Keep the raw string temporarily
+                    }
+                  }}
+                  rows={6}
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Exam Tips (Markdown + LaTeX)</Label>
+                <Textarea
+                  value={editingVideo.exam_tips || ""}
+                  onChange={(e) => setEditingVideo({ ...editingVideo, exam_tips: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              {editingVideo.exam_tips && (
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+                  <MarkdownWithMath content={editingVideo.exam_tips} />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditVideoDialogOpen(false)}>Cancel</Button>
+            <Button onClick={updateVideo} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Practice Problem Dialog */}
+      <Dialog open={editProblemDialogOpen} onOpenChange={setEditProblemDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Practice Problem</DialogTitle>
+            <DialogDescription>Update problem content, solution, and image</DialogDescription>
+          </DialogHeader>
+          {editingProblem && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Title</Label>
+                <Input
+                  value={editingProblem.title}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Link to Video</Label>
+                <Select
+                  value={editingProblem.video_id || ""}
+                  onValueChange={(value) => setEditingProblem({ ...editingProblem, video_id: value || null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a video" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {videos.map((video) => (
+                      <SelectItem key={video.id} value={video.id}>
+                        {video.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Problem Content</Label>
+                <Textarea
+                  value={editingProblem.content}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, content: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              {editingProblem.content && (
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-2">Preview:</p>
+                  <MarkdownWithMath content={editingProblem.content} />
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Solution</Label>
+                <Textarea
+                  value={editingProblem.solution || ""}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, solution: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Image URL</Label>
+                <Input
+                  value={editingProblem.image_url || ""}
+                  onChange={(e) => setEditingProblem({ ...editingProblem, image_url: e.target.value })}
+                  placeholder="https://..."
+                />
+                {editingProblem.image_url && (
+                  <div className="flex items-center gap-4">
+                    <img 
+                      src={editingProblem.image_url} 
+                      alt="Preview" 
+                      className="w-24 h-16 object-cover rounded"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingProblem({ ...editingProblem, image_url: null })}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
                   </div>
                 )}
               </div>
-            </DialogContent>
-          </Dialog>
-        </TabsContent>
-      </Tabs>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProblemDialogOpen(false)}>Cancel</Button>
+            <Button onClick={updatePracticeProblem} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Test Dialog */}
+      <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>AI Tutor Test: {aiPreviewVideo?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {aiTestResult.loading && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Testing AI connection...
+              </div>
+            )}
+            {aiTestResult.error && (
+              <div className="p-4 bg-destructive/10 border border-destructive rounded-lg">
+                <p className="text-destructive font-mono text-sm">{aiTestResult.error}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Check edge function deployment and logs for details.
+                </p>
+              </div>
+            )}
+            {aiTestResult.success && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-5 w-5" />
+                  AI Connected Successfully
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm font-medium mb-2">AI Response:</p>
+                  <MarkdownWithMath content={aiTestResult.response || ""} />
+                </div>
+              </div>
+            )}
+            {aiPreviewVideo?.transcript && (
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-2">Transcript Preview:</p>
+                <pre className="text-xs overflow-x-auto">
+                  {JSON.stringify(aiPreviewVideo.transcript, null, 2).slice(0, 500)}...
+                </pre>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
