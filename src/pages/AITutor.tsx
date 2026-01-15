@@ -132,14 +132,12 @@ export default function AITutor() {
     {
       id: '1',
       role: 'assistant',
-      content: `👋 Hi! I'm your **AP Calculus AI Tutor**. I can help you with:
+      content: `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
 
-• **Limits** - evaluating limits, indeterminate forms, L'Hôpital's Rule
-• **Derivatives** - power rule, chain rule, product/quotient rules
-• **Integrals** - u-substitution, integration by parts, definite integrals
-• **Applications** - related rates, optimization, area/volume problems
+• **High School Courses** — AP Calc, AP Stats, SAT Math, Algebra, Geometry, Pre-Calculus
+• **Contest Prep** — AMC 10/12, Euclid, Fermat, Cayley, Pascal, Gauss
 
-Ask me anything about calculus concepts, or paste a problem you're working on!`,
+Ask me any conceptual questions or paste a problem you're working on!`,
       timestamp: new Date(),
     },
   ]);
@@ -245,10 +243,10 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
   };
 
   const suggestedQuestions = [
-    "How do I find the derivative of sin(x²)?",
+    "How do I solve quadratic equations?",
     "Explain the chain rule with an example",
-    "What is L'Hôpital's Rule?",
-    "How do I solve related rates problems?",
+    "Tips for AMC 10 number theory problems?",
+    "How do I find the area of a triangle using coordinates?",
   ];
 
   return (
@@ -262,14 +260,14 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2 flex-wrap">
-                AI Tutor
+                O2I AI Tutor
                 <Badge variant="secondary" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
-                  Powered by Gemini
+                  All-in-One Math
                 </Badge>
               </h1>
               <p className="text-sm text-muted-foreground">
-                Your personal AP Calculus assistant
+                Your personal math assistant for courses & contests
               </p>
             </div>
           </div>
@@ -357,7 +355,7 @@ Ask me anything about calculus concepts, or paste a problem you're working on!`,
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about calculus..."
+              placeholder="Ask me any math question..."
               disabled={isLoading}
               className="flex-1 h-12 text-base px-4 rounded-full"
             />
