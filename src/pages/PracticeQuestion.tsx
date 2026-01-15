@@ -87,10 +87,19 @@ export default function PracticeQuestion() {
 
     setIsGenerating(true);
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('Authentication required');
+        setIsGenerating(false);
+        return;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-practice-question`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           transcript: video.transcript,
@@ -99,6 +108,10 @@ export default function PracticeQuestion() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error('Authentication required');
+          return;
+        }
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate question');
       }

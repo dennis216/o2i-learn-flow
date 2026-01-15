@@ -6,8 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChatMessage, TranscriptEntry } from './types';
-import { toast } from 'sonner';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AITutorSidebarProps {
   videoTitle: string;
@@ -30,10 +30,18 @@ const streamAIResponse = async (
   onError: (error: string) => void
 ): Promise<void> => {
   try {
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      onError('Please sign in to use the AI Tutor');
+      return;
+    }
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         message,
@@ -45,6 +53,10 @@ const streamAIResponse = async (
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        onError('Please sign in to use the AI Tutor');
+        return;
+      }
       if (response.status === 429) {
         onError('Rate limit exceeded. Please wait a moment and try again.');
         return;

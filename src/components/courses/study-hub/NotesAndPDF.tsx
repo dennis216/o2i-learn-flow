@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CourseVideo, ChatMessage, TranscriptEntry } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
+import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
@@ -25,10 +26,18 @@ const streamAIResponse = async (
   onError: (error: string) => void
 ): Promise<void> => {
   try {
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      onError('Please sign in to use this feature');
+      return;
+    }
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         message: `[Context: User is asking about the course notes/PDF] ${message}`,
@@ -40,6 +49,10 @@ const streamAIResponse = async (
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        onError('Please sign in to use this feature');
+        return;
+      }
       const errorData = await response.json().catch(() => ({}));
       onError(errorData.error || 'Failed to get AI response');
       return;

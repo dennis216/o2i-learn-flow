@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CourseVideo } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
+import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
@@ -138,10 +139,19 @@ $$[correct formula/approach]$$
 Respond in English only. Be thorough and educational.`;
 
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError('Please sign in to use this feature');
+        setIsGenerating(false);
+        return;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           message: level === 'quick' ? quickPrompt : detailedPrompt,
@@ -153,6 +163,9 @@ Respond in English only. Be thorough and educational.`;
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Please sign in to use this feature');
+        }
         throw new Error('Failed to generate review packet');
       }
 
