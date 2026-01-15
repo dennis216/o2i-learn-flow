@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Upload, Image } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Upload, Image, FlaskConical } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
+import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users } from "lucide-react";
@@ -732,10 +733,11 @@ const Admin = () => {
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice Problems</TabsTrigger>
+          <TabsTrigger value="playground">Playground</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="manage">Manage Videos</TabsTrigger>
           <TabsTrigger value="manage-courses">Manage Courses</TabsTrigger>
@@ -1958,6 +1960,11 @@ const Admin = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Playground Management Tab */}
+      <TabsContent value="playground">
+        <PlaygroundManagement />
+      </TabsContent>
     </div>
   );
 };

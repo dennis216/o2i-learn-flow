@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Book, LogOut, User, Shield, Target, Bot, Menu, Users } from 'lucide-react';
+import { Book, LogOut, User, Shield, Target, Bot, Menu, Users, FlaskConical } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -49,6 +49,12 @@ export default function Navbar() {
         <Button variant="ghost" className={mobile ? "w-full justify-start" : ""}>
           <Bot className="h-4 w-4 mr-2" />
           AI Tutor
+        </Button>
+      </Link>
+      <Link to="/playground" onClick={closeMobileMenu}>
+        <Button variant="ghost" className={mobile ? "w-full justify-start" : ""}>
+          <FlaskConical className="h-4 w-4 mr-2" />
+          Playground
         </Button>
       </Link>
       <Link to="/roadmaps" onClick={closeMobileMenu}>

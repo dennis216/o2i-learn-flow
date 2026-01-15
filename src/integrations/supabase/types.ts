@@ -304,6 +304,39 @@ export type Database = {
           },
         ]
       }
+      playground_links: {
+        Row: {
+          created_at: string
+          description: string | null
+          geogebra_url: string
+          id: string
+          order_index: number | null
+          target_subject: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          geogebra_url: string
+          id?: string
+          order_index?: number | null
+          target_subject: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          geogebra_url?: string
+          id?: string
+          order_index?: number | null
+          target_subject?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       post_replies: {
         Row: {
           content: string
