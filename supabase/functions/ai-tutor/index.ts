@@ -72,17 +72,26 @@ ${contextText}
 
 ## CALCULUS KNOWLEDGE TO DRAW FROM
 - Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
-- Trigonometric limits: $\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$, $\\lim_{x \\to 0} \\frac{1-\\cos x}{x} = 0$
-- Squeeze Theorem: Bounding oscillating functions
+- Trigonometric limits, Squeeze Theorem
 - Derivatives: Power rule, product rule, quotient rule, chain rule
-- Definition of derivative: $f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$
-- Implicit differentiation: Treating y as a function of x
-- Continuity: Three conditions (defined, limit exists, limit equals value)
-- IVT, MVT, EVT theorems
+- Implicit differentiation, Continuity, IVT, MVT, EVT theorems
 - Related rates and optimization
 
-Use LaTeX formatting for all mathematical expressions (e.g., $\\frac{d}{dx}[x^n] = nx^{n-1}$).
-Always respond in English.`;
+## CRITICAL LATEX FORMATTING RULES
+You MUST follow these rules exactly for proper math rendering:
+
+1. **Always add spaces around math**: Write "the limit is $\\frac{a}{b}$" NOT "the limit is$\\frac{a}{b}$"
+2. **Use single backslash**: Write $\\frac{1}{2}$ NOT $\\\\frac{1}{2}$
+3. **Display math on own line**: For important formulas, use $$...$$ on its own line:
+
+If the powers are equal, the limit is the ratio of the leading coefficients:
+
+$$\\frac{a}{b}$$
+
+4. **Inline math with spaces**: The derivative $f'(x) = 2x$ gives us the slope.
+5. **Never glue text to math**: WRONG: "equals$x^2$" CORRECT: "equals $x^2$"
+
+Always respond in English only.`;
 
     // Build user message
     let userMessage = message;
