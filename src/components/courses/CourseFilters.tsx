@@ -51,8 +51,12 @@ export function CourseFilters({
   const handleCategoryChange = (newCategory: string) => {
     const cat = newCategory as Category;
     onCategoryChange(cat);
-    // Reset subject when changing category
-    onSubjectChange(null);
+    // Set to first subject of new category
+    if (cat === 'High School') {
+      onSubjectChange(HIGH_SCHOOL_SUBJECTS[0]);
+    } else {
+      onSubjectChange(CONTEST_SUBJECTS[0]);
+    }
   };
 
   return (
@@ -77,17 +81,6 @@ export function CourseFilters({
 
       {/* Subject sub-filters */}
       <div className="flex flex-wrap justify-center gap-2">
-        <Button
-          variant={subject === null ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => onSubjectChange(null)}
-          className={cn(
-            'rounded-full transition-all',
-            subject === null && 'bg-primary text-primary-foreground shadow-md'
-          )}
-        >
-          All
-        </Button>
         {subjects.map((subj) => (
           <Button
             key={subj}

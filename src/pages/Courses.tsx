@@ -24,9 +24,9 @@ export default function Courses() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [autoSelectVideoId, setAutoSelectVideoId] = useState<string | null>(null);
   
-  // Filter state
+  // Filter state - default to first subject in High School
   const [category, setCategory] = useState<Category>('High School');
-  const [subject, setSubject] = useState<Subject>(null);
+  const [subject, setSubject] = useState<Subject>('AP Calc');
 
   useEffect(() => {
     const fetchCourses = async () => {
