@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { CourseVideo } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
+import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
@@ -45,10 +46,19 @@ export function ExamPrep({ video }: ExamPrepProps) {
     setError(null);
 
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError('Please sign in to use this feature');
+        setIsGenerating(false);
+        return;
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           message: `Based on the video content, create exactly 5 original exam-style practice problems.
@@ -138,6 +148,9 @@ IMPORTANT REMINDERS:
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Please sign in to use this feature');
+        }
         throw new Error('Failed to generate mock test');
       }
 
