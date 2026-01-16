@@ -136,7 +136,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    // Use production domain for auth emails, fallback to current origin for local dev
+    const isProduction = window.location.hostname !== 'localhost';
+    const redirectUrl = isProduction 
+      ? 'https://www.o2iinstitute.org/' 
+      : `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
       email,
