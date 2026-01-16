@@ -13,9 +13,10 @@ import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil,
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
+import { UserManagement } from "@/components/admin/UserManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Users } from "lucide-react";
+import { Users, UserCog } from "lucide-react";
 
 interface Course {
   id: string;
@@ -47,6 +48,8 @@ interface PracticeProblem {
   solution: string | null;
   video_id: string | null;
   image_url: string | null;
+  unit_number: number | null;
+  lesson_number: string | null;
   created_at: string;
 }
 
@@ -85,7 +88,7 @@ const getYouTubeThumbnail = (videoUrl: string): string => {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -123,6 +126,8 @@ const Admin = () => {
     solution: "",
     video_id: "",
     image_url: "",
+    unit_number: "",
+    lesson_number: "",
   });
   const [practiceImageFile, setPracticeImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -258,7 +263,8 @@ const Admin = () => {
     try {
       const { data, error } = await supabase
         .from("practice_problems")
-        .select("id, title, content, solution, video_id, image_url, created_at")
+        .select("id, title, content, solution, video_id, image_url, unit_number, lesson_number, created_at")
+        .order("unit_number", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -403,6 +409,8 @@ const Admin = () => {
           solution: editingProblem.solution,
           video_id: editingProblem.video_id,
           image_url: editingProblem.image_url,
+          unit_number: editingProblem.unit_number,
+          lesson_number: editingProblem.lesson_number,
         })
         .eq("id", editingProblem.id);
 
@@ -606,6 +614,8 @@ const Admin = () => {
         solution: practiceFormData.solution || null,
         video_id: practiceFormData.video_id || null,
         image_url: imageUrl || null,
+        unit_number: practiceFormData.unit_number ? parseInt(practiceFormData.unit_number) : null,
+        lesson_number: practiceFormData.lesson_number || null,
       });
 
       if (error) throw error;
@@ -618,6 +628,8 @@ const Admin = () => {
         solution: "",
         video_id: "",
         image_url: "",
+        unit_number: "",
+        lesson_number: "",
       });
       setPracticeImageFile(null);
 
@@ -733,14 +745,20 @@ const Admin = () => {
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
-          <TabsTrigger value="practice">Practice Problems</TabsTrigger>
+          <TabsTrigger value="practice">Practice</TabsTrigger>
           <TabsTrigger value="playground">Playground</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="manage">Manage Videos</TabsTrigger>
-          <TabsTrigger value="manage-courses">Manage Courses</TabsTrigger>
+          <TabsTrigger value="manage-courses">Courses</TabsTrigger>
+          {isSuperAdmin && (
+            <TabsTrigger value="users" className="flex items-center gap-1">
+              <UserCog className="h-4 w-4" />
+              Users
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Add Video Tab */}
@@ -1098,6 +1116,28 @@ const Admin = () => {
                     <p className="text-xs text-muted-foreground">
                       If no image is uploaded, the video thumbnail will be used as default.
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="unit_number">Unit Number</Label>
+                      <Input
+                        id="unit_number"
+                        type="number"
+                        value={practiceFormData.unit_number}
+                        onChange={(e) => setPracticeFormData({ ...practiceFormData, unit_number: e.target.value })}
+                        placeholder="e.g., 2"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lesson_number">Lesson Number</Label>
+                      <Input
+                        id="lesson_number"
+                        value={practiceFormData.lesson_number}
+                        onChange={(e) => setPracticeFormData({ ...practiceFormData, lesson_number: e.target.value })}
+                        placeholder="e.g., 2.1"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -1608,6 +1648,13 @@ const Admin = () => {
         <TabsContent value="playground">
           <PlaygroundManagement />
         </TabsContent>
+
+        {/* User Management Tab - Super Admin Only */}
+        {isSuperAdmin && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Edit Course Dialog */}

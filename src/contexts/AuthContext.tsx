@@ -16,6 +16,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,10 +54,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => {
             fetchProfile(session.user.id);
             checkAdminRole(session.user.id);
+            checkSuperAdminRole(session.user.id);
           }, 0);
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
         setLoading(false);
       }
@@ -69,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         fetchProfile(session.user.id);
         checkAdminRole(session.user.id);
+        checkSuperAdminRole(session.user.id);
       }
       setLoading(false);
     });
@@ -111,6 +116,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const checkSuperAdminRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('is_super_admin', {
+        _user_id: userId,
+      });
+
+      if (error) {
+        console.error('Error checking super admin role:', error);
+        setIsSuperAdmin(false);
+        return;
+      }
+
+      setIsSuperAdmin(data === true);
+    } catch (error) {
+      console.error('Error checking super admin role:', error);
+      setIsSuperAdmin(false);
+    }
+  };
+
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -148,6 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setIsSuperAdmin(false);
   };
 
   const value = {
@@ -155,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     isAdmin,
+    isSuperAdmin,
     loading,
     signUp,
     signIn,

@@ -464,9 +464,11 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          lesson_number: string | null
           solution: string | null
           sub_chapter_id: string | null
           title: string
+          unit_number: number | null
           updated_at: string
           video_id: string | null
         }
@@ -476,9 +478,11 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          lesson_number?: string | null
           solution?: string | null
           sub_chapter_id?: string | null
           title: string
+          unit_number?: number | null
           updated_at?: string
           video_id?: string | null
         }
@@ -488,9 +492,11 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          lesson_number?: string | null
           solution?: string | null
           sub_chapter_id?: string | null
           title?: string
+          unit_number?: number | null
           updated_at?: string
           video_id?: string | null
         }
@@ -868,9 +874,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "instructor" | "student"
+      app_role: "admin" | "instructor" | "student" | "super_admin"
       problem_type:
         | "geometry"
         | "algebra"
@@ -1007,7 +1014,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "instructor", "student"],
+      app_role: ["admin", "instructor", "student", "super_admin"],
       problem_type: [
         "geometry",
         "algebra",
