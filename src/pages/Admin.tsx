@@ -1603,6 +1603,11 @@ const Admin = () => {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Playground Management Tab */}
+        <TabsContent value="playground">
+          <PlaygroundManagement />
+        </TabsContent>
       </Tabs>
 
       {/* Edit Course Dialog */}
@@ -1961,10 +1966,6 @@ const Admin = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Playground Management Tab */}
-      <TabsContent value="playground">
-        <PlaygroundManagement />
-      </TabsContent>
     </div>
   );
 };
