@@ -220,19 +220,19 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full border-collapse">
-            <thead className="bg-muted">
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left p-3 font-semibold text-sm border-b border-border">User</th>
-                <th className="text-left p-3 font-semibold text-sm border-b border-border">Roles</th>
-                <th className="text-left p-3 font-semibold text-sm border-b border-border">Joined</th>
-                <th className="text-right p-3 font-semibold text-sm border-b border-border">Actions</th>
+                <th className="text-left p-3 font-semibold text-sm">User</th>
+                <th className="text-left p-3 font-semibold text-sm">Roles</th>
+                <th className="text-left p-3 font-semibold text-sm">Joined</th>
+                <th className="text-right p-3 font-semibold text-sm">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y max-h-[500px] overflow-y-auto">
           {filteredUsers.length === 0 ? (
-            <tr><td colSpan={4} className="text-muted-foreground text-center py-8 border-b border-border">No users found</td></tr>
+            <tr><td colSpan={4} className="text-muted-foreground text-center py-8">No users found</td></tr>
           ) : (
             filteredUsers.map((userProfile, index) => {
               const roles = userRoles.get(userProfile.user_id) || [];
@@ -243,15 +243,15 @@ export const UserManagement = () => {
               return (
                 <tr
                   key={userProfile.id}
-                  className={`hover:bg-accent/30 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
+                  className={`hover:bg-accent/30 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                 >
-                  <td className="p-3 border-b border-border">
+                  <td className="p-3">
                     <div className="flex flex-col">
                       <span className="font-semibold">{userProfile.full_name}</span>
                       <span className="text-sm text-muted-foreground">{userProfile.email}</span>
                     </div>
                   </td>
-                  <td className="p-3 border-b border-border">
+                  <td className="p-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       {isSuperAdminUser && (
                         <Badge variant="default" className="bg-purple-600">
@@ -273,10 +273,10 @@ export const UserManagement = () => {
                       )}
                     </div>
                   </td>
-                  <td className="p-3 border-b border-border text-sm text-muted-foreground">
+                  <td className="p-3 text-sm text-muted-foreground">
                     {new Date(userProfile.created_at).toLocaleDateString()}
                   </td>
-                  <td className="p-3 border-b border-border text-right">
+                  <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                     {!isSuperAdminUser && !isCurrentUser && (
                       <>

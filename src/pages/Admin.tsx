@@ -1224,90 +1224,65 @@ const Admin = () => {
                 <CardDescription>Manage your practice problems</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="border border-border rounded-lg overflow-hidden">
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {practiceProblems.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">No practice problems yet</p>
                   ) : (
-                    <table className="w-full border-collapse">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-sm border-b border-border">Title</th>
-                          <th className="text-left p-3 font-semibold text-sm border-b border-border">Unit</th>
-                          <th className="text-left p-3 font-semibold text-sm border-b border-border">Lesson</th>
-                          <th className="text-left p-3 font-semibold text-sm border-b border-border">Image</th>
-                          <th className="text-right p-3 font-semibold text-sm border-b border-border">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {practiceProblems.map((problem, index) => (
-                          <tr
-                            key={problem.id}
-                            className={`hover:bg-accent/30 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}`}
-                          >
-                            <td className="p-3 border-b border-border">
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{problem.title}</span>
-                                <span className="text-xs text-muted-foreground line-clamp-1">
-                                  {problem.content.slice(0, 60)}...
-                                </span>
-                              </div>
-                            </td>
-                            <td className="p-3 border-b border-border text-sm">
-                              {problem.unit_number ?? '-'}
-                            </td>
-                            <td className="p-3 border-b border-border text-sm">
-                              {problem.lesson_number ?? '-'}
-                            </td>
-                            <td className="p-3 border-b border-border">
-                              {problem.image_url ? (
-                                <img 
-                                  src={problem.image_url} 
-                                  alt="Problem thumbnail"
-                                  className="w-12 h-9 object-cover rounded"
-                                />
-                              ) : (
-                                <span className="text-xs text-muted-foreground">None</span>
-                              )}
-                            </td>
-                            <td className="p-3 border-b border-border text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingProblem(problem);
-                                    setEditProblemDialogOpen(true);
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
+                    practiceProblems.map((problem) => (
+                      <div
+                        key={problem.id}
+                        className="p-4 border rounded-lg space-y-2 hover:bg-accent/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{problem.title}</h3>
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {problem.content.slice(0, 100)}...
+                            </p>
+                            {problem.image_url && (
+                              <img 
+                                src={problem.image_url} 
+                                alt="Problem thumbnail"
+                                className="w-16 h-12 object-cover rounded mt-2"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProblem(problem);
+                                setEditProblemDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-destructive">
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="text-destructive">
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Practice Problem?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => deletePracticeProblem(problem.id)}>
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Practice Problem?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deletePracticeProblem(problem.id)}>
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </CardContent>
