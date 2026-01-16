@@ -56,6 +56,36 @@ export type Database = {
           },
         ]
       }
+      ai_tutor_chats: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          topic: string | null
+          user_id: string
+          video_context: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          topic?: string | null
+          user_id: string
+          video_context?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          topic?: string | null
+          user_id?: string
+          video_context?: Json | null
+        }
+        Relationships: []
+      }
       chapters: {
         Row: {
           created_at: string
