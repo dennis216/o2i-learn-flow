@@ -21,6 +21,18 @@ const preprocessMathContent = (content: string): string => {
   
   let processed = content;
   
+  // Step 0: Fix clumped text like "extremelylim_{x" -> "extremely lim_{x"
+  // Add space before common LaTeX commands that are clumped with text
+  const latexCommands = ['lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp', 'sqrt', 'frac', 'int', 'sum', 'prod', 'infty'];
+  latexCommands.forEach(cmd => {
+    // Match lowercase letter directly before the command (not already escaped)
+    const regex = new RegExp(`([a-z])(?:\\\\)?(${cmd})`, 'gi');
+    processed = processed.replace(regex, (match, letter, command) => {
+      // Check if it's inside a math block - if so, leave it
+      return `${letter} \\${command}`;
+    });
+  });
+  
   // Step 1: Fix display math blocks ($$...$$)
   // Match $$ blocks and fix double-escaped backslashes inside
   const displayMathBlocks: string[] = [];
@@ -67,9 +79,9 @@ const preprocessMathContent = (content: string): string => {
   // Pattern: "wordtext$$" should have a newline before $$
   processed = processed.replace(/([a-zA-Z0-9,.:;!?)])[ ]*\n\n\$\$/g, '$1\n\n$$');
   
-  // Step 7: Fix table syntax - ensure proper GFM table format
-  // Escape dollar signs in tables that shouldn't trigger math mode
-  // Look for patterns like |$something| that aren't math
+  // Step 7: Fix common AI text clumping patterns outside math blocks
+  // E.g., "Therefore,since" -> "Therefore, since"
+  processed = processed.replace(/([,.:;!?])([a-zA-Z])/g, '$1 $2');
   
   return processed.trim();
 };
