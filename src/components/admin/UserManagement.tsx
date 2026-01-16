@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface UserProfile {
@@ -121,6 +121,44 @@ export const UserManagement = () => {
       fetchUserRoles();
     } catch (error: any) {
       console.error("Error revoking admin role:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingUserId(null);
+    }
+  };
+
+  const forceConfirmUser = async (userId: string, userEmail: string) => {
+    setProcessingUserId(userId);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        toast({ title: "Error", description: "Not authenticated", variant: "destructive" });
+        return;
+      }
+
+      const response = await fetch(
+        `https://lxoaeaewcrshjkigzyqe.supabase.co/functions/v1/force-confirm-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to confirm user');
+      }
+
+      toast({ title: "Success", description: `Email confirmed for ${userEmail}` });
+    } catch (error: any) {
+      console.error("Error force confirming user:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setProcessingUserId(null);
@@ -276,6 +314,43 @@ export const UserManagement = () => {
                           </Button>
                         )}
                       </>
+                    )}
+                    
+                    {/* Force Confirm Button - always visible for super admins */}
+                    {!isCurrentUser && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            disabled={processingUserId === userProfile.user_id}
+                          >
+                            {processingUserId === userProfile.user_id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Force Confirm
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Force Confirm Email?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will manually verify the email for <strong>{userProfile.full_name}</strong> ({userProfile.email}). Use this if the confirmation email failed to send or was lost.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => forceConfirmUser(userProfile.user_id, userProfile.email)}>
+                              Confirm User
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>
