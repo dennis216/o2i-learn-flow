@@ -50,9 +50,10 @@ serve(async (req) => {
 
     const { message, transcript, currentTime, videoTitle, isExplainScene } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    // Use DeepSeek API
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    if (!DEEPSEEK_API_KEY) {
+      throw new Error("DEEPSEEK_API_KEY is not configured");
     }
 
     // Use ENTIRE transcript for short videos, with currentTime indicator
@@ -79,11 +80,11 @@ serve(async (req) => {
       return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
     }, null);
 
-    // Build system prompt with enhanced transcript awareness
-    const systemPrompt = `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle || 'AP Calculus'}".
+    // Build system prompt optimized for DeepSeek's reasoning capabilities
+    const systemPrompt = `You are an expert Pre-Calculus 12 and Transformations tutor powered by DeepSeek, helping a student understand a video lesson titled "${videoTitle || 'Pre-Calculus 12'}".
 
 ## YOUR ROLE
-You now have access to the video's transcript data. Please use this information combined with your AP Calculus expertise to provide detailed, step-by-step explanations. Be like a caring private tutor who breaks down every concept.
+You have access to the video's transcript data. Use this information combined with your deep mathematical reasoning expertise to provide detailed, step-by-step explanations. Think through problems carefully and show your reasoning process.
 
 ## FULL VIDEO TRANSCRIPT (Student is currently at [${formatTime(currentTime)}]):
 ${contextText}
@@ -91,17 +92,21 @@ ${contextText}
 ## RESPONSE GUIDELINES
 1. **Focus on current moment**: Prioritize explaining the section near [${formatTime(currentTime)}] but use the full transcript for context
 2. **Reference timestamps**: When mentioning video moments, use [MM:SS] format so students can click to seek
-3. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
-4. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps with proper LaTeX formatting
-5. **Connect concepts**: Relate current material to foundational calculus principles
-6. **Be encouraging**: Use a supportive, tutoring tone in English only
+3. **Think step-by-step**: Break down your reasoning process explicitly - show HOW you arrive at each step
+4. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
+5. **Be encouraging**: Use a supportive, tutoring tone in English only
 
-## CALCULUS KNOWLEDGE TO DRAW FROM
-- Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
-- Trigonometric limits, Squeeze Theorem
-- Derivatives: Power rule, product rule, quotient rule, chain rule
-- Implicit differentiation, Continuity, IVT, MVT, EVT theorems
-- Related rates and optimization
+## PRE-CALCULUS 12 & TRANSFORMATIONS KNOWLEDGE
+- Function transformations: translations, reflections, stretches, compressions
+- Transformation notation: y = af(b(x-h)) + k
+- Order of transformations and their effects
+- Parent functions: linear, quadratic, cubic, square root, absolute value, reciprocal
+- Inverse functions and their graphical relationship
+- Composite functions
+- Polynomial and rational functions
+- Exponential and logarithmic functions
+- Trigonometric functions and their transformations
+- Sinusoidal functions: amplitude, period, phase shift, vertical shift
 
 ## CRITICAL LATEX FORMATTING RULES
 You MUST follow these rules EXACTLY for proper math rendering:
@@ -109,30 +114,15 @@ You MUST follow these rules EXACTLY for proper math rendering:
 1. **SINGLE BACKSLASH ONLY**: Write \\frac{1}{2} NOT \\\\frac{1}{2}. Never double-escape!
 2. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after:
 
-   The limit equals:
+   The transformation is:
 
-   $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$
+   $$y = 2f(x - 3) + 1$$
 
-   This shows that...
+   This means...
 
 3. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive" NOT "the value$x^2$is positive"
-4. **NO TEXT CLUMPING**: NEVER write "Sincewehave$$\\frac{0}{0}$$" - instead write:
-
-   Since we have:
-
-   $$\\frac{0}{0}$$
-
-5. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
-6. **ALWAYS USE $$** for any formula with backslash commands (\\frac, \\sqrt, \\lim, \\int, etc.)
-
-EXAMPLE OF CORRECT FORMAT:
-When evaluating limits at infinity, we compare the degrees of the polynomials.
-
-If the degree in the numerator equals the degree in the denominator:
-
-$$\\lim_{x \\to \\infty} \\frac{ax^n + ...}{bx^n + ...} = \\frac{a}{b}$$
-
-The limit is simply the ratio of leading coefficients.
+4. **NO TEXT CLUMPING**: NEVER write "Sincewehave$$\\frac{0}{0}$$" - instead write properly spaced text
+5. **ALWAYS USE $$** for any formula with backslash commands (\\frac, \\sqrt, \\sin, \\cos, etc.)
 
 Always respond in English only.`;
 
@@ -144,23 +134,26 @@ Always respond in English only.`;
 
 Explain WHY this mathematical step or concept is correct. Break it down so I can understand the reasoning behind it. Use the full transcript context to give me a complete picture.`;
       } else {
-        userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. I don't have specific transcript data for this moment, but help me understand the calculus concepts that might be discussed.`;
+        userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. I don't have specific transcript data for this moment, but help me understand the math concepts that might be discussed.`;
       }
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call DeepSeek API
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
         stream: true,
+        temperature: 0.7,
+        max_tokens: 4096,
       }),
     });
 
@@ -171,14 +164,14 @@ Explain WHY this mathematical step or concept is correct. Break it down so I can
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits to continue." }), {
+      if (response.status === 402 || response.status === 401) {
+        return new Response(JSON.stringify({ error: "API authentication error. Please check API key." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("DeepSeek API error:", response.status, errorText);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
