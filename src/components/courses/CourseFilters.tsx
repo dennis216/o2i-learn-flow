@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export type Category = 'High School' | 'Contest';
 
+// Main subjects without SAT subsections (they are nested)
 export const HIGH_SCHOOL_SUBJECTS = [
   'AP Calc',
   'AP Stats',
@@ -46,18 +49,56 @@ export function CourseFilters({
   onCategoryChange,
   onSubjectChange,
 }: CourseFiltersProps) {
-  const subjects = category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
+  const [satExpanded, setSatExpanded] = useState(
+    subject === 'SAT M1' || subject === 'SAT M2'
+  );
 
   const handleCategoryChange = (newCategory: string) => {
     const cat = newCategory as Category;
     onCategoryChange(cat);
     // Set to first subject of new category
     if (cat === 'High School') {
-      onSubjectChange(HIGH_SCHOOL_SUBJECTS[0]);
+      onSubjectChange('AP Calc');
     } else {
-      onSubjectChange(CONTEST_SUBJECTS[0]);
+      onSubjectChange('AMC 10');
+    }
+    setSatExpanded(false);
+  };
+
+  const handleSubjectClick = (subj: string) => {
+    if (subj === 'SAT') {
+      // Toggle SAT expansion and select SAT M1 by default
+      if (!satExpanded) {
+        setSatExpanded(true);
+        onSubjectChange('SAT M1');
+      } else {
+        setSatExpanded(false);
+        onSubjectChange('SAT M1'); // Keep selection on M1
+      }
+    } else {
+      onSubjectChange(subj as Subject);
+      // Collapse SAT if selecting non-SAT subject
+      if (subj !== 'SAT M1' && subj !== 'SAT M2') {
+        setSatExpanded(false);
+      }
     }
   };
+
+  // Filter subjects for display - hide M1/M2 unless SAT is expanded
+  const getDisplaySubjects = () => {
+    if (category !== 'High School') {
+      return CONTEST_SUBJECTS as unknown as string[];
+    }
+    
+    return HIGH_SCHOOL_SUBJECTS.filter(subj => {
+      if (subj === 'SAT M1' || subj === 'SAT M2') {
+        return satExpanded;
+      }
+      return true;
+    }) as unknown as string[];
+  };
+
+  const displaySubjects = getDisplaySubjects();
 
   return (
     <div className="space-y-4">
@@ -81,24 +122,29 @@ export function CourseFilters({
 
       {/* Subject sub-filters */}
       <div className="flex flex-wrap justify-center gap-2">
-        {subjects.map((subj) => {
-          // Indent SAT M1 and M2 under SAT
+        {displaySubjects.map((subj) => {
           const isSATSubsection = subj === 'SAT M1' || subj === 'SAT M2';
-          const displayLabel = isSATSubsection ? `└ ${subj}` : subj;
+          const isSATParent = subj === 'SAT';
+          const isSelected = subject === subj || (isSATParent && (subject === 'SAT M1' || subject === 'SAT M2'));
           
           return (
             <Button
               key={subj}
-              variant={subject === subj ? 'default' : 'outline'}
+              variant={isSelected ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onSubjectChange(subj)}
+              onClick={() => handleSubjectClick(subj)}
               className={cn(
                 'rounded-full transition-all',
-                subject === subj && 'bg-primary text-primary-foreground shadow-md',
-                isSATSubsection && 'ml-2 text-xs'
+                isSelected && 'bg-primary text-primary-foreground shadow-md',
+                isSATSubsection && 'ml-4 text-xs border-dashed'
               )}
             >
-              {displayLabel}
+              {isSATParent && (
+                satExpanded ? 
+                  <ChevronDown className="h-3 w-3 mr-1" /> : 
+                  <ChevronRight className="h-3 w-3 mr-1" />
+              )}
+              {isSATSubsection ? subj.replace('SAT ', '') : subj}
             </Button>
           );
         })}
