@@ -220,24 +220,39 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="space-y-3 max-h-[600px] overflow-y-auto">
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-b">
+              <tr>
+                <th className="text-left p-3 font-semibold text-sm">User</th>
+                <th className="text-left p-3 font-semibold text-sm">Roles</th>
+                <th className="text-left p-3 font-semibold text-sm">Joined</th>
+                <th className="text-right p-3 font-semibold text-sm">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y max-h-[500px] overflow-y-auto">
           {filteredUsers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No users found</p>
+            <tr><td colSpan={4} className="text-muted-foreground text-center py-8">No users found</td></tr>
           ) : (
-            filteredUsers.map((userProfile) => {
+            filteredUsers.map((userProfile, index) => {
               const roles = userRoles.get(userProfile.user_id) || [];
               const isAdmin = roles.includes('admin');
               const isSuperAdminUser = roles.includes('super_admin');
               const isCurrentUser = userProfile.user_id === user?.id;
 
               return (
-                <div
+                <tr
                   key={userProfile.id}
-                  className="p-4 border rounded-lg flex items-center justify-between hover:bg-accent/30 transition-colors"
+                  className={`hover:bg-accent/30 transition-colors ${index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                 >
-                  <div className="space-y-1 flex-1 min-w-0">
+                  <td className="p-3">
+                    <div className="flex flex-col">
+                      <span className="font-semibold">{userProfile.full_name}</span>
+                      <span className="text-sm text-muted-foreground">{userProfile.email}</span>
+                    </div>
+                  </td>
+                  <td className="p-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold truncate">{userProfile.full_name}</h3>
                       {isSuperAdminUser && (
                         <Badge variant="default" className="bg-purple-600">
                           <Shield className="h-3 w-3 mr-1" />
@@ -250,16 +265,19 @@ export const UserManagement = () => {
                           Admin
                         </Badge>
                       )}
+                      {!isAdmin && !isSuperAdminUser && (
+                        <Badge variant="outline">Student</Badge>
+                      )}
                       {isCurrentUser && (
-                        <Badge variant="outline">You</Badge>
+                        <Badge variant="outline" className="border-primary text-primary">You</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{userProfile.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Joined: {new Date(userProfile.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
+                  </td>
+                  <td className="p-3 text-sm text-muted-foreground">
+                    {new Date(userProfile.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="p-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
                     {!isSuperAdminUser && !isCurrentUser && (
                       <>
                         {isAdmin ? (
@@ -276,7 +294,7 @@ export const UserManagement = () => {
                                 ) : (
                                   <>
                                     <ShieldX className="h-4 w-4 mr-1" />
-                                    Revoke Admin
+                                    Revoke
                                   </>
                                 )}
                               </Button>
@@ -331,7 +349,7 @@ export const UserManagement = () => {
                             ) : (
                               <>
                                 <CheckCircle className="h-4 w-4 mr-1" />
-                                Force Confirm
+                                Confirm
                               </>
                             )}
                           </Button>
@@ -352,11 +370,14 @@ export const UserManagement = () => {
                         </AlertDialogContent>
                       </AlertDialog>
                     )}
-                  </div>
-                </div>
+                    </div>
+                  </td>
+                </tr>
               );
             })
           )}
+            </tbody>
+          </table>
         </div>
 
         <div className="mt-4 pt-4 border-t">
