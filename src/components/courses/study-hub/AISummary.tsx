@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, AlertCircle, RefreshCw, Zap, BookOpen } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,8 +13,6 @@ interface AISummaryProps {
   video: CourseVideo;
 }
 
-type DetailLevel = 'quick' | 'detailed';
-
 interface ReviewPacket {
   coreConcepts: string;
   keyFormulas: string;
@@ -25,11 +23,10 @@ export function AISummary({ video }: AISummaryProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [reviewPacket, setReviewPacket] = useState<ReviewPacket | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<DetailLevel | null>(null);
 
   const hasTranscript = video.transcript && video.transcript.length > 0;
 
-  const generateReviewPacket = async (level: DetailLevel) => {
+  const generateReviewPacket = async () => {
     if (!hasTranscript) {
       setError('Transcript data not available. Please contact an administrator to add transcript data for this video.');
       return;
@@ -37,26 +34,26 @@ export function AISummary({ video }: AISummaryProps) {
 
     setIsGenerating(true);
     setError(null);
-    setSelectedLevel(level);
 
-    const quickPrompt = `Based on the video transcript, generate a QUICK SUMMARY review packet. Keep it concise and to the point.
+    const summaryPrompt = `Based on the video transcript, generate a comprehensive review packet for students.
 
 CRITICAL FORMATTING RULES:
 1. Every mathematical expression MUST be on its own line with $$ delimiters
 2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after
 3. Use bullet points for easy scanning
-4. Keep each section brief (3-5 bullet points max)
+4. Include examples where helpful
 
 FORMAT:
 
 ## Core Concepts
 
-- [Key concept 1]
-- [Key concept 2 with formula:]
+- **[Concept 1]:** [Clear explanation]
 
-$$[formula]$$
+$$[relevant formula if applicable]$$
 
-- [Key concept 3]
+- **[Concept 2]:** [Clear explanation with context]
+
+- **[Concept 3]:** [Explanation]
 
 ## Key Formulas
 
@@ -64,79 +61,26 @@ $$[formula]$$
 
 $$[formula]$$
 
+When to use: [Brief explanation]
+
 - **[Another formula]:**
 
 $$[formula]$$
 
-## Common Pitfalls
-
-- [Common mistake 1]
-- [Common mistake 2]
-- [How to avoid them]
-
-Respond in English only. Be brief and direct.`;
-
-    const detailedPrompt = `Based on the video transcript, generate a COMPREHENSIVE DETAILED GUIDE. Include thorough explanations and step-by-step breakdowns.
-
-CRITICAL FORMATTING RULES:
-1. Every mathematical expression MUST be on its own line with $$ delimiters
-2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after
-3. Include examples and detailed explanations
-4. Reference specific concepts from the video
-
-FORMAT:
-
-## Core Concepts
-
-### [Concept 1 Name]
-[Detailed explanation of the concept...]
-
-When we apply this, we get:
-
-$$[relevant formula]$$
-
-This means that...
-
-### [Concept 2 Name]
-[Another detailed explanation...]
-
-The key insight here is:
-
-$$[formula]$$
-
-## Key Formulas
-
-### [Formula 1 Name]
-**Definition:**
-
-$$[formula]$$
-
-**When to use:** [Explanation of when this applies]
-
-**Example:** If we have...
-
-$$[example calculation]$$
-
-### [Formula 2 Name]
-**Definition:**
-
-$$[formula]$$
-
-**Derivation/Intuition:** [Why this formula works...]
+Example application: [Brief example]
 
 ## Common Pitfalls
 
-### Mistake 1: [Description]
-Many students incorrectly assume...
+- **[Mistake 1]:** [What students often do wrong]
+  - Correct approach: [How to avoid it]
 
-**Correct approach:**
+- **[Mistake 2]:** [Common error]
+  - Remember: [Key insight]
 
-$$[correct formula/approach]$$
+- **[Mistake 3]:** [Typical confusion]
+  - Tip: [How to get it right]
 
-### Mistake 2: [Description]
-[Detailed explanation of the mistake and how to avoid it]
-
-Respond in English only. Be thorough and educational.`;
+Respond in English only. Be thorough but concise.`;
 
     try {
       // Get auth token
@@ -154,7 +98,7 @@ Respond in English only. Be thorough and educational.`;
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          message: level === 'quick' ? quickPrompt : detailedPrompt,
+          message: summaryPrompt,
           transcript: video.transcript,
           currentTime: 0,
           videoTitle: video.title,
@@ -220,12 +164,7 @@ Respond in English only. Be thorough and educational.`;
     return match ? match[1].trim() : `No ${sectionName.toLowerCase()} found in this lesson.`;
   };
 
-  const resetAndRegenerate = () => {
-    setReviewPacket(null);
-    setSelectedLevel(null);
-  };
-
-  if (!reviewPacket && !selectedLevel) {
+  if (!reviewPacket) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <Sparkles className="h-16 w-16 text-primary/50 mb-4" />
@@ -250,78 +189,41 @@ Respond in English only. Be thorough and educational.`;
           </Alert>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            onClick={() => generateReviewPacket('quick')}
-            disabled={isGenerating || !hasTranscript}
-            size="lg"
-            variant="outline"
-            className="gap-2"
-          >
-            <Zap className="h-4 w-4" />
-            Quick Summary
-          </Button>
-          <Button
-            onClick={() => generateReviewPacket('detailed')}
-            disabled={isGenerating || !hasTranscript}
-            size="lg"
-            className="gap-2"
-          >
-            <BookOpen className="h-4 w-4" />
-            Detailed Guide
-          </Button>
-        </div>
-        
-        <p className="text-xs text-muted-foreground mt-3 text-center max-w-sm">
-          <strong>Quick Summary:</strong> Bullet points &amp; key formulas.
-          <br />
-          <strong>Detailed Guide:</strong> In-depth explanations &amp; examples.
-        </p>
+        <Button
+          onClick={generateReviewPacket}
+          disabled={isGenerating || !hasTranscript}
+          size="lg"
+          className="gap-2"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Generate Review Sheet
+            </>
+          )}
+        </Button>
       </div>
     );
-  }
-
-  if (isGenerating) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-        <h3 className="text-lg font-semibold mb-2">
-          Generating {selectedLevel === 'quick' ? 'Quick Summary' : 'Detailed Guide'}...
-        </h3>
-        <p className="text-muted-foreground text-center max-w-md">
-          Analyzing video transcript and creating your personalized review packet.
-        </p>
-      </div>
-    );
-  }
-
-  if (!reviewPacket) {
-    return null;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">Review Packet: {video.title}</h3>
-          <span className="text-xs bg-muted px-2 py-1 rounded-full">
-            {selectedLevel === 'quick' ? '⚡ Quick' : '📖 Detailed'}
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={resetAndRegenerate}>
-            Change Type
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => selectedLevel && generateReviewPacket(selectedLevel)} 
-            disabled={isGenerating}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-            Regenerate
-          </Button>
-        </div>
+        <h3 className="text-lg font-semibold">Review Packet: {video.title}</h3>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={generateReviewPacket} 
+          disabled={isGenerating}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+          Regenerate
+        </Button>
       </div>
 
       <div className="grid gap-4">

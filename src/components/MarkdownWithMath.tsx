@@ -21,16 +21,30 @@ const preprocessMathContent = (content: string): string => {
   
   let processed = content;
   
-  // Step 0: Fix clumped text like "extremelylim_{x" -> "extremely lim_{x"
-  // Add space before common LaTeX commands that are clumped with text
-  const latexCommands = ['lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp', 'sqrt', 'frac', 'int', 'sum', 'prod', 'infty'];
+  // Step 0: Fix clumped text before LaTeX commands (outside of math blocks)
+  // Pattern: "wordlim" or "word\\lim" -> "word lim" (will be wrapped in $$ later if needed)
+  // Only apply outside of existing $...$ or $$...$$ blocks
+  const latexCommands = ['lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp', 'sqrt', 'frac', 'int', 'sum', 'prod', 'infty', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi'];
+  
+  // First, protect existing math blocks
+  const mathBlocks: string[] = [];
+  processed = processed.replace(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g, (match) => {
+    mathBlocks.push(match);
+    return `__MATH_BLOCK_${mathBlocks.length - 1}__`;
+  });
+  
+  // Now fix clumped text outside math blocks
   latexCommands.forEach(cmd => {
-    // Match lowercase letter directly before the command (not already escaped)
-    const regex = new RegExp(`([a-z])(?:\\\\)?(${cmd})`, 'gi');
+    // Match lowercase letter directly before the command
+    const regex = new RegExp(`([a-z])\\\\?(${cmd})(?![a-z])`, 'gi');
     processed = processed.replace(regex, (match, letter, command) => {
-      // Check if it's inside a math block - if so, leave it
-      return `${letter} \\${command}`;
+      return `${letter} $\\${command}`;
     });
+  });
+  
+  // Restore math blocks
+  processed = processed.replace(/__MATH_BLOCK_(\d+)__/g, (match, index) => {
+    return mathBlocks[parseInt(index)];
   });
   
   // Step 1: Fix display math blocks ($$...$$)
