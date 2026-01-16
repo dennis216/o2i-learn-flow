@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2, Download, FileText, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -421,6 +427,107 @@ export default function AITutor() {
     "How do I find the area of a triangle using coordinates?",
   ];
 
+  // Export chat as Markdown
+  const exportAsMarkdown = useCallback(() => {
+    const topicLabel = TOPIC_OPTIONS.find(t => t.value === selectedTopic)?.label || 'General';
+    const date = new Date().toLocaleDateString();
+    
+    let markdown = `# O2I AI Tutor Chat Export\n`;
+    markdown += `**Topic:** ${topicLabel}\n`;
+    markdown += `**Date:** ${date}\n`;
+    if (videoContext) {
+      markdown += `**Lesson:** ${videoContext.title}\n`;
+    }
+    markdown += `\n---\n\n`;
+
+    messages.forEach((msg) => {
+      if (msg.id === 'greeting') return; // Skip greeting in export
+      const role = msg.role === 'user' ? '**You:**' : '**AI Tutor:**';
+      markdown += `${role}\n\n${msg.content}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `o2i-tutor-chat-${date.replace(/\//g, '-')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages, selectedTopic, videoContext]);
+
+  // Export chat as PDF (uses print dialog)
+  const exportAsPDF = useCallback(() => {
+    const topicLabel = TOPIC_OPTIONS.find(t => t.value === selectedTopic)?.label || 'General';
+    const date = new Date().toLocaleDateString();
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>O2I AI Tutor Chat - ${date}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
+          h1 { color: #6366f1; margin-bottom: 8px; }
+          .meta { color: #666; font-size: 14px; margin-bottom: 24px; }
+          .message { margin-bottom: 24px; padding: 16px; border-radius: 12px; }
+          .user { background: #6366f1; color: white; margin-left: 40px; }
+          .assistant { background: #f3f4f6; margin-right: 40px; }
+          .role { font-weight: bold; margin-bottom: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+          .user .role { color: rgba(255,255,255,0.8); }
+          .assistant .role { color: #6366f1; }
+          pre { background: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 8px; overflow-x: auto; }
+          code { font-family: 'Fira Code', monospace; font-size: 14px; }
+          hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>🤖 O2I AI Tutor Chat</h1>
+        <div class="meta">
+          <strong>Topic:</strong> ${topicLabel}<br>
+          <strong>Date:</strong> ${date}
+          ${videoContext ? `<br><strong>Lesson:</strong> ${videoContext.title}` : ''}
+        </div>
+        <hr>
+    `;
+
+    messages.forEach((msg) => {
+      if (msg.id === 'greeting') return;
+      const roleClass = msg.role;
+      const roleLabel = msg.role === 'user' ? 'You' : 'AI Tutor';
+      // Basic markdown to HTML conversion
+      let content = msg.content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+      
+      html += `
+        <div class="message ${roleClass}">
+          <div class="role">${roleLabel}</div>
+          <div>${content}</div>
+        </div>
+      `;
+    });
+
+    html += `
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }, [messages, selectedTopic, videoContext]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -466,15 +573,40 @@ export default function AITutor() {
               </Select>
               
               {messages.length > 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearChatHistory}
-                  className="text-muted-foreground hover:text-destructive"
-                  title="Clear chat history"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-muted-foreground"
+                        title="Export chat"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+                      <DropdownMenuItem onClick={exportAsMarkdown} className="cursor-pointer">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Export as Markdown
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportAsPDF} className="cursor-pointer">
+                        <FileDown className="h-4 w-4 mr-2" />
+                        Export as PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearChatHistory}
+                    className="text-muted-foreground hover:text-destructive"
+                    title="Clear chat history"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </>
               )}
             </div>
           </div>
