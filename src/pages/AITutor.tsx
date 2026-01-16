@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Sparkles, BookOpen, ChevronDown } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Subject/topic options for the selector
 const TOPIC_OPTIONS = [
@@ -167,16 +168,115 @@ const streamAIResponse = async (
 
 export default function AITutor() {
   const location = useLocation();
+  const { user } = useAuth();
   const [selectedTopic, setSelectedTopic] = useState('general');
   const [videoContext, setVideoContext] = useState<VideoContext | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasHandledPrefill = useRef(false);
   const hasInitialized = useRef(false);
 
-  // Initialize greeting based on context
+  // Generate the greeting message
+  const getGreetingMessage = useCallback((videoTitle?: string): ChatMessage => {
+    let greeting = `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
+
+• **High School Courses** — AP Calc, AP Stats, SAT Math, Algebra, Geometry, Pre-Calculus
+• **Contest Prep** — AMC 10/12, Euclid, Fermat, Cayley, Pascal, Gauss`;
+
+    if (videoTitle) {
+      greeting += `\n\n📺 I see you're studying **${videoTitle}**. Feel free to ask questions about this lesson!`;
+    } else {
+      greeting += `\n\nAsk me any conceptual questions or paste a problem you're working on!`;
+    }
+
+    return {
+      id: 'greeting',
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+    };
+  }, []);
+
+  // Save message to database
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
+    if (!user) return;
+    
+    try {
+      await supabase.from('ai_tutor_chats').insert({
+        user_id: user.id,
+        role,
+        content,
+        topic: selectedTopic,
+        video_context: videoContext ? {
+          title: videoContext.title,
+          subject: videoContext.subject,
+        } : null,
+      });
+    } catch (error) {
+      console.error('Failed to save message:', error);
+    }
+  }, [user, selectedTopic, videoContext]);
+
+  // Load chat history from database
+  const loadChatHistory = useCallback(async () => {
+    if (!user) {
+      setIsLoadingHistory(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('ai_tutor_chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loadedMessages: ChatMessage[] = data.map((msg) => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at),
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // No history, show greeting
+        const state = location.state as { videoTitle?: string } | null;
+        setMessages([getGreetingMessage(state?.videoTitle)]);
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      const state = location.state as { videoTitle?: string } | null;
+      setMessages([getGreetingMessage(state?.videoTitle)]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [user, location.state, getGreetingMessage]);
+
+  // Clear chat history
+  const clearChatHistory = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('ai_tutor_chats')
+        .delete()
+        .eq('user_id', user.id);
+
+      const state = location.state as { videoTitle?: string } | null;
+      setMessages([getGreetingMessage(state?.videoTitle)]);
+    } catch (error) {
+      console.error('Failed to clear chat history:', error);
+    }
+  }, [user, location.state, getGreetingMessage]);
+
+  // Initialize on mount - load history and set context
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
@@ -207,25 +307,9 @@ export default function AITutor() {
       }
     }
 
-    // Build initial greeting message
-    let greeting = `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
-
-• **High School Courses** — AP Calc, AP Stats, SAT Math, Algebra, Geometry, Pre-Calculus
-• **Contest Prep** — AMC 10/12, Euclid, Fermat, Cayley, Pascal, Gauss`;
-
-    if (state?.videoTitle) {
-      greeting += `\n\n📺 I see you're studying **${state.videoTitle}**. Feel free to ask questions about this lesson!`;
-    } else {
-      greeting += `\n\nAsk me any conceptual questions or paste a problem you're working on!`;
-    }
-
-    setMessages([{
-      id: '1',
-      role: 'assistant',
-      content: greeting,
-      timestamp: new Date(),
-    }]);
-  }, [location.state]);
+    // Load chat history
+    loadChatHistory();
+  }, [location.state, loadChatHistory]);
 
   // Handle prefilled question from Practice page
   useEffect(() => {
@@ -274,6 +358,9 @@ export default function AITutor() {
     if (!customMessage) setInputValue('');
     setIsLoading(true);
 
+    // Save user message to database
+    saveMessage('user', messageContent);
+
     // Create assistant message placeholder for streaming
     const assistantMessageId = (Date.now() + 1).toString();
     let assistantContent = '';
@@ -301,15 +388,17 @@ export default function AITutor() {
         );
       },
       () => {
+        // Save assistant response to database
+        saveMessage('assistant', assistantContent);
         setIsLoading(false);
       },
       (error) => {
         console.error('AI Tutor error:', error);
-        // Show gentle inline error instead of disruptive toast
+        const errorMessage = `Sorry, I encountered an error: ${error}`;
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
-              ? { ...msg, content: `Sorry, I encountered an error: ${error}` }
+              ? { ...msg, content: errorMessage }
               : msg
           )
         );
@@ -356,11 +445,11 @@ export default function AITutor() {
               </div>
             </div>
             
-            {/* Topic Selector */}
+            {/* Topic Selector & Clear History */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Topic:</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Topic:</span>
               <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-                <SelectTrigger className="w-[180px] bg-background">
+                <SelectTrigger className="w-[140px] sm:w-[180px] bg-background">
                   <SelectValue placeholder="Select topic" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-50">
@@ -375,6 +464,18 @@ export default function AITutor() {
                   ))}
                 </SelectContent>
               </Select>
+              
+              {messages.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearChatHistory}
+                  className="text-muted-foreground hover:text-destructive"
+                  title="Clear chat history"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           
@@ -393,7 +494,11 @@ export default function AITutor() {
       <div className="flex-1 flex flex-col max-w-4xl w-full mx-auto">
         <ScrollArea className="flex-1 px-4" ref={scrollRef}>
           <div className="py-6 space-y-6">
-            {messages.map((message) => (
+            {isLoadingHistory ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : messages.map((message) => (
               <div
                 key={message.id}
                 className={`flex gap-3 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -428,7 +533,7 @@ export default function AITutor() {
                 )}
               </div>
             ))}
-            {isLoading && messages[messages.length - 1]?.content === '' && (
+            {!isLoadingHistory && isLoading && messages[messages.length - 1]?.content === '' && (
               <div className="flex gap-3 sm:gap-4 justify-start">
                 <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
