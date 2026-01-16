@@ -7,10 +7,10 @@ export type Category = 'High School' | 'Contest';
 export const HIGH_SCHOOL_SUBJECTS = [
   'AP Calc',
   'AP Stats',
-  'AP Precalc',
+  'Pre-Calculus 12',
   'SAT',
-  'M1',
-  'M2',
+  'SAT M1',
+  'SAT M2',
   'Geo 1 (Intro)',
   'Geo 2 (Int)',
   'Alg 1 (Intro)',
@@ -81,20 +81,27 @@ export function CourseFilters({
 
       {/* Subject sub-filters */}
       <div className="flex flex-wrap justify-center gap-2">
-        {subjects.map((subj) => (
-          <Button
-            key={subj}
-            variant={subject === subj ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onSubjectChange(subj)}
-            className={cn(
-              'rounded-full transition-all',
-              subject === subj && 'bg-primary text-primary-foreground shadow-md'
-            )}
-          >
-            {subj}
-          </Button>
-        ))}
+        {subjects.map((subj) => {
+          // Indent SAT M1 and M2 under SAT
+          const isSATSubsection = subj === 'SAT M1' || subj === 'SAT M2';
+          const displayLabel = isSATSubsection ? `└ ${subj}` : subj;
+          
+          return (
+            <Button
+              key={subj}
+              variant={subject === subj ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onSubjectChange(subj)}
+              className={cn(
+                'rounded-full transition-all',
+                subject === subj && 'bg-primary text-primary-foreground shadow-md',
+                isSATSubsection && 'ml-2 text-xs'
+              )}
+            >
+              {displayLabel}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
