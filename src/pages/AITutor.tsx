@@ -457,7 +457,7 @@ export default function AITutor() {
     URL.revokeObjectURL(url);
   }, [messages, selectedTopic, videoContext]);
 
-  // Export chat as PDF (uses print dialog)
+  // Export chat as PDF (uses print dialog with KaTeX rendering)
   const exportAsPDF = useCallback(() => {
     const topicLabel = TOPIC_OPTIONS.find(t => t.value === selectedTopic)?.label || 'General';
     const date = new Date().toLocaleDateString();
@@ -465,12 +465,58 @@ export default function AITutor() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    let html = `
+    // Function to convert markdown + LaTeX to HTML
+    const convertToHTML = (text: string): string => {
+      let result = text;
+      
+      // Escape HTML first (except for our conversions)
+      result = result
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      // Convert display math ($$...$$) - must be before inline math
+      result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+        return `<div class="math-display" data-math="${encodeURIComponent(math.trim())}"></div>`;
+      });
+      
+      // Convert inline math ($...$)
+      result = result.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+        return `<span class="math-inline" data-math="${encodeURIComponent(math.trim())}"></span>`;
+      });
+      
+      // Convert markdown formatting
+      result = result
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
+      
+      return result;
+    };
+
+    let messagesHTML = '';
+    messages.forEach((msg) => {
+      if (msg.id === 'greeting') return;
+      const roleClass = msg.role;
+      const roleLabel = msg.role === 'user' ? 'You' : 'AI Tutor';
+      const content = convertToHTML(msg.content);
+      
+      messagesHTML += `
+        <div class="message ${roleClass}">
+          <div class="role">${roleLabel}</div>
+          <div class="content">${content}</div>
+        </div>
+      `;
+    });
+
+    const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <title>O2I AI Tutor Chat - ${date}</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
           h1 { color: #6366f1; margin-bottom: 8px; }
@@ -482,9 +528,17 @@ export default function AITutor() {
           .user .role { color: rgba(255,255,255,0.8); }
           .assistant .role { color: #6366f1; }
           pre { background: #1f2937; color: #e5e7eb; padding: 12px; border-radius: 8px; overflow-x: auto; }
-          code { font-family: 'Fira Code', monospace; font-size: 14px; }
+          code { font-family: 'Fira Code', monospace; font-size: 14px; background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 4px; }
+          .user code { background: rgba(255,255,255,0.2); }
           hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
-          @media print { body { padding: 20px; } }
+          .math-display { margin: 16px 0; text-align: center; }
+          .math-inline { display: inline; }
+          .katex { font-size: 1.1em; }
+          .math-display .katex { font-size: 1.2em; }
+          @media print { 
+            body { padding: 20px; } 
+            .message { break-inside: avoid; }
+          }
         </style>
       </head>
       <body>
@@ -495,37 +549,34 @@ export default function AITutor() {
           ${videoContext ? `<br><strong>Lesson:</strong> ${videoContext.title}` : ''}
         </div>
         <hr>
-    `;
-
-    messages.forEach((msg) => {
-      if (msg.id === 'greeting') return;
-      const roleClass = msg.role;
-      const roleLabel = msg.role === 'user' ? 'You' : 'AI Tutor';
-      // Basic markdown to HTML conversion
-      let content = msg.content
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
-      
-      html += `
-        <div class="message ${roleClass}">
-          <div class="role">${roleLabel}</div>
-          <div>${content}</div>
-        </div>
-      `;
-    });
-
-    html += `
+        ${messagesHTML}
+        <script>
+          // Render all math expressions with KaTeX
+          document.querySelectorAll('.math-display').forEach(el => {
+            try {
+              const math = decodeURIComponent(el.dataset.math);
+              katex.render(math, el, { displayMode: true, throwOnError: false });
+            } catch (e) {
+              el.textContent = el.dataset.math;
+            }
+          });
+          document.querySelectorAll('.math-inline').forEach(el => {
+            try {
+              const math = decodeURIComponent(el.dataset.math);
+              katex.render(math, el, { displayMode: false, throwOnError: false });
+            } catch (e) {
+              el.textContent = el.dataset.math;
+            }
+          });
+          // Trigger print after rendering
+          setTimeout(() => window.print(), 500);
+        </script>
       </body>
       </html>
     `;
 
     printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.print();
-    };
   }, [messages, selectedTopic, videoContext]);
 
   return (
