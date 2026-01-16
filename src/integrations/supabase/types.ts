@@ -62,6 +62,7 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          session_id: string | null
           topic: string | null
           user_id: string
           video_context: Json | null
@@ -71,6 +72,7 @@ export type Database = {
           created_at?: string
           id?: string
           role: string
+          session_id?: string | null
           topic?: string | null
           user_id: string
           video_context?: Json | null
@@ -80,7 +82,46 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          session_id?: string | null
           topic?: string | null
+          user_id?: string
+          video_context?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tutor_chats_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_tutor_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tutor_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+          video_context: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+          video_context?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          topic?: string | null
+          updated_at?: string
           user_id?: string
           video_context?: Json | null
         }

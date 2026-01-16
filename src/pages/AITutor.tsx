@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2, Download, FileText, FileDown } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2, Download, FileText, FileDown, Plus, MessageSquare, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
@@ -53,6 +54,15 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+}
+
+interface ChatSession {
+  id: string;
+  name: string;
+  topic: string;
+  video_context: VideoContext | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -185,6 +195,13 @@ export default function AITutor() {
   const hasHandledPrefill = useRef(false);
   const hasInitialized = useRef(false);
 
+  // Session management state
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
   // Generate the greeting message
   const getGreetingMessage = useCallback((videoTitle?: string): ChatMessage => {
     let greeting = `👋 Hi! I'm your **O2I AI Tutor**. I can help you with:
@@ -206,40 +223,148 @@ export default function AITutor() {
     };
   }, []);
 
-  // Save message to database
-  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
-    if (!user) return;
-    
-    try {
-      await supabase.from('ai_tutor_chats').insert({
-        user_id: user.id,
-        role,
-        content,
-        topic: selectedTopic,
-        video_context: videoContext ? {
-          title: videoContext.title,
-          subject: videoContext.subject,
-        } : null,
-      });
-    } catch (error) {
-      console.error('Failed to save message:', error);
-    }
-  }, [user, selectedTopic, videoContext]);
-
-  // Load chat history from database
-  const loadChatHistory = useCallback(async () => {
+  // Load all sessions for the user
+  const loadSessions = useCallback(async () => {
     if (!user) {
-      setIsLoadingHistory(false);
+      setIsLoadingSessions(false);
       return;
     }
 
     try {
       const { data, error } = await supabase
-        .from('ai_tutor_chats')
+        .from('ai_tutor_sessions')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+
+      const loadedSessions: ChatSession[] = (data || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        topic: s.topic || 'general',
+        video_context: s.video_context as unknown as VideoContext | null,
+        created_at: s.created_at,
+        updated_at: s.updated_at,
+      }));
+
+      setSessions(loadedSessions);
+    } catch (error) {
+      console.error('Failed to load sessions:', error);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [user]);
+
+  // Create a new session
+  const createNewSession = useCallback(async (name?: string, topic?: string, videoCtx?: VideoContext | null) => {
+    if (!user) return null;
+
+    const sessionName = name || 'New Chat';
+    const sessionTopic = topic || selectedTopic;
+
+    try {
+      const { data, error } = await supabase
+        .from('ai_tutor_sessions')
+        .insert({
+          user_id: user.id,
+          name: sessionName,
+          topic: sessionTopic,
+          video_context: videoCtx ? { title: videoCtx.title, subject: videoCtx.subject } : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newSession: ChatSession = {
+        id: data.id,
+        name: data.name,
+        topic: data.topic || 'general',
+        video_context: data.video_context as unknown as VideoContext | null,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      setMessages([getGreetingMessage(videoCtx?.title)]);
+      
+      return newSession;
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      return null;
+    }
+  }, [user, selectedTopic, getGreetingMessage]);
+
+  // Rename a session
+  const renameSession = useCallback(async (sessionId: string, newName: string) => {
+    if (!user || !newName.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('ai_tutor_sessions')
+        .update({ name: newName.trim() })
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setSessions(prev => prev.map(s => 
+        s.id === sessionId ? { ...s, name: newName.trim() } : s
+      ));
+    } catch (error) {
+      console.error('Failed to rename session:', error);
+    }
+  }, [user]);
+
+  // Delete a session
+  const deleteSession = useCallback(async (sessionId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('ai_tutor_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      // If we deleted the current session, switch to another or create new
+      if (currentSessionId === sessionId) {
+        const remaining = sessions.filter(s => s.id !== sessionId);
+        if (remaining.length > 0) {
+          switchToSession(remaining[0].id);
+        } else {
+          createNewSession();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+    }
+  }, [user, currentSessionId, sessions]);
+
+  // Switch to a different session
+  const switchToSession = useCallback(async (sessionId: string) => {
+    if (!user || sessionId === currentSessionId) return;
+
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    setCurrentSessionId(sessionId);
+    setSelectedTopic(session.topic);
+    setVideoContext(session.video_context);
+    setIsLoadingHistory(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('ai_tutor_chats')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
@@ -252,70 +377,219 @@ export default function AITutor() {
         }));
         setMessages(loadedMessages);
       } else {
-        // No history, show greeting
-        const state = location.state as { videoTitle?: string } | null;
-        setMessages([getGreetingMessage(state?.videoTitle)]);
+        setMessages([getGreetingMessage(session.video_context?.title)]);
       }
     } catch (error) {
-      console.error('Failed to load chat history:', error);
-      const state = location.state as { videoTitle?: string } | null;
-      setMessages([getGreetingMessage(state?.videoTitle)]);
+      console.error('Failed to load session messages:', error);
+      setMessages([getGreetingMessage(session.video_context?.title)]);
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [user, location.state, getGreetingMessage]);
+  }, [user, currentSessionId, sessions, getGreetingMessage]);
 
-  // Clear chat history
-  const clearChatHistory = useCallback(async () => {
-    if (!user) return;
-
+  // Save message to database
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
+    if (!user || !currentSessionId) return;
+    
     try {
+      await supabase.from('ai_tutor_chats').insert({
+        user_id: user.id,
+        role,
+        content,
+        topic: selectedTopic,
+        video_context: videoContext ? {
+          title: videoContext.title,
+          subject: videoContext.subject,
+        } : null,
+        session_id: currentSessionId,
+      });
+
+      // Update session's updated_at
       await supabase
-        .from('ai_tutor_chats')
-        .delete()
-        .eq('user_id', user.id);
+        .from('ai_tutor_sessions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', currentSessionId);
 
-      const state = location.state as { videoTitle?: string } | null;
-      setMessages([getGreetingMessage(state?.videoTitle)]);
+      // Move session to top of list
+      setSessions(prev => {
+        const session = prev.find(s => s.id === currentSessionId);
+        if (!session) return prev;
+        return [{ ...session, updated_at: new Date().toISOString() }, ...prev.filter(s => s.id !== currentSessionId)];
+      });
     } catch (error) {
-      console.error('Failed to clear chat history:', error);
+      console.error('Failed to save message:', error);
     }
-  }, [user, location.state, getGreetingMessage]);
+  }, [user, selectedTopic, videoContext, currentSessionId]);
 
-  // Initialize on mount - load history and set context
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+  // Load chat history for current session or create initial session
+  const initializeSession = useCallback(async () => {
+    if (!user) {
+      setIsLoadingHistory(false);
+      setIsLoadingSessions(false);
+      return;
+    }
 
     const state = location.state as { 
-      prefilledQuestion?: string; 
-      topic?: string; 
-      fromPractice?: boolean;
       videoTitle?: string;
       videoSubject?: string;
       videoTranscript?: string;
     } | null;
 
-    // Set video context if coming from a video page
-    if (state?.videoTitle && state?.videoSubject) {
-      setVideoContext({
-        title: state.videoTitle,
-        subject: state.videoSubject,
-        transcript: state.videoTranscript,
-      });
-      
-      // Auto-select topic based on video subject
-      const matchedTopic = TOPIC_OPTIONS.find(
-        opt => opt.label.toLowerCase().includes(state.videoSubject.toLowerCase())
-      );
-      if (matchedTopic) {
-        setSelectedTopic(matchedTopic.value);
-      }
-    }
+    const videoCtx = state?.videoTitle && state?.videoSubject ? {
+      title: state.videoTitle,
+      subject: state.videoSubject,
+      transcript: state.videoTranscript,
+    } : null;
 
-    // Load chat history
-    loadChatHistory();
-  }, [location.state, loadChatHistory]);
+    // Load existing sessions
+    try {
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('ai_tutor_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (sessionsError) throw sessionsError;
+
+      const loadedSessions: ChatSession[] = (sessionsData || []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        topic: s.topic || 'general',
+        video_context: s.video_context as unknown as VideoContext | null,
+        created_at: s.created_at,
+        updated_at: s.updated_at,
+      }));
+
+      setSessions(loadedSessions);
+      setIsLoadingSessions(false);
+
+      // Check for legacy messages without session_id and migrate them
+      const { data: legacyMessages } = await supabase
+        .from('ai_tutor_chats')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('session_id', null)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (legacyMessages && legacyMessages.length > 0) {
+        // Create a session for legacy messages
+        const { data: legacySession } = await supabase
+          .from('ai_tutor_sessions')
+          .insert({
+            user_id: user.id,
+            name: 'Previous Conversations',
+            topic: legacyMessages[0].topic || 'general',
+            video_context: legacyMessages[0].video_context,
+          })
+          .select()
+          .single();
+
+        if (legacySession) {
+          // Update legacy messages with the new session_id
+          await supabase
+            .from('ai_tutor_chats')
+            .update({ session_id: legacySession.id })
+            .eq('user_id', user.id)
+            .is('session_id', null);
+
+          const newSession: ChatSession = {
+            id: legacySession.id,
+            name: legacySession.name,
+            topic: legacySession.topic || 'general',
+            video_context: legacySession.video_context as unknown as VideoContext | null,
+            created_at: legacySession.created_at,
+            updated_at: legacySession.updated_at,
+          };
+
+          loadedSessions.unshift(newSession);
+          setSessions(loadedSessions);
+        }
+      }
+
+      // If we have video context from navigation, create a new session for it
+      if (videoCtx) {
+        setVideoContext(videoCtx);
+        const matchedTopic = TOPIC_OPTIONS.find(
+          opt => opt.label.toLowerCase().includes(videoCtx.subject.toLowerCase())
+        );
+        if (matchedTopic) {
+          setSelectedTopic(matchedTopic.value);
+        }
+
+        const newSession = await createNewSession(
+          `${videoCtx.title} Discussion`,
+          matchedTopic?.value || 'general',
+          videoCtx
+        );
+        if (newSession) {
+          setIsLoadingHistory(false);
+          return;
+        }
+      }
+
+      // Otherwise, use the most recent session or create a new one
+      if (loadedSessions.length > 0) {
+        const latestSession = loadedSessions[0];
+        setCurrentSessionId(latestSession.id);
+        setSelectedTopic(latestSession.topic);
+        setVideoContext(latestSession.video_context);
+
+        // Load messages for this session
+        const { data: msgData, error: msgError } = await supabase
+          .from('ai_tutor_chats')
+          .select('*')
+          .eq('session_id', latestSession.id)
+          .order('created_at', { ascending: true });
+
+        if (msgError) throw msgError;
+
+        if (msgData && msgData.length > 0) {
+          const loadedMessages: ChatMessage[] = msgData.map((msg) => ({
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+          }));
+          setMessages(loadedMessages);
+        } else {
+          setMessages([getGreetingMessage(latestSession.video_context?.title)]);
+        }
+      } else {
+        // No sessions exist, create a new one
+        await createNewSession();
+      }
+    } catch (error) {
+      console.error('Failed to initialize sessions:', error);
+      setMessages([getGreetingMessage()]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [user, location.state, getGreetingMessage, createNewSession]);
+
+  // Clear current session's chat history
+  const clearChatHistory = useCallback(async () => {
+    if (!user || !currentSessionId) return;
+
+    try {
+      await supabase
+        .from('ai_tutor_chats')
+        .delete()
+        .eq('session_id', currentSessionId);
+
+      const session = sessions.find(s => s.id === currentSessionId);
+      setMessages([getGreetingMessage(session?.video_context?.title)]);
+    } catch (error) {
+      console.error('Failed to clear chat history:', error);
+    }
+  }, [user, currentSessionId, sessions, getGreetingMessage]);
+
+  // Initialize on mount
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    initializeSession();
+  }, [initializeSession]);
 
   // Handle prefilled question from Practice page
   useEffect(() => {
@@ -352,6 +626,12 @@ export default function AITutor() {
   const handleSendMessage = async (customMessage?: string) => {
     const messageContent = customMessage || inputValue.trim();
     if (!messageContent || isLoading) return;
+
+    // Ensure we have a session
+    if (!currentSessionId) {
+      const newSession = await createNewSession();
+      if (!newSession) return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -579,6 +859,24 @@ export default function AITutor() {
     printWindow.document.close();
   }, [messages, selectedTopic, videoContext]);
 
+  const handleStartEditing = (session: ChatSession) => {
+    setEditingSessionId(session.id);
+    setEditingName(session.name);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingSessionId && editingName.trim()) {
+      renameSession(editingSessionId, editingName);
+    }
+    setEditingSessionId(null);
+    setEditingName('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingSessionId(null);
+    setEditingName('');
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -603,15 +901,107 @@ export default function AITutor() {
               </div>
             </div>
             
-            {/* Topic Selector & Clear History */}
+            {/* Session Selector & Actions */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap hidden sm:inline">Topic:</span>
+              {/* Session Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="max-w-[160px] sm:max-w-[200px]">
+                    <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">
+                      {isLoadingSessions ? 'Loading...' : (
+                        sessions.find(s => s.id === currentSessionId)?.name || 'Select Chat'
+                      )}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 bg-background border shadow-lg max-h-80 overflow-y-auto">
+                  <DropdownMenuItem 
+                    onClick={() => createNewSession()}
+                    className="cursor-pointer text-primary font-medium"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Chat
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {sessions.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                      No saved chats yet
+                    </div>
+                  ) : (
+                    sessions.map((session) => (
+                      <div key={session.id} className="flex items-center group">
+                        {editingSessionId === session.id ? (
+                          <div className="flex items-center gap-1 px-2 py-1.5 w-full">
+                            <Input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="h-7 text-sm flex-1"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') handleCancelEdit();
+                              }}
+                            />
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSaveEdit}>
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancelEdit}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <DropdownMenuItem 
+                              onClick={() => switchToSession(session.id)}
+                              className={`cursor-pointer flex-1 ${session.id === currentSessionId ? 'bg-primary/10' : ''}`}
+                            >
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="truncate font-medium">{session.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(session.updated_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </DropdownMenuItem>
+                            <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEditing(session);
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSession(session.id);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Topic Selector */}
               <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-                <SelectTrigger className="w-[140px] sm:w-[180px] bg-background">
-                  <SelectValue placeholder="Select topic" />
+                <SelectTrigger className="w-[120px] sm:w-[160px] bg-background">
+                  <SelectValue placeholder="Topic" />
                 </SelectTrigger>
                 <SelectContent className="bg-background border shadow-lg z-50">
-                  <SelectItem value="general">General Math Help</SelectItem>
+                  <SelectItem value="general">General Math</SelectItem>
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">High School</div>
                   {TOPIC_OPTIONS.filter(t => t.category === 'High School').map(topic => (
                     <SelectItem key={topic.value} value={topic.value}>{topic.label}</SelectItem>
