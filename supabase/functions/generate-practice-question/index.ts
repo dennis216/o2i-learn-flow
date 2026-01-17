@@ -75,24 +75,39 @@ Generate ONE practice problem that:
 4. Is self-contained and clearly stated
 5. Include a detailed step-by-step solution
 
-## CRITICAL LATEX FORMATTING RULES
+## CRITICAL LATEX FORMATTING RULES - FOLLOW EXACTLY
 You MUST follow these rules for ALL mathematical expressions:
+
+### MANDATORY SPACING
+- ALWAYS add a space or newline between math symbols ($...$ or $$...$$) and regular English words.
+- WRONG: "we getf(x)=2" or "sincef(x)" or "f(xlimit"
+- CORRECT: "we get $f(x) = 2$" or "since $f(x)$"
+
+### NO CLUMPING
+- NEVER merge explanations or text inside LaTeX tags.
+- WRONG: $$\\text{the limit is } \\lim_{x \\to 0}$$
+- CORRECT: The limit is $$\\lim_{x \\to 0} \\frac{1}{x}$$
+
+### STRICT MARKDOWN
+- Use clean Markdown headers and bullet points to separate sections.
+- Each step should be on its own line with clear separation.
+
+### MATH FORMATTING
 - Use $$...$$ for display/block math (equations on their own line)
 - Use $...$ for inline math (within text)
 - Use SINGLE backslashes for LaTeX commands: \\frac, \\sqrt, \\lim, \\int, \\sin, \\cos, etc.
-- NEVER merge words with math symbols. Add spaces: "we get $x = 5$" NOT "weget$x=5$"
-- Keep math expressions clean and separated from surrounding text
-- Examples of CORRECT formatting:
-  - "Find $$\\lim_{x \\to 0} \\frac{\\sin x}{x}$$"
-  - "The derivative is $f'(x) = 2x$"
-  - "Using the chain rule, $$\\frac{d}{dx}[f(g(x))] = f'(g(x)) \\cdot g'(x)$$"
+
+### EXAMPLES OF CORRECT FORMATTING
+- "Find the following limit:\\n\\n$$\\lim_{x \\to 0} \\frac{\\sin x}{x}$$"
+- "The derivative is $f'(x) = 2x$, which represents..."
+- "**Step 1:** Apply the chain rule:\\n\\n$$\\frac{d}{dx}[f(g(x))] = f'(g(x)) \\cdot g'(x)$$"
 
 ## RESPONSE FORMAT
 Return ONLY a JSON object with this exact structure:
 {
-  "question": "The full problem statement with proper LaTeX formatting",
+  "question": "The full problem statement with proper LaTeX formatting and spacing",
   "topic": "Brief topic name (e.g., 'Chain Rule', 'Related Rates', 'Limits')",
-  "solution": "Step-by-step solution with LaTeX math. Use \\n for line breaks. Format each step clearly."
+  "solution": "Step-by-step solution with LaTeX math. Use \\n for line breaks. Each step clearly separated."
 }
 
 Do not include any markdown code blocks or extra text. Just the raw JSON object.`;
