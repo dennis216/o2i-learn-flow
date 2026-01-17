@@ -67,11 +67,16 @@ interface ChatSession {
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
+// Chat memory constants
+const MAX_HISTORY_MESSAGES = 10; // Only send last 10 messages to save tokens
+const MAX_SESSION_MESSAGES = 50; // Hard limit before prompting to clear
+
 // Stream AI response from edge function
 const streamAIResponse = async (
   message: string,
   selectedTopic: string,
   videoContext: VideoContext | null,
+  conversationHistory: ChatMessage[],
   onDelta: (text: string) => void,
   onDone: () => void,
   onError: (error: string) => void
@@ -84,6 +89,15 @@ const streamAIResponse = async (
       return;
     }
 
+    // Prepare conversation history (exclude greeting, last 10 messages)
+    const historyForAPI = conversationHistory
+      .filter(msg => msg.id !== 'greeting')
+      .slice(-MAX_HISTORY_MESSAGES)
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor-standalone`, {
       method: 'POST',
       headers: {
@@ -94,6 +108,7 @@ const streamAIResponse = async (
         message,
         selectedTopic,
         videoContext,
+        conversationHistory: historyForAPI,
       }),
     });
 
@@ -627,6 +642,20 @@ export default function AITutor() {
     const messageContent = customMessage || inputValue.trim();
     if (!messageContent || isLoading) return;
 
+    // Check if session has too many messages (hard limit of 50)
+    const nonGreetingMessages = messages.filter(m => m.id !== 'greeting');
+    if (nonGreetingMessages.length >= MAX_SESSION_MESSAGES) {
+      // Show warning instead of sending
+      const warningMessage: ChatMessage = {
+        id: 'limit-warning-' + Date.now(),
+        role: 'assistant',
+        content: `⚠️ **Chat session limit reached!**\n\nThis conversation has ${nonGreetingMessages.length} messages. To maintain performance and save tokens, please clear the chat history or start a new session before continuing.\n\nClick the **Clear Chat** button (trash icon) above, or create a **New Chat** from the sidebar.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, warningMessage]);
+      return;
+    }
+
     // Ensure we have a session
     if (!currentSessionId) {
       const newSession = await createNewSession();
@@ -639,6 +668,9 @@ export default function AITutor() {
       content: messageContent,
       timestamp: new Date(),
     };
+
+    // Get current messages for history (before adding new ones)
+    const currentMessages = [...messages, userMessage];
 
     setMessages((prev) => [...prev, userMessage]);
     if (!customMessage) setInputValue('');
@@ -665,6 +697,7 @@ export default function AITutor() {
       messageContent,
       selectedTopic,
       videoContext,
+      currentMessages, // Pass conversation history
       (delta) => {
         assistantContent += delta;
         setMessages((prev) =>
