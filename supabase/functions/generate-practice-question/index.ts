@@ -75,15 +75,27 @@ Generate ONE practice problem that:
 4. Is self-contained and clearly stated
 5. Include a detailed step-by-step solution
 
+## CRITICAL LATEX FORMATTING RULES
+You MUST follow these rules for ALL mathematical expressions:
+- Use $$...$$ for display/block math (equations on their own line)
+- Use $...$ for inline math (within text)
+- Use SINGLE backslashes for LaTeX commands: \\frac, \\sqrt, \\lim, \\int, \\sin, \\cos, etc.
+- NEVER merge words with math symbols. Add spaces: "we get $x = 5$" NOT "weget$x=5$"
+- Keep math expressions clean and separated from surrounding text
+- Examples of CORRECT formatting:
+  - "Find $$\\lim_{x \\to 0} \\frac{\\sin x}{x}$$"
+  - "The derivative is $f'(x) = 2x$"
+  - "Using the chain rule, $$\\frac{d}{dx}[f(g(x))] = f'(g(x)) \\cdot g'(x)$$"
+
 ## RESPONSE FORMAT
 Return ONLY a JSON object with this exact structure:
 {
-  "question": "The full problem statement, clearly written",
+  "question": "The full problem statement with proper LaTeX formatting",
   "topic": "Brief topic name (e.g., 'Chain Rule', 'Related Rates', 'Limits')",
-  "solution": "Step-by-step solution with clear explanations. Use line breaks between steps. Format: Step 1: [explanation]\\nStep 2: [explanation]\\n... Final Answer: [answer]"
+  "solution": "Step-by-step solution with LaTeX math. Use \\n for line breaks. Format each step clearly."
 }
 
-Do not include any markdown formatting, code blocks, or extra text. Just the raw JSON object.`;
+Do not include any markdown code blocks or extra text. Just the raw JSON object.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
