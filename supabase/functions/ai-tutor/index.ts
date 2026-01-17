@@ -74,6 +74,9 @@ serve(async (req) => {
     const contextText = formatTranscriptWithPosition(fullTranscript, currentTime);
 
     // Find closest transcript entry to current time
+    // SPECIAL CASE: If at the very beginning (first 5 seconds), treat as introduction
+    const isAtIntroduction = currentTime < 5;
+    
     const closestEntry = fullTranscript.reduce((closest: TranscriptEntry | null, entry: TranscriptEntry) => {
       if (!closest) return entry;
       return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
@@ -103,11 +106,22 @@ ${contextText}
 - Implicit differentiation, Continuity, IVT, MVT, EVT theorems
 - Related rates and optimization
 
-## CRITICAL LATEX FORMATTING RULES
+## CRITICAL LATEX FORMATTING RULES - FOLLOW EXACTLY
 You MUST follow these rules EXACTLY for proper math rendering:
 
-1. **SINGLE BACKSLASH ONLY**: Write \\frac{1}{2} NOT \\\\frac{1}{2}. Never double-escape!
-2. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after:
+1. **MANDATORY SPACING**: ALWAYS add a space between regular text and math symbols.
+   - WRONG: "we getf(x)=2" or "sincef(x)" 
+   - CORRECT: "we get $f(x) = 2$" or "since $f(x)$"
+
+2. **NO CLUMPING**: NEVER merge text with LaTeX. Each math expression must be isolated.
+   - WRONG: "extremelylim_{x}" or "f(xlimit"
+   - CORRECT: "extremely, the limit" with $\\lim_{x}$ on a new line
+
+3. **NO EXPLANATIONS INSIDE LATEX**: Keep text outside of $$ blocks.
+   - WRONG: $$\\lim_{x \\to 0} \\text{approaches} \\frac{1}{x}$$
+   - CORRECT: As $x$ approaches 0, we have: $$\\lim_{x \\to 0} \\frac{1}{x}$$
+
+4. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after:
 
    The limit equals:
 
@@ -115,15 +129,13 @@ You MUST follow these rules EXACTLY for proper math rendering:
 
    This shows that...
 
-3. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive" NOT "the value$x^2$is positive"
-4. **NO TEXT CLUMPING**: NEVER write "Sincewehave$$\\frac{0}{0}$$" - instead write:
+5. **SINGLE BACKSLASH ONLY**: Write \\frac{1}{2} NOT \\\\frac{1}{2}. Never double-escape!
 
-   Since we have:
+6. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive" NOT "the value$x^2$is positive"
 
-   $$\\frac{0}{0}$$
+7. **USE CLEAN MARKDOWN**: Use headers (##, ###) and bullet points to separate sections clearly.
 
-5. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
-6. **ALWAYS USE $$** for any formula with backslash commands (\\frac, \\sqrt, \\lim, \\int, etc.)
+8. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
 
 EXAMPLE OF CORRECT FORMAT:
 When evaluating limits at infinity, we compare the degrees of the polynomials.
@@ -139,7 +151,12 @@ Always respond in English only.`;
     // Build user message
     let userMessage = message;
     if (isExplainScene) {
-      if (closestEntry) {
+      // SPECIAL CASE: If at the very beginning (first 5 seconds), greet and introduce
+      if (isAtIntroduction) {
+        userMessage = `The student just started watching the video at [${formatTime(currentTime)}]. This is the introduction.
+
+Please provide a friendly greeting and give a brief overview of what this lesson "${videoTitle}" will cover. Look at the full transcript to summarize the key topics and learning objectives. Make the student feel welcomed and excited to learn!`;
+      } else if (closestEntry) {
         userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. The instructor is saying: "${closestEntry.t}"
 
 Explain WHY this mathematical step or concept is correct. Break it down so I can understand the reasoning behind it. Use the full transcript context to give me a complete picture.`;
