@@ -82,22 +82,29 @@ serve(async (req) => {
       return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
     }, null);
 
-    // Build system prompt with enhanced transcript awareness
+    // Build system prompt - STRICT timestamp-focused for Explain Scene
     const systemPrompt = `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle || 'AP Calculus'}".
 
-## YOUR ROLE
-You now have access to the video's transcript data. Please use this information combined with your AP Calculus expertise to provide detailed, step-by-step explanations. Be like a caring private tutor who breaks down every concept.
+## CRITICAL BEHAVIOR RULES - FOLLOW EXACTLY
+${isExplainScene ? `
+### EXPLAIN SCENE MODE - STRICT RULES:
+1. **NO SUMMARIES**: NEVER summarize the video. ONLY explain what happens at the EXACT timestamp requested.
+2. **NO SMALL TALK**: Do NOT say "Hello!", "I am excited", "Tutor Tips", or any greetings.
+3. **NO FOLLOW-UP QUESTIONS**: Do NOT ask "Are you ready to dive in?", "Want me to explain more?", etc.
+4. **START DIRECTLY**: Begin your response with the mathematical explanation immediately.
+5. **STOP AFTER EXPLAINING**: Once you explain the current moment, STOP. Do not continue with other content.
+6. **ONE TIMESTAMP ONLY**: Do NOT mention timestamps like [00:42], [01:52] unless that's what the user asked about.
+7. **EMPTY SCENE**: If the timestamp is intro/music with no math, say ONLY: "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet." Then STOP.
+` : ''}
 
-## FULL VIDEO TRANSCRIPT (Student is currently at [${formatTime(currentTime)}]):
-${contextText}
+## TRANSCRIPT CONTEXT (Student is at [${formatTime(currentTime)}]):
+${isExplainScene && closestEntry ? `Current moment only: [${formatTime(closestEntry.s)}] ${closestEntry.t}` : contextText}
 
 ## RESPONSE GUIDELINES
-1. **Focus on current moment**: Prioritize explaining the section near [${formatTime(currentTime)}] but use the full transcript for context
-2. **Reference timestamps**: When mentioning video moments, use [MM:SS] format so students can click to seek
-3. **Explain the WHY**: Don't just repeat what the transcript says - explain WHY it works mathematically
-4. **Step-by-step reasoning**: Break down formulas and techniques into clear logical steps with proper LaTeX formatting
-5. **Connect concepts**: Relate current material to foundational calculus principles
-6. **Be encouraging**: Use a supportive, tutoring tone in English only
+1. **Timestamp-specific**: ONLY explain the exact moment at [${formatTime(currentTime)}]
+2. **Explain WHY**: Don't just repeat transcript - explain WHY it works mathematically
+3. **Step-by-step**: Break down formulas into clear logical steps
+4. **Be concise**: Provide the explanation and stop. No filler content.
 
 ## CALCULUS KNOWLEDGE TO DRAW FROM
 - Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
@@ -151,17 +158,38 @@ Always respond in English only.`;
     // Build user message
     let userMessage = message;
     if (isExplainScene) {
-      // SPECIAL CASE: If at the very beginning (first 5 seconds), greet and introduce
+      // SPECIAL CASE: If at the very beginning (first 5 seconds), treat as intro
       if (isAtIntroduction) {
-        userMessage = `The student just started watching the video at [${formatTime(currentTime)}]. This is the introduction.
+        userMessage = `TIMESTAMP: [${formatTime(currentTime)}] - This is the very beginning of the video.
 
-Please provide a friendly greeting and give a brief overview of what this lesson "${videoTitle}" will cover. Look at the full transcript to summarize the key topics and learning objectives. Make the student feel welcomed and excited to learn!`;
+STRICT INSTRUCTIONS:
+- The video is just starting (intro/title screen or music).
+- DO NOT summarize the whole video.
+- DO NOT mention any later timestamps.
+- Simply state: "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet."
+- STOP after that one sentence. No follow-up questions.`;
       } else if (closestEntry) {
-        userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. The instructor is saying: "${closestEntry.t}"
+        userMessage = `TIMESTAMP: [${formatTime(currentTime)}]
+TRANSCRIPT AT THIS MOMENT: "${closestEntry.t}"
 
-Explain WHY this mathematical step or concept is correct. Break it down so I can understand the reasoning behind it. Use the full transcript context to give me a complete picture.`;
+STRICT INSTRUCTIONS:
+1. ONLY explain what is happening at [${formatTime(currentTime)}]. Do NOT mention other timestamps.
+2. NO VIDEO SUMMARY. Do not describe what happens earlier or later.
+3. NO GREETINGS. Start directly with the explanation.
+4. NO FOLLOW-UP QUESTIONS. Do not ask "Are you ready?" or "Want to dive in?"
+5. Explain the mathematical concept being discussed at this exact moment only.
+6. If the instructor is mid-sentence or transitioning, explain the immediate context.
+7. STOP talking after the explanation. Be concise.
+
+RESPOND WITH THE EXPLANATION ONLY.`;
       } else {
-        userMessage = `Please explain what's happening at [${formatTime(currentTime)}] in the video. I don't have specific transcript data for this moment, but help me understand the calculus concepts that might be discussed.`;
+        userMessage = `TIMESTAMP: [${formatTime(currentTime)}]
+No transcript data available for this exact moment.
+
+STRICT INSTRUCTIONS:
+- State: "At this moment, no specific transcript data is available."
+- DO NOT guess or summarize the video.
+- STOP after that sentence.`;
       }
     }
 
