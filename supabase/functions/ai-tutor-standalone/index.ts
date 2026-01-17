@@ -37,7 +37,7 @@ serve(async (req) => {
       );
     }
 
-    const { message, selectedTopic, videoContext } = await req.json();
+    const { message, selectedTopic, videoContext, conversationHistory } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -91,6 +91,12 @@ ${contextSection}${topicFocus}
 4. **Use multiple representations** - Explain concepts algebraically, graphically, and verbally when helpful
 5. **Connect concepts** - Show how different math topics relate to each other
 6. **Contest strategy** - For competition problems, discuss time-saving techniques and common patterns
+
+## CONVERSATION CONTINUITY
+- CRITICAL: You have access to conversation history. Always reference previous messages when relevant.
+- If a user says "yes", "more", "continue", "go on", or similar short responses, look at your previous message to understand what they're agreeing to or asking for more of.
+- Never reset to a welcome/greeting message in the middle of an ongoing conversation.
+- Maintain context across messages - remember what topics, problems, or concepts were being discussed.
 
 ## KEY TOPIC AREAS
 
@@ -157,6 +163,27 @@ You MUST follow these rules EXACTLY for proper math rendering:
 
 Remember: Your goal is to help students truly UNDERSTAND mathematics, not just get answers.`;
 
+    // Build messages array with conversation history (last 10 messages for context)
+    const messages: { role: string; content: string }[] = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    // Add conversation history (last 10 messages to save tokens)
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      const recentHistory = conversationHistory.slice(-10);
+      for (const msg of recentHistory) {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          messages.push({
+            role: msg.role,
+            content: msg.content,
+          });
+        }
+      }
+    }
+
+    // Add the current message
+    messages.push({ role: "user", content: message });
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -165,10 +192,7 @@ Remember: Your goal is to help students truly UNDERSTAND mathematics, not just g
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message },
-        ],
+        messages,
         stream: true,
       }),
     });
