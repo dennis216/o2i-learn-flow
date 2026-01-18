@@ -144,6 +144,8 @@ You MUST follow these rules EXACTLY for proper math rendering:
 
 8. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
 
+9. **NO SYMBOL SUBSTITUTION**: NEVER use the integral symbol (∫) to replace the word "point". Always use plain English "point" only. Do not use any mathematical symbols as substitutes for English words.
+
 EXAMPLE OF CORRECT FORMAT:
 When evaluating limits at infinity, we compare the degrees of the polynomials.
 
