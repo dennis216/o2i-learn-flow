@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { Bot, Loader2, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChatMessage, TranscriptEntry } from './types';
+import { TranscriptEntry } from './types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
 import { AITutorDrawer } from './AITutorDrawer';
@@ -147,63 +145,8 @@ const formatTime = (seconds: number): string => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-// Parse timestamps from AI response and make them clickable, while preserving markdown
-const parseMessageWithTimestamps = (content: string, onSeek: (seconds: number) => void) => {
-  const timestampRegex = /\[(\d{1,2}):(\d{2})\]/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-  let keyIndex = 0;
-
-  while ((match = timestampRegex.exec(content)) !== null) {
-    // Add text before the timestamp (rendered with markdown)
-    if (match.index > lastIndex) {
-      const textBefore = content.slice(lastIndex, match.index);
-      parts.push(
-        <MarkdownWithMath key={`text-${keyIndex++}`} content={textBefore} className="inline" />
-      );
-    }
-
-    const minutes = parseInt(match[1], 10);
-    const seconds = parseInt(match[2], 10);
-    const totalSeconds = minutes * 60 + seconds;
-
-    parts.push(
-      <Badge
-        key={`ts-${keyIndex++}`}
-        variant="secondary"
-        className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors mx-1 inline-flex"
-        onClick={() => onSeek(totalSeconds)}
-      >
-        {match[0]}
-      </Badge>
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text (rendered with markdown)
-  if (lastIndex < content.length) {
-    parts.push(
-      <MarkdownWithMath key={`text-${keyIndex++}`} content={content.slice(lastIndex)} className="inline" />
-    );
-  }
-
-  // If no timestamps found, render entire content with markdown
-  if (parts.length === 0) {
-    return <MarkdownWithMath content={content} />;
-  }
-
-  return <div className="inline">{parts}</div>;
-};
-
 export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, videoId, courseId, courseSubject }: AITutorSidebarProps) {
-  // Regular chat messages
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Scene explanation state (separate from chat)
+  // Scene explanation state
   const [sceneExplanation, setSceneExplanation] = useState<string | null>(null);
   const [sceneTimestamp, setSceneTimestamp] = useState<number | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
@@ -216,71 +159,11 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Scroll to bottom when new messages arrive
+    // Scroll to bottom when scene explanation updates
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, sceneExplanation]);
-
-  const handleSendMessage = async (customMessage?: string) => {
-    const messageContent = customMessage || inputValue.trim();
-    if (!messageContent || isLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: messageContent,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    if (!customMessage) setInputValue('');
-    setIsLoading(true);
-
-    // Create assistant message placeholder for streaming
-    const assistantMessageId = (Date.now() + 1).toString();
-    let assistantContent = '';
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-      },
-    ]);
-
-    await streamAIResponse(
-      messageContent,
-      transcript,
-      currentTime,
-      false,
-      videoTitle,
-      (delta) => {
-        assistantContent += delta;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg
-          )
-        );
-      },
-      () => {
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error('AI Tutor error:', error);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: `Sorry, I encountered an error: ${error}` }
-              : msg
-          )
-        );
-        setIsLoading(false);
-      }
-    );
-  };
+  }, [sceneExplanation]);
 
   const handleExplainScene = async () => {
     if (isExplaining) return;
@@ -323,13 +206,6 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
     setIsDrawerOpen(true);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   return (
     <Card className="h-full flex flex-col border-l-0 rounded-l-none overflow-hidden">
       <CardHeader className="pb-3 border-b flex-shrink-0">
@@ -356,7 +232,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="space-y-4 w-full overflow-hidden">
-            {/* Scene Explanation Panel - separate from chat */}
+            {/* Scene Explanation Panel */}
             {(sceneExplanation || isExplaining) && (
               <div className="bg-accent/50 border border-accent rounded-lg p-3 w-full overflow-hidden">
                 <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
@@ -388,60 +264,15 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
               </div>
             )}
             
-            {/* Regular Chat Messages */}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 w-full overflow-hidden ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {message.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[75%] rounded-lg p-3 overflow-hidden break-words ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  <div className="text-sm overflow-hidden">
-                    {message.role === 'assistant'
-                      ? parseMessageWithTimestamps(message.content, onSeek)
-                      : <div className="whitespace-pre-wrap break-words">{message.content}</div>}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary" />
-                </div>
-                <div className="bg-muted rounded-lg p-3">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
+            {/* Empty state when no scene explanation */}
+            {!sceneExplanation && !isExplaining && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Click "Explain Current Scene" to get an AI-powered explanation of what's happening in the video.</p>
               </div>
             )}
           </div>
         </ScrollArea>
-        
-        <div className="p-4 border-t flex-shrink-0">
-          <div className="flex gap-2">
-            <Input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask about the video..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button onClick={() => handleSendMessage()} disabled={isLoading || !inputValue.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </CardContent>
 
       {/* AI Tutor Drawer for detailed discussions */}
