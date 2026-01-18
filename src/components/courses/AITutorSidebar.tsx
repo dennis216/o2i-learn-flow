@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { Send, Bot, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -194,16 +195,17 @@ const parseMessageWithTimestamps = (content: string, onSeek: (seconds: number) =
 };
 
 export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: AITutorSidebarProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: `Hi! I'm your AI tutor for "${videoTitle}". Ask me anything about the video content, or click **"Explain Current Scene"** to get context about what's happening right now!`,
-      timestamp: new Date(),
-    },
-  ]);
+  const navigate = useNavigate();
+  // Regular chat messages
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Scene explanation state (separate from chat)
+  const [sceneExplanation, setSceneExplanation] = useState<string | null>(null);
+  const [sceneTimestamp, setSceneTimestamp] = useState<number | null>(null);
+  const [isExplaining, setIsExplaining] = useState(false);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -211,16 +213,16 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, sceneExplanation]);
 
-  const handleSendMessage = async (customMessage?: string, isExplainScene: boolean = false) => {
+  const handleSendMessage = async (customMessage?: string) => {
     const messageContent = customMessage || inputValue.trim();
     if (!messageContent || isLoading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: isExplainScene ? `🎬 Explain what's happening at ${formatTime(currentTime)}` : messageContent,
+      content: messageContent,
       timestamp: new Date(),
     };
 
@@ -246,7 +248,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
       messageContent,
       transcript,
       currentTime,
-      isExplainScene,
+      false,
       videoTitle,
       (delta) => {
         assistantContent += delta;
@@ -261,7 +263,6 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
       },
       (error) => {
         console.error('AI Tutor error:', error);
-        // Show gentle inline error instead of disruptive toast
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === assistantMessageId
@@ -274,8 +275,49 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
     );
   };
 
-  const handleExplainScene = () => {
-    handleSendMessage('Explain current scene', true);
+  const handleExplainScene = async () => {
+    if (isExplaining) return;
+    
+    // Clear previous explanation and set loading state
+    setSceneExplanation(null);
+    setSceneTimestamp(currentTime);
+    setIsExplaining(true);
+    
+    let explanationContent = '';
+
+    await streamAIResponse(
+      'Explain current scene',
+      transcript,
+      currentTime,
+      true,
+      videoTitle,
+      (delta) => {
+        explanationContent += delta;
+        setSceneExplanation(explanationContent);
+      },
+      () => {
+        setIsExplaining(false);
+      },
+      (error) => {
+        console.error('Explain scene error:', error);
+        setSceneExplanation(`Sorry, I encountered an error: ${error}`);
+        setIsExplaining(false);
+      }
+    );
+  };
+
+  const handleAskMoreDetails = () => {
+    const sceneContext = sceneExplanation || 'the current scene';
+    navigate('/ai-tutor', {
+      state: {
+        videoContext: {
+          title: videoTitle,
+          currentTime,
+          transcript,
+        },
+        autoMessage: `Regarding the scene at ${formatTime(sceneTimestamp || currentTime)}: "${sceneContext.slice(0, 200)}${sceneContext.length > 200 ? '...' : ''}" - Can you give me more details about this?`,
+      },
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -286,7 +328,7 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
   };
 
   return (
-    <Card className="h-full flex flex-col border-l-0 rounded-l-none">
+    <Card className="h-full flex flex-col border-l-0 rounded-l-none overflow-hidden">
       <CardHeader className="pb-3 border-b flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Bot className="h-5 w-5 text-primary" />
@@ -301,20 +343,53 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
           size="sm" 
           className="mt-2 w-full gap-2"
           onClick={handleExplainScene}
-          disabled={isLoading}
+          disabled={isExplaining}
         >
           <Sparkles className="h-4 w-4" />
-          Explain Current Scene
+          {isExplaining ? 'Explaining...' : 'Explain Current Scene'}
         </Button>
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          <div className="space-y-4">
+          <div className="space-y-4 w-full overflow-hidden">
+            {/* Scene Explanation Panel - separate from chat */}
+            {(sceneExplanation || isExplaining) && (
+              <div className="bg-accent/50 border border-accent rounded-lg p-3 w-full overflow-hidden">
+                <div className="flex items-center gap-2 mb-2 text-sm font-medium text-muted-foreground">
+                  <Sparkles className="h-4 w-4" />
+                  Scene at {formatTime(sceneTimestamp || currentTime)}
+                </div>
+                {isExplaining && !sceneExplanation ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Analyzing scene...</span>
+                  </div>
+                ) : (
+                  <div className="text-sm prose prose-sm max-w-none break-words overflow-hidden">
+                    <MarkdownWithMath content={sceneExplanation || ''} />
+                  </div>
+                )}
+                {/* Ask More Details Button */}
+                {sceneExplanation && !isExplaining && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-3 gap-2 text-primary hover:text-primary"
+                    onClick={handleAskMoreDetails}
+                  >
+                    Ask more details
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            {/* Regular Chat Messages */}
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 w-full overflow-hidden ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -322,23 +397,18 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[75%] rounded-lg p-3 overflow-hidden break-words ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
                   }`}
                 >
-                  <div className="text-sm">
+                  <div className="text-sm overflow-hidden">
                     {message.role === 'assistant'
                       ? parseMessageWithTimestamps(message.content, onSeek)
-                      : <div className="whitespace-pre-wrap">{message.content}</div>}
+                      : <div className="whitespace-pre-wrap break-words">{message.content}</div>}
                   </div>
                 </div>
-                {message.role === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                )}
               </div>
             ))}
             {isLoading && (
