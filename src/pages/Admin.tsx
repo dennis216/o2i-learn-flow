@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Upload, Image, FlaskConical } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Image, FolderOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
+import { SubjectManagement } from "@/components/admin/SubjectManagement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, UserCog } from "lucide-react";
@@ -62,17 +63,13 @@ interface TeamMember {
   order_index: number;
 }
 
-// Subject options matching PDF categories
-const HIGH_SCHOOL_SUBJECTS = [
-  "AP Calc", "AP Stats", "AP Precalc", "SAT",
-  "M1", "M2", "Geo 1 (Intro)", "Geo 2 (Int)",
-  "Alg 1 (Intro)", "Alg 2 (Int)",
-  "Counting & Prob 1", "Counting & Prob 2"
-];
-
-const CONTEST_SUBJECTS = [
-  "AMC 10", "AMC 12", "Euclid", "Fermat", "Cayley", "Pascal", "Gauss"
-];
+interface Subject {
+  id: string;
+  name: string;
+  category: string;
+  icon_url: string | null;
+  order_index: number;
+}
 
 // Helper to extract YouTube video ID
 const getYouTubeVideoId = (url: string): string | null => {
@@ -97,6 +94,8 @@ const Admin = () => {
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [practiceSubjectFilter, setPracticeSubjectFilter] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -171,6 +170,7 @@ const Admin = () => {
       fetchVideos();
       fetchPracticeProblems();
       fetchTeamMembers();
+      fetchSubjects();
     }
   }, [isAdmin]);
 
@@ -285,6 +285,21 @@ const Admin = () => {
       setTeamMembers(data || []);
     } catch (error) {
       console.error("Error fetching team members:", error);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("subjects")
+        .select("*")
+        .order("category", { ascending: true })
+        .order("order_index", { ascending: true });
+
+      if (error) throw error;
+      setSubjects(data || []);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
     }
   };
 
@@ -737,7 +752,8 @@ const Admin = () => {
     return null;
   }
 
-  const subjectOptions = formData.category === "High School" ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
+  // Get subjects from database filtered by category
+  const subjectOptions = subjects.filter(s => s.category === formData.category).map(s => s.name);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -745,10 +761,14 @@ const Admin = () => {
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice</TabsTrigger>
+          <TabsTrigger value="subjects" className="flex items-center gap-1">
+            <FolderOpen className="h-4 w-4" />
+            Subjects
+          </TabsTrigger>
           <TabsTrigger value="playground">Playground</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="manage">Manage Videos</TabsTrigger>
@@ -1097,24 +1117,75 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="practice_subject">Subject *</Label>
+                    <Select
+                      value={practiceSubjectFilter}
+                      onValueChange={(value) => {
+                        setPracticeSubjectFilter(value);
+                        // Reset video selection when subject changes
+                        setPracticeFormData({ ...practiceFormData, video_id: "" });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a subject first" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.length === 0 ? (
+                          <SelectItem value="none" disabled>No subjects available</SelectItem>
+                        ) : (
+                          <>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">High School</div>
+                            {subjects.filter(s => s.category === "High School").map((subject) => (
+                              <SelectItem key={subject.id} value={subject.name}>
+                                {subject.name}
+                              </SelectItem>
+                            ))}
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Contest</div>
+                            {subjects.filter(s => s.category === "Contest").map((subject) => (
+                              <SelectItem key={subject.id} value={subject.name}>
+                                {subject.name}
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="practice_video">Link to Video</Label>
                     <Select
                       value={practiceFormData.video_id}
                       onValueChange={(value) => setPracticeFormData({ ...practiceFormData, video_id: value })}
+                      disabled={!practiceSubjectFilter}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a video (optional)" />
+                        <SelectValue placeholder={practiceSubjectFilter ? "Select a video (optional)" : "Select a subject first"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {videos.map((video) => (
-                          <SelectItem key={video.id} value={video.id}>
-                            {video.title} ({video.courses?.title || "No course"})
-                          </SelectItem>
-                        ))}
+                        {(() => {
+                          // Filter videos by selected subject via their course
+                          const filteredVideos = videos.filter(video => {
+                            const course = courses.find(c => c.id === video.course_id);
+                            return course && course.subject === practiceSubjectFilter;
+                          });
+                          
+                          if (filteredVideos.length === 0) {
+                            return <SelectItem value="none" disabled>No videos for this subject</SelectItem>;
+                          }
+                          
+                          return filteredVideos.map((video) => (
+                            <SelectItem key={video.id} value={video.id}>
+                              {video.title} {video.subtitle ? `(${video.subtitle})` : ""}
+                            </SelectItem>
+                          ));
+                        })()}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      If no image is uploaded, the video thumbnail will be used as default.
+                      {practiceSubjectFilter 
+                        ? "If no image is uploaded, the video thumbnail will be used as default."
+                        : "Select a subject above to see available videos."}
                     </p>
                   </div>
 
@@ -1288,6 +1359,11 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Subjects Management Tab */}
+        <TabsContent value="subjects">
+          <SubjectManagement />
         </TabsContent>
 
         {/* Manage Videos Tab */}
