@@ -13,6 +13,7 @@ interface CourseDetailModalProps {
   onClose: () => void;
   supabaseUrl: string;
   autoSelectVideoId?: string | null;
+  resumeTime?: number | null;
 }
 
 const getLevelColor = (level: string) => {
@@ -28,7 +29,7 @@ const getLevelColor = (level: string) => {
   }
 };
 
-export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVideoId }: CourseDetailModalProps) {
+export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVideoId, resumeTime }: CourseDetailModalProps) {
   const [selectedVideo, setSelectedVideo] = useState<CourseVideo | null>(null);
 
   // Auto-select video if provided
@@ -94,7 +95,7 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                       Back to List
                     </Button>
                   </div>
-                  <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} />
+                  <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={resumeTime || undefined} />
                 </div>
               ) : course.course_videos && course.course_videos.length > 0 ? (
                 Object.entries(groupedVideos).map(([unit, videos]) => (

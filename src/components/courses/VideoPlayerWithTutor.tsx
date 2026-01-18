@@ -18,10 +18,11 @@ interface VideoPlayerWithTutorProps {
   video: CourseVideo;
   supabaseUrl: string;
   courseSubject?: string;
+  initialTime?: number;
 }
 
-export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject }: VideoPlayerWithTutorProps) {
-  const [currentTime, setCurrentTime] = useState(0);
+export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime }: VideoPlayerWithTutorProps) {
+  const [currentTime, setCurrentTime] = useState(initialTime || 0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -84,6 +85,19 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject }: Vide
       }
     };
   }, [isYouTube, youtubeId]);
+
+  // Seek to initial time when player is ready
+  useEffect(() => {
+    if (!playerReady || !initialTime) return;
+    
+    if (isYouTube && playerRef.current?.seekTo) {
+      playerRef.current.seekTo(initialTime, true);
+      setCurrentTime(initialTime);
+    } else if (videoRef.current) {
+      videoRef.current.currentTime = initialTime;
+      setCurrentTime(initialTime);
+    }
+  }, [playerReady, initialTime, isYouTube]);
 
   // Poll YouTube player for current time every 500ms
   useEffect(() => {
@@ -196,6 +210,8 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject }: Vide
                 transcript={video.transcript || null}
                 currentTime={currentTime}
                 onSeek={handleSeek}
+                videoId={video.id}
+                courseId={video.course_id}
               />
             </div>
           </div>
@@ -237,6 +253,8 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject }: Vide
             transcript={video.transcript || null}
             currentTime={currentTime}
             onSeek={handleSeek}
+            videoId={video.id}
+            courseId={video.course_id}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
