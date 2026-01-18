@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2, Download, FileText, FileDown, Plus, MessageSquare, Pencil, Check, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Send, Bot, User, Loader2, Sparkles, BookOpen, Trash2, Download, FileText, FileDown, Plus, MessageSquare, Pencil, Check, X, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -197,8 +197,17 @@ const streamAIResponse = async (
   }
 };
 
+// Return to lesson context interface
+interface ReturnToLessonContext {
+  videoId: string;
+  courseId: string;
+  videoTime: number;
+  videoTitle: string;
+}
+
 export default function AITutor() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedTopic, setSelectedTopic] = useState('general');
   const [videoContext, setVideoContext] = useState<VideoContext | null>(null);
@@ -216,6 +225,9 @@ export default function AITutor() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  
+  // Return to lesson context
+  const [returnToLesson, setReturnToLesson] = useState<ReturnToLessonContext | null>(null);
 
   // Generate the greeting message
   const getGreetingMessage = useCallback((videoTitle?: string): ChatMessage => {
@@ -639,7 +651,13 @@ export default function AITutor() {
       sceneTimestamp?: string;
       videoTitle?: string;
       autoMessage?: string;
+      returnToLesson?: ReturnToLessonContext;
     } | null;
+    
+    // Capture return to lesson context if provided
+    if (state?.returnToLesson && !returnToLesson) {
+      setReturnToLesson(state.returnToLesson);
+    }
     
     if (state?.fromSceneExplainer && state?.autoMessage && !hasHandledPrefill.current && messages.length > 0 && !isLoadingHistory) {
       hasHandledPrefill.current = true;
@@ -717,7 +735,7 @@ export default function AITutor() {
       // Clear the state so it doesn't re-trigger on refresh
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, messages.length, isLoadingHistory, currentSessionId, selectedTopic, videoContext, createNewSession, saveMessage]);
+  }, [location.state, messages.length, isLoadingHistory, currentSessionId, selectedTopic, videoContext, createNewSession, saveMessage, returnToLesson]);
 
   useEffect(() => {
     // Scroll to bottom when new messages arrive
@@ -998,8 +1016,37 @@ export default function AITutor() {
     setEditingName('');
   };
 
+  // Handle back to lesson navigation
+  const handleBackToLesson = useCallback(() => {
+    if (!returnToLesson) return;
+    
+    // Navigate back to courses with video parameter to auto-open
+    navigate(`/courses?video=${returnToLesson.videoId}`, {
+      state: {
+        resumeTime: returnToLesson.videoTime,
+      },
+    });
+  }, [returnToLesson, navigate]);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Back to Lesson Button - only show when context is available */}
+      {returnToLesson && (
+        <div className="border-b bg-accent/50">
+          <div className="max-w-4xl mx-auto px-4 py-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleBackToLesson}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Lesson: {returnToLesson.videoTitle}
+            </Button>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-4xl mx-auto px-4 py-4">

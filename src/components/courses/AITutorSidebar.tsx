@@ -15,6 +15,8 @@ interface AITutorSidebarProps {
   transcript: TranscriptEntry[] | null;
   currentTime: number;
   onSeek: (seconds: number) => void;
+  videoId?: string;
+  courseId?: string;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -194,7 +196,7 @@ const parseMessageWithTimestamps = (content: string, onSeek: (seconds: number) =
   return <div className="inline">{parts}</div>;
 };
 
-export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: AITutorSidebarProps) {
+export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, videoId, courseId }: AITutorSidebarProps) {
   const navigate = useNavigate();
   // Regular chat messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -318,6 +320,13 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
         sceneTimestamp: timestamp,
         videoTitle,
         autoMessage: `Here is the context from the scene at ${timestamp}:\n\n"${contextPreview}"\n\nPlease give me more details about this.`,
+        // Return context for "Back to Lesson" button
+        returnToLesson: {
+          videoId,
+          courseId,
+          videoTime: currentTime,
+          videoTitle,
+        },
       },
     });
   };

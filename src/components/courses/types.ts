@@ -7,6 +7,7 @@ export interface TranscriptEntry {
 
 export interface CourseVideo {
   id: string;
+  course_id: string;
   title: string;
   description: string;
   subtitle?: string;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,10 +19,12 @@ const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
 export default function Courses() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [autoSelectVideoId, setAutoSelectVideoId] = useState<string | null>(null);
+  const [resumeTime, setResumeTime] = useState<number | null>(null);
   
   // Filter state - default to first subject in High School
   const [category, setCategory] = useState<Category>('High School');
@@ -71,8 +73,17 @@ export default function Courses() {
             if (courseWithVideo) {
               setSelectedCourse(courseWithVideo);
               setAutoSelectVideoId(videoId);
+              
+              // Check for resume time from navigation state
+              const navState = location.state as { resumeTime?: number } | null;
+              if (navState?.resumeTime) {
+                setResumeTime(navState.resumeTime);
+              }
+              
               // Clear the URL parameter
               setSearchParams({});
+              // Clear the navigation state
+              window.history.replaceState({}, document.title);
             }
           }
         }
@@ -84,7 +95,7 @@ export default function Courses() {
     };
 
     fetchCourses();
-  }, [category, subject, searchParams, setSearchParams]);
+  }, [category, subject, searchParams, setSearchParams, location.state]);
 
   if (loading) {
     return (
@@ -174,9 +185,11 @@ export default function Courses() {
             onClose={() => {
               setSelectedCourse(null);
               setAutoSelectVideoId(null);
+              setResumeTime(null);
             }}
             supabaseUrl={SUPABASE_URL}
             autoSelectVideoId={autoSelectVideoId}
+            resumeTime={resumeTime}
           />
         )}
       </div>
