@@ -14,15 +14,17 @@ declare global {
   }
 }
 
+// Props interface for VideoPlayerWithTutor component
 interface VideoPlayerWithTutorProps {
   video: CourseVideo;
   supabaseUrl: string;
   courseSubject?: string;
+  /** Initial time in seconds to seek to when video loads */
   initialTime?: number;
 }
 
 export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime }: VideoPlayerWithTutorProps) {
-  const [currentTime, setCurrentTime] = useState(initialTime || 0);
+  const [currentTime, setCurrentTime] = useState<number>(initialTime ?? 0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
