@@ -158,9 +158,9 @@ You MUST follow these rules EXACTLY for proper math rendering:
 
 8. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
 
-9. **NO SYMBOL SUBSTITUTION**: NEVER use the integral symbol (∫) to replace the word "point". Always use plain English "point" only.
+9. **NO SYMBOL SUBSTITUTION**: NEVER EVER use the integral symbol (∫). If you need to write the word "point", write it as plain text and NEVER abbreviate it to "po". Never use any mathematical symbols as substitutes for English words.
 
-10. **PLAIN ENGLISH ONLY**: Use standard ASCII characters. No Unicode math symbols as word substitutes.
+10. **PLAIN ENGLISH ONLY**: Use standard ASCII characters. No Unicode math symbols as word substitutes. The word "point" must always be spelled out completely.
 
 Always respond in English only.`;
 
@@ -240,7 +240,22 @@ STOP after that. No guessing. No summarizing.`;
       });
     }
 
-    return new Response(response.body, {
+    // Post-process the stream to fix any "po∫" issues (safety net)
+    const transformStream = new TransformStream({
+      transform(chunk, controller) {
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+        let text = decoder.decode(chunk);
+        
+        // Replace any instances of "po∫" or similar with "point"
+        text = text.replace(/po\s?∫/g, 'point');
+        text = text.replace(/∫/g, ''); // Remove any stray integral symbols
+        
+        controller.enqueue(encoder.encode(text));
+      }
+    });
+
+    return new Response(response.body?.pipeThrough(transformStream), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (error) {

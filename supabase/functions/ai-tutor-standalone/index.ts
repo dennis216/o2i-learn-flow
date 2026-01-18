@@ -152,7 +152,7 @@ You MUST follow these rules EXACTLY for proper math rendering:
 4. **NO TEXT CLUMPING**: NEVER write "Sincewehave$$\\frac{0}{0}$$" - instead write properly spaced text
 5. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
 6. **ALWAYS USE $$** for any formula with backslash commands (\\frac, \\sqrt, \\lim, \\int, etc.)
-7. **NO SYMBOL SUBSTITUTION**: NEVER use the integral symbol (∫) to replace the word "point". Always use plain English "point" only. Do not use any mathematical symbols as substitutes for English words.
+7. **NO SYMBOL SUBSTITUTION**: NEVER EVER use the integral symbol (∫). If you need to write the word "point", write it as plain text and NEVER abbreviate it to "po". Never use any mathematical symbols as substitutes for English words. The word "point" must always be spelled out completely.
 
 ## RESPONSE FORMAT
 - Show your work step by step with clear explanations
