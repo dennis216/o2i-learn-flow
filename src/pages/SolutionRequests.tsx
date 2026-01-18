@@ -56,6 +56,14 @@ export default function SolutionRequests() {
     fetchRequests();
   }, []);
 
+  // Helper to extract path from a storage URL
+  const extractPathFromUrl = (url: string): string => {
+    // URL format: https://<project>.supabase.co/storage/v1/object/public/solution-images/<path>
+    // We need to extract just the path part after the bucket name
+    const match = url.match(/solution-images\/(.+)$/);
+    return match ? match[1] : url;
+  };
+
   const fetchRequests = async () => {
     try {
       const { data, error } = await supabase
@@ -66,30 +74,56 @@ export default function SolutionRequests() {
         `)
         .order('created_at', { ascending: false });
 
-if (error) {
-  console.error('Error fetching requests:', error);
-} else {
-  const reqs = data || [];
-  setRequests(reqs);
-  // Auto-mark solved if a solution exists
-  const toSolve = reqs.filter((r: any) => (r.solution_text || r.solution_image_url) && r.status !== 'solved');
-  if (toSolve.length > 0) {
-    try {
-      await Promise.all(
-        toSolve.map((r: any) =>
-          supabase.from('solution_requests').update({ status: 'solved' }).eq('id', r.id)
-        )
-      );
-      const { data: refreshed } = await supabase
-        .from('solution_requests')
-        .select(`*, profiles:user_id (full_name)`) 
-        .order('created_at', { ascending: false });
-      setRequests(refreshed || reqs);
-    } catch (e) {
-      // silently ignore if user lacks permission per RLS
-    }
-  }
-}
+      if (error) {
+        console.error('Error fetching requests:', error);
+      } else {
+        const reqs = data || [];
+        
+        // Generate signed URLs for images in the private bucket
+        const reqsWithSignedUrls = await Promise.all(
+          reqs.map(async (request: any) => {
+            // Only generate signed URLs for requests the user can view
+            if (request.image_url) {
+              const path = extractPathFromUrl(request.image_url);
+              const { data: signedData } = await supabase.storage
+                .from('solution-images')
+                .createSignedUrl(path, 3600); // 1 hour expiry
+              if (signedData?.signedUrl) {
+                request.image_url = signedData.signedUrl;
+              }
+            }
+            if (request.solution_image_url) {
+              const path = extractPathFromUrl(request.solution_image_url);
+              const { data: signedData } = await supabase.storage
+                .from('solution-images')
+                .createSignedUrl(path, 3600);
+              if (signedData?.signedUrl) {
+                request.solution_image_url = signedData.signedUrl;
+              }
+            }
+            return request;
+          })
+        );
+        
+        setRequests(reqsWithSignedUrls);
+        
+        // Auto-mark solved if a solution exists
+        const toSolve = reqsWithSignedUrls.filter((r: any) => (r.solution_text || r.solution_image_url) && r.status !== 'solved');
+        if (toSolve.length > 0) {
+          try {
+            await Promise.all(
+              toSolve.map((r: any) =>
+                supabase.from('solution_requests').update({ status: 'solved' }).eq('id', r.id)
+              )
+            );
+            // Re-fetch to get updated status (signed URLs will be regenerated)
+            fetchRequests();
+            return; // Exit early since we're re-fetching
+          } catch (e) {
+            // silently ignore if user lacks permission per RLS
+          }
+        }
+      }
     } catch (error) {
       console.error('Error:', error);
     } finally {
