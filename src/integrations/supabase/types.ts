@@ -679,6 +679,36 @@ export type Database = {
           },
         ]
       }
+      subjects: {
+        Row: {
+          category: string
+          created_at: string
+          icon_url: string | null
+          id: string
+          name: string
+          order_index: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name: string
+          order_index?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          name?: string
+          order_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           bio: string | null
