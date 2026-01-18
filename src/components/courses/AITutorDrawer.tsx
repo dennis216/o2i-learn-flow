@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Sparkles, Trash2, ArrowLeft } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Trash2, ArrowLeft, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -176,6 +176,7 @@ export function AITutorDrawer({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -236,8 +237,18 @@ export function AITutorDrawer({
   }, [open]);
 
   // Scroll to bottom when messages change (including during streaming)
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = useCallback((smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
+
+  // Check if user has scrolled up
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
   }, []);
 
   useEffect(() => {
@@ -378,50 +389,65 @@ export function AITutorDrawer({
           )}
 
           {/* Messages - using native scroll for reliable auto-scroll */}
-          <div 
-            ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto p-4 min-h-0"
-          >
-            <div className="flex flex-col space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
+          <div className="relative flex-1 min-h-0">
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="absolute inset-0 overflow-y-auto p-4"
+            >
+              <div className="flex flex-col space-y-4">
+                {messages.map((message) => (
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 min-h-[2.5rem] ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
+                    key={message.id}
+                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="text-sm prose prose-sm max-w-none break-words">
-                      {message.role === 'assistant' ? (
-                        message.content ? (
-                          <MarkdownWithMath content={message.content} />
+                    {message.role === 'assistant' && (
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Bot className="h-4 w-4 text-primary" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 min-h-[2.5rem] ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <div className="text-sm prose prose-sm max-w-none break-words">
+                        {message.role === 'assistant' ? (
+                          message.content ? (
+                            <MarkdownWithMath content={message.content} />
+                          ) : (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )
                         ) : (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        )
-                      ) : (
-                        <div className="whitespace-pre-wrap">{message.content}</div>
-                      )}
+                          <div className="whitespace-pre-wrap">{message.content}</div>
+                        )}
+                      </div>
                     </div>
+                    {message.role === 'user' && (
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                        <User className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                    )}
                   </div>
-                  {message.role === 'user' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                      <User className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-              {/* Scroll anchor */}
-              <div ref={messagesEndRef} />
+                ))}
+                {/* Scroll anchor */}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
+            
+            {/* Scroll to bottom button */}
+            {showScrollButton && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="absolute bottom-4 right-4 rounded-full shadow-lg z-10"
+                onClick={() => scrollToBottom()}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Input */}
