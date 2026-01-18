@@ -214,6 +214,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
                 onSeek={handleSeek}
                 videoId={video.id}
                 courseId={video.course_id}
+                courseSubject={courseSubject}
               />
             </div>
           </div>
@@ -257,6 +258,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
             onSeek={handleSeek}
             videoId={video.id}
             courseId={video.course_id}
+            courseSubject={courseSubject}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

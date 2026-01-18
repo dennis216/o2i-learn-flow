@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, Loader2, Sparkles, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChatMessage, TranscriptEntry } from './types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
+import { AITutorDrawer } from './AITutorDrawer';
 
 interface AITutorSidebarProps {
   videoTitle: string;
@@ -17,6 +17,7 @@ interface AITutorSidebarProps {
   onSeek: (seconds: number) => void;
   videoId?: string;
   courseId?: string;
+  courseSubject?: string;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -196,8 +197,7 @@ const parseMessageWithTimestamps = (content: string, onSeek: (seconds: number) =
   return <div className="inline">{parts}</div>;
 };
 
-export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, videoId, courseId }: AITutorSidebarProps) {
-  const navigate = useNavigate();
+export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, videoId, courseId, courseSubject }: AITutorSidebarProps) {
   // Regular chat messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -207,6 +207,11 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
   const [sceneExplanation, setSceneExplanation] = useState<string | null>(null);
   const [sceneTimestamp, setSceneTimestamp] = useState<number | null>(null);
   const [isExplaining, setIsExplaining] = useState(false);
+  
+  // Drawer state for "Ask more details"
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerSceneContext, setDrawerSceneContext] = useState<string>('');
+  const [drawerTimestamp, setDrawerTimestamp] = useState<string>('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -311,24 +316,11 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
   const handleAskMoreDetails = () => {
     const sceneContext = sceneExplanation || 'the current scene';
     const timestamp = formatTime(sceneTimestamp || currentTime);
-    const contextPreview = sceneContext.slice(0, 300) + (sceneContext.length > 300 ? '...' : '');
     
-    navigate('/ai-tutor', {
-      state: {
-        fromSceneExplainer: true,
-        sceneExplanation: sceneContext,
-        sceneTimestamp: timestamp,
-        videoTitle,
-        autoMessage: `Here is the context from the scene at ${timestamp}:\n\n"${contextPreview}"\n\nPlease give me more details about this.`,
-        // Return context for "Back to Lesson" button
-        returnToLesson: {
-          videoId,
-          courseId,
-          videoTime: currentTime,
-          videoTitle,
-        },
-      },
-    });
+    // Open the drawer instead of navigating
+    setDrawerSceneContext(sceneContext);
+    setDrawerTimestamp(timestamp);
+    setIsDrawerOpen(true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -451,6 +443,16 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek, vi
           </div>
         </div>
       </CardContent>
+
+      {/* AI Tutor Drawer for detailed discussions */}
+      <AITutorDrawer
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+        sceneExplanation={drawerSceneContext}
+        sceneTimestamp={drawerTimestamp}
+        videoTitle={videoTitle}
+        videoSubject={courseSubject}
+      />
     </Card>
   );
 }
