@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Sparkles, Trash2, X, ArrowLeft } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Trash2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
@@ -177,7 +176,8 @@ export function AITutorDrawer({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Video context for AI
   const videoContext: VideoContext | null = videoTitle ? {
@@ -235,12 +235,14 @@ export function AITutorDrawer({
     }
   }, [open]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change (including during streaming)
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   const triggerAIResponse = async (userMessageContent: string, currentMessages: ChatMessage[]) => {
     setIsLoading(true);
@@ -375,9 +377,12 @@ export function AITutorDrawer({
             </div>
           )}
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            <div className="space-y-4">
+          {/* Messages - using native scroll for reliable auto-scroll */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-4 min-h-0"
+          >
+            <div className="flex flex-col space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -389,7 +394,7 @@ export function AITutorDrawer({
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`max-w-[80%] rounded-lg p-3 min-h-[2.5rem] ${
                       message.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
@@ -397,7 +402,11 @@ export function AITutorDrawer({
                   >
                     <div className="text-sm prose prose-sm max-w-none break-words">
                       {message.role === 'assistant' ? (
-                        <MarkdownWithMath content={message.content} />
+                        message.content ? (
+                          <MarkdownWithMath content={message.content} />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )
                       ) : (
                         <div className="whitespace-pre-wrap">{message.content}</div>
                       )}
@@ -410,18 +419,10 @@ export function AITutorDrawer({
                   )}
                 </div>
               ))}
-              {isLoading && messages[messages.length - 1]?.content === '' && (
-                <div className="flex gap-3 justify-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="bg-muted rounded-lg p-3">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
-              )}
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Input */}
           <div className="p-4 border-t flex-shrink-0">
