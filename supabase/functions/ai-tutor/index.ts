@@ -55,56 +55,76 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Use ENTIRE transcript for short videos, with currentTime indicator
+    // Use ENTIRE transcript JSON for context
     const fullTranscript: TranscriptEntry[] = transcript || [];
     
-    // Format full transcript with marker for current position
-    const formatTranscriptWithPosition = (entries: TranscriptEntry[], currentPos: number): string => {
-      if (entries.length === 0) return 'No transcript data available for this video.';
-      
-      return entries.map((seg) => {
-        const timestamp = formatTime(seg.s);
-        // Mark the closest entry to current time
-        const isNearCurrent = Math.abs(seg.s - currentPos) <= 5;
-        const marker = isNearCurrent ? ' ◀ CURRENTLY WATCHING' : '';
-        return `[${timestamp}] ${seg.t}${marker}`;
-      }).join('\n');
-    };
-
-    const contextText = formatTranscriptWithPosition(fullTranscript, currentTime);
-
-    // Find closest transcript entry to current time
     // SPECIAL CASE: If at the very beginning (first 5 seconds), treat as introduction
     const isAtIntroduction = currentTime < 5;
     
-    const closestEntry = fullTranscript.reduce((closest: TranscriptEntry | null, entry: TranscriptEntry) => {
-      if (!closest) return entry;
-      return Math.abs(entry.s - currentTime) < Math.abs(closest.s - currentTime) ? entry : closest;
-    }, null);
+    // Find the MOST RELEVANT transcript entry (closest s <= currentTime, or first entry after if none before)
+    const findRelevantEntry = (entries: TranscriptEntry[], targetTime: number): TranscriptEntry | null => {
+      if (entries.length === 0) return null;
+      
+      // Find all entries at or before the target time
+      const entriesBefore = entries.filter(e => e.s <= targetTime);
+      if (entriesBefore.length > 0) {
+        // Return the last entry before or at the current time (most relevant)
+        return entriesBefore[entriesBefore.length - 1];
+      }
+      
+      // If no entries before, return the first entry after
+      const entriesAfter = entries.filter(e => e.s > targetTime);
+      return entriesAfter.length > 0 ? entriesAfter[0] : null;
+    };
+    
+    const relevantEntry = findRelevantEntry(fullTranscript, currentTime);
+    
+    // Format the ENTIRE JSON for context (used in Explain Scene mode)
+    const formatFullJsonContext = (entries: TranscriptEntry[]): string => {
+      if (entries.length === 0) return '[]';
+      return JSON.stringify(entries, null, 2);
+    };
 
-    // Build system prompt - STRICT timestamp-focused for Explain Scene
+    // Build system prompt - STRICT JSON-source-controlled for Explain Scene
     const systemPrompt = `You are an expert AP Calculus tutor helping a student understand a video lesson titled "${videoTitle || 'AP Calculus'}".
 
 ## CRITICAL BEHAVIOR RULES - FOLLOW EXACTLY
 ${isExplainScene ? `
-### EXPLAIN SCENE MODE - STRICT RULES:
-1. **NO SUMMARIES**: NEVER summarize the video. ONLY explain what happens at the EXACT timestamp requested.
-2. **NO SMALL TALK**: Do NOT say "Hello!", "I am excited", "Tutor Tips", or any greetings.
-3. **NO FOLLOW-UP QUESTIONS**: Do NOT ask "Are you ready to dive in?", "Want me to explain more?", etc.
-4. **START DIRECTLY**: Begin your response with the mathematical explanation immediately.
-5. **STOP AFTER EXPLAINING**: Once you explain the current moment, STOP. Do not continue with other content.
-6. **ONE TIMESTAMP ONLY**: Do NOT mention timestamps like [00:42], [01:52] unless that's what the user asked about.
-7. **EMPTY SCENE**: If the timestamp is intro/music with no math, say ONLY: "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet." Then STOP.
-` : ''}
+### EXPLAIN SCENE MODE - STRICT SOURCE CONTROL RULES:
 
+**DATA SOURCE**: You are given the ENTIRE transcript as a JSON array below. Each entry has:
+- "s": timestamp in seconds
+- "t": the text spoken at that timestamp
+
+**CURRENT VIDEO TIME**: ${formatTime(currentTime)} (${currentTime} seconds)
+
+**YOUR TASK**:
+1. Find the entry in the JSON where "s" is closest to (but not exceeding) ${currentTime} seconds.
+2. Use ONLY the "t" (text) from that entry to explain what is happening.
+3. DO NOT use any other database or external knowledge about this video.
+4. DO NOT hallucinate or add content not in the JSON.
+
+**STRICT RULES**:
+- **NO SUMMARIES**: Do NOT summarize the video. Only explain the EXACT moment.
+- **NO SMALL TALK**: No "Hello!", "I am excited", "Tutor Tips", or greetings.
+- **NO FOLLOW-UP QUESTIONS**: No "Are you ready?", "Want more?", etc.
+- **START DIRECTLY**: Begin with the mathematical explanation immediately.
+- **STOP AFTER EXPLAINING**: Explain the current moment, then STOP.
+- **EXACT JSON ONLY**: If JSON says "Simplifying -x/x leads to -1", output that exact content.
+- **NO OTHER TIMESTAMPS**: Do not mention [00:42] or [01:52] unless that's the current time.
+- **EMPTY SCENE RULE**: If currentTime is in the first 5 seconds OR no relevant "t" exists, say ONLY:
+  "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet."
+  Then STOP.
+
+**FULL TRANSCRIPT JSON** (use ONLY this data):
+\`\`\`json
+${formatFullJsonContext(fullTranscript)}
+\`\`\`
+
+` : `
 ## TRANSCRIPT CONTEXT (Student is at [${formatTime(currentTime)}]):
-${isExplainScene && closestEntry ? `Current moment only: [${formatTime(closestEntry.s)}] ${closestEntry.t}` : contextText}
-
-## RESPONSE GUIDELINES
-1. **Timestamp-specific**: ONLY explain the exact moment at [${formatTime(currentTime)}]
-2. **Explain WHY**: Don't just repeat transcript - explain WHY it works mathematically
-3. **Step-by-step**: Break down formulas into clear logical steps
-4. **Be concise**: Provide the explanation and stop. No filler content.
+${fullTranscript.map(e => `[${formatTime(e.s)}] ${e.t}`).join('\n') || 'No transcript available.'}
+`}
 
 ## CALCULUS KNOWLEDGE TO DRAW FROM
 - Limits: Direct substitution, indeterminate forms (0/0, ∞/∞), L'Hôpital's Rule
@@ -128,70 +148,58 @@ You MUST follow these rules EXACTLY for proper math rendering:
    - WRONG: $$\\lim_{x \\to 0} \\text{approaches} \\frac{1}{x}$$
    - CORRECT: As $x$ approaches 0, we have: $$\\lim_{x \\to 0} \\frac{1}{x}$$
 
-4. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after:
-
-   The limit equals:
-
-   $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$
-
-   This shows that...
+4. **DISPLAY MATH ON OWN LINES**: Put $$ on separate lines with blank lines before and after.
 
 5. **SINGLE BACKSLASH ONLY**: Write \\frac{1}{2} NOT \\\\frac{1}{2}. Never double-escape!
 
-6. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive" NOT "the value$x^2$is positive"
+6. **INLINE MATH SPACING**: Always have spaces around inline math: "the value $x^2$ is positive"
 
 7. **USE CLEAN MARKDOWN**: Use headers (##, ###) and bullet points to separate sections clearly.
 
 8. **GFM TABLES**: Use proper table syntax with |---| separators. Escape $ as \\$ inside tables if needed.
 
-9. **NO SYMBOL SUBSTITUTION**: NEVER use the integral symbol (∫) to replace the word "point". Always use plain English "point" only. Do not use any mathematical symbols as substitutes for English words.
+9. **NO SYMBOL SUBSTITUTION**: NEVER use the integral symbol (∫) to replace the word "point". Always use plain English "point" only.
 
-EXAMPLE OF CORRECT FORMAT:
-When evaluating limits at infinity, we compare the degrees of the polynomials.
-
-If the degree in the numerator equals the degree in the denominator:
-
-$$\\lim_{x \\to \\infty} \\frac{ax^n + ...}{bx^n + ...} = \\frac{a}{b}$$
-
-The limit is simply the ratio of leading coefficients.
+10. **PLAIN ENGLISH ONLY**: Use standard ASCII characters. No Unicode math symbols as word substitutes.
 
 Always respond in English only.`;
 
-    // Build user message
+    // Build user message - STRICT JSON-based for Explain Scene
     let userMessage = message;
     if (isExplainScene) {
       // SPECIAL CASE: If at the very beginning (first 5 seconds), treat as intro
       if (isAtIntroduction) {
-        userMessage = `TIMESTAMP: [${formatTime(currentTime)}] - This is the very beginning of the video.
+        userMessage = `CURRENT VIDEO TIME: ${formatTime(currentTime)} (${currentTime} seconds)
 
-STRICT INSTRUCTIONS:
-- The video is just starting (intro/title screen or music).
-- DO NOT summarize the whole video.
-- DO NOT mention any later timestamps.
-- Simply state: "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet."
-- STOP after that one sentence. No follow-up questions.`;
-      } else if (closestEntry) {
-        userMessage = `TIMESTAMP: [${formatTime(currentTime)}]
-TRANSCRIPT AT THIS MOMENT: "${closestEntry.t}"
+This is the very beginning of the video (intro/title screen).
 
-STRICT INSTRUCTIONS:
-1. ONLY explain what is happening at [${formatTime(currentTime)}]. Do NOT mention other timestamps.
-2. NO VIDEO SUMMARY. Do not describe what happens earlier or later.
-3. NO GREETINGS. Start directly with the explanation.
-4. NO FOLLOW-UP QUESTIONS. Do not ask "Are you ready?" or "Want to dive in?"
-5. Explain the mathematical concept being discussed at this exact moment only.
-6. If the instructor is mid-sentence or transitioning, explain the immediate context.
-7. STOP talking after the explanation. Be concise.
+OUTPUT EXACTLY: "Currently, the instructor is introducing the lesson. No mathematical formulas have been presented yet."
 
-RESPOND WITH THE EXPLANATION ONLY.`;
+STOP after that. No greetings. No follow-up questions.`;
+      } else if (relevantEntry) {
+        userMessage = `CURRENT VIDEO TIME: ${formatTime(currentTime)} (${currentTime} seconds)
+
+TASK: Using ONLY the JSON transcript provided in the system prompt, find the entry with "s" closest to ${currentTime}.
+
+The relevant entry is: {"s": ${relevantEntry.s}, "t": "${relevantEntry.t}"}
+
+INSTRUCTIONS:
+1. Explain ONLY what "${relevantEntry.t}" means mathematically.
+2. DO NOT mention any other timestamps or content.
+3. DO NOT summarize the video.
+4. NO greetings, NO follow-up questions.
+5. Start directly with the explanation.
+6. STOP after explaining.
+
+OUTPUT THE EXPLANATION NOW:`;
       } else {
-        userMessage = `TIMESTAMP: [${formatTime(currentTime)}]
-No transcript data available for this exact moment.
+        userMessage = `CURRENT VIDEO TIME: ${formatTime(currentTime)} (${currentTime} seconds)
 
-STRICT INSTRUCTIONS:
-- State: "At this moment, no specific transcript data is available."
-- DO NOT guess or summarize the video.
-- STOP after that sentence.`;
+No transcript data found for this timestamp in the provided JSON.
+
+OUTPUT EXACTLY: "At this moment, no specific transcript data is available."
+
+STOP after that. No guessing. No summarizing.`;
       }
     }
 
