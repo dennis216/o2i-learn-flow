@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { VideoPlayerWithTutor } from './VideoPlayerWithTutor';
-import { Course, CourseVideo } from './types';
+import type { Course, CourseVideo } from './types';
 
 interface CourseDetailModalProps {
   course: Course;
