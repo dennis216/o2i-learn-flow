@@ -631,6 +631,94 @@ export default function AITutor() {
     }
   }, [location.state, messages.length]);
 
+  // Handle "Ask more details" from Scene Explainer
+  useEffect(() => {
+    const state = location.state as { 
+      fromSceneExplainer?: boolean;
+      sceneExplanation?: string;
+      sceneTimestamp?: string;
+      videoTitle?: string;
+      autoMessage?: string;
+    } | null;
+    
+    if (state?.fromSceneExplainer && state?.autoMessage && !hasHandledPrefill.current && messages.length > 0 && !isLoadingHistory) {
+      hasHandledPrefill.current = true;
+      
+      // Create the user message that shows what the user is asking
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: state.autoMessage,
+        timestamp: new Date(),
+      };
+      
+      // Add user message to chat immediately
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Save the user message and trigger AI response
+      setTimeout(async () => {
+        // Ensure we have a session
+        if (!currentSessionId) {
+          const sessionName = state.videoTitle 
+            ? `${state.videoTitle} - Scene at ${state.sceneTimestamp}` 
+            : 'Scene Details';
+          await createNewSession(sessionName);
+        }
+        
+        // Save user message to database
+        saveMessage('user', state.autoMessage!);
+        
+        // Trigger AI response
+        setIsLoading(true);
+        const assistantMessageId = (Date.now() + 1).toString();
+        let assistantContent = '';
+        
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+          },
+        ]);
+        
+        await streamAIResponse(
+          state.autoMessage!,
+          selectedTopic,
+          videoContext,
+          messages.filter(m => m.id !== 'greeting'),
+          (delta) => {
+            assistantContent += delta;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg
+              )
+            );
+          },
+          () => {
+            saveMessage('assistant', assistantContent);
+            setIsLoading(false);
+          },
+          (error) => {
+            console.error('AI Tutor error:', error);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: `Sorry, I encountered an error: ${error}` }
+                  : msg
+              )
+            );
+            setIsLoading(false);
+          }
+        );
+      }, 100);
+
+      // Clear the state so it doesn't re-trigger on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, messages.length, isLoadingHistory, currentSessionId, selectedTopic, videoContext, createNewSession, saveMessage]);
+
   useEffect(() => {
     // Scroll to bottom when new messages arrive
     if (scrollRef.current) {

@@ -308,14 +308,16 @@ export function AITutorSidebar({ videoTitle, transcript, currentTime, onSeek }: 
 
   const handleAskMoreDetails = () => {
     const sceneContext = sceneExplanation || 'the current scene';
+    const timestamp = formatTime(sceneTimestamp || currentTime);
+    const contextPreview = sceneContext.slice(0, 300) + (sceneContext.length > 300 ? '...' : '');
+    
     navigate('/ai-tutor', {
       state: {
-        videoContext: {
-          title: videoTitle,
-          currentTime,
-          transcript,
-        },
-        autoMessage: `Regarding the scene at ${formatTime(sceneTimestamp || currentTime)}: "${sceneContext.slice(0, 200)}${sceneContext.length > 200 ? '...' : ''}" - Can you give me more details about this?`,
+        fromSceneExplainer: true,
+        sceneExplanation: sceneContext,
+        sceneTimestamp: timestamp,
+        videoTitle,
+        autoMessage: `Here is the context from the scene at ${timestamp}:\n\n"${contextPreview}"\n\nPlease give me more details about this.`,
       },
     });
   };
