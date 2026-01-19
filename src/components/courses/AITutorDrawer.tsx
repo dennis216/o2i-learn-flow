@@ -339,7 +339,7 @@ export function AITutorDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent 
         side="right" 
-        className="w-full sm:w-[540px] sm:max-w-[540px] p-0 flex flex-col"
+        className="w-full sm:w-[540px] sm:max-w-[540px] p-0 flex flex-col pr-6"
       >
         <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
