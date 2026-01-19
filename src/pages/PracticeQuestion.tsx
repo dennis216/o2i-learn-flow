@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb, Wand2 } from 'lucide-react';
+import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb, Wand2, MessageCircle } from 'lucide-react';
 import { TranscriptEntry } from '@/components/courses/types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
-
+import { AITutorDrawer } from '@/components/courses/AITutorDrawer';
 interface VideoData {
   id: string;
   title: string;
@@ -59,7 +59,8 @@ export default function PracticeQuestion() {
   const [showSolution, setShowSolution] = useState(false);
   const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
   const [generatedSolution, setGeneratedSolution] = useState<string | null>(null);
-
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerContext, setDrawerContext] = useState({ explanation: '', timestamp: '' });
   useEffect(() => {
     const fetchVideoAndProblem = async () => {
       if (!videoId) return;
@@ -245,6 +246,16 @@ export default function PracticeQuestion() {
     }
   };
 
+  // Open AI Tutor Drawer with problem context
+  const handleAskTutorForSolution = (problemTitle: string, problemContent: string) => {
+    const explanation = `I need help with this practice problem: "${problemTitle}"\n\nProblem:\n${problemContent}\n\nCan you show me how to solve it step-by-step?`;
+    setDrawerContext({
+      explanation,
+      timestamp: 'Practice Problem',
+    });
+    setIsDrawerOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -364,14 +375,24 @@ export default function PracticeQuestion() {
                 /* AI Solution Fallback */
                 <div className="space-y-4">
                   {!generatedSolution && !isGeneratingSolution && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full gap-2 border-primary/50 hover:bg-primary/5"
-                      onClick={() => handleGenerateSolution(practiceProblem.content)}
-                    >
-                      <Wand2 className="h-4 w-4" />
-                      ✨ Generate Step-by-Step Solution
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
+                        onClick={() => handleGenerateSolution(practiceProblem.content)}
+                      >
+                        <Wand2 className="h-4 w-4" />
+                        ✨ Generate Step-by-Step Solution
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        className="flex-1 gap-2"
+                        onClick={() => handleAskTutorForSolution(practiceProblem.title, practiceProblem.content)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        💬 Ask Tutor
+                      </Button>
+                    </div>
                   )}
                   
                   {isGeneratingSolution && (
@@ -488,6 +509,16 @@ export default function PracticeQuestion() {
             )}
           </Button>
         </div>
+
+        {/* AI Tutor Drawer for Practice Problem Help */}
+        <AITutorDrawer
+          open={isDrawerOpen}
+          onOpenChange={setIsDrawerOpen}
+          sceneExplanation={drawerContext.explanation}
+          sceneTimestamp={drawerContext.timestamp}
+          videoTitle={video?.title || 'Practice Problem'}
+          videoSubject={video?.subtitle || undefined}
+        />
       </div>
     </div>
   );
