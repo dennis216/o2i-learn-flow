@@ -112,23 +112,41 @@ All colors MUST be HSL.
   }
 }
 
-/* KaTeX inline math styling - prevent line breaks */
+/* KaTeX inline math styling - prevent line breaks and stay with text */
 .katex-inline,
-.prose .katex:not(.katex-display) {
+.prose .katex:not(.katex-display),
+.math-content .katex:not(.katex-display) {
   display: inline !important;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  vertical-align: baseline;
+}
+
+/* Ensure all inline math spans stay inline */
+.katex .base,
+.katex .strut,
+.katex .mord,
+.katex .mbin,
+.katex .mrel,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct,
+.katex .minner {
+  display: inline !important;
 }
 
 /* Ensure inline math stays with surrounding text */
-.prose p .katex {
-  display: inline;
+.prose p .katex,
+.math-content p .katex {
+  display: inline !important;
+  white-space: nowrap !important;
   vertical-align: baseline;
 }
 
 /* Block math styling - proper margins */
 .katex-display,
-.prose .katex-display {
-  display: block;
+.prose .katex-display,
+.math-content .katex-display {
+  display: block !important;
   margin-top: 1rem;
   margin-bottom: 1rem;
   overflow-x: auto;
@@ -136,23 +154,37 @@ All colors MUST be HSL.
 }
 
 /* Prevent math from breaking prose flow */
-.prose .math-inline {
-  display: inline;
-  white-space: nowrap;
+.prose .math-inline,
+.math-content .math-inline {
+  display: inline !important;
+  white-space: nowrap !important;
 }
 
 /* Math content container - improved inline handling */
-.math-content p {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+.math-content p,
+.prose p {
+  overflow-wrap: normal;
 }
 
-.math-content .katex {
+.math-content .katex,
+.prose .katex {
   font-size: 1em;
 }
 
 /* Ensure inline math doesn't cause awkward breaks */
-.math-content p > .katex {
+.math-content p > .katex,
+.prose p > .katex {
+  display: inline !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure span wrappers around inline math stay inline */
+.math-content p > span,
+.prose p > span {
   display: inline;
-  white-space: nowrap;
+}
+
+/* Force inline-block for math wrappers to prevent line breaking */
+.katex-html {
+  white-space: nowrap !important;
 }
