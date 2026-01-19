@@ -372,28 +372,28 @@ export default function PracticeQuestion() {
                   </CollapsibleContent>
                 </Collapsible>
               ) : (
-                /* AI Solution Fallback */
+                /* AI Solution Fallback - Always show Ask Tutor button */
                 <div className="space-y-4">
-                  {!generatedSolution && !isGeneratingSolution && (
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
-                        onClick={() => handleGenerateSolution(practiceProblem.content)}
-                      >
-                        <Wand2 className="h-4 w-4" />
-                        ✨ Generate Step-by-Step Solution
-                      </Button>
-                      <Button 
-                        variant="secondary" 
-                        className="flex-1 gap-2"
-                        onClick={() => handleAskTutorForSolution(practiceProblem.title, practiceProblem.content)}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        💬 Ask Tutor
-                      </Button>
-                    </div>
-                  )}
+                  {/* Always visible action buttons when no stored solution */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
+                      onClick={() => handleGenerateSolution(practiceProblem.content)}
+                      disabled={isGeneratingSolution}
+                    >
+                      <Wand2 className="h-4 w-4" />
+                      ✨ Generate Step-by-Step Solution
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 gap-2"
+                      onClick={() => handleAskTutorForSolution(practiceProblem.title, practiceProblem.content)}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      💬 Ask Tutor
+                    </Button>
+                  </div>
                   
                   {isGeneratingSolution && (
                     <div className="rounded-lg border bg-card p-4">
