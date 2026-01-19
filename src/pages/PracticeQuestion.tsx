@@ -30,6 +30,8 @@ interface PracticeProblemData {
   content: string;
   solution: string | null;
   video_id: string | null;
+  lesson_number: string | null;
+  unit_number: number | null;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -52,17 +54,18 @@ export default function PracticeQuestion() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
   const [video, setVideo] = useState<VideoData | null>(null);
-  const [practiceProblem, setPracticeProblem] = useState<PracticeProblemData | null>(null);
+  const [practiceProblems, setPracticeProblems] = useState<PracticeProblemData[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedQuestion, setGeneratedQuestion] = useState<GeneratedQuestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
-  const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
-  const [generatedSolution, setGeneratedSolution] = useState<string | null>(null);
+  const [solutionVisibility, setSolutionVisibility] = useState<Record<string, boolean>>({});
+  const [generatingSolutionForId, setGeneratingSolutionForId] = useState<string | null>(null);
+  const [generatedSolutions, setGeneratedSolutions] = useState<Record<string, string>>({});
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerContext, setDrawerContext] = useState({ explanation: '', timestamp: '' });
+
   useEffect(() => {
-    const fetchVideoAndProblem = async () => {
+    const fetchVideoAndProblems = async () => {
       if (!videoId) return;
 
       try {
@@ -82,17 +85,17 @@ export default function PracticeQuestion() {
           });
         }
 
-        // Fetch practice problem linked to this video
-        const { data: problemData, error: problemError } = await supabase
+        // Fetch ALL practice problems linked to this video
+        const { data: problemsData, error: problemsError } = await supabase
           .from('practice_problems')
-          .select('id, title, content, solution, video_id')
+          .select('id, title, content, solution, video_id, lesson_number, unit_number')
           .eq('video_id', videoId)
-          .maybeSingle();
+          .order('lesson_number', { ascending: true });
 
-        if (problemError) {
-          console.error('Error fetching practice problem:', problemError);
-        } else if (problemData) {
-          setPracticeProblem(problemData);
+        if (problemsError) {
+          console.error('Error fetching practice problems:', problemsError);
+        } else if (problemsData) {
+          setPracticeProblems(problemsData as PracticeProblemData[]);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -101,7 +104,7 @@ export default function PracticeQuestion() {
       }
     };
 
-    fetchVideoAndProblem();
+    fetchVideoAndProblems();
   }, [videoId]);
 
   const handleGenerateQuestion = async () => {
@@ -147,7 +150,6 @@ export default function PracticeQuestion() {
         topic: data.topic || video.title,
         solution: data.solution,
       });
-      setShowSolution(false); // Reset solution visibility for new question
     } catch (error) {
       console.error('Error generating question:', error);
       // Silent error - log to console instead of disruptive toast
@@ -170,13 +172,13 @@ export default function PracticeQuestion() {
   };
 
   // Generate AI solution for problems without a stored solution
-  const handleGenerateSolution = async (problemContent: string) => {
-    setIsGeneratingSolution(true);
+  const handleGenerateSolution = async (problemId: string, problemContent: string) => {
+    setGeneratingSolutionForId(problemId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         console.error('Authentication required');
-        setIsGeneratingSolution(false);
+        setGeneratingSolutionForId(null);
         return;
       }
 
@@ -233,16 +235,16 @@ export default function PracticeQuestion() {
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               fullSolution += content;
-              setGeneratedSolution(fullSolution);
+              setGeneratedSolutions(prev => ({ ...prev, [problemId]: fullSolution }));
             }
           } catch { /* ignore incomplete JSON */ }
         }
       }
     } catch (error) {
       console.error('Error generating solution:', error);
-      setGeneratedSolution('Sorry, there was an error generating the solution. Please try again.');
+      setGeneratedSolutions(prev => ({ ...prev, [problemId]: 'Sorry, there was an error generating the solution. Please try again.' }));
     } finally {
-      setIsGeneratingSolution(false);
+      setGeneratingSolutionForId(null);
     }
   };
 
@@ -329,114 +331,134 @@ export default function PracticeQuestion() {
           </Button>
         </div>
 
-        {/* Database Practice Problem Section */}
-        {practiceProblem && (
-          <Card className="mb-8 border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-primary" />
-                {practiceProblem.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="prose prose-sm max-w-none text-foreground">
-                <MarkdownWithMath content={practiceProblem.content} />
-              </div>
+        {/* Database Practice Problems Section - Multiple problems with sequential numbering */}
+        {practiceProblems.length > 0 && (
+          <div className="space-y-6 mb-8">
+            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-primary" />
+              Practice Problems ({practiceProblems.length})
+            </h2>
+            
+            {practiceProblems.map((problem, index) => {
+              const isVisible = solutionVisibility[problem.id] || false;
+              const isGenerating = generatingSolutionForId === problem.id;
+              const genSolution = generatedSolutions[problem.id];
               
-              {/* Solution Section */}
-              {practiceProblem.solution ? (
-                <Collapsible open={showSolution} onOpenChange={setShowSolution}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between">
-                      <span className="flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4" />
-                        {showSolution ? 'Hide Solution' : 'Show Solution'}
+              return (
+                <Card key={problem.id} className="border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                        {index + 1}
                       </span>
-                      {showSolution ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <div className="rounded-lg border bg-card p-4">
-                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-yellow-500" />
-                        Step-by-Step Solution
-                      </h4>
-                      <div className="prose prose-sm max-w-none text-muted-foreground">
-                        <MarkdownWithMath content={practiceProblem.solution} />
-                      </div>
+                      {problem.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="prose prose-sm max-w-none text-foreground">
+                      <MarkdownWithMath content={problem.content} />
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ) : (
-                /* AI Solution Fallback - Always show Ask Tutor button */
-                <div className="space-y-4">
-                  {/* Always visible action buttons when no stored solution */}
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
-                      onClick={() => handleGenerateSolution(practiceProblem.content)}
-                      disabled={isGeneratingSolution}
-                    >
-                      <Wand2 className="h-4 w-4" />
-                      ✨ Generate Step-by-Step Solution
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="flex-1 gap-2"
-                      onClick={() => handleAskTutorForSolution(practiceProblem.title, practiceProblem.content)}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      💬 Ask Tutor
-                    </Button>
-                  </div>
-                  
-                  {isGeneratingSolution && (
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        <span className="text-sm text-muted-foreground">Generating solution...</span>
-                      </div>
-                      {generatedSolution && (
-                        <div className="prose prose-sm max-w-none text-muted-foreground">
-                          <MarkdownWithMath content={generatedSolution} />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {generatedSolution && !isGeneratingSolution && (
-                    <Collapsible defaultOpen>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
-                          <span className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            AI-Generated Solution
-                          </span>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-4">
-                        <div className="rounded-lg border bg-primary/5 p-4">
-                          <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            Step-by-Step Solution
-                          </h4>
-                          <div className="prose prose-sm max-w-none text-muted-foreground">
-                            <MarkdownWithMath content={generatedSolution} />
+                    
+                    {/* Solution Section */}
+                    {problem.solution ? (
+                      <Collapsible 
+                        open={isVisible} 
+                        onOpenChange={(open) => setSolutionVisibility(prev => ({ ...prev, [problem.id]: open }))}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <Lightbulb className="h-4 w-4" />
+                              {isVisible ? 'Hide Solution' : 'Show Solution'}
+                            </span>
+                            {isVisible ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-4">
+                          <div className="rounded-lg border bg-card p-4">
+                            <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                              <Lightbulb className="h-4 w-4 text-accent" />
+                              Step-by-Step Solution
+                            </h4>
+                            <div className="prose prose-sm max-w-none text-muted-foreground">
+                              <MarkdownWithMath content={problem.solution} />
+                            </div>
                           </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ) : (
+                      /* AI Solution Fallback - Always show Ask Tutor button */
+                      <div className="space-y-4">
+                        {/* Always visible action buttons when no stored solution */}
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button 
+                            variant="outline" 
+                            className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
+                            onClick={() => handleGenerateSolution(problem.id, problem.content)}
+                            disabled={isGenerating}
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            ✨ Generate Step-by-Step Solution
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            className="flex-1 gap-2"
+                            onClick={() => handleAskTutorForSolution(problem.title, problem.content)}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            💬 Ask Tutor
+                          </Button>
                         </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        
+                        {isGenerating && (
+                          <div className="rounded-lg border bg-card p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                              <span className="text-sm text-muted-foreground">Generating solution...</span>
+                            </div>
+                            {genSolution && (
+                              <div className="prose prose-sm max-w-none text-muted-foreground">
+                                <MarkdownWithMath content={genSolution} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {genSolution && !isGenerating && (
+                          <Collapsible defaultOpen>
+                            <CollapsibleTrigger asChild>
+                              <Button variant="outline" className="w-full justify-between">
+                                <span className="flex items-center gap-2">
+                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  AI-Generated Solution
+                                </span>
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="pt-4">
+                              <div className="rounded-lg border bg-primary/5 p-4">
+                                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  Step-by-Step Solution
+                                </h4>
+                                <div className="prose prose-sm max-w-none text-muted-foreground">
+                                  <MarkdownWithMath content={genSolution} />
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
 
         {/* Generated Question Section */}
@@ -469,7 +491,7 @@ export default function PracticeQuestion() {
                   <CollapsibleContent className="pt-4">
                     <div className="rounded-lg border bg-card p-4">
                       <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                        <Lightbulb className="h-4 w-4 text-accent" />
                         Step-by-Step Solution
                       </h4>
                       <div className="prose prose-sm max-w-none text-muted-foreground">
