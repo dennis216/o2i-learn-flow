@@ -113,13 +113,25 @@ All colors MUST be HSL.
 }
 
 /* =============================================================================
-   KaTeX / LaTeX Global Styling
+   KaTeX / LaTeX Global Styling - CRITICAL FIXES
    Ensures inline math never breaks to new lines and stays with surrounding text
    ============================================================================= */
 
-/* Core inline math styling - CRITICAL: prevent line breaks */
+/* Force LaTeX inline elements to stay with text - STRONGEST OVERRIDE */
+.katex {
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+
+/* Prevent prose paragraphs from breaking inline math */
+.prose p {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+/* Additional inline math specificity */
 .katex:not(.katex-display) {
-  display: inline !important;
+  display: inline-block !important;
   white-space: nowrap !important;
   vertical-align: baseline !important;
   word-break: keep-all !important;
@@ -130,7 +142,7 @@ All colors MUST be HSL.
 .math-inline,
 .prose .katex:not(.katex-display),
 .math-content .katex:not(.katex-display) {
-  display: inline !important;
+  display: inline-block !important;
   white-space: nowrap !important;
   vertical-align: baseline !important;
   word-break: keep-all !important;
@@ -158,7 +170,7 @@ All colors MUST be HSL.
 .prose p .katex:not(.katex-display),
 .math-content p .katex:not(.katex-display),
 p .katex:not(.katex-display) {
-  display: inline !important;
+  display: inline-block !important;
   white-space: nowrap !important;
   vertical-align: baseline !important;
 }
@@ -176,21 +188,14 @@ p .katex:not(.katex-display) {
 }
 
 /* Math content container - prevent awkward text wrapping around math */
-.math-content,
-.prose {
+.math-content {
   overflow-wrap: normal;
 }
 
-.math-content p,
-.prose p {
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-}
-
-/* Consistent font size for math */
-.math-content .katex,
-.prose .katex {
-  font-size: 1em;
+.math-content p {
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  word-break: normal !important;
 }
 
 /* Ensure span wrappers around inline math stay inline */
