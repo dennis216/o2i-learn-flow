@@ -111,3 +111,48 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* KaTeX inline math styling - prevent line breaks */
+.katex-inline,
+.prose .katex:not(.katex-display) {
+  display: inline !important;
+  white-space: nowrap;
+}
+
+/* Ensure inline math stays with surrounding text */
+.prose p .katex {
+  display: inline;
+  vertical-align: baseline;
+}
+
+/* Block math styling - proper margins */
+.katex-display,
+.prose .katex-display {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Prevent math from breaking prose flow */
+.prose .math-inline {
+  display: inline;
+  white-space: nowrap;
+}
+
+/* Math content container - improved inline handling */
+.math-content p {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.math-content .katex {
+  font-size: 1em;
+}
+
+/* Ensure inline math doesn't cause awkward breaks */
+.math-content p > .katex {
+  display: inline;
+  white-space: nowrap;
+}

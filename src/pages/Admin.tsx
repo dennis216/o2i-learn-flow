@@ -1242,7 +1242,7 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Custom Image (Optional)</Label>
+                    <Label>Problem Diagram (Optional)</Label>
                     <div className="flex items-center gap-4">
                       <Input
                         type="file"

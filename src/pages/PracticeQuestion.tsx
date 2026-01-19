@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Play, Sparkles, Bot, Loader2, ChevronDown, ChevronUp, Lightbulb, Wand2 } from 'lucide-react';
 import { TranscriptEntry } from '@/components/courses/types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 
@@ -22,6 +22,14 @@ interface GeneratedQuestion {
   question: string;
   topic: string;
   solution?: string;
+}
+
+interface PracticeProblemData {
+  id: string;
+  title: string;
+  content: string;
+  solution: string | null;
+  video_id: string | null;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -44,30 +52,46 @@ export default function PracticeQuestion() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
   const [video, setVideo] = useState<VideoData | null>(null);
+  const [practiceProblem, setPracticeProblem] = useState<PracticeProblemData | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatedQuestion, setGeneratedQuestion] = useState<GeneratedQuestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
+  const [generatedSolution, setGeneratedSolution] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchVideo = async () => {
+    const fetchVideoAndProblem = async () => {
       if (!videoId) return;
 
       try {
-        const { data, error } = await supabase
+        // Fetch video data
+        const { data: videoData, error: videoError } = await supabase
           .from('course_videos')
           .select('id, title, subtitle, video_url, transcript, course_id')
           .eq('id', videoId)
           .single();
 
-        if (error) {
-          console.error('Error fetching video:', error);
-          // Silently log error instead of toast
-        } else if (data) {
+        if (videoError) {
+          console.error('Error fetching video:', videoError);
+        } else if (videoData) {
           setVideo({
-            ...data,
-            transcript: data.transcript as unknown as TranscriptEntry[] | null,
+            ...videoData,
+            transcript: videoData.transcript as unknown as TranscriptEntry[] | null,
           });
+        }
+
+        // Fetch practice problem linked to this video
+        const { data: problemData, error: problemError } = await supabase
+          .from('practice_problems')
+          .select('id, title, content, solution, video_id')
+          .eq('video_id', videoId)
+          .maybeSingle();
+
+        if (problemError) {
+          console.error('Error fetching practice problem:', problemError);
+        } else if (problemData) {
+          setPracticeProblem(problemData);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -76,7 +100,7 @@ export default function PracticeQuestion() {
       }
     };
 
-    fetchVideo();
+    fetchVideoAndProblem();
   }, [videoId]);
 
   const handleGenerateQuestion = async () => {
@@ -141,6 +165,83 @@ export default function PracticeQuestion() {
           fromPractice: true,
         } 
       });
+    }
+  };
+
+  // Generate AI solution for problems without a stored solution
+  const handleGenerateSolution = async (problemContent: string) => {
+    setIsGeneratingSolution(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('Authentication required');
+        setIsGeneratingSolution(false);
+        return;
+      }
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-tutor-standalone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          message: `Please provide a detailed step-by-step solution for this problem. Format your answer clearly with "Step 1:", "Step 2:", etc. Use proper LaTeX formatting for all math expressions.\n\nProblem:\n${problemContent}`,
+          selectedTopic: 'general',
+          videoContext: video ? {
+            title: video.title,
+            subject: 'math',
+          } : null,
+          conversationHistory: [],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate solution');
+      }
+
+      if (!response.body) {
+        throw new Error('No response stream available');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullSolution = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              fullSolution += content;
+              setGeneratedSolution(fullSolution);
+            }
+          } catch { /* ignore incomplete JSON */ }
+        }
+      }
+    } catch (error) {
+      console.error('Error generating solution:', error);
+      setGeneratedSolution('Sorry, there was an error generating the solution. Please try again.');
+    } finally {
+      setIsGeneratingSolution(false);
     }
   };
 
@@ -217,6 +318,106 @@ export default function PracticeQuestion() {
           </Button>
         </div>
 
+        {/* Database Practice Problem Section */}
+        {practiceProblem && (
+          <Card className="mb-8 border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-primary" />
+                {practiceProblem.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="prose prose-sm max-w-none text-foreground">
+                <MarkdownWithMath content={practiceProblem.content} />
+              </div>
+              
+              {/* Solution Section */}
+              {practiceProblem.solution ? (
+                <Collapsible open={showSolution} onOpenChange={setShowSolution}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4" />
+                        {showSolution ? 'Hide Solution' : 'Show Solution'}
+                      </span>
+                      {showSolution ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <div className="rounded-lg border bg-card p-4">
+                      <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                        Step-by-Step Solution
+                      </h4>
+                      <div className="prose prose-sm max-w-none text-muted-foreground">
+                        <MarkdownWithMath content={practiceProblem.solution} />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                /* AI Solution Fallback */
+                <div className="space-y-4">
+                  {!generatedSolution && !isGeneratingSolution && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full gap-2 border-primary/50 hover:bg-primary/5"
+                      onClick={() => handleGenerateSolution(practiceProblem.content)}
+                    >
+                      <Wand2 className="h-4 w-4" />
+                      ✨ Generate Step-by-Step Solution
+                    </Button>
+                  )}
+                  
+                  {isGeneratingSolution && (
+                    <div className="rounded-lg border bg-card p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-sm text-muted-foreground">Generating solution...</span>
+                      </div>
+                      {generatedSolution && (
+                        <div className="prose prose-sm max-w-none text-muted-foreground">
+                          <MarkdownWithMath content={generatedSolution} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {generatedSolution && !isGeneratingSolution && (
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <span className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            AI-Generated Solution
+                          </span>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-4">
+                        <div className="rounded-lg border bg-primary/5 p-4">
+                          <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            Step-by-Step Solution
+                          </h4>
+                          <div className="prose prose-sm max-w-none text-muted-foreground">
+                            <MarkdownWithMath content={generatedSolution} />
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Generated Question Section */}
         {generatedQuestion && (
           <Card className="mb-8 border-primary/50 bg-primary/5">
@@ -234,18 +435,14 @@ export default function PracticeQuestion() {
               
               {/* Show Solution Collapsible */}
               {generatedQuestion.solution && (
-                <Collapsible open={showSolution} onOpenChange={setShowSolution}>
+                <Collapsible>
                   <CollapsibleTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
                       <span className="flex items-center gap-2">
                         <Lightbulb className="h-4 w-4" />
-                        {showSolution ? 'Hide Solution' : 'Show Solution'}
+                        Show Solution
                       </span>
-                      {showSolution ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-4">

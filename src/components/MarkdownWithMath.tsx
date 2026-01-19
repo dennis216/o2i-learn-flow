@@ -107,10 +107,14 @@ export default function MarkdownWithMath({ content, className = '' }: MarkdownWi
   const processedContent = preprocessMathContent(content);
   
   return (
-    <div className={`prose prose-sm max-w-none dark:prose-invert ${className}`}>
+    <div className={`prose prose-sm max-w-none dark:prose-invert math-content ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkMath, remarkGfm]}
         rehypePlugins={[rehypeKatex]}
+        components={{
+          // Ensure paragraphs don't break inline math flow
+          p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+        }}
       >
         {processedContent}
       </ReactMarkdown>
