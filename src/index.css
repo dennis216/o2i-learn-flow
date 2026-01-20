@@ -117,23 +117,96 @@ All colors MUST be HSL.
    Ensures inline math never breaks to new lines and stays with surrounding text
    ============================================================================= */
 
-/* Prevent LaTeX from breaking into new lines within sentences */
+/* Force LaTeX inline elements to stay with text - STRONGEST OVERRIDE */
 .katex {
+  white-space: nowrap !important;
+  display: inline-block !important;
+}
+
+/* Prevent prose paragraphs from breaking inline math */
+.prose p {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+/* Additional inline math specificity */
+.katex:not(.katex-display) {
   display: inline-block !important;
   white-space: nowrap !important;
-  vertical-align: middle !important;
+  vertical-align: baseline !important;
+  word-break: keep-all !important;
 }
 
-/* Ensure the display-mode (centered) formulas still work separately */
-.katex-display {
-  display: block !important;
-  margin: 1em 0 !important;
-  text-align: center !important;
-  white-space: normal !important;
+/* Inline math class variants */
+.katex-inline,
+.math-inline,
+.prose .katex:not(.katex-display),
+.math-content .katex:not(.katex-display) {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  vertical-align: baseline !important;
+  word-break: keep-all !important;
 }
 
-/* Ensure the parent paragraph allows inline elements to flow correctly */
-.prose p, .text-foreground, .markdown-content {
+/* Force all internal KaTeX elements to stay inline */
+.katex:not(.katex-display) .katex-html,
+.katex:not(.katex-display) .base,
+.katex:not(.katex-display) .strut,
+.katex:not(.katex-display) .mord,
+.katex:not(.katex-display) .mbin,
+.katex:not(.katex-display) .mrel,
+.katex:not(.katex-display) .mopen,
+.katex:not(.katex-display) .mclose,
+.katex:not(.katex-display) .mpunct,
+.katex:not(.katex-display) .minner,
+.katex:not(.katex-display) .mop,
+.katex:not(.katex-display) .mspace,
+.katex:not(.katex-display) .enclosing {
+  display: inline !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure inline math stays attached to surrounding text in paragraphs */
+.prose p .katex:not(.katex-display),
+.math-content p .katex:not(.katex-display),
+p .katex:not(.katex-display) {
+  display: inline-block !important;
+  white-space: nowrap !important;
+  vertical-align: baseline !important;
+}
+
+/* Block math styling - proper margins and spacing */
+.katex-display,
+.prose .katex-display,
+.math-content .katex-display {
   display: block !important;
-  overflow-wrap: break-word !important;
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+/* Math content container - prevent awkward text wrapping around math */
+.math-content {
+  overflow-wrap: normal;
+}
+
+.math-content p {
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+  word-break: normal !important;
+}
+
+/* Ensure span wrappers around inline math stay inline */
+.math-content p > span,
+.prose p > span,
+p > span {
+  display: inline;
+}
+
+/* Force katex-html wrapper to prevent breaking */
+.katex-html {
+  white-space: nowrap !important;
+  display: inline !important;
 }
