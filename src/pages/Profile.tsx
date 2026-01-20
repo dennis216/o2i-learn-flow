@@ -3,10 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Mail, Calendar } from 'lucide-react';
+import { User, Mail, Calendar, Lock, Shield } from 'lucide-react';
+import { isDesignatedSuperAdmin } from '@/lib/constants';
+import { Badge } from '@/components/ui/badge';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  
+  // Check if this is the designated super admin by email
+  const isProtectedAccount = isDesignatedSuperAdmin(user?.email);
 
   if (!user) {
     return (
@@ -27,8 +32,21 @@ export default function Profile() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
-          <p className="text-muted-foreground mt-2">Manage your account settings and preferences</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+            {isProtectedAccount && (
+              <Badge variant="default" className="bg-purple-600">
+                <Shield className="h-3 w-3 mr-1" />
+                Super Admin
+                <Lock className="h-3 w-3 ml-1" />
+              </Badge>
+            )}
+          </div>
+          <p className="text-muted-foreground mt-2">
+            {isProtectedAccount 
+              ? 'Protected account - some actions are restricted for security' 
+              : 'Manage your account settings and preferences'}
+          </p>
         </div>
 
         <div className="grid gap-6">
@@ -37,9 +55,17 @@ export default function Profile() {
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Account Information
+                {isProtectedAccount && (
+                  <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600">
+                    <Lock className="h-3 w-3 mr-1" />
+                    Read-Only
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
-                View and manage your personal information
+                {isProtectedAccount 
+                  ? 'Your account information is protected and cannot be modified' 
+                  : 'View and manage your personal information'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -110,21 +136,32 @@ export default function Profile() {
             <CardHeader>
               <CardTitle>Account Actions</CardTitle>
               <CardDescription>
-                Manage your account settings
+                {isProtectedAccount 
+                  ? 'Account actions are disabled for the system administrator' 
+                  : 'Manage your account settings'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="outline">
-                  Change Password
-                </Button>
-                <Button variant="outline">
-                  Update Profile
-                </Button>
-                <Button variant="destructive">
-                  Delete Account
-                </Button>
-              </div>
+              {isProtectedAccount ? (
+                <div className="p-4 border rounded-lg bg-muted/50 text-center">
+                  <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    This is a protected system account. Account modifications require direct database access.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button variant="outline">
+                    Change Password
+                  </Button>
+                  <Button variant="outline">
+                    Update Profile
+                  </Button>
+                  <Button variant="destructive">
+                    Delete Account
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

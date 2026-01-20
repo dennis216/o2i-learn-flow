@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { isDesignatedSuperAdmin, SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 interface Profile {
   id: string;
@@ -118,17 +119,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkSuperAdminRole = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('is_super_admin', {
-        _user_id: userId,
-      });
-
-      if (error) {
-        console.error('Error checking super admin role:', error);
-        setIsSuperAdmin(false);
+      // First, get the user's email to perform the hard-coded check
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      // CODE-LEVEL LOGIC SHIELD: Only the designated email can be super admin
+      // Even if database says another user is super_admin, we ignore it unless email matches
+      if (currentUser?.email && isDesignatedSuperAdmin(currentUser.email)) {
+        setIsSuperAdmin(true);
         return;
       }
-
-      setIsSuperAdmin(data === true);
+      
+      // For any other user, super admin is always false regardless of database state
+      setIsSuperAdmin(false);
     } catch (error) {
       console.error('Error checking super admin role:', error);
       setIsSuperAdmin(false);

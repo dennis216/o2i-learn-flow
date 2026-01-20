@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle, Lock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-
+import { isDesignatedSuperAdmin, SUPER_ADMIN_EMAIL, SUPER_ADMIN_INTEGRITY_ERROR } from "@/lib/constants";
 interface UserProfile {
   id: string;
   user_id: string;
@@ -239,6 +239,10 @@ export const UserManagement = () => {
               const isAdmin = roles.includes('admin');
               const isSuperAdminUser = roles.includes('super_admin');
               const isCurrentUser = userProfile.user_id === user?.id;
+              // CODE-LEVEL LOGIC SHIELD: Check if this is the designated super admin by email
+              const isDesignatedSA = isDesignatedSuperAdmin(userProfile.email);
+              // Only show super admin badge if email matches the designated super admin
+              const showSuperAdminBadge = isDesignatedSA;
 
               return (
                 <tr
@@ -253,23 +257,27 @@ export const UserManagement = () => {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {isSuperAdminUser && (
+                      {showSuperAdminBadge && (
                         <Badge variant="default" className="bg-purple-600">
                           <Shield className="h-3 w-3 mr-1" />
                           Super Admin
+                          <Lock className="h-3 w-3 ml-1" />
                         </Badge>
                       )}
-                      {isAdmin && !isSuperAdminUser && (
+                      {isAdmin && !showSuperAdminBadge && (
                         <Badge variant="secondary">
                           <ShieldCheck className="h-3 w-3 mr-1" />
                           Admin
                         </Badge>
                       )}
-                      {!isAdmin && !isSuperAdminUser && (
+                      {!isAdmin && !showSuperAdminBadge && (
                         <Badge variant="outline">Student</Badge>
                       )}
                       {isCurrentUser && (
                         <Badge variant="outline" className="border-primary text-primary">You</Badge>
+                      )}
+                      {isDesignatedSA && !isCurrentUser && (
+                        <Badge variant="outline" className="border-amber-500 text-amber-500">Protected</Badge>
                       )}
                     </div>
                   </td>
@@ -278,64 +286,74 @@ export const UserManagement = () => {
                   </td>
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                    {!isSuperAdminUser && !isCurrentUser && (
+                    {/* Block any role modifications for the designated Super Admin */}
+                    {isDesignatedSA ? (
+                      <span className="text-sm text-muted-foreground italic flex items-center gap-1">
+                        <Lock className="h-3 w-3" />
+                        Immutable
+                      </span>
+                    ) : (
                       <>
-                        {isAdmin ? (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                        {!isSuperAdminUser && !isCurrentUser && (
+                          <>
+                            {isAdmin ? (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive"
+                                    disabled={processingUserId === userProfile.user_id}
+                                  >
+                                    {processingUserId === userProfile.user_id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <ShieldX className="h-4 w-4 mr-1" />
+                                        Revoke
+                                      </>
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Revoke Admin Role?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will remove admin privileges from {userProfile.full_name}. They will no longer be able to access the admin dashboard.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => revokeAdminRole(userProfile.user_id)}>
+                                      Revoke
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ) : (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-destructive"
+                                onClick={() => grantAdminRole(userProfile.user_id)}
                                 disabled={processingUserId === userProfile.user_id}
                               >
                                 {processingUserId === userProfile.user_id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <>
-                                    <ShieldX className="h-4 w-4 mr-1" />
-                                    Revoke
+                                    <ShieldCheck className="h-4 w-4 mr-1" />
+                                    Grant Admin
                                   </>
                                 )}
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Revoke Admin Role?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will remove admin privileges from {userProfile.full_name}. They will no longer be able to access the admin dashboard.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => revokeAdminRole(userProfile.user_id)}>
-                                  Revoke
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => grantAdminRole(userProfile.user_id)}
-                            disabled={processingUserId === userProfile.user_id}
-                          >
-                            {processingUserId === userProfile.user_id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <ShieldCheck className="h-4 w-4 mr-1" />
-                                Grant Admin
-                              </>
                             )}
-                          </Button>
+                          </>
                         )}
                       </>
                     )}
                     
-                    {/* Force Confirm Button - always visible for super admins */}
-                    {!isCurrentUser && (
+                    {/* Force Confirm Button - visible for non-protected users */}
+                    {!isCurrentUser && !isDesignatedSA && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
