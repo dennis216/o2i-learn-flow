@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Target, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CourseVideo } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
+import { AITutorDrawer } from '../AITutorDrawer';
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
@@ -33,8 +34,24 @@ export function ExamPrep({ video }: ExamPrepProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [questions, setQuestions] = useState<MockQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
+  
+  // AI Tutor Drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerContext, setDrawerContext] = useState({
+    explanation: '',
+    timestamp: '',
+  });
 
   const hasTranscript = video.transcript && video.transcript.length > 0;
+
+  const handleAskTutor = (questionContent: string, questionNumber: number) => {
+    const prompt = `I am reviewing Exam Prep Question #${questionNumber}: "${questionContent.slice(0, 300)}${questionContent.length > 300 ? '...' : ''}". The system didn't provide a solution. Can you explain the step-by-step solution for this?`;
+    setDrawerContext({
+      explanation: prompt,
+      timestamp: `Question ${questionNumber}`,
+    });
+    setIsDrawerOpen(true);
+  };
 
   const generateMockTest = async () => {
     if (!hasTranscript) {
@@ -240,6 +257,14 @@ IMPORTANT REMINDERS:
     );
   };
 
+  // Check if a solution is missing or unavailable
+  const isSolutionUnavailable = (solution: string) => {
+    return !solution || 
+           solution === 'Solution not available' || 
+           solution.trim() === '' ||
+           solution.toLowerCase().includes('solution not available');
+  };
+
   if (questions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -288,65 +313,96 @@ IMPORTANT REMINDERS:
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Mock Test: {video.title}</h3>
-        <Button variant="outline" size="sm" onClick={generateMockTest} disabled={isGenerating}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
-          New Test
-        </Button>
-      </div>
-
+    <>
       <div className="space-y-4">
-        {questions.map((q) => (
-          <Card key={q.id} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
-                  {q.id}
-                </span>
-                <Badge className={DIFFICULTY_COLORS[q.difficulty]}>
-                  <Target className="h-3 w-3 mr-1" />
-                  {q.difficulty}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-lg">
-                <MarkdownWithMath content={q.question} />
-              </div>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Mock Test: {video.title}</h3>
+          <Button variant="outline" size="sm" onClick={generateMockTest} disabled={isGenerating}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+            New Test
+          </Button>
+        </div>
 
-              <Collapsible open={q.showSolution} onOpenChange={() => toggleSolution(q.id)}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full gap-2">
-                    {q.showSolution ? (
-                      <>
-                        <ChevronUp className="h-4 w-4" />
-                        Hide Solution
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4" />
-                        Show Solution
-                      </>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="mt-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border-l-4 border-green-500">
-                    <h4 className="font-semibold text-sm mb-3 text-green-700 dark:text-green-400">
-                      Step-by-Step Solution:
-                    </h4>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <MarkdownWithMath content={q.solution} />
-                    </div>
+        <div className="space-y-4">
+          {/* Use array index for sequential numbering (index + 1) */}
+          {questions.map((q, index) => (
+            <Card key={q.id} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <Badge className={DIFFICULTY_COLORS[q.difficulty]}>
+                    <Target className="h-3 w-3 mr-1" />
+                    {q.difficulty}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-lg">
+                  <MarkdownWithMath content={q.question} />
+                </div>
+
+                {/* Show Solution / Ask Tutor logic */}
+                {isSolutionUnavailable(q.solution) ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-muted-foreground italic">
+                      Solution not available
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 w-full"
+                      onClick={() => handleAskTutor(q.question, index + 1)}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      💬 Ask Tutor
+                    </Button>
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </CardContent>
-          </Card>
-        ))}
+                ) : (
+                  <Collapsible open={q.showSolution} onOpenChange={() => toggleSolution(q.id)}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full gap-2">
+                        {q.showSolution ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            Hide Solution
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            Show Solution
+                          </>
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-3 p-4 bg-accent/20 dark:bg-accent/10 rounded-lg border-l-4 border-accent">
+                        <h4 className="font-semibold text-sm mb-3 text-foreground">
+                          Step-by-Step Solution:
+                        </h4>
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                          <MarkdownWithMath content={q.solution} />
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {/* AI Tutor Drawer */}
+      <AITutorDrawer
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+        sceneExplanation={drawerContext.explanation}
+        sceneTimestamp={drawerContext.timestamp}
+        videoTitle={video.title}
+        videoSubject={video.subtitle || ''}
+      />
+    </>
   );
 }
