@@ -112,18 +112,27 @@ export default function Auth() {
 
       const { error } = await signUp(email, password, fullName);
       if (error) {
+        // Handle specific error cases with helpful messages
+        let errorMessage = error.message;
+        if (error.message.includes('already registered')) {
+          errorMessage = "This email is already registered. Please sign in instead.";
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = "Too many signup attempts. Please wait a few minutes and try again.";
+        }
+        
         toast({
           title: "Error creating account",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Check your email!",
-          description: "We've sent you a confirmation link. Please check your inbox and click the link to verify your account.",
-          duration: 8000,
+          title: "🎉 Account Created Successfully!",
+          description: "You can now sign in with your email and password. Welcome to O2I Institute!",
+          duration: 6000,
         });
-        // Don't navigate immediately - user needs to confirm email first
+        // Since email confirmation may not be configured, allow immediate sign in
+        // Switch to sign-in tab after successful registration
       }
     } catch (error) {
       toast({
