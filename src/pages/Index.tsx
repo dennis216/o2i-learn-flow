@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Book, Users, Image, MessageSquare, Calculator, GraduationCap, Target } from 'lucide-react';
+ import { Book, Image, MessageSquare } from 'lucide-react';
 import ScholarCounter from '@/components/home/ScholarCounter';
 
 const Index = () => {
@@ -27,13 +27,6 @@ const Index = () => {
       description: "Connect with fellow students, share study tips, and collaborate on challenging problems.",
       link: "/forum"
     }
-  ];
-
-  const stats = [
-    { icon: <Users className="h-6 w-6" />, label: "Active Students", value: "1,000+" },
-    { icon: <Calculator className="h-6 w-6" />, label: "Problems Solved", value: "5,000+" },
-    { icon: <GraduationCap className="h-6 w-6" />, label: "Expert Tutors", value: "50+" },
-    { icon: <Target className="h-6 w-6" />, label: "Success Rate", value: "95%" }
   ];
 
   return (
@@ -80,19 +73,6 @@ const Index = () => {
                 </Button>
               </>
             )}
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="flex justify-center mb-2 text-primary">
-                  {stat.icon}
-                </div>
-                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
