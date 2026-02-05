@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Book, Users, Image, MessageSquare, Calculator, GraduationCap, Target } from 'lucide-react';
+import ScholarCounter from '@/components/home/ScholarCounter';
 
 const Index = () => {
   const { user } = useAuth();
@@ -47,6 +48,11 @@ const Index = () => {
             Master mathematics with our comprehensive tutoring platform. Get expert help, connect with peers, 
             and unlock your potential with personalized learning experiences.
           </p>
+          
+          {/* Real-time Scholar Counter */}
+          <div className="mb-8">
+            <ScholarCounter />
+          </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             {user ? (

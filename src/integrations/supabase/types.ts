@@ -531,6 +531,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_zombie: boolean
           role: string | null
           updated_at: string
           user_id: string
@@ -541,6 +542,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          is_zombie?: boolean
           role?: string | null
           updated_at?: string
           user_id: string
@@ -551,6 +553,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_zombie?: boolean
           role?: string | null
           updated_at?: string
           user_id?: string
@@ -897,6 +900,7 @@ export type Database = {
       }
     }
     Functions: {
+      count_real_users: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
