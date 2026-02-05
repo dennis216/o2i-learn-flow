@@ -42,12 +42,12 @@ const Index = () => {
             and unlock your potential with personalized learning experiences.
           </p>
           
-          {/* Real-time Scholar Counter */}
-          <div className="mb-8">
+          {/* Trust Bar - Scholar Counter & Expert Tutors */}
+          <div className="mb-10">
             <ScholarCounter />
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             {user ? (
               <>
                 <Button size="lg" asChild>
