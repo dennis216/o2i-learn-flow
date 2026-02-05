@@ -2,3 +2,6 @@ project_id = "lxoaeaewcrshjkigzyqe"
 
 [functions.force-confirm-user]
 verify_jwt = false
+ 
+ [functions.generate-zombie-users]
+ verify_jwt = false
