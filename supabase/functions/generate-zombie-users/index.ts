@@ -85,9 +85,9 @@
        }
      });
  
-     // Generate 4 zombie users
-     const zombieUsers = [];
-     for (let i = 0; i < 4; i++) {
+      // Generate 7 zombie users
+      const zombieUsers = [];
+      for (let i = 0; i < 7; i++) {
        zombieUsers.push(generateZombieUser());
      }
  
