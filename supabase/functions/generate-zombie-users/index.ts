@@ -42,28 +42,25 @@
    return Math.floor(Math.random() * (max - min + 1)) + min;
  }
  
- function generateZombieUser() {
-   const firstName = getRandomElement(firstNames);
-   const lastName = getRandomElement(lastNames);
-   const fullName = `${firstName} ${lastName}`;
-   
-   // Generate a unique email with random numbers
-   const randomNum = generateRandomNumber(1, 9999);
-   const emailPrefix = `${firstName.toLowerCase()}${lastName.toLowerCase()}${randomNum}`;
-   const emailDomain = getRandomElement(emailDomains);
-   const email = `${emailPrefix}@${emailDomain}`;
-   
-   // Generate a fake user_id (UUID format)
-   const userId = crypto.randomUUID();
-   
-   return {
-     user_id: userId,
-     full_name: fullName,
-     email: email,
-     is_zombie: true,
-     role: 'student'
-   };
- }
+function generateZombieUser() {
+  const firstName = getRandomElement(firstNames);
+  const lastName = getRandomElement(lastNames);
+  const fullName = `${firstName} ${lastName}`;
+  
+  // Generate a unique email with random numbers
+  const randomNum = generateRandomNumber(1, 9999);
+  const emailPrefix = `${firstName.toLowerCase()}${lastName.toLowerCase()}${randomNum}`;
+  const emailDomain = getRandomElement(emailDomains);
+  const email = `${emailPrefix}@${emailDomain}`;
+  
+  return {
+    user_id: null, // Zombie users don't have auth.users entries
+    full_name: fullName,
+    email: email,
+    is_zombie: true,
+    role: 'student'
+  };
+}
  
  Deno.serve(async (req) => {
    // Handle CORS preflight

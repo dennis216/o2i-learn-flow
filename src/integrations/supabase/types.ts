@@ -534,7 +534,7 @@ export type Database = {
           is_zombie: boolean
           role: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -545,7 +545,7 @@ export type Database = {
           is_zombie?: boolean
           role?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -556,7 +556,7 @@ export type Database = {
           is_zombie?: boolean
           role?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
