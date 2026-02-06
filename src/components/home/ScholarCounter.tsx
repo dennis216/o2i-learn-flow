@@ -10,12 +10,12 @@ const ScholarCounter = () => {
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const fetchRealUserCount = async () => {
+    const fetchTotalUserCount = async () => {
       try {
+        // Count ALL profiles (including zombie users for social proof)
         const { count, error } = await supabase
           .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_zombie', false);
+          .select('*', { count: 'exact', head: true });
 
         if (error) {
           console.error('Error fetching user count:', error);
@@ -30,7 +30,7 @@ const ScholarCounter = () => {
       }
     };
 
-    fetchRealUserCount();
+    fetchTotalUserCount();
 
     const channel = supabase
       .channel('profiles-count')
@@ -38,7 +38,7 @@ const ScholarCounter = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => {
-          fetchRealUserCount();
+          fetchTotalUserCount();
         }
       )
       .subscribe();

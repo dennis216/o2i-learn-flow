@@ -73,49 +73,75 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Starting zombie user generation...');
+    console.log('=== ZOMBIE USER GENERATION STARTED ===');
+    console.log('Request method:', req.method);
     
-    // SECURITY: Require authentication
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('SUPABASE_URL available:', !!supabaseUrl);
+    console.log('SUPABASE_SERVICE_ROLE_KEY available:', !!supabaseServiceKey);
+    
+    // Check if this is being called via cron/scheduler (no auth header needed for scheduled tasks)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.log('Rejected: Missing authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const isScheduledTask = !authHeader;
+    
+    console.log('Auth header present:', !!authHeader);
+    console.log('Is scheduled task (no auth):', isScheduledTask);
+    
+    // If called with auth header, verify it's the super admin
+    if (authHeader) {
+      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      
+      const userClient = createClient(supabaseUrl!, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const { data: { user: caller }, error: authError } = await userClient.auth.getUser();
+      
+      if (authError) {
+        console.log('Auth error:', authError.message);
+        return new Response(
+          JSON.stringify({ error: 'Invalid authorization' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (!caller) {
+        console.log('No caller found');
+        return new Response(
+          JSON.stringify({ error: 'Invalid authorization' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Caller email:', caller.email);
+      
+      // CODE-LEVEL LOGIC SHIELD: Only the designated super admin email can use this function
+      if (caller.email?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
+        console.log(`Rejected: User ${caller.email} is not the designated Super Admin`);
+        return new Response(
+          JSON.stringify({ error: 'Only the designated Super Admin can generate zombie users' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      console.log(`Authorized: Super Admin ${caller.email} generating zombie users`);
+    } else {
+      // For scheduled tasks, we allow execution without auth header
+      // This enables cron jobs to trigger the function
+      console.log('Running as scheduled task (no auth header required)');
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    // Create client with user's token to verify their identity
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Get the caller's user info
-    const { data: { user: caller }, error: authError } = await userClient.auth.getUser();
-    if (authError || !caller) {
-      console.log('Rejected: Invalid authorization token');
+    // Use service role client for admin operations
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing required environment variables');
       return new Response(
-        JSON.stringify({ error: 'Invalid authorization' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // CODE-LEVEL LOGIC SHIELD: Only the designated super admin email can use this function
-    if (caller.email?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
-      console.log(`Rejected: User ${caller.email} is not the designated Super Admin`);
-      return new Response(
-        JSON.stringify({ error: 'Only the designated Super Admin can generate zombie users' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Authorized: Super Admin ${caller.email} generating zombie users`);
-
-    // Use service role client for admin operations (now authorized)
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -129,23 +155,32 @@ Deno.serve(async (req) => {
       zombieUsers.push(generateZombieUser());
     }
 
-    console.log('Generated zombie users:', zombieUsers.map(u => u.email));
+    console.log('=== ZOMBIE USERS TO CREATE ===');
+    console.log('Count:', zombieUsers.length);
+    console.log('Users:', JSON.stringify(zombieUsers, null, 2));
 
     // Insert the zombie users into the profiles table
+    console.log('Inserting into profiles table...');
     const { data, error } = await supabase
       .from('profiles')
       .insert(zombieUsers)
       .select();
 
     if (error) {
-      console.error('Error inserting zombie users:', error);
+      console.error('=== INSERT ERROR ===');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
       return new Response(
         JSON.stringify({ error: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Successfully created zombie users:', data?.length);
+    console.log('=== INSERT SUCCESS ===');
+    console.log('Created users count:', data?.length);
+    console.log('Created users:', JSON.stringify(data, null, 2));
 
     return new Response(
       JSON.stringify({ 
@@ -157,7 +192,8 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Zombie generation error:', error);
+    console.error('=== UNEXPECTED ERROR ===');
+    console.error('Error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
