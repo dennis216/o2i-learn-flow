@@ -78,6 +78,15 @@ Deno.serve(async (req) => {
     console.log('=== ZOMBIE USER GENERATION STARTED ===');
     console.log('Request method:', req.method);
     
+    // Verify secret is configured
+    if (!API_SECRET) {
+      console.error('ZOMBIE_USERS_SECRET not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error: Secret not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // Check for secret in query parameter
     const url = new URL(req.url);
     const providedSecret = url.searchParams.get('secret');
@@ -90,6 +99,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Unauthorized: Invalid or missing secret' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
     }
     
     console.log('Secret verified successfully');
