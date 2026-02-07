@@ -100,7 +100,6 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    }
     
     console.log('Secret verified successfully');
     
