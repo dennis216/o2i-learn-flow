@@ -1,8 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// STRICT SINGLE-SUPER-ADMIN POLICY
-// Hard-coded super admin email - this is the ONLY valid super admin
-const SUPER_ADMIN_EMAIL = 'ziquanwang52@gmail.com';
+// Simple secret for API access (query parameter based)
+const API_SECRET = 'O2I_SUPER_SECRET_2026';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,14 +50,13 @@ function generateZombieUser() {
   const lastName = getRandomElement(lastNames);
   const fullName = `${firstName} ${lastName}`;
   
-  // Generate a unique email with random numbers
   const randomNum = generateRandomNumber(1, 9999);
   const emailPrefix = `${firstName.toLowerCase()}${lastName.toLowerCase()}${randomNum}`;
   const emailDomain = getRandomElement(emailDomains);
   const email = `${emailPrefix}@${emailDomain}`;
   
   return {
-    user_id: null, // Zombie users don't have auth.users entries
+    user_id: null,
     full_name: fullName,
     email: email,
     is_zombie: true,
@@ -76,64 +74,28 @@ Deno.serve(async (req) => {
     console.log('=== ZOMBIE USER GENERATION STARTED ===');
     console.log('Request method:', req.method);
     
+    // Check for secret in query parameter
+    const url = new URL(req.url);
+    const providedSecret = url.searchParams.get('secret');
+    
+    console.log('Secret provided:', !!providedSecret);
+    
+    if (providedSecret !== API_SECRET) {
+      console.log('Invalid or missing secret');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid or missing secret' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('Secret verified successfully');
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     console.log('SUPABASE_URL available:', !!supabaseUrl);
     console.log('SUPABASE_SERVICE_ROLE_KEY available:', !!supabaseServiceKey);
-    
-    // Check if this is being called via cron/scheduler (no auth header needed for scheduled tasks)
-    const authHeader = req.headers.get('Authorization');
-    const isScheduledTask = !authHeader;
-    
-    console.log('Auth header present:', !!authHeader);
-    console.log('Is scheduled task (no auth):', isScheduledTask);
-    
-    // If called with auth header, verify it's the super admin
-    if (authHeader) {
-      const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-      
-      const userClient = createClient(supabaseUrl!, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } }
-      });
 
-      const { data: { user: caller }, error: authError } = await userClient.auth.getUser();
-      
-      if (authError) {
-        console.log('Auth error:', authError.message);
-        return new Response(
-          JSON.stringify({ error: 'Invalid authorization' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      if (!caller) {
-        console.log('No caller found');
-        return new Response(
-          JSON.stringify({ error: 'Invalid authorization' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log('Caller email:', caller.email);
-      
-      // CODE-LEVEL LOGIC SHIELD: Only the designated super admin email can use this function
-      if (caller.email?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
-        console.log(`Rejected: User ${caller.email} is not the designated Super Admin`);
-        return new Response(
-          JSON.stringify({ error: 'Only the designated Super Admin can generate zombie users' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      console.log(`Authorized: Super Admin ${caller.email} generating zombie users`);
-    } else {
-      // For scheduled tasks, we allow execution without auth header
-      // This enables cron jobs to trigger the function
-      console.log('Running as scheduled task (no auth header required)');
-    }
-
-    // Use service role client for admin operations
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing required environment variables');
       return new Response(
