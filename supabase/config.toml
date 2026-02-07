@@ -2,6 +2,15 @@ project_id = "lxoaeaewcrshjkigzyqe"
 
 [functions.force-confirm-user]
 verify_jwt = false
- 
- [functions.generate-zombie-users]
- verify_jwt = false
+
+[functions.generate-zombie-users]
+verify_jwt = false
+
+[functions.ai-tutor]
+verify_jwt = false
+
+[functions.ai-tutor-standalone]
+verify_jwt = false
+
+[functions.generate-practice-question]
+verify_jwt = false
