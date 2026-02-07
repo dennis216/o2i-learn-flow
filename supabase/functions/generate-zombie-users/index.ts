@@ -1,7 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Simple secret for API access (query parameter based)
-const API_SECRET = 'O2I_SUPER_SECRET_2026';
+// Secret for API access - loaded from environment variable
+const API_SECRET = Deno.env.get('ZOMBIE_USERS_SECRET');
+
+if (!API_SECRET) {
+  console.error('ZOMBIE_USERS_SECRET environment variable is not configured');
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
