@@ -202,6 +202,7 @@ export type Database = {
           subtitle: string | null
           title: string
           transcript: Json | null
+          unit: string | null
           updated_at: string
           video_url: string
         }
@@ -217,6 +218,7 @@ export type Database = {
           subtitle?: string | null
           title: string
           transcript?: Json | null
+          unit?: string | null
           updated_at?: string
           video_url: string
         }
@@ -232,6 +234,7 @@ export type Database = {
           subtitle?: string | null
           title?: string
           transcript?: Json | null
+          unit?: string | null
           updated_at?: string
           video_url?: string
         }
