@@ -42,16 +42,31 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
     }
   }, [autoSelectVideoId, course.course_videos]);
 
-  // Group videos by subtitle (unit)
+  // Group videos by unit, then by subtitle (part)
   const groupedVideos = (() => {
     if (!course.course_videos?.length) return {};
     const sorted = [...course.course_videos].sort((a, b) => a.order_index - b.order_index);
-    return sorted.reduce((acc, video) => {
-      const unit = video.subtitle || 'Other Videos';
-      if (!acc[unit]) acc[unit] = [];
-      acc[unit].push(video);
-      return acc;
-    }, {} as Record<string, CourseVideo[]>);
+    
+    // Group by unit first, then by part (subtitle)
+    const unitGroups: Record<string, Record<string, CourseVideo[]>> = {};
+    
+    sorted.forEach(video => {
+      const unit = video.unit || video.subtitle || 'Other Videos';
+      const part = video.unit ? (video.subtitle || 'Lessons') : null;
+      
+      if (!unitGroups[unit]) unitGroups[unit] = {};
+      
+      if (part) {
+        if (!unitGroups[unit][part]) unitGroups[unit][part] = [];
+        unitGroups[unit][part].push(video);
+      } else {
+        // No parts, just add to a default group
+        if (!unitGroups[unit]['_default']) unitGroups[unit]['_default'] = [];
+        unitGroups[unit]['_default'].push(video);
+      }
+    });
+    
+    return unitGroups;
   })();
 
   return (
@@ -98,49 +113,102 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                   <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={resumeTime || undefined} />
                 </div>
               ) : course.course_videos && course.course_videos.length > 0 ? (
-                Object.entries(groupedVideos).map(([unit, videos]) => (
-                  <Collapsible key={unit} defaultOpen className="border rounded-lg">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="secondary" className="font-semibold">
-                          {videos.length} lesson{videos.length > 1 ? 's' : ''}
-                        </Badge>
-                        <h3 className="font-semibold text-lg">{unit}</h3>
-                      </div>
-                      <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="px-4 pb-4 space-y-2">
-                      {videos.map((video) => (
-                        <Card
-                          key={video.id}
-                          className="border-muted cursor-pointer hover:border-primary/50 transition-colors"
-                          onClick={() => setSelectedVideo(video)}
-                        >
-                          <CardHeader className="py-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <PlayCircle className="h-5 w-5 text-primary" />
-                                <div>
-                                  <CardTitle className="text-base">{video.title}</CardTitle>
-                                  {video.description && (
-                                    <CardDescription className="text-sm mt-1">
-                                      {video.description}
-                                    </CardDescription>
+                Object.entries(groupedVideos).map(([unit, parts]) => {
+                  const totalVideos = Object.values(parts).flat().length;
+                  const hasParts = !('_default' in parts && Object.keys(parts).length === 1);
+                  
+                  return (
+                    <Collapsible key={unit} defaultOpen className="border rounded-lg">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary" className="font-semibold">
+                            {totalVideos} lesson{totalVideos > 1 ? 's' : ''}
+                          </Badge>
+                          <h3 className="font-semibold text-lg">{unit}</h3>
+                        </div>
+                        <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-4 pb-4 space-y-3">
+                        {hasParts ? (
+                          // Render nested parts
+                          Object.entries(parts).map(([partName, videos]) => (
+                            <Collapsible key={partName} defaultOpen className="border rounded-md bg-muted/30">
+                              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {videos.length} lesson{videos.length > 1 ? 's' : ''}
+                                  </Badge>
+                                  <h4 className="font-medium text-sm">{partName}</h4>
+                                </div>
+                                <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="px-3 pb-3 space-y-2">
+                                {videos.map((video) => (
+                                  <Card
+                                    key={video.id}
+                                    className="border-muted cursor-pointer hover:border-primary/50 transition-colors"
+                                    onClick={() => setSelectedVideo(video)}
+                                  >
+                                    <CardHeader className="py-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                          <PlayCircle className="h-5 w-5 text-primary" />
+                                          <div>
+                                            <CardTitle className="text-base">{video.title}</CardTitle>
+                                            {video.description && (
+                                              <CardDescription className="text-sm mt-1">
+                                                {video.description}
+                                              </CardDescription>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {video.duration && (
+                                          <Badge variant="outline">
+                                            {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </CardHeader>
+                                  </Card>
+                                ))}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))
+                        ) : (
+                          // Render flat list (no parts)
+                          parts['_default']?.map((video) => (
+                            <Card
+                              key={video.id}
+                              className="border-muted cursor-pointer hover:border-primary/50 transition-colors"
+                              onClick={() => setSelectedVideo(video)}
+                            >
+                              <CardHeader className="py-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <PlayCircle className="h-5 w-5 text-primary" />
+                                    <div>
+                                      <CardTitle className="text-base">{video.title}</CardTitle>
+                                      {video.description && (
+                                        <CardDescription className="text-sm mt-1">
+                                          {video.description}
+                                        </CardDescription>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {video.duration && (
+                                    <Badge variant="outline">
+                                      {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                    </Badge>
                                   )}
                                 </div>
-                              </div>
-                              {video.duration && (
-                                <Badge variant="outline">
-                                  {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                </Badge>
-                              )}
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))
+                              </CardHeader>
+                            </Card>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
               ) : (
                 <div className="text-center py-12">
                   <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

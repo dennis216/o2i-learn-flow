@@ -10,6 +10,7 @@ export interface CourseVideo {
   course_id: string;
   title: string;
   description: string;
+  unit?: string;
   subtitle?: string;
   video_url: string;
   duration: number;
