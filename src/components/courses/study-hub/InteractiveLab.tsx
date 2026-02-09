@@ -24,16 +24,24 @@ interface InteractiveLabProps {
 export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
   const [links, setLinks] = useState<PlaygroundLink[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLink, setSelectedLink] = useState<PlaygroundLink | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Check if video has a direct playground URL
+  const videoPlaygroundUrl = video.playground_url;
+
   useEffect(() => {
+    // If video has its own playground URL, no need to fetch from playground_links
+    if (videoPlaygroundUrl) {
+      setLoading(false);
+      return;
+    }
+    
     if (courseSubject) {
       fetchLinks(courseSubject);
     } else {
       setLoading(false);
     }
-  }, [courseSubject]);
+  }, [courseSubject, videoPlaygroundUrl]);
 
   const fetchLinks = async (subject: string) => {
     try {
@@ -52,8 +60,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
     }
   };
 
-  const openModal = (link: PlaygroundLink) => {
-    setSelectedLink(link);
+  const openModal = (link?: PlaygroundLink) => {
     setModalOpen(true);
   };
 
@@ -65,6 +72,80 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
     );
   }
 
+  // Priority: Video-specific playground URL
+  if (videoPlaygroundUrl) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <FlaskConical className="h-4 w-4" />
+          <span>Interactive model for this lesson</span>
+        </div>
+
+        <Card className="group hover:border-primary/50 transition-colors">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-primary flex-shrink-0" />
+              GeoGebra Interactive
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Explore the concepts from this lesson visually
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3">
+              <iframe
+                src={videoPlaygroundUrl}
+                className="w-full h-full border-0 pointer-events-none"
+                title="GeoGebra Interactive"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                className="flex-1 gap-1"
+                onClick={() => setModalOpen(true)}
+              >
+                <Maximize2 className="h-3 w-3" />
+                Interact
+              </Button>
+              <Button 
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(videoPlaygroundUrl, '_blank')}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fullscreen Modal for video-specific playground */}
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0">
+            <DialogHeader className="p-4 border-b flex-shrink-0">
+              <DialogTitle className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-primary" />
+                GeoGebra Interactive
+              </DialogTitle>
+              <div className="text-sm text-muted-foreground pt-1">
+                Interactive visualization for: {video.title}
+              </div>
+            </DialogHeader>
+            <div className="flex-1 p-4">
+              <iframe
+                src={videoPlaygroundUrl}
+                className="w-full h-full border-0 rounded-lg"
+                title="GeoGebra Interactive"
+                allowFullScreen
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Fallback: Subject-level playground links
   if (links.length === 0) {
     return (
       <div className="text-center py-8">
@@ -140,33 +221,6 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
           </Card>
         ))}
       </div>
-
-      {/* Fullscreen Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[85vh] flex flex-col p-0">
-          <DialogHeader className="p-4 border-b flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FlaskConical className="h-5 w-5 text-primary" />
-              {selectedLink?.title}
-            </DialogTitle>
-            {selectedLink?.description && (
-              <div className="text-sm text-muted-foreground pt-1">
-                <MarkdownWithMath content={selectedLink.description} />
-              </div>
-            )}
-          </DialogHeader>
-          <div className="flex-1 p-4">
-            {selectedLink && (
-              <iframe
-                src={selectedLink.geogebra_url}
-                className="w-full h-full border-0 rounded-lg"
-                title={selectedLink.title}
-                allowFullScreen
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

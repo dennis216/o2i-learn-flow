@@ -18,6 +18,7 @@ export interface CourseVideo {
   transcript?: TranscriptEntry[] | null;
   notes_url?: string | null;
   exam_tips?: string | null;
+  playground_url?: string | null;
 }
 
 export interface Course {

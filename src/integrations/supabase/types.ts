@@ -199,6 +199,7 @@ export type Database = {
           id: string
           notes_url: string | null
           order_index: number
+          playground_url: string | null
           subtitle: string | null
           title: string
           transcript: Json | null
@@ -215,6 +216,7 @@ export type Database = {
           id?: string
           notes_url?: string | null
           order_index?: number
+          playground_url?: string | null
           subtitle?: string | null
           title: string
           transcript?: Json | null
@@ -231,6 +233,7 @@ export type Database = {
           id?: string
           notes_url?: string | null
           order_index?: number
+          playground_url?: string | null
           subtitle?: string | null
           title?: string
           transcript?: Json | null
