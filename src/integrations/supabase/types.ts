@@ -363,6 +363,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          profile_id: string | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -373,6 +374,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          profile_id?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -383,12 +385,27 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          profile_id?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "forum_posts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_posts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "forum_posts_user_id_fkey"
             columns: ["user_id"]
@@ -402,6 +419,44 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      pending_zombie_comments: {
+        Row: {
+          comment_content: string
+          created_at: string
+          executed: boolean | null
+          id: string
+          post_id: string
+          scheduled_at: string
+          zombie_user_id: string
+        }
+        Insert: {
+          comment_content: string
+          created_at?: string
+          executed?: boolean | null
+          id?: string
+          post_id: string
+          scheduled_at: string
+          zombie_user_id: string
+        }
+        Update: {
+          comment_content?: string
+          created_at?: string
+          executed?: boolean | null
+          id?: string
+          post_id?: string
+          scheduled_at?: string
+          zombie_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_zombie_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -444,6 +499,7 @@ export type Database = {
           created_at: string
           id: string
           post_id: string
+          profile_id: string | null
           updated_at: string
           user_id: string
         }
@@ -452,6 +508,7 @@ export type Database = {
           created_at?: string
           id?: string
           post_id: string
+          profile_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -460,6 +517,7 @@ export type Database = {
           created_at?: string
           id?: string
           post_id?: string
+          profile_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -469,6 +527,20 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_replies_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_replies_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -895,6 +967,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      zombie_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sentiment: string | null
+          used_count: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sentiment?: string | null
+          used_count?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sentiment?: string | null
+          used_count?: number | null
+        }
+        Relationships: []
+      }
+      zombie_topics: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          tags: string[] | null
+          title: string
+          used_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title: string
+          used_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          tags?: string[] | null
+          title?: string
+          used_count?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {

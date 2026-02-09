@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 interface ForumPost {
   id: string;
   user_id: string;
+  profile_id?: string;
   title: string;
   content: string;
   category: string;
@@ -85,15 +86,28 @@ export default function Forum() {
           setPosts([]);
           setFilteredPosts([]);
         } else {
+          // Get user names from public_profiles (for real users)
           const userIds = Array.from(new Set(posts.map((p: any) => p.user_id).filter(Boolean)));
           const { data: profilesData } = await supabase
             .from('public_profiles')
             .select('user_id, full_name')
             .in('user_id', userIds);
-          const nameMap = new Map((profilesData || []).map((p: any) => [p.user_id, p.full_name]));
+          const userNameMap = new Map((profilesData || []).map((p: any) => [p.user_id, p.full_name]));
+          
+          // Get profile names for zombie posts (via profile_id)
+          const profileIds = Array.from(new Set(posts.map((p: any) => p.profile_id).filter(Boolean)));
+          let profileNameMap = new Map<string, string>();
+          if (profileIds.length > 0) {
+            const { data: zombieProfiles } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .in('id', profileIds);
+            profileNameMap = new Map((zombieProfiles || []).map((p: any) => [p.id, p.full_name]));
+          }
+          
           const postsWithNames = posts.map((p: any) => ({
             ...p,
-            display_name: nameMap.get(p.user_id) || 'User',
+            display_name: userNameMap.get(p.user_id) || profileNameMap.get(p.profile_id) || 'User',
           }));
           setPosts(postsWithNames);
           setFilteredPosts(postsWithNames);
