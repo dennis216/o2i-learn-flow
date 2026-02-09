@@ -14,6 +14,7 @@ import { MessageSquare, User, Clock, ArrowLeft, Send } from 'lucide-react';
 interface ForumPost {
   id: string;
   user_id: string;
+  profile_id?: string;
   title: string;
   content: string;
   category: string;
@@ -24,6 +25,7 @@ interface ForumPost {
 interface DiscussionPost {
   id: string;
   user_id: string;
+  profile_id?: string;
   content: string;
   created_at: string;
   author_name?: string;
@@ -61,38 +63,72 @@ export default function Discussion() {
         return;
       }
 
+      // Try to get author name from public_profiles first
+      let authorName = 'User';
       const { data: author } = await supabase
         .from('public_profiles')
         .select('full_name')
         .eq('user_id', post.user_id)
         .single();
-      setForumPost({ ...post, author_name: author?.full_name || 'User' });
+      
+      if (author?.full_name) {
+        authorName = author.full_name;
+      } else if (post.profile_id) {
+        // Fallback to profiles table for zombie users
+        const { data: zombieProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', post.profile_id)
+          .single();
+        if (zombieProfile?.full_name) {
+          authorName = zombieProfile.full_name;
+        }
+      }
+      
+      setForumPost({ ...post, author_name: authorName });
 
-      // Fetch discussion posts  
-      const { data: discussions, error: discussionsError } = await supabase
-        .from('discussion_posts')
+      // Fetch discussion posts (post_replies table, not discussion_posts)
+      const { data: replies, error: repliesError } = await supabase
+        .from('post_replies')
         .select(`
           id,
           user_id,
+          profile_id,
           content,
           created_at
         `)
-        .eq('forum_post_id', postId)
+        .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
-      if (discussionsError) {
-        console.error('Error fetching discussions:', discussionsError);
+      if (repliesError) {
+        console.error('Error fetching replies:', repliesError);
       } else {
-        const replies = discussions || [];
-        if (replies.length) {
-          const userIds = Array.from(new Set(replies.map((r: any) => r.user_id)));
+        const replyList = replies || [];
+        if (replyList.length) {
+          // Get names from public_profiles for real users
+          const userIds = Array.from(new Set(replyList.map((r: any) => r.user_id).filter(Boolean)));
           const { data: profs } = await supabase
             .from('public_profiles')
             .select('user_id, full_name')
             .in('user_id', userIds);
-          const nameMap = new Map((profs || []).map((p: any) => [p.user_id, p.full_name]));
+          const userNameMap = new Map((profs || []).map((p: any) => [p.user_id, p.full_name]));
+          
+          // Get names from profiles for zombie users
+          const profileIds = Array.from(new Set(replyList.map((r: any) => r.profile_id).filter(Boolean)));
+          let profileNameMap = new Map<string, string>();
+          if (profileIds.length > 0) {
+            const { data: zombieProfiles } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .in('id', profileIds);
+            profileNameMap = new Map((zombieProfiles || []).map((p: any) => [p.id, p.full_name]));
+          }
+          
           setDiscussionPosts(
-            replies.map((r: any) => ({ ...r, author_name: nameMap.get(r.user_id) || 'User' }))
+            replyList.map((r: any) => ({ 
+              ...r, 
+              author_name: userNameMap.get(r.user_id) || profileNameMap.get(r.profile_id) || 'User' 
+            }))
           );
         } else {
           setDiscussionPosts([]);
@@ -117,9 +153,9 @@ export default function Discussion() {
     setSubmitting(true);
     try {
       const { error } = await supabase
-        .from('discussion_posts')
+        .from('post_replies')
         .insert({
-          forum_post_id: postId,
+          post_id: postId,
           user_id: user.id,
           content: content.trim()
         });

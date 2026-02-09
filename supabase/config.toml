@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.generate-practice-question]
 verify_jwt = false
+
+[functions.zombie-daily-post]
+verify_jwt = false
+
+[functions.zombie-process-comments]
+verify_jwt = false
+
+[functions.zombie-schedule-comments-for-post]
+verify_jwt = false
