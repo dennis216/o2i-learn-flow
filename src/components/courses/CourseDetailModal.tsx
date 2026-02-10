@@ -144,9 +144,13 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                               </CollapsibleTrigger>
                               <CollapsibleContent className="px-3 pb-3 space-y-2">
                                 {videos.map((video) => (
-                                  <Card
+                    <Card
                                     key={video.id}
-                                    className="border-muted cursor-pointer hover:border-primary/50 transition-colors"
+                                    className={`cursor-pointer transition-all duration-200 ${
+                                      selectedVideo?.id === video.id
+                                        ? 'border-l-4 border-l-accent border-accent/50 bg-accent/5 shadow-[0_0_12px_hsl(43,96%,56%,0.15)]'
+                                        : 'border-muted hover:border-primary/50'
+                                    }`}
                                     onClick={() => setSelectedVideo(video)}
                                   >
                                     <CardHeader className="py-3">
