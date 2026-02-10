@@ -7,6 +7,19 @@ import { Loader2, FlaskConical, Maximize2, ExternalLink } from 'lucide-react';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { CourseVideo } from '../types';
 
+/**
+ * Convert a raw GeoGebra URL to its iframe embed format.
+ * e.g. https://www.geogebra.org/m/vtrufde8 → https://www.geogebra.org/material/iframe/id/vtrufde8
+ */
+function toGeoGebraEmbed(url: string): string {
+  const match = url.match(/geogebra\.org\/m\/([A-Za-z0-9]+)/);
+  if (match) {
+    return `https://www.geogebra.org/material/iframe/id/${match[1]}`;
+  }
+  // Already in embed format or unknown format – return as-is
+  return url;
+}
+
 interface PlaygroundLink {
   id: string;
   title: string;
@@ -94,8 +107,8 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
           <CardContent className="pt-0">
             <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3">
               <iframe
-                src={videoPlaygroundUrl}
-                className="w-full h-full border-0 pointer-events-none"
+                src={toGeoGebraEmbed(videoPlaygroundUrl)}
+                className="w-full h-[600px] border-0 pointer-events-none"
                 title="GeoGebra Interactive"
               />
             </div>
@@ -111,7 +124,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(videoPlaygroundUrl, '_blank')}
+                onClick={() => window.open(toGeoGebraEmbed(videoPlaygroundUrl), '_blank')}
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
@@ -133,7 +146,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
             </DialogHeader>
             <div className="flex-1 p-4">
               <iframe
-                src={videoPlaygroundUrl}
+                src={toGeoGebraEmbed(videoPlaygroundUrl)}
                 className="w-full h-full border-0 rounded-lg"
                 title="GeoGebra Interactive"
                 allowFullScreen
@@ -189,7 +202,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
             <CardContent className="pt-0">
               <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3">
                 <iframe
-                  src={link.geogebra_url}
+                  src={toGeoGebraEmbed(link.geogebra_url)}
                   className="w-full h-full border-0 pointer-events-none"
                   title={link.title}
                 />
