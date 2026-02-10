@@ -5,78 +5,85 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Maximize2, FlaskConical, ExternalLink } from 'lucide-react';
-import MarkdownWithMath from '@/components/MarkdownWithMath';
 
-interface PlaygroundLink {
+interface PlaygroundEntry {
   id: string;
   title: string;
-  geogebra_url: string;
-  description: string | null;
-  target_subject: string;
-  order_index: number;
+  playground_url: string;
+  course_title: string;
+  course_subject: string;
 }
 
-// Subject categories matching the course system
-const SUBJECT_CATEGORIES = {
-  'High School': [
-    'AP Calc', 'AP Stats', 'AP Precalc', 'SAT',
-    'M1', 'M2', 'Geo 1 (Intro)', 'Geo 2 (Int)',
-    'Alg 1 (Intro)', 'Alg 2 (Int)',
-    'Counting & Prob 1', 'Counting & Prob 2'
-  ],
-  'Contest': [
-    'AMC 10', 'AMC 12', 'Euclid', 'Fermat', 'Cayley', 'Pascal', 'Gauss'
-  ]
-};
+/**
+ * Convert a raw GeoGebra URL to its iframe embed format.
+ */
+function toGeoGebraEmbed(url: string): string {
+  const match = url.match(/geogebra\.org\/m\/([A-Za-z0-9]+)/);
+  if (match) {
+    return `https://www.geogebra.org/material/iframe/id/${match[1]}`;
+  }
+  return url;
+}
 
 export default function Playground() {
-  const [links, setLinks] = useState<PlaygroundLink[]>([]);
+  const [entries, setEntries] = useState<PlaygroundEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedLink, setSelectedLink] = useState<PlaygroundLink | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<PlaygroundEntry | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
 
   useEffect(() => {
-    fetchLinks();
+    fetchEntries();
   }, []);
 
-  const fetchLinks = async () => {
+  const fetchEntries = async () => {
     try {
+      // Fetch all course_videos that have a playground_url, joined with course info
       const { data, error } = await supabase
-        .from('playground_links')
-        .select('*')
+        .from('course_videos')
+        .select('id, title, playground_url, courses(title, subject)')
+        .not('playground_url', 'is', null)
         .order('order_index', { ascending: true });
 
       if (error) throw error;
-      setLinks(data || []);
+
+      // Deduplicate by playground_url to avoid showing the same GeoGebra link multiple times
+      const seen = new Set<string>();
+      const deduplicated: PlaygroundEntry[] = [];
+
+      (data || []).forEach((row: any) => {
+        const url = row.playground_url as string;
+        if (!url || seen.has(url)) return;
+        seen.add(url);
+        deduplicated.push({
+          id: row.id,
+          title: row.title,
+          playground_url: url,
+          course_title: row.courses?.title || 'Unknown Course',
+          course_subject: row.courses?.subject || 'General',
+        });
+      });
+
+      setEntries(deduplicated);
     } catch (error) {
-      console.error('Error fetching playground links:', error);
+      console.error('Error fetching playground entries:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const openModal = (link: PlaygroundLink) => {
-    setSelectedLink(link);
-    setModalOpen(true);
-  };
+  const subjects = [...new Set(entries.map(e => e.course_subject))];
 
-  // Get unique subjects from links
-  const availableSubjects = [...new Set(links.map(l => l.target_subject))];
+  const filtered = activeFilter === 'all'
+    ? entries
+    : entries.filter(e => e.course_subject === activeFilter);
 
-  // Filter links by category
-  const filteredLinks = activeCategory === 'all' 
-    ? links 
-    : links.filter(l => l.target_subject === activeCategory);
-
-  // Group links by subject for organized display
-  const groupedLinks = filteredLinks.reduce((acc, link) => {
-    if (!acc[link.target_subject]) {
-      acc[link.target_subject] = [];
-    }
-    acc[link.target_subject].push(link);
+  // Group by course subject
+  const grouped = filtered.reduce((acc, entry) => {
+    if (!acc[entry.course_subject]) acc[entry.course_subject] = [];
+    acc[entry.course_subject].push(entry);
     return acc;
-  }, {} as Record<string, PlaygroundLink[]>);
+  }, {} as Record<string, PlaygroundEntry[]>);
 
   if (loading) {
     return (
@@ -94,11 +101,11 @@ export default function Playground() {
           GeoGebra Playground
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Interactive math models to visualize and explore mathematical concepts
+          Interactive math models from all courses — visualize and explore concepts
         </p>
       </div>
 
-      {links.length === 0 ? (
+      {entries.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <FlaskConical className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -110,71 +117,64 @@ export default function Playground() {
         </Card>
       ) : (
         <>
-          {/* Filter Tabs */}
-          <Tabs value={activeCategory} onValueChange={setActiveCategory} className="mb-6">
+          <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
             <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-              <TabsTrigger 
+              <TabsTrigger
                 value="all"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
-                All ({links.length})
+                All ({entries.length})
               </TabsTrigger>
-              {availableSubjects.map(subject => (
-                <TabsTrigger 
-                  key={subject} 
+              {subjects.map(subject => (
+                <TabsTrigger
+                  key={subject}
                   value={subject}
                   className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
                 >
-                  {subject} ({links.filter(l => l.target_subject === subject).length})
+                  {subject} ({entries.filter(e => e.course_subject === subject).length})
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
 
-          {/* Links Grid */}
-          {activeCategory === 'all' ? (
-            // Show grouped by subject
-            Object.entries(groupedLinks).map(([subject, subjectLinks]) => (
+          {activeFilter === 'all' ? (
+            Object.entries(grouped).map(([subject, items]) => (
               <div key={subject} className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-primary">{subject}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {subjectLinks.map(link => (
-                    <PlaygroundCard key={link.id} link={link} onOpen={openModal} />
+                  {items.map(entry => (
+                    <PlaygroundCard key={entry.id} entry={entry} onOpen={() => { setSelectedEntry(entry); setModalOpen(true); }} />
                   ))}
                 </div>
               </div>
             ))
           ) : (
-            // Show flat grid for single subject
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLinks.map(link => (
-                <PlaygroundCard key={link.id} link={link} onOpen={openModal} />
+              {filtered.map(entry => (
+                <PlaygroundCard key={entry.id} entry={entry} onOpen={() => { setSelectedEntry(entry); setModalOpen(true); }} />
               ))}
             </div>
           )}
         </>
       )}
 
-      {/* Fullscreen Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-4 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-primary" />
-              {selectedLink?.title}
+              {selectedEntry?.title}
             </DialogTitle>
-            {selectedLink?.description && (
-              <div className="text-sm text-muted-foreground pt-2">
-                <MarkdownWithMath content={selectedLink.description} />
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground pt-1">
+              From: {selectedEntry?.course_title}
+            </p>
           </DialogHeader>
           <div className="flex-1 p-4">
-            {selectedLink && (
+            {selectedEntry && (
               <iframe
-                src={selectedLink.geogebra_url}
+                src={toGeoGebraEmbed(selectedEntry.playground_url)}
                 className="w-full h-full border-0 rounded-lg"
-                title={selectedLink.title}
+                title={selectedEntry.title}
                 allowFullScreen
               />
             )}
@@ -185,49 +185,43 @@ export default function Playground() {
   );
 }
 
-// Card component for individual playground links
-function PlaygroundCard({ 
-  link, 
-  onOpen 
-}: { 
-  link: PlaygroundLink; 
-  onOpen: (link: PlaygroundLink) => void;
+function PlaygroundCard({
+  entry,
+  onOpen,
+}: {
+  entry: PlaygroundEntry;
+  onOpen: () => void;
 }) {
   return (
     <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{link.title}</CardTitle>
-          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-            {link.target_subject}
+          <CardTitle className="text-lg">{entry.title}</CardTitle>
+          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full whitespace-nowrap">
+            {entry.course_subject}
           </span>
         </div>
-        {link.description && (
-          <CardDescription className="line-clamp-2">
-            <MarkdownWithMath content={link.description} />
-          </CardDescription>
-        )}
+        <CardDescription className="text-xs">
+          {entry.course_title}
+        </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="aspect-video bg-muted rounded-lg mb-4 overflow-hidden">
           <iframe
-            src={link.geogebra_url}
+            src={toGeoGebraEmbed(entry.playground_url)}
             className="w-full h-full border-0 pointer-events-none"
-            title={link.title}
+            title={entry.title}
           />
         </div>
         <div className="flex gap-2">
-          <Button 
-            className="flex-1 gap-2" 
-            onClick={() => onOpen(link)}
-          >
+          <Button className="flex-1 gap-2" onClick={onOpen}>
             <Maximize2 className="h-4 w-4" />
-            Open Fullscreen
+            Launch Lab
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
-            onClick={() => window.open(link.geogebra_url, '_blank')}
+            onClick={() => window.open(toGeoGebraEmbed(entry.playground_url), '_blank')}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
