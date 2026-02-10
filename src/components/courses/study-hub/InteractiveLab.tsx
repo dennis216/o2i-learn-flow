@@ -7,6 +7,19 @@ import { Loader2, FlaskConical, Maximize2, ExternalLink } from 'lucide-react';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { CourseVideo } from '../types';
 
+/**
+ * Convert a raw GeoGebra URL to its iframe embed format.
+ * e.g. https://www.geogebra.org/m/vtrufde8 → https://www.geogebra.org/material/iframe/id/vtrufde8
+ */
+function toGeoGebraEmbed(url: string): string {
+  const match = url.match(/geogebra\.org\/m\/([A-Za-z0-9]+)/);
+  if (match) {
+    return `https://www.geogebra.org/material/iframe/id/${match[1]}`;
+  }
+  // Already in embed format or unknown format – return as-is
+  return url;
+}
+
 interface PlaygroundLink {
   id: string;
   title: string;
