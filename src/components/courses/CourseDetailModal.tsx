@@ -118,13 +118,13 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                   const hasParts = !('_default' in parts && Object.keys(parts).length === 1);
                   
                   return (
-                    <Collapsible key={unit} defaultOpen className="border rounded-lg">
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
+                    <Collapsible key={unit} defaultOpen className="border rounded-lg overflow-hidden">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors bg-[hsl(174,82%,29%)]/10">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="font-semibold">
                             {totalVideos} lesson{totalVideos > 1 ? 's' : ''}
                           </Badge>
-                          <h3 className="font-semibold text-lg">{unit}</h3>
+                          <h3 className="font-semibold text-lg text-[hsl(174,82%,29%)]">{unit}</h3>
                         </div>
                         <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
                       </CollapsibleTrigger>
