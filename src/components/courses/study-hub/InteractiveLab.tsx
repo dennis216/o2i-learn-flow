@@ -202,7 +202,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
             <CardContent className="pt-0">
               <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3">
                 <iframe
-                  src={link.geogebra_url}
+                  src={toGeoGebraEmbed(link.geogebra_url)}
                   className="w-full h-full border-0 pointer-events-none"
                   title={link.title}
                 />
