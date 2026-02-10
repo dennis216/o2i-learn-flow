@@ -107,8 +107,8 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
           <CardContent className="pt-0">
             <div className="aspect-video bg-muted rounded-md overflow-hidden mb-3">
               <iframe
-                src={videoPlaygroundUrl}
-                className="w-full h-full border-0 pointer-events-none"
+                src={toGeoGebraEmbed(videoPlaygroundUrl)}
+                className="w-full h-[600px] border-0 pointer-events-none"
                 title="GeoGebra Interactive"
               />
             </div>
