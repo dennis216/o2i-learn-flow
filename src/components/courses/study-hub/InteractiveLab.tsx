@@ -146,7 +146,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
             </DialogHeader>
             <div className="flex-1 p-4">
               <iframe
-                src={videoPlaygroundUrl}
+                src={toGeoGebraEmbed(videoPlaygroundUrl)}
                 className="w-full h-full border-0 rounded-lg"
                 title="GeoGebra Interactive"
                 allowFullScreen
