@@ -124,7 +124,7 @@ export function InteractiveLab({ video, courseSubject }: InteractiveLabProps) {
               <Button 
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(videoPlaygroundUrl, '_blank')}
+                onClick={() => window.open(toGeoGebraEmbed(videoPlaygroundUrl), '_blank')}
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
