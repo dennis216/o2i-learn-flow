@@ -187,7 +187,7 @@ const Admin = () => {
       if (!Array.isArray(parsed)) {
         throw new Error("Transcript must be an array of objects");
       }
-      if (parsed.length > 0 && (!parsed[0].s || !parsed[0].t)) {
+      if (parsed.length > 0 && (parsed[0].s === undefined || parsed[0].s === null || !parsed[0].t)) {
         throw new Error('Each entry must have "s" (seconds) and "t" (text)');
       }
       setTranscriptValid(true);
