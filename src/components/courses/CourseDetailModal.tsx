@@ -42,28 +42,17 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
     }
   }, [autoSelectVideoId, course.course_videos]);
 
-  // Group videos by unit, then by subtitle (part)
+  // Group videos by unit (flat structure - no nested parts)
   const groupedVideos = (() => {
-    if (!course.course_videos?.length) return {};
+    if (!course.course_videos?.length) return {} as Record<string, CourseVideo[]>;
     const sorted = [...course.course_videos].sort((a, b) => a.order_index - b.order_index);
     
-    // Group by unit first, then by part (subtitle)
-    const unitGroups: Record<string, Record<string, CourseVideo[]>> = {};
+    const unitGroups: Record<string, CourseVideo[]> = {};
     
     sorted.forEach(video => {
-      const unit = video.unit || video.subtitle || 'Other Videos';
-      const part = video.unit ? (video.subtitle || 'Lessons') : null;
-      
-      if (!unitGroups[unit]) unitGroups[unit] = {};
-      
-      if (part) {
-        if (!unitGroups[unit][part]) unitGroups[unit][part] = [];
-        unitGroups[unit][part].push(video);
-      } else {
-        // No parts, just add to a default group
-        if (!unitGroups[unit]['_default']) unitGroups[unit]['_default'] = [];
-        unitGroups[unit]['_default'].push(video);
-      }
+      const unit = video.unit || 'Other Videos';
+      if (!unitGroups[unit]) unitGroups[unit] = [];
+      unitGroups[unit].push(video);
     });
     
     return unitGroups;
@@ -113,106 +102,51 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                   <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={resumeTime || undefined} />
                 </div>
               ) : course.course_videos && course.course_videos.length > 0 ? (
-                Object.entries(groupedVideos).map(([unit, parts]) => {
-                  const totalVideos = Object.values(parts).flat().length;
-                  const hasParts = !('_default' in parts && Object.keys(parts).length === 1);
-                  
+              Object.entries(groupedVideos).map(([unit, videos]) => {
                   return (
                     <Collapsible key={unit} defaultOpen className="border rounded-lg overflow-hidden">
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors bg-[hsl(174,82%,29%)]/10">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-[#4A90E2]/10 transition-colors">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="font-semibold">
-                            {totalVideos} lesson{totalVideos > 1 ? 's' : ''}
+                            {videos.length} lesson{videos.length > 1 ? 's' : ''}
                           </Badge>
-                          <h3 className="font-semibold text-lg text-[hsl(174,82%,29%)]">{unit}</h3>
+                          <h3 className="font-semibold text-lg text-[#4A90E2]">{unit}</h3>
                         </div>
                         <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="px-4 pb-4 space-y-3">
-                        {hasParts ? (
-                          // Render nested parts
-                          Object.entries(parts).map(([partName, videos]) => (
-                            <Collapsible key={partName} defaultOpen className="border rounded-md bg-muted/30">
-                              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 hover:bg-muted/50 transition-colors">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {videos.length} lesson{videos.length > 1 ? 's' : ''}
-                                  </Badge>
-                                  <h4 className="font-medium text-sm">{partName}</h4>
-                                </div>
-                                <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="px-3 pb-3 space-y-2">
-                                {videos.map((video) => (
-                    <Card
-                                    key={video.id}
-                                    className={`cursor-pointer transition-all duration-200 ${
-                                      selectedVideo?.id === video.id
-                                        ? 'border-l-4 border-l-accent border-accent/50 bg-accent/5 shadow-[0_0_12px_hsl(43,96%,56%,0.15)]'
-                                        : 'border-muted hover:border-primary/50'
-                                    }`}
-                                    onClick={() => setSelectedVideo(video)}
-                                  >
-                                    <CardHeader className="py-3">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                          <PlayCircle className="h-5 w-5 text-primary" />
-                                          <div>
-                                            <CardTitle className="text-base">{video.title}</CardTitle>
-                                            {video.description && (
-                                              <CardDescription className="text-sm mt-1">
-                                                {video.description}
-                                              </CardDescription>
-                                            )}
-                                          </div>
-                                        </div>
-                                        {video.duration && (
-                                          <Badge variant="outline">
-                                            {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </CardHeader>
-                                  </Card>
-                                ))}
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ))
-                        ) : (
-                          // Render flat list (no parts)
-                          parts['_default']?.map((video) => (
-                            <Card
-                              key={video.id}
-                              className={`cursor-pointer transition-all duration-200 ${
-                                selectedVideo?.id === video.id
-                                  ? 'border-l-4 border-l-accent border-accent/50 bg-accent/5 shadow-[0_0_12px_hsl(43,96%,56%,0.15)]'
-                                  : 'border-muted hover:border-primary/50'
-                              }`}
-                              onClick={() => setSelectedVideo(video)}
-                            >
-                              <CardHeader className="py-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                    <PlayCircle className="h-5 w-5 text-primary" />
-                                    <div>
-                                      <CardTitle className="text-base">{video.title}</CardTitle>
-                                      {video.description && (
-                                        <CardDescription className="text-sm mt-1">
-                                          {video.description}
-                                        </CardDescription>
-                                      )}
-                                    </div>
+                      <CollapsibleContent className="px-4 pb-4 space-y-2">
+                        {videos.map((video) => (
+                          <Card
+                            key={video.id}
+                            className={`cursor-pointer transition-all duration-200 ${
+                              selectedVideo?.id === video.id
+                                ? 'border-l-4 border-l-accent border-accent/50 bg-accent/5 shadow-[0_0_12px_hsl(43,96%,56%,0.15)]'
+                                : 'border-muted hover:border-primary/50'
+                            }`}
+                            onClick={() => setSelectedVideo(video)}
+                          >
+                            <CardHeader className="py-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <PlayCircle className="h-5 w-5 text-primary" />
+                                  <div>
+                                    <CardTitle className="text-base">{video.title}</CardTitle>
+                                    {video.description && (
+                                      <CardDescription className="text-sm mt-1">
+                                        {video.description}
+                                      </CardDescription>
+                                    )}
                                   </div>
-                                  {video.duration && (
-                                    <Badge variant="outline">
-                                      {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                    </Badge>
-                                  )}
                                 </div>
-                              </CardHeader>
-                            </Card>
-                          ))
-                        )}
+                                {video.duration && (
+                                  <Badge variant="outline">
+                                    {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardHeader>
+                          </Card>
+                        ))}
                       </CollapsibleContent>
                     </Collapsible>
                   );
