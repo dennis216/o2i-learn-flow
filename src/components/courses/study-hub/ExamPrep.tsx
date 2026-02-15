@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { ClipboardList, Loader2, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Target, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,6 +13,7 @@ const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
 interface ExamPrepProps {
   video: CourseVideo;
+  onAskTutor?: (prompt: string) => void;
 }
 
 interface MockQuestion {
@@ -29,7 +30,13 @@ const DIFFICULTY_COLORS = {
   Hard: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export function ExamPrep({ video }: ExamPrepProps) {
+const isSolutionMissing = (solution: string): boolean => {
+  if (!solution) return true;
+  const lower = solution.trim().toLowerCase();
+  return lower === '' || lower === 'solution not available' || lower === 'no solution';
+};
+
+export function ExamPrep({ video, onAskTutor }: ExamPrepProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [questions, setQuestions] = useState<MockQuestion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +53,6 @@ export function ExamPrep({ video }: ExamPrepProps) {
     setError(null);
 
     try {
-      // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         setError('Please sign in to use this feature');
@@ -61,13 +67,18 @@ export function ExamPrep({ video }: ExamPrepProps) {
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          message: `Based on the video content, create exactly 5 original exam-style practice problems.
+          message: `Based on the video content, create exactly 5 original exam-style practice problems with FULL step-by-step solutions for each.
 
 CRITICAL FORMATTING RULES:
 1. Every mathematical expression MUST be on its own line with $$ delimiters
 2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after
 3. Use $$...$$ for display math (fractions, integrals, equations)
 4. Each question and solution must be clearly separated
+5. For piecewise functions, ALWAYS use the cases environment:
+   $$f(x) = \\begin{cases} x^2 & x < 3 \\\\ 10 - x & x \\geq 3 \\end{cases}$$
+6. NEVER leave $$ tags unclosed. Every $$ must have a matching closing $$.
+
+YOU MUST GENERATE EXACTLY 5 QUESTIONS. No fewer. If topics are narrow, create variations with different parameters.
 
 FORMAT YOUR RESPONSE EXACTLY LIKE THIS:
 
@@ -102,7 +113,7 @@ DIFFICULTY: Easy
 ===END_QUESTION_2===
 
 ===SOLUTION_2===
-[Solution 2 content]
+[Solution 2 content with full steps]
 ===END_SOLUTION_2===
 
 ===QUESTION_3===
@@ -112,7 +123,7 @@ DIFFICULTY: Medium
 ===END_QUESTION_3===
 
 ===SOLUTION_3===
-[Solution 3 content]
+[Solution 3 content with full steps]
 ===END_SOLUTION_3===
 
 ===QUESTION_4===
@@ -122,7 +133,7 @@ DIFFICULTY: Medium
 ===END_QUESTION_4===
 
 ===SOLUTION_4===
-[Solution 4 content]
+[Solution 4 content with full steps]
 ===END_SOLUTION_4===
 
 ===QUESTION_5===
@@ -132,13 +143,15 @@ DIFFICULTY: Hard
 ===END_QUESTION_5===
 
 ===SOLUTION_5===
-[Solution 5 content]
+[Solution 5 content with full steps]
 ===END_SOLUTION_5===
 
 IMPORTANT REMINDERS:
 - Always leave a blank line before and after every $$ block
 - Never write things like "Sincewehavea$$\\frac{0}{0}$$" - instead write "Since we have a\\n\\n$$\\frac{0}{0}$$\\n\\n"
 - Include a variety of problem types (conceptual, computational, application)
+- EVERY solution must have detailed step-by-step work. NEVER leave a solution empty.
+- For piecewise functions use \\begin{cases}...\\end{cases}
 - Respond in English only`,
           transcript: video.transcript,
           currentTime: 0,
@@ -182,9 +195,9 @@ IMPORTANT REMINDERS:
         }
       }
 
-      // Parse questions and solutions with new format
+      // Parse questions and solutions
       const parsedQuestions: MockQuestion[] = [];
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 10; i++) {
         const questionMatch = fullContent.match(
           new RegExp(`===QUESTION_${i}===([\\s\\S]*?)===END_QUESTION_${i}===`, 'i')
         );
@@ -192,7 +205,6 @@ IMPORTANT REMINDERS:
           new RegExp(`===SOLUTION_${i}===([\\s\\S]*?)===END_SOLUTION_${i}===`, 'i')
         );
 
-        // Fallback to old format if new format not found
         const oldQuestionMatch = !questionMatch ? fullContent.match(
           new RegExp(`---QUESTION ${i}---([\\s\\S]*?)(?=---SOLUTION ${i}---|$)`, 'i')
         ) : null;
@@ -204,14 +216,12 @@ IMPORTANT REMINDERS:
         const solutionContent = solutionMatch?.[1] || oldSolutionMatch?.[1];
 
         if (questionContent) {
-          // Extract difficulty from question content
           const difficultyMatch = questionContent.match(/DIFFICULTY:\s*(Easy|Medium|Hard)/i);
           let difficulty: 'Easy' | 'Medium' | 'Hard' = i <= 2 ? 'Easy' : i <= 4 ? 'Medium' : 'Hard';
           if (difficultyMatch) {
             difficulty = difficultyMatch[1] as 'Easy' | 'Medium' | 'Hard';
           }
 
-          // Remove difficulty line from question text
           const cleanQuestion = questionContent
             .replace(/DIFFICULTY:\s*(Easy|Medium|Hard)\s*/i, '')
             .trim();
@@ -220,10 +230,24 @@ IMPORTANT REMINDERS:
             id: i,
             difficulty,
             question: cleanQuestion,
-            solution: solutionContent?.trim() || 'Solution not available',
+            solution: solutionContent?.trim() || '',
             showSolution: false,
           });
         }
+
+        if (parsedQuestions.length >= 5) break;
+      }
+
+      // Guarantee exactly 5 questions - pad if fewer were parsed
+      while (parsedQuestions.length < 5) {
+        const idx = parsedQuestions.length + 1;
+        parsedQuestions.push({
+          id: idx,
+          difficulty: idx <= 2 ? 'Easy' : idx <= 4 ? 'Medium' : 'Hard',
+          question: `**Bonus Question ${idx}:** Based on the concepts from "${video.title}", create and solve a practice problem applying the key techniques discussed in this lesson.`,
+          solution: '',
+          showSolution: false,
+        });
       }
 
       setQuestions(parsedQuestions);
@@ -238,6 +262,13 @@ IMPORTANT REMINDERS:
     setQuestions((prev) =>
       prev.map((q) => (q.id === id ? { ...q, showSolution: !q.showSolution } : q))
     );
+  };
+
+  const handleAskTutorForQuestion = (question: MockQuestion) => {
+    const prompt = `Explain the solution for this Mock Test question:\n\n"${question.question.slice(0, 500)}"`;
+    if (onAskTutor) {
+      onAskTutor(prompt);
+    }
   };
 
   if (questions.length === 0) {
@@ -333,14 +364,40 @@ IMPORTANT REMINDERS:
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="mt-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border-l-4 border-green-500">
-                    <h4 className="font-semibold text-sm mb-3 text-green-700 dark:text-green-400">
-                      Step-by-Step Solution:
-                    </h4>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <MarkdownWithMath content={q.solution} />
+                  {isSolutionMissing(q.solution) ? (
+                    <div className="mt-3 p-5 rounded-lg border-2 border-[#4A90E2]/30 bg-[#4A90E2]/5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#4A90E2]/10 flex items-center justify-center flex-shrink-0">
+                          <Sparkles className="h-5 w-5 text-[#4A90E2]" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-sm text-[#4A90E2] mb-1">
+                            No pre-written solution available
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Click below to ask our AI Tutor for a detailed step-by-step solution to this problem.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="gap-2 bg-[#4A90E2] hover:bg-[#4A90E2]/90 text-white"
+                            onClick={() => handleAskTutorForQuestion(q)}
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Ask AI Tutor to Solve
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mt-3 p-4 bg-green-50 dark:bg-green-950/30 rounded-lg border-l-4 border-green-500">
+                      <h4 className="font-semibold text-sm mb-3 text-green-700 dark:text-green-400">
+                        Step-by-Step Solution:
+                      </h4>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <MarkdownWithMath content={q.solution} />
+                      </div>
+                    </div>
+                  )}
                 </CollapsibleContent>
               </Collapsible>
             </CardContent>

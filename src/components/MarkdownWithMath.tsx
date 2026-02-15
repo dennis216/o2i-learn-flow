@@ -20,6 +20,12 @@ const preprocessMathContent = (content: string): string => {
   if (!content) return '';
   
   let processed = content;
+
+  // Step 0: Auto-close unclosed $$ tags to prevent raw code leaking
+  const displayMathCount = (processed.match(/\$\$/g) || []).length;
+  if (displayMathCount % 2 !== 0) {
+    processed = processed + '\n$$';
+  }
   
   // Step 1: Normalize line breaks - remove excessive newlines first
   // Replace 3+ newlines with exactly 2
