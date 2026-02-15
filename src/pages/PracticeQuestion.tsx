@@ -250,7 +250,8 @@ export default function PracticeQuestion() {
 
   // Open AI Tutor Drawer with problem context
   const handleAskTutorForSolution = (problemTitle: string, problemContent: string) => {
-    const explanation = `I need help with this practice problem: "${problemTitle}"\n\nProblem:\n${problemContent}\n\nCan you show me how to solve it step-by-step?`;
+    const lessonLabel = video?.title || 'this lesson';
+    const explanation = `Hi! I'm stuck on ${lessonLabel}. Can you explain the solution for this question?\n\nProblem: "${problemTitle}"\n\n${problemContent}\n\nPlease provide a detailed step-by-step guide.`;
     setDrawerContext({
       explanation,
       timestamp: 'Practice Problem',
@@ -391,33 +392,45 @@ export default function PracticeQuestion() {
                         </CollapsibleContent>
                       </Collapsible>
                     ) : (
-                      /* AI Solution Fallback - Always show Ask Tutor button */
+                      /* AI Solution Fallback */
                       <div className="space-y-4">
-                        {/* Always visible action buttons when no stored solution */}
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 gap-2 border-primary/50 hover:bg-primary/5"
-                            onClick={() => handleGenerateSolution(problem.id, problem.content)}
-                            disabled={isGenerating}
-                          >
-                            <Wand2 className="h-4 w-4" />
-                            ✨ Generate Step-by-Step Solution
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 gap-2"
+                        {/* Dynamic Action Card - Slate Blue theme */}
+                        {!genSolution && !isGenerating && (
+                          <div
+                            className="rounded-xl border-2 border-[#4A90E2]/30 bg-[#4A90E2]/5 p-5 cursor-pointer hover:bg-[#4A90E2]/10 hover:border-[#4A90E2]/50 transition-all group"
                             onClick={() => handleAskTutorForSolution(problem.title, problem.content)}
                           >
-                            <MessageCircle className="h-4 w-4" />
-                            💬 Ask Tutor
+                            <div className="flex items-start gap-4">
+                              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#4A90E2]/15 flex items-center justify-center group-hover:bg-[#4A90E2]/25 transition-colors">
+                                <Sparkles className="h-5 w-5 text-[#4A90E2]" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-foreground mb-1">No pre-written solution yet</h4>
+                                <p className="text-sm text-muted-foreground">
+                                  Click here to ask our AI Tutor for a detailed step-by-step guide!
+                                </p>
+                              </div>
+                              <MessageCircle className="h-5 w-5 text-[#4A90E2] flex-shrink-0 mt-1 opacity-60 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Generate solution button as secondary action */}
+                        {!genSolution && !isGenerating && (
+                          <Button 
+                            variant="outline" 
+                            className="w-full gap-2 border-[#4A90E2]/30 hover:bg-[#4A90E2]/5 text-muted-foreground"
+                            onClick={() => handleGenerateSolution(problem.id, problem.content)}
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            Or generate a quick solution here
                           </Button>
-                        </div>
+                        )}
                         
                         {isGenerating && (
                           <div className="rounded-lg border bg-card p-4">
                             <div className="flex items-center gap-2 mb-3">
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                              <Loader2 className="h-4 w-4 animate-spin text-[#4A90E2]" />
                               <span className="text-sm text-muted-foreground">Generating solution...</span>
                             </div>
                             {genSolution && (
@@ -433,16 +446,16 @@ export default function PracticeQuestion() {
                             <CollapsibleTrigger asChild>
                               <Button variant="outline" className="w-full justify-between">
                                 <span className="flex items-center gap-2">
-                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  <Sparkles className="h-4 w-4 text-[#4A90E2]" />
                                   AI-Generated Solution
                                 </span>
                                 <ChevronDown className="h-4 w-4" />
                               </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent className="pt-4">
-                              <div className="rounded-lg border bg-primary/5 p-4">
+                              <div className="rounded-lg border bg-[#4A90E2]/5 p-4">
                                 <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                                  <Sparkles className="h-4 w-4 text-primary" />
+                                  <Sparkles className="h-4 w-4 text-[#4A90E2]" />
                                   Step-by-Step Solution
                                 </h4>
                                 <div className="prose prose-sm max-w-none text-muted-foreground">
