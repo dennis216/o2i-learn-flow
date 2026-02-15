@@ -3,6 +3,7 @@ import { Maximize, MessageCircle, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
+import { AITutorDrawer } from './AITutorDrawer';
 import { StudyHub } from './StudyHub';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -27,11 +28,18 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   const [currentTime, setCurrentTime] = useState<number>(initialTime ?? 0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPrompt, setDrawerPrompt] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
+
+  const handleAskTutor = useCallback((prompt: string) => {
+    setDrawerPrompt(prompt);
+    setDrawerOpen(true);
+  }, []);
 
   const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
 
@@ -264,7 +272,21 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
       </ResizablePanelGroup>
 
       {/* Study Hub below the video player */}
-      <StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} />
+      <StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} />
+
+      {/* AI Tutor Drawer for mock test Ask AI */}
+      <AITutorDrawer
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) setDrawerPrompt('');
+        }}
+        sceneExplanation=""
+        sceneTimestamp=""
+        videoTitle={video.title}
+        videoSubject={courseSubject}
+        initialPrompt={drawerPrompt}
+      />
     </div>
   );
 }

@@ -11,9 +11,10 @@ interface StudyHubProps {
   video: CourseVideo;
   currentTime: number;
   courseSubject?: string;
+  onAskTutor?: (prompt: string) => void;
 }
 
-export function StudyHub({ video, currentTime, courseSubject }: StudyHubProps) {
+export function StudyHub({ video, currentTime, courseSubject, onAskTutor }: StudyHubProps) {
   const [activeTab, setActiveTab] = useState('notes');
 
   return (
@@ -69,7 +70,7 @@ export function StudyHub({ video, currentTime, courseSubject }: StudyHubProps) {
         </TabsContent>
 
         <TabsContent value="exam" className="p-4 mt-0">
-          <ExamPrep video={video} />
+          <ExamPrep video={video} onAskTutor={onAskTutor} />
         </TabsContent>
 
         <TabsContent value="lab" className="p-4 mt-0">

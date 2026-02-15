@@ -124,9 +124,9 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Generate 7 zombie users
+    // Generate 5 zombie users
     const zombieUsers = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
       zombieUsers.push(generateZombieUser());
     }
 

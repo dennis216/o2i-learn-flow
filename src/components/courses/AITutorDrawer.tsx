@@ -34,6 +34,7 @@ interface AITutorDrawerProps {
   videoTitle: string;
   videoSubject?: string;
   onBackToVideo?: () => void;
+  initialPrompt?: string;
 }
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
@@ -170,6 +171,7 @@ export function AITutorDrawer({
   videoTitle,
   videoSubject,
   onBackToVideo,
+  initialPrompt,
 }: AITutorDrawerProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -205,7 +207,6 @@ export function AITutorDrawer({
     if (open && sceneExplanation && !hasAutoTriggered && user) {
       setHasAutoTriggered(true);
       
-      // Create user message with scene context
       const contextPreview = sceneExplanation.slice(0, 300) + (sceneExplanation.length > 300 ? '...' : '');
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -216,12 +217,31 @@ export function AITutorDrawer({
       
       setMessages([userMessage]);
       
-      // Trigger AI response
       setTimeout(() => {
         triggerAIResponse(userMessage.content, [userMessage]);
       }, 100);
     }
   }, [open, sceneExplanation, hasAutoTriggered, user, sceneTimestamp]);
+
+  // Auto-trigger with initialPrompt (from mock test "Ask AI" button)
+  useEffect(() => {
+    if (open && initialPrompt && !sceneExplanation && !hasAutoTriggered && user) {
+      setHasAutoTriggered(true);
+      
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: initialPrompt,
+        timestamp: new Date(),
+      };
+      
+      setMessages([userMessage]);
+      
+      setTimeout(() => {
+        triggerAIResponse(userMessage.content, [userMessage]);
+      }, 100);
+    }
+  }, [open, initialPrompt, sceneExplanation, hasAutoTriggered, user]);
 
   // Reset state when drawer closes
   useEffect(() => {
