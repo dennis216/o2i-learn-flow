@@ -70,12 +70,24 @@ export function ExamPrep({ video, onAskTutor }: ExamPrepProps) {
           message: `Based on the video content, create exactly 5 original exam-style practice problems with FULL step-by-step solutions for each.
 
 CRITICAL FORMATTING RULES:
-1. Every mathematical expression MUST be on its own line with $$ delimiters
-2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after
-3. Use $$...$$ for display math (fractions, integrals, equations)
-4. Each question and solution must be clearly separated
-5. For piecewise functions, ALWAYS use the cases environment:
+1. Every mathematical expression MUST be wrapped in $$ delimiters on its own line (display math) or $ delimiters inline.
+2. NEVER put LaTeX directly adjacent to text - always add blank lines before and after display math.
+3. Use $$...$$ for display math (fractions, integrals, equations).
+4. Use $...$ for short inline references like $x$, $y$, $m = 2$.
+
+MANDATORY LaTeX PATTERNS:
+- Derivatives: Always write $$\\frac{dy}{dx}$$ — never write dy/dx as plain text.
+- Integration: Always write $$\\int_{a}^{b} f(x)\\,dx$$ with \\, before dx.
+- Coordinates/Points: Write $$\\left(\\frac{\\sqrt{2}}{2},\\, \\frac{\\pi}{4}\\right)$$ using \\left( and \\right).
+- Fractions: Always use $$\\frac{a}{b}$$ — never write a/b for non-trivial fractions.
+- Piecewise functions: ALWAYS use the cases environment:
    $$f(x) = \\begin{cases} x^2 & x < 3 \\\\ 10 - x & x \\geq 3 \\end{cases}$$
+- Implicit differentiation: Show each step on its own line, e.g.:
+
+$$\\cos(y) \\cdot \\frac{dy}{dx} = 2x$$
+
+$$\\frac{dy}{dx} = \\frac{2x}{\\cos(y)}$$
+
 6. NEVER leave $$ tags unclosed. Every $$ must have a matching closing $$.
 
 YOU MUST GENERATE EXACTLY 5 QUESTIONS. No fewer. If topics are narrow, create variations with different parameters.
@@ -148,10 +160,12 @@ DIFFICULTY: Hard
 
 IMPORTANT REMINDERS:
 - Always leave a blank line before and after every $$ block
-- Never write things like "Sincewehavea$$\\frac{0}{0}$$" - instead write "Since we have a\\n\\n$$\\frac{0}{0}$$\\n\\n"
+- Never clump text and math: write "Since we have\\n\\n$$\\frac{0}{0}$$\\n\\n" not "Sincewehave$$..."
 - Include a variety of problem types (conceptual, computational, application)
 - EVERY solution must have detailed step-by-step work. NEVER leave a solution empty.
-- For piecewise functions use \\begin{cases}...\\end{cases}
+- For implicit differentiation, show the full chain rule steps with proper \\frac{dy}{dx}
+- For tangent line problems, clearly substitute coordinates into the derivative
+- Use \\left( and \\right) for parentheses around fractions/roots
 - Respond in English only`,
           transcript: video.transcript,
           currentTime: 0,
