@@ -21,6 +21,12 @@ const preprocessMathContent = (content: string): string => {
   
   let processed = content;
 
+  // Step -1: Fix plain-text derivatives that should be LaTeX
+  // "dy/dx" outside of math delimiters -> $\frac{dy}{dx}$
+  processed = processed.replace(/(?<!\$)\bdy\/dx\b(?!\$)/g, '$\\frac{dy}{dx}$');
+  processed = processed.replace(/(?<!\$)\bdx\/dy\b(?!\$)/g, '$\\frac{dx}{dy}$');
+  processed = processed.replace(/(?<!\$)\bdf\/dx\b(?!\$)/g, '$\\frac{df}{dx}$');
+
   // Step 0: Auto-close unclosed $$ tags to prevent raw code leaking
   const displayMathCount = (processed.match(/\$\$/g) || []).length;
   if (displayMathCount % 2 !== 0) {
