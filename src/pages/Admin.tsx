@@ -174,12 +174,41 @@ const Admin = () => {
     }
   }, [isAdmin]);
 
+  // Helper: sanitize transcript JSON to {s, t} format
+  const sanitizeTranscript = (rawJson: string): any[] | null => {
+    try {
+      const parsed = JSON.parse(rawJson);
+      if (!Array.isArray(parsed)) return null;
+      
+      return parsed.map(item => {
+        let seconds = item.s ?? item.seconds;
+        let text = item.t ?? item.text ?? item.content;
+        
+        // Handle "00:00:00" format string
+        if (typeof item.time === 'string' && item.time.includes(':')) {
+          const parts = item.time.split(':').map(Number);
+          if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+          else if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+        } else if (item.time !== undefined) {
+          seconds = Number(item.time);
+        }
+        
+        return { s: seconds ?? 0, t: text ?? "" };
+      });
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Validate JSON when transcript changes
+  const [transcriptAutoFormatted, setTranscriptAutoFormatted] = useState(false);
+
   useEffect(() => {
     const transcript = editingVideo ? (editingVideo.transcript ? JSON.stringify(editingVideo.transcript) : "") : videoFormData.transcript;
     if (!transcript.trim()) {
       setTranscriptValid(null);
       setTranscriptError("");
+      setTranscriptAutoFormatted(false);
       return;
     }
     try {
@@ -187,14 +216,20 @@ const Admin = () => {
       if (!Array.isArray(parsed)) {
         throw new Error("Transcript must be an array of objects");
       }
-      if (parsed.length > 0 && (parsed[0].s === undefined || parsed[0].s === null || !parsed[0].t)) {
-        throw new Error('Each entry must have "s" (seconds) and "t" (text)');
+      // Check if already in {s, t} format
+      const isNativeFormat = parsed.length === 0 || (parsed[0].s !== undefined && parsed[0].t !== undefined);
+      // Try sanitize to see if alternative formats work
+      const sanitized = sanitizeTranscript(transcript);
+      if (!sanitized) {
+        throw new Error('Each entry must have "s"/"time"/"seconds" and "t"/"text"/"content"');
       }
       setTranscriptValid(true);
       setTranscriptError("");
+      setTranscriptAutoFormatted(!isNativeFormat);
     } catch (err: any) {
       setTranscriptValid(false);
       setTranscriptError(err.message);
+      setTranscriptAutoFormatted(false);
     }
   }, [videoFormData.transcript, editingVideo]);
 
@@ -569,7 +604,13 @@ const Admin = () => {
       };
 
       if (videoFormData.transcript.trim()) {
-        insertData.transcript = JSON.parse(videoFormData.transcript);
+        const sanitized = sanitizeTranscript(videoFormData.transcript);
+        if (!sanitized) {
+          toast({ title: "Invalid JSON", description: "Could not parse transcript JSON.", variant: "destructive" });
+          setSubmitting(false);
+          return;
+        }
+        insertData.transcript = sanitized;
       }
 
       const { error } = await supabase.from("course_videos").insert(insertData);
@@ -872,7 +913,7 @@ const Admin = () => {
                       <div className="flex items-center gap-2 text-sm">
                         {transcriptValid === true && (
                           <span className="text-green-600 flex items-center gap-1">
-                            <CheckCircle className="h-4 w-4" /> Valid JSON
+                            <CheckCircle className="h-4 w-4" /> {transcriptAutoFormatted ? 'JSON detected and auto-formatted successfully' : 'Valid JSON'}
                           </span>
                         )}
                         {transcriptValid === false && (
