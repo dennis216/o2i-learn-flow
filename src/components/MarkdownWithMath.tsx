@@ -26,13 +26,26 @@ const preprocessMathContent = (content: string): string => {
   if (displayMathCount % 2 !== 0) {
     processed = processed + '\n$$';
   }
+
+  // Step 0.5: Normalize \begin{cases} blocks that may have been split or mangled
+  // Fix double-escaped backslashes inside cases environments BEFORE extraction
+  processed = processed.replace(/\\\\begin\{cases\}/g, '\\begin{cases}');
+  processed = processed.replace(/\\\\end\{cases\}/g, '\\end{cases}');
+  
+  // Wrap bare \begin{cases}...\end{cases} that aren't already inside $$ delimiters
+  processed = processed.replace(
+    /(?<!\$)\s*(\\begin\{cases\}[\s\S]*?\\end\{cases\})\s*(?!\$)/g,
+    (match, casesBlock) => {
+      // Check if already wrapped - look backwards/forwards for $$
+      return `\n$$${casesBlock}$$\n`;
+    }
+  );
   
   // Step 1: Normalize line breaks - remove excessive newlines first
-  // Replace 3+ newlines with exactly 2
   processed = processed.replace(/\n{3,}/g, '\n\n');
   
   // Remove single newlines in the middle of sentences (keep paragraph breaks)
-  // Pattern: lowercase/punctuation + single newline + lowercase = join them
+  // BUT preserve newlines inside math blocks (between $$ pairs)
   processed = processed.replace(/([a-z,;:])\n([a-z])/gi, '$1 $2');
   
   // Step 2: Protect and extract existing math blocks
@@ -40,10 +53,22 @@ const preprocessMathContent = (content: string): string => {
   
   // Protect display math first ($$...$$)
   processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (match, inner) => {
-    const fixed = inner
+    let fixed = inner
       .replace(/\\\\([a-zA-Z]+)/g, '\\$1')  // Fix double-escaped: \\frac -> \frac
-      .replace(/\n+/g, ' ')                  // Remove internal newlines in math
       .trim();
+    
+    // For cases environments, preserve \\ line breaks but collapse other newlines
+    if (fixed.includes('\\begin{cases}')) {
+      // Normalize spacing inside cases but keep \\ separators
+      fixed = fixed
+        .replace(/\n+/g, ' ')           // Collapse newlines to spaces
+        .replace(/\s{2,}/g, ' ')         // Collapse multiple spaces
+        .replace(/\\\\\s*/g, ' \\\\ ')   // Normalize \\ spacing
+        .trim();
+    } else {
+      fixed = fixed.replace(/\n+/g, ' ').trim();
+    }
+    
     mathBlocks.push({ type: 'display', content: fixed });
     return `__MATH_${mathBlocks.length - 1}__`;
   });
@@ -56,39 +81,31 @@ const preprocessMathContent = (content: string): string => {
     return `__MATH_${mathBlocks.length - 1}__`;
   });
   
-  // Step 3: Fix clumped text patterns (word directly touching LaTeX command)
-  // E.g., "extremelylim" -> "extremely $\lim$" or "wordlim" -> "word $\lim$"
+  // Step 3: Fix clumped text patterns
   const latexCommands = ['lim', 'sin', 'cos', 'tan', 'log', 'ln', 'exp', 'sqrt', 'frac', 'int', 'sum', 'prod', 'infty', 'to', 'rightarrow', 'leftarrow', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'epsilon', 'lambda', 'sigma', 'omega'];
   
   latexCommands.forEach(cmd => {
-    // Match: word + optional backslash + command (not followed by more letters)
-    // "extremelylim" or "extremely\lim" -> "extremely $\lim$"
     const regex = new RegExp(`([a-zA-Z]{2,})\\\\?(${cmd})(?![a-zA-Z])`, 'g');
     processed = processed.replace(regex, (match, word, command) => {
-      // Don't modify if it's a placeholder
       if (word.includes('__MATH')) return match;
       return `${word} $\\${command}$`;
     });
   });
   
   // Step 4: Fix common punctuation clumping
-  // "Therefore,since" -> "Therefore, since"
   processed = processed.replace(/([,.:;!?])([a-zA-Z])/g, '$1 $2');
   
   // Step 5: Fix text running into underscores (subscripts outside math)
-  // "x_" or "f_" patterns that should be math
   processed = processed.replace(/\b([a-zA-Z])_\{([^}]+)\}/g, '$$$1_{$2}$$');
   
   // Step 6: Restore math blocks with proper formatting
   mathBlocks.forEach((block, index) => {
     if (block.type === 'display') {
-      // Display math: ensure it's on its own line but don't add excessive breaks
       processed = processed.replace(
         `__MATH_${index}__`,
         `\n$$${block.content}$$\n`
       );
     } else {
-      // Inline math: keep it inline with surrounding text
       processed = processed.replace(
         `__MATH_${index}__`,
         `$${block.content}$`
@@ -97,14 +114,13 @@ const preprocessMathContent = (content: string): string => {
   });
   
   // Step 7: Add spacing around math to prevent clumping with adjacent words
-  // Word directly before $...$ or after $...$
   processed = processed.replace(/([a-zA-Z0-9])(\$[^$\n]+\$)/g, '$1 $2');
   processed = processed.replace(/(\$[^$\n]+\$)([a-zA-Z])/g, '$1 $2');
   
   // Step 8: Final cleanup - normalize spacing
-  processed = processed.replace(/  +/g, ' ');           // Multiple spaces to single
-  processed = processed.replace(/\n +/g, '\n');         // Remove leading spaces on lines
-  processed = processed.replace(/\n{3,}/g, '\n\n');     // Max 2 consecutive newlines
+  processed = processed.replace(/  +/g, ' ');
+  processed = processed.replace(/\n +/g, '\n');
+  processed = processed.replace(/\n{3,}/g, '\n\n');
   
   return processed.trim();
 };
