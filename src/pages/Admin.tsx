@@ -61,6 +61,7 @@ interface TeamMember {
   bio: string | null;
   photo_url: string | null;
   order_index: number;
+  department: string;
 }
 
 interface Subject {
@@ -132,10 +133,12 @@ const Admin = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Team member form
+  const DEPARTMENTS = ["Publicity", "Web Development & Management", "Curriculum Content & Production"];
   const [teamFormData, setTeamFormData] = useState({
     name: "",
     role: "",
     bio: "",
+    department: "Publicity",
     order_index: "0",
   });
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
@@ -487,6 +490,7 @@ const Admin = () => {
           name: editingTeamMember.name,
           role: editingTeamMember.role,
           bio: editingTeamMember.bio,
+          department: editingTeamMember.department,
           photo_url: editingTeamMember.photo_url,
           order_index: editingTeamMember.order_index,
         })
@@ -718,6 +722,7 @@ const Admin = () => {
         name: teamFormData.name,
         role: teamFormData.role,
         bio: teamFormData.bio || null,
+        department: teamFormData.department,
         photo_url: photoUrl,
         order_index: parseInt(teamFormData.order_index) || 0,
       });
@@ -730,6 +735,7 @@ const Admin = () => {
         name: "",
         role: "",
         bio: "",
+        department: "Publicity",
         order_index: "0",
       });
       setTeamPhotoFile(null);
@@ -1619,6 +1625,23 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="team_department">Department *</Label>
+                    <Select
+                      value={teamFormData.department}
+                      onValueChange={(value) => setTeamFormData({ ...teamFormData, department: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="team_bio">Bio</Label>
                     <Textarea
                       id="team_bio"
@@ -1714,6 +1737,7 @@ const Admin = () => {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold truncate">{member.name}</h3>
                           <p className="text-sm text-primary">{member.role}</p>
+                          <p className="text-xs font-medium" style={{ color: '#4A90E2' }}>{member.department}</p>
                           {member.bio && (
                             <p className="text-sm text-muted-foreground line-clamp-1">{member.bio}</p>
                           )}
@@ -2090,6 +2114,22 @@ const Admin = () => {
                   value={editingTeamMember.role}
                   onChange={(e) => setEditingTeamMember({ ...editingTeamMember, role: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Select
+                  value={editingTeamMember.department}
+                  onValueChange={(value) => setEditingTeamMember({ ...editingTeamMember, department: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPARTMENTS.map((dept) => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Bio</Label>

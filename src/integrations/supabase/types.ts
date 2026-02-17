@@ -818,6 +818,7 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
+          department: string
           id: string
           name: string
           order_index: number
@@ -828,6 +829,7 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string
+          department?: string
           id?: string
           name: string
           order_index?: number
@@ -838,6 +840,7 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string
+          department?: string
           id?: string
           name?: string
           order_index?: number
