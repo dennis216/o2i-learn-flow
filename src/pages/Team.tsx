@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Users, Crown, Shield } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -15,15 +16,15 @@ interface TeamMember {
 }
 
 const DEPARTMENT_ORDER = [
-  "Publicity",
+  "Publicity & Marketing",
   "Web Development & Management",
-  "Curriculum Content & Production",
+  "Curriculum Content & Media Production",
 ];
 
 const DEPARTMENT_LABELS: Record<string, string> = {
-  "Publicity": "宣传队伍 — Publicity Team",
-  "Web Development & Management": "网站开发与管理队伍 — Web Development & Management Team",
-  "Curriculum Content & Production": "课程内容与录制队伍 — Curriculum Content & Production Team",
+  "Publicity & Marketing": "Publicity & Marketing Team",
+  "Web Development & Management": "Web Development & Management Team",
+  "Curriculum Content & Media Production": "Curriculum Content & Media Production Team",
 };
 
 const Team = () => {
@@ -136,9 +137,23 @@ const Team = () => {
                     </div>
                     <CardContent className="p-6 text-center">
                       <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                      <p className="text-sm font-medium mb-3" style={{ color: "#4A90E2" }}>
+                      <p className="text-sm font-medium mb-2" style={{ color: "#4A90E2" }}>
                         {member.role}
                       </p>
+                      <div className="flex items-center justify-center gap-1.5 mb-3">
+                        {member.role.includes("Co-founder") && (
+                          <Badge className="bg-amber-500/15 text-amber-700 border-amber-300 hover:bg-amber-500/20 text-xs gap-1">
+                            <Crown className="w-3 h-3" />
+                            Co-founder
+                          </Badge>
+                        )}
+                        {member.role.includes("Team Leader") && (
+                          <Badge className="bg-[#4A90E2]/15 text-[#4A90E2] border-[#4A90E2]/30 hover:bg-[#4A90E2]/20 text-xs gap-1">
+                            <Shield className="w-3 h-3" />
+                            Team Leader
+                          </Badge>
+                        )}
+                      </div>
                       {member.bio && (
                         <p className="text-muted-foreground text-sm leading-relaxed">
                           {member.bio}
