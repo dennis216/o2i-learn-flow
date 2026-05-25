@@ -33,7 +33,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMobile = useIsMobile();
 
   const handleAskTutor = useCallback((prompt: string) => {
