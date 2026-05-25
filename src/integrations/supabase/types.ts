@@ -1033,6 +1033,7 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string | null
+          is_zombie: boolean | null
           role: string | null
           updated_at: string | null
           user_id: string | null
@@ -1042,6 +1043,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string | null
+          is_zombie?: boolean | null
           role?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -1051,6 +1053,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string | null
+          is_zombie?: boolean | null
           role?: string | null
           updated_at?: string | null
           user_id?: string | null
