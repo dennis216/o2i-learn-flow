@@ -12,17 +12,16 @@ const ScholarCounter = () => {
   useEffect(() => {
     const fetchTotalUserCount = async () => {
       try {
-        // Count ALL profiles (including zombie users for social proof)
-        const { count, error } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
+        // Count ALL profiles (including zombie users) via a SECURITY DEFINER
+        // RPC so anon clients don't need direct SELECT on profiles.
+        const { data, error } = await supabase.rpc('count_all_profiles');
 
         if (error) {
           console.error('Error fetching user count:', error);
           return;
         }
 
-        setCount(count || 0);
+        setCount((data as number) || 0);
       } catch (error) {
         console.error('Error fetching user count:', error);
       } finally {
