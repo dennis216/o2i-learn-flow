@@ -1062,7 +1062,6 @@ export type Database = {
       }
     }
     Functions: {
-      count_all_profiles: { Args: never; Returns: number }
       count_real_users: { Args: never; Returns: number }
       has_role: {
         Args: {
