@@ -13,18 +13,33 @@ const ScholarCounter = () => {
     const fetchTotalUserCount = async () => {
       try {
         // Count ALL profiles (including zombie users for social proof)
-        const { count, error } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
+        const { data: rpcCount, error: rpcError } = await supabase.rpc('count_all_profiles');
 
-        if (error) {
-          console.error('Error fetching user count:', error);
+        console.log('[ScholarCounter] RPC result:', { rpcCount, rpcError });
+
+        if (!rpcError && typeof rpcCount === 'number') {
+          setCount(rpcCount);
           return;
         }
 
-        setCount(count || 0);
+        if (rpcError) {
+          console.warn('[ScholarCounter] count_all_profiles RPC failed, falling back to direct profile count:', rpcError);
+        }
+
+        const { count, error } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true });
+
+        console.log('[ScholarCounter] Fallback select count result:', { count, error });
+
+        if (error) {
+          console.error('[ScholarCounter] Error fetching user count fallback:', error);
+          return;
+        }
+
+        setCount(count ?? 0);
       } catch (error) {
-        console.error('Error fetching user count:', error);
+        console.error('[ScholarCounter] Error fetching user count:', error);
       } finally {
         setLoading(false);
       }
