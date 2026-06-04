@@ -86,7 +86,22 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
     if (window.YT && window.YT.Player) {
       initPlayer();
     } else {
+      // Store original callback to restore after initialization
+      const originalCallback = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = initPlayer;
+      
+      // Return cleanup to restore original callback
+      return () => {
+        if (playerRef.current?.destroy) {
+          playerRef.current.destroy();
+        }
+        // Restore original callback or remove it
+        if (originalCallback) {
+          window.onYouTubeIframeAPIReady = originalCallback;
+        } else {
+          delete window.onYouTubeIframeAPIReady;
+        }
+      };
     }
 
     return () => {

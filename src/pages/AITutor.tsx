@@ -22,6 +22,7 @@ import {
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 
 // Subject/topic options for the selector
 const TOPIC_OPTIONS = [
@@ -209,6 +210,10 @@ export default function AITutor() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Setup automatic memory cleanup on route changes or unmount
+  const { cleanupGlobalResources } = useMemoryCleanup();
+  
   const [selectedTopic, setSelectedTopic] = useState('general');
   const [videoContext, setVideoContext] = useState<VideoContext | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -218,6 +223,10 @@ export default function AITutor() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasHandledPrefill = useRef(false);
   const hasInitialized = useRef(false);
+  
+  // Track pending timeouts for manual cleanup if needed
+  const prefillTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sceneExplainerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Session management state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -634,14 +643,28 @@ export default function AITutor() {
       setMessages(prev => [...prev, welcomeMessage]);
       
       // Automatically send the prefilled question as the first user message
-      setTimeout(() => {
+      // Store timeout ID for cleanup on unmount to prevent memory leak
+      prefillTimeoutRef.current = setTimeout(() => {
         handleSendMessage(state.prefilledQuestion);
+        prefillTimeoutRef.current = null;
       }, 500);
 
       // Clear the state so it doesn't re-trigger on refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state, messages.length]);
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (prefillTimeoutRef.current) {
+        clearTimeout(prefillTimeoutRef.current);
+      }
+      if (sceneExplainerTimeoutRef.current) {
+        clearTimeout(sceneExplainerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle "Ask more details" from Scene Explainer
   useEffect(() => {
@@ -674,7 +697,8 @@ export default function AITutor() {
       setMessages(prev => [...prev, userMessage]);
       
       // Save the user message and trigger AI response
-      setTimeout(async () => {
+      // Store timeout ID for cleanup to prevent memory leak
+      sceneExplainerTimeoutRef.current = setTimeout(async () => {
         // Ensure we have a session
         if (!currentSessionId) {
           const sessionName = state.videoTitle 
@@ -730,6 +754,8 @@ export default function AITutor() {
             setIsLoading(false);
           }
         );
+        
+        sceneExplainerTimeoutRef.current = null;
       }, 100);
 
       // Clear the state so it doesn't re-trigger on refresh

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { useMemoryCleanup } from "@/hooks/useMemoryCleanup";
 import Navbar from "@/components/Navbar";
 import Index from "./pages/Index";
 
@@ -37,6 +38,16 @@ const PageLoader = () => (
 
 const queryClient = new QueryClient();
 
+// Wrapper component to enable useMemoryCleanup Hook (must be inside Router)
+const AppRoutes = () => {
+  // Setup automatic memory cleanup on every route change
+  useMemoryCleanup();
+
+  return (
+    <Navbar />
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -44,7 +55,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Navbar />
+          <AppRoutes />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Index />} />

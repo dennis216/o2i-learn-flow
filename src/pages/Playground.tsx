@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Maximize2, FlaskConical, ExternalLink } from 'lucide-react';
+
+// Lazily load the GeoGebra viewer component using React.lazy.
+const GeoGebraViewer = React.lazy(() => import('@/components/GeoGebraViewer'));
 
 interface PlaygroundEntry {
   id: string;
@@ -173,12 +176,13 @@ export default function Playground() {
           </DialogHeader>
           <div className="flex-1 p-4">
             {selectedEntry && (
-              <iframe
-                src={toGeoGebraEmbed(selectedEntry.playground_url)}
-                className="w-full h-full border-0 rounded-lg"
-                title={selectedEntry.title}
-                allowFullScreen
-              />
+              <Suspense fallback={<div className="w-full h-full aspect-video bg-muted rounded-lg animate-pulse" />}>
+                <GeoGebraViewer
+                  embedUrl={toGeoGebraEmbed(selectedEntry.playground_url)}
+                  title={selectedEntry.title}
+                  className="w-full h-full"
+                />
+              </Suspense>
             )}
           </div>
         </DialogContent>
@@ -195,11 +199,16 @@ function PlaygroundCard({ entry, onOpen }: { entry: PlaygroundEntry; onOpen: () 
       </CardHeader>
       <CardContent className="pt-0">
         <div className="aspect-video bg-muted rounded-lg mb-4 overflow-hidden">
-          <iframe
-            src={toGeoGebraEmbed(entry.playground_url)}
-            className="w-full h-full border-0 pointer-events-none"
-            title={entry.title}
-          />
+          {/* Lightweight preview: GeoGebraViewer is dynamically imported with ssr:false and will only
+              load the heavy GeoGebra script when the preview actually enters the viewport.
+              We keep pointer events none here to avoid accidental interactions in the card preview. */}
+          <Suspense fallback={<div className="w-full h-full aspect-video bg-muted rounded-lg animate-pulse" />}>
+            <GeoGebraViewer
+              embedUrl={toGeoGebraEmbed(entry.playground_url)}
+              title={entry.title}
+              className="w-full h-full pointer-events-none"
+            />
+          </Suspense>
         </div>
         <div className="flex gap-2">
           <Button className="flex-1 gap-2" onClick={onOpen}>
