@@ -133,12 +133,12 @@ const Admin = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Team member form
-  const DEPARTMENTS = ["Publicity", "Web Development & Management", "Curriculum Content & Production"];
+  const DEPARTMENTS = ["数学组", "化学组", "物理组"];
   const [teamFormData, setTeamFormData] = useState({
     name: "",
     role: "",
     bio: "",
-    department: "Publicity",
+    department: "数学组",
     order_index: "0",
   });
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
