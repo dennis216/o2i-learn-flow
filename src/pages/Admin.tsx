@@ -735,7 +735,7 @@ const Admin = () => {
         name: "",
         role: "",
         bio: "",
-        department: "Publicity",
+        department: "数学组",
         order_index: "0",
       });
       setTeamPhotoFile(null);
