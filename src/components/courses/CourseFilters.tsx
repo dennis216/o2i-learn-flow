@@ -6,29 +6,13 @@ export type Category = 'High School' | 'Contest';
 
 export const HIGH_SCHOOL_SUBJECTS = [
   'AP Calc',
-  'AP Stats',
   'Pre-Calculus 12',
-  'SAT',
-  'Geo 1 (Intro)',
-  'Geo 2 (Int)',
-  'Alg 1 (Intro)',
-  'Alg 2 (Int)',
-  'Counting & Prob 1',
-  'Counting & Prob 2',
 ] as const;
 
-export const CONTEST_SUBJECTS = [
-  'AMC 10',
-  'AMC 12',
-  'Euclid',
-  'Fermat',
-  'Cayley',
-  'Pascal',
-  'Gauss',
-] as const;
+export const CONTEST_SUBJECTS = [] as const;
 
 export type HighSchoolSubject = typeof HIGH_SCHOOL_SUBJECTS[number];
-export type ContestSubject = typeof CONTEST_SUBJECTS[number];
+export type ContestSubject = string;
 export type Subject = HighSchoolSubject | ContestSubject | null;
 
 interface CourseFiltersProps {
