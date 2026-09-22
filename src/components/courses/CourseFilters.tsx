@@ -28,17 +28,14 @@ export function CourseFilters({
   onCategoryChange,
   onSubjectChange,
 }: CourseFiltersProps) {
-  const subjects = category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
+  const subjects: readonly string[] =
+    category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
 
   const handleCategoryChange = (newCategory: string) => {
     const cat = newCategory as Category;
     onCategoryChange(cat);
     // Set to first subject of new category
-    if (cat === 'High School') {
-      onSubjectChange(HIGH_SCHOOL_SUBJECTS[0]);
-    } else {
-      onSubjectChange(CONTEST_SUBJECTS[0]);
-    }
+    onSubjectChange(cat === 'High School' ? HIGH_SCHOOL_SUBJECTS[0] : null);
   };
 
   return (
