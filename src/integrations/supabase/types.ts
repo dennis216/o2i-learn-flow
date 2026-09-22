@@ -189,10 +189,44 @@ export type Database = {
           },
         ]
       }
+      course_curriculum_units: {
+        Row: {
+          course_id: string
+          order_index: number
+          unit_id: string
+        }
+        Insert: {
+          course_id: string
+          order_index: number
+          unit_id: string
+        }
+        Update: {
+          course_id?: string
+          order_index?: number
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_curriculum_units_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_curriculum_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_videos: {
         Row: {
           course_id: string
           created_at: string
+          curriculum_topic_id: string | null
           description: string | null
           duration: number | null
           exam_tips: string | null
@@ -210,6 +244,7 @@ export type Database = {
         Insert: {
           course_id: string
           created_at?: string
+          curriculum_topic_id?: string | null
           description?: string | null
           duration?: number | null
           exam_tips?: string | null
@@ -227,6 +262,7 @@ export type Database = {
         Update: {
           course_id?: string
           created_at?: string
+          curriculum_topic_id?: string | null
           description?: string | null
           duration?: number | null
           exam_tips?: string | null
@@ -249,6 +285,13 @@ export type Database = {
             referencedRelation: "courses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_videos_curriculum_topic_id_fkey"
+            columns: ["curriculum_topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
         ]
       }
       courses: {
@@ -259,6 +302,7 @@ export type Database = {
           id: string
           image_url: string | null
           instructor_id: string
+          is_published: boolean
           level: string
           price: number | null
           subject: string
@@ -272,6 +316,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id: string
+          is_published?: boolean
           level: string
           price?: number | null
           subject: string
@@ -285,6 +330,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string
+          is_published?: boolean
           level?: string
           price?: number | null
           subject?: string
@@ -305,6 +351,230 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      curriculum_frameworks: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          source_title: string
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          source_title: string
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          source_title?: string
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      curriculum_learning_objectives: {
+        Row: {
+          created_at: string
+          id: string
+          objective_code: string
+          order_index: number
+          statement: string
+          topic_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          objective_code: string
+          order_index?: number
+          statement: string
+          topic_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          objective_code?: string
+          order_index?: number
+          statement?: string
+          topic_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_learning_objectives_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curriculum_practice_skills: {
+        Row: {
+          assessed: boolean
+          description: string
+          id: string
+          practice_code: number
+          skill_code: string
+        }
+        Insert: {
+          assessed?: boolean
+          description: string
+          id?: string
+          practice_code: number
+          skill_code: string
+        }
+        Update: {
+          assessed?: boolean
+          description?: string
+          id?: string
+          practice_code?: number
+          skill_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_practice_skills_practice_code_fkey"
+            columns: ["practice_code"]
+            isOneToOne: false
+            referencedRelation: "curriculum_practices"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      curriculum_practices: {
+        Row: {
+          code: number
+          description: string
+          name: string
+        }
+        Insert: {
+          code: number
+          description: string
+          name: string
+        }
+        Update: {
+          code?: number
+          description?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      curriculum_topics: {
+        Row: {
+          big_idea: string
+          created_at: string
+          id: string
+          is_bc_only: boolean
+          order_index: number
+          title: string
+          topic_code: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          big_idea: string
+          created_at?: string
+          id?: string
+          is_bc_only?: boolean
+          order_index: number
+          title: string
+          topic_code: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          big_idea?: string
+          created_at?: string
+          id?: string
+          is_bc_only?: boolean
+          order_index?: number
+          title?: string
+          topic_code?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_topics_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curriculum_units: {
+        Row: {
+          ab_exam_weight_max: number | null
+          ab_exam_weight_min: number | null
+          ab_periods_max: number | null
+          ab_periods_min: number | null
+          bc_exam_weight_max: number | null
+          bc_exam_weight_min: number | null
+          bc_periods_max: number | null
+          bc_periods_min: number | null
+          created_at: string
+          framework_id: string
+          id: string
+          is_bc_only: boolean
+          title: string
+          unit_number: number
+          updated_at: string
+        }
+        Insert: {
+          ab_exam_weight_max?: number | null
+          ab_exam_weight_min?: number | null
+          ab_periods_max?: number | null
+          ab_periods_min?: number | null
+          bc_exam_weight_max?: number | null
+          bc_exam_weight_min?: number | null
+          bc_periods_max?: number | null
+          bc_periods_min?: number | null
+          created_at?: string
+          framework_id: string
+          id?: string
+          is_bc_only?: boolean
+          title: string
+          unit_number: number
+          updated_at?: string
+        }
+        Update: {
+          ab_exam_weight_max?: number | null
+          ab_exam_weight_min?: number | null
+          ab_periods_max?: number | null
+          ab_periods_min?: number | null
+          bc_exam_weight_max?: number | null
+          bc_exam_weight_min?: number | null
+          bc_periods_max?: number | null
+          bc_periods_min?: number | null
+          created_at?: string
+          framework_id?: string
+          id?: string
+          is_bc_only?: boolean
+          title?: string
+          unit_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_units_framework_id_fkey"
+            columns: ["framework_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_frameworks"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -847,6 +1117,24 @@ export type Database = {
           photo_url?: string | null
           role?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_login_events: {
+        Row: {
+          id: string
+          signed_in_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          signed_in_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          signed_in_at?: string
+          user_id?: string
         }
         Relationships: []
       }
