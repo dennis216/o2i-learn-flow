@@ -133,7 +133,7 @@ const Admin = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Team member form
-  const DEPARTMENTS = ["数学组", "化学组", "物理组"];
+  const DEPARTMENTS = ["Math Group", "Chemistry Group", "Physics Group"];
   const [teamFormData, setTeamFormData] = useState({
     name: "",
     role: "",
