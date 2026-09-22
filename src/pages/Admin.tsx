@@ -138,7 +138,7 @@ const Admin = () => {
     name: "",
     role: "",
     bio: "",
-    department: "数学组",
+    department: "Math Group",
     order_index: "0",
   });
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
