@@ -6,29 +6,13 @@ export type Category = 'High School' | 'Contest';
 
 export const HIGH_SCHOOL_SUBJECTS = [
   'AP Calc',
-  'AP Stats',
   'Pre-Calculus 12',
-  'SAT',
-  'Geo 1 (Intro)',
-  'Geo 2 (Int)',
-  'Alg 1 (Intro)',
-  'Alg 2 (Int)',
-  'Counting & Prob 1',
-  'Counting & Prob 2',
 ] as const;
 
-export const CONTEST_SUBJECTS = [
-  'AMC 10',
-  'AMC 12',
-  'Euclid',
-  'Fermat',
-  'Cayley',
-  'Pascal',
-  'Gauss',
-] as const;
+export const CONTEST_SUBJECTS = [] as const;
 
 export type HighSchoolSubject = typeof HIGH_SCHOOL_SUBJECTS[number];
-export type ContestSubject = typeof CONTEST_SUBJECTS[number];
+export type ContestSubject = string;
 export type Subject = HighSchoolSubject | ContestSubject | null;
 
 interface CourseFiltersProps {
@@ -44,17 +28,14 @@ export function CourseFilters({
   onCategoryChange,
   onSubjectChange,
 }: CourseFiltersProps) {
-  const subjects = category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
+  const subjects: readonly string[] =
+    category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
 
   const handleCategoryChange = (newCategory: string) => {
     const cat = newCategory as Category;
     onCategoryChange(cat);
     // Set to first subject of new category
-    if (cat === 'High School') {
-      onSubjectChange(HIGH_SCHOOL_SUBJECTS[0]);
-    } else {
-      onSubjectChange(CONTEST_SUBJECTS[0]);
-    }
+    onSubjectChange(cat === 'High School' ? HIGH_SCHOOL_SUBJECTS[0] : null);
   };
 
   return (
