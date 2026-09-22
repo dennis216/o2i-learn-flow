@@ -15,12 +15,12 @@ interface TeamMember {
   department: string;
 }
 
-const DEPARTMENT_ORDER = ["数学组", "化学组", "物理组"];
+const DEPARTMENT_ORDER = ["Math Group", "Chemistry Group", "Physics Group"];
 
 const DEPARTMENT_LABELS: Record<string, string> = {
-  "数学组": "数学组",
-  "化学组": "化学组",
-  "物理组": "物理组",
+  "Math Group": "Math Group",
+  "Chemistry Group": "Chemistry Group",
+  "Physics Group": "Physics Group",
 };
 
 const Team = () => {
