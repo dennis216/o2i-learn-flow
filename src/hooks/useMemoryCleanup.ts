@@ -13,8 +13,8 @@ import { useLocation } from 'react-router-dom';
  */
 export function useMemoryCleanup() {
   const location = useLocation();
-  const pendingTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
-  const pendingIntervalsRef = useRef<Map<number, ReturnType<typeof setInterval>>>(new Map());
+  const pendingTimeoutsRef = useRef<Map<number, number>>(new Map());
+  const pendingIntervalsRef = useRef<Map<number, number>>(new Map());
 
   // 组件挂载时：劫持 setTimeout 和 setInterval，以便之后统一清理
   useEffect(() => {

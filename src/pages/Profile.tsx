@@ -4,14 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, Calendar, Lock, Shield } from 'lucide-react';
-import { isDesignatedSuperAdmin } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 
 export default function Profile() {
   const { user, isSuperAdmin } = useAuth();
-  
-  // Check if this is the designated super admin by email
-  const isProtectedAccount = isDesignatedSuperAdmin(user?.email);
+  const isProtectedAccount = isSuperAdmin;
 
   if (!user) {
     return (
@@ -126,7 +123,7 @@ export default function Profile() {
                 </div>
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-primary">0</div>
-                  <div className="text-sm text-muted-foreground">Forum Posts</div>
+                  <div className="text-sm text-muted-foreground">Practice Sets</div>
                 </div>
               </div>
             </CardContent>

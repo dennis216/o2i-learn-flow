@@ -9,23 +9,18 @@ export const HIGH_SCHOOL_SUBJECTS = [
   'AP Stats',
   'Pre-Calculus 12',
   'SAT',
-  'Geo 1 (Intro)',
-  'Geo 2 (Int)',
-  'Alg 1 (Intro)',
-  'Alg 2 (Int)',
-  'Counting & Prob 1',
-  'Counting & Prob 2',
 ] as const;
 
 export const CONTEST_SUBJECTS = [
   'AMC 10',
   'AMC 12',
-  'Euclid',
-  'Fermat',
-  'Cayley',
-  'Pascal',
-  'Gauss',
 ] as const;
+
+const SUBJECT_LABELS: Record<string, string> = {
+  'AP Stats': 'Stats',
+  'Pre-Calculus 12': 'Precalc',
+  SAT: 'SAT Math',
+};
 
 export type HighSchoolSubject = typeof HIGH_SCHOOL_SUBJECTS[number];
 export type ContestSubject = typeof CONTEST_SUBJECTS[number];
@@ -90,7 +85,7 @@ export function CourseFilters({
               subject === subj && 'bg-primary text-primary-foreground shadow-md'
             )}
           >
-            {subj}
+            {SUBJECT_LABELS[subj] || subj}
           </Button>
         ))}
       </div>

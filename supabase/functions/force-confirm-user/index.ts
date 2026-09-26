@@ -1,9 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// STRICT SINGLE-SUPER-ADMIN POLICY
-// Hard-coded super admin email - this is the ONLY valid super admin
-const SUPER_ADMIN_EMAIL = 'ziquanwang52@gmail.com';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -44,11 +40,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // CODE-LEVEL LOGIC SHIELD: Only the designated super admin email can use this function
-    // We check email directly instead of relying on database roles
-    if (caller.email?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
+    const { data: callerIsSuperAdmin, error: roleError } = await userClient.rpc('is_super_admin', {
+      _user_id: caller.id,
+    });
+
+    if (roleError || callerIsSuperAdmin !== true) {
       return new Response(
-        JSON.stringify({ error: 'Only the designated Super Admin can force confirm users' }),
+        JSON.stringify({ error: 'Only a Super Admin can confirm users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -62,7 +60,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use admin client to get target user email for protection check
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -70,13 +67,16 @@ Deno.serve(async (req) => {
       }
     });
 
-    // Get the target user to check if they're the super admin
-    const { data: targetUser } = await adminClient.auth.admin.getUserById(userId);
-    
-    // Prevent any modifications to the super admin account
-    if (targetUser?.user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
+    const { data: protectedRole } = await adminClient
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('role', 'super_admin')
+      .maybeSingle();
+
+    if (protectedRole) {
       return new Response(
-        JSON.stringify({ error: 'System integrity error: Super Admin account cannot be modified' }),
+        JSON.stringify({ error: 'Super Admin accounts cannot be modified here' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

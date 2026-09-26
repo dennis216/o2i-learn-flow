@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { AuthError, User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { isDesignatedSuperAdmin, SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 interface Profile {
   id: string;
@@ -19,9 +18,9 @@ interface AuthContextType {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithGoogle: () => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -43,6 +42,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const recordSignIn = async (userId: string) => {
+    // Activity logging must never block a successful login.
+    await supabase.from('user_login_events').insert({ user_id: userId });
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -51,11 +55,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch profile and check admin role
+          if (event === 'SIGNED_IN') {
+            void recordSignIn(session.user.id);
+          }
+          // Fetch profile and roles from the database.
           setTimeout(() => {
             fetchProfile(session.user.id);
-            checkAdminRole(session.user.id);
-            checkSuperAdminRole(session.user.id);
+            checkRoles(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -73,8 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         fetchProfile(session.user.id);
-        checkAdminRole(session.user.id);
-        checkSuperAdminRole(session.user.id);
+        checkRoles(session.user.id);
       }
       setLoading(false);
     });
@@ -97,42 +102,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const checkAdminRole = async (userId: string) => {
+  const checkRoles = async (userId: string) => {
     try {
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: userId,
-        _role: 'admin',
-      });
+      const [adminResult, superAdminResult] = await Promise.all([
+        supabase.rpc('has_role', { _user_id: userId, _role: 'admin' }),
+        supabase.rpc('is_super_admin', { _user_id: userId }),
+      ]);
 
-      if (error) {
-        console.error('Error checking admin role:', error);
-        setIsAdmin(false);
-        return;
-      }
+      if (adminResult.error) throw adminResult.error;
+      if (superAdminResult.error) throw superAdminResult.error;
 
-      setIsAdmin(data === true);
+      const superAdmin = superAdminResult.data === true;
+      setIsSuperAdmin(superAdmin);
+      setIsAdmin(adminResult.data === true || superAdmin);
     } catch (error) {
-      console.error('Error checking admin role:', error);
+      console.error('Error checking account roles:', error);
       setIsAdmin(false);
-    }
-  };
-
-  const checkSuperAdminRole = async (userId: string) => {
-    try {
-      // First, get the user's email to perform the hard-coded check
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      
-      // CODE-LEVEL LOGIC SHIELD: Only the designated email can be super admin
-      // Even if database says another user is super_admin, we ignore it unless email matches
-      if (currentUser?.email && isDesignatedSuperAdmin(currentUser.email)) {
-        setIsSuperAdmin(true);
-        return;
-      }
-      
-      // For any other user, super admin is always false regardless of database state
-      setIsSuperAdmin(false);
-    } catch (error) {
-      console.error('Error checking super admin role:', error);
       setIsSuperAdmin(false);
     }
   };

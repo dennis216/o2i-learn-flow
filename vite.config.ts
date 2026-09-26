@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import { fileURLToPath } from "node:url";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
@@ -12,17 +12,20 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        // Optimize chunk splitting for better caching
-        manualChunks: {
-          // Split vendor dependencies
-          react: ["react", "react-dom", "react-router-dom"],
-          ui: [
+        // Rolldown accepts a function rather than Rollup's object form.
+        manualChunks(id) {
+          const moduleId = id.replaceAll("\\", "/");
+          const inPackage = (name: string) => moduleId.includes(`/node_modules/${name}/`);
+          if (["react", "react-dom", "react-router", "react-router-dom"].some(inPackage)) {
+            return "react";
+          }
+          if ([
             "@radix-ui/react-dialog",
             "@radix-ui/react-dropdown-menu",
             "@radix-ui/react-popover",
@@ -30,9 +33,12 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-slot",
             "@radix-ui/react-tabs",
             "@radix-ui/react-tooltip",
-          ],
-          // Split large external dependencies
-          utils: ["@tanstack/react-query"],
+          ].some(inPackage)) {
+            return "ui";
+          }
+          if (inPackage("@tanstack/react-query")) {
+            return "utils";
+          }
         },
       },
     },
