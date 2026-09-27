@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, User, PlayCircle, ChevronDown } from 'lucide-react';
+import { DollarSign, User, PlayCircle, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ const getLevelColor = (level: string) => {
 
 export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVideoId, resumeTime }: CourseDetailModalProps) {
   const [selectedVideo, setSelectedVideo] = useState<CourseVideo | null>(null);
+  const isBCCourse = course.title === 'AP Calculus BC';
 
   // Auto-select video if provided
   useEffect(() => {
@@ -58,6 +59,15 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
     return unitGroups;
   })();
 
+  const curriculumUnits = [...(course.course_curriculum_units || [])]
+    .sort((a, b) => a.order_index - b.order_index)
+    .map((mapping) => ({
+      ...mapping.curriculum_units,
+      curriculum_topics: mapping.curriculum_units.curriculum_topics
+        .filter((topic) => isBCCourse || !topic.is_bc_only)
+        .sort((a, b) => a.order_index - b.order_index),
+    }));
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
@@ -79,9 +89,10 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="videos" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="framework" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="videos">Videos</TabsTrigger>
+              <TabsTrigger value="framework">Course Framework</TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
             </TabsList>
             
@@ -155,6 +166,56 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVide
                 <div className="text-center py-12">
                   <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No videos available for this course yet.</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="framework" className="space-y-4 mt-4">
+              {curriculumUnits.length > 0 ? (
+                curriculumUnits.map((unit) => {
+                  const weightMin = isBCCourse ? unit.bc_exam_weight_min : unit.ab_exam_weight_min;
+                  const weightMax = isBCCourse ? unit.bc_exam_weight_max : unit.ab_exam_weight_max;
+
+                  return (
+                    <Collapsible key={unit.id} defaultOpen={unit.unit_number === 1} className="border rounded-lg overflow-hidden">
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-[#4A90E2]/10 transition-colors text-left">
+                        <div className="flex items-start gap-3">
+                          <Badge variant="secondary" className="mt-0.5 whitespace-nowrap">
+                            Unit {unit.unit_number}
+                          </Badge>
+                          <div>
+                            <h3 className="font-semibold text-lg text-[#4A90E2]">{unit.title}</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {unit.curriculum_topics.length} topics
+                              {weightMin !== null && weightMax !== null ? ` · ${weightMin}–${weightMax}% of the ${isBCCourse ? 'BC' : 'AB'} exam` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronDown className="h-5 w-5 shrink-0 ml-4" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-4 pb-4">
+                        <div className="divide-y rounded-md border">
+                          {unit.curriculum_topics.map((topic) => (
+                            <div key={topic.id} className="flex items-start gap-3 px-4 py-3">
+                              <span className="font-mono text-sm font-semibold text-primary min-w-12">{topic.topic_code}</span>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{topic.title}</p>
+                                <div className="flex gap-2 mt-1.5">
+                                  <Badge variant="outline" className="text-xs">{topic.big_idea}</Badge>
+                                  {topic.is_bc_only && <Badge variant="secondary" className="text-xs">BC only</Badge>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12">
+                  <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Course framework is not available yet.</p>
                 </div>
               )}
             </TabsContent>

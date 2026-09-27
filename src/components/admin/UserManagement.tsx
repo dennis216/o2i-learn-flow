@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle, Lock } from "lucide-react";
+import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle, Lock, UserPlus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { isDesignatedSuperAdmin, SUPER_ADMIN_EMAIL, SUPER_ADMIN_INTEGRITY_ERROR } from "@/lib/constants";
 interface UserProfile {
   id: string;
   user_id: string;
@@ -18,10 +19,8 @@ interface UserProfile {
   created_at: string;
 }
 
-interface UserRole {
-  user_id: string;
-  role: 'admin' | 'instructor' | 'student' | 'super_admin';
-}
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Unexpected error";
+type ManagedAccountRole = "student" | "instructor" | "admin";
 
 export const UserManagement = () => {
   const { isSuperAdmin, user } = useAuth();
@@ -31,11 +30,19 @@ export const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const [lastSignIns, setLastSignIns] = useState<Map<string, string>>(new Map());
+  const [inviting, setInviting] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    fullName: "",
+    email: "",
+    role: "student" as ManagedAccountRole,
+  });
 
   useEffect(() => {
     if (isSuperAdmin) {
       fetchUsers();
       fetchUserRoles();
+      fetchLoginActivity();
     }
   }, [isSuperAdmin]);
 
@@ -44,6 +51,7 @@ export const UserManagement = () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, user_id, full_name, email, role, created_at")
+        .eq("is_zombie", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -65,7 +73,7 @@ export const UserManagement = () => {
       if (error) throw error;
 
       const rolesMap = new Map<string, string[]>();
-      (data || []).forEach((ur: any) => {
+      (data || []).forEach((ur) => {
         const existing = rolesMap.get(ur.user_id) || [];
         existing.push(ur.role);
         rolesMap.set(ur.user_id, existing);
@@ -73,6 +81,59 @@ export const UserManagement = () => {
       setUserRoles(rolesMap);
     } catch (error) {
       console.error("Error fetching user roles:", error);
+    }
+  };
+
+  const fetchLoginActivity = async () => {
+    const { data, error } = await supabase
+      .from("user_login_events")
+      .select("user_id, signed_in_at")
+      .order("signed_in_at", { ascending: false })
+      .limit(2000);
+
+    if (error) {
+      console.error("Error fetching login activity:", error);
+      return;
+    }
+
+    const latestByUser = new Map<string, string>();
+    (data || []).forEach((event) => {
+      if (!latestByUser.has(event.user_id)) {
+        latestByUser.set(event.user_id, event.signed_in_at);
+      }
+    });
+    setLastSignIns(latestByUser);
+  };
+
+  const inviteManagedAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setInviting(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-invite-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(inviteForm),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Unable to invite account");
+
+      toast({
+        title: "Invitation sent",
+        description: `${inviteForm.fullName} was invited as ${inviteForm.role === "admin" ? "Content Admin" : inviteForm.role}.`,
+      });
+      setInviteForm({ fullName: "", email: "", role: "student" });
+      await Promise.all([fetchUsers(), fetchUserRoles()]);
+    } catch (error: unknown) {
+      toast({ title: "Invitation failed", description: getErrorMessage(error), variant: "destructive" });
+    } finally {
+      setInviting(false);
     }
   };
 
@@ -93,9 +154,9 @@ export const UserManagement = () => {
         toast({ title: "Success", description: "Admin role granted" });
         fetchUserRoles();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error granting admin role:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setProcessingUserId(null);
     }
@@ -119,9 +180,9 @@ export const UserManagement = () => {
       if (error) throw error;
       toast({ title: "Success", description: "Admin role revoked" });
       fetchUserRoles();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error revoking admin role:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setProcessingUserId(null);
     }
@@ -150,16 +211,16 @@ export const UserManagement = () => {
         }
       );
 
-      const result = await response.json();
+      const result = await response.json() as { error?: string };
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to confirm user');
       }
 
       toast({ title: "Success", description: `Email confirmed for ${userEmail}` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error force confirming user:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
     } finally {
       setProcessingUserId(null);
     }
@@ -208,6 +269,40 @@ export const UserManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <form onSubmit={inviteManagedAccount} className="mb-6 rounded-lg border bg-muted/20 p-4">
+          <div className="mb-4 flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="font-semibold">Invite an account</h3>
+              <p className="text-sm text-muted-foreground">The user receives an email invitation and signs in through the normal login page.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-[1fr_1.25fr_0.8fr_auto] md:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="invite-name">Full name</Label>
+              <Input id="invite-name" value={inviteForm.fullName} onChange={(event) => setInviteForm({ ...inviteForm, fullName: event.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input id="invite-email" type="email" value={inviteForm.email} onChange={(event) => setInviteForm({ ...inviteForm, email: event.target.value })} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Account type</Label>
+              <Select value={inviteForm.role} onValueChange={(role: ManagedAccountRole) => setInviteForm({ ...inviteForm, role })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="instructor">Instructor</SelectItem>
+                  <SelectItem value="admin">Content Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={inviting}>
+              {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send invite"}
+            </Button>
+          </div>
+        </form>
+
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -227,22 +322,21 @@ export const UserManagement = () => {
                 <th className="text-left p-3 font-semibold text-sm">User</th>
                 <th className="text-left p-3 font-semibold text-sm">Roles</th>
                 <th className="text-left p-3 font-semibold text-sm">Joined</th>
+                <th className="text-left p-3 font-semibold text-sm">Last sign-in</th>
                 <th className="text-right p-3 font-semibold text-sm">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y max-h-[500px] overflow-y-auto">
           {filteredUsers.length === 0 ? (
-            <tr><td colSpan={4} className="text-muted-foreground text-center py-8">No users found</td></tr>
+            <tr><td colSpan={5} className="text-muted-foreground text-center py-8">No users found</td></tr>
           ) : (
             filteredUsers.map((userProfile, index) => {
               const roles = userRoles.get(userProfile.user_id) || [];
               const isAdmin = roles.includes('admin');
+              const isInstructor = roles.includes('instructor');
               const isSuperAdminUser = roles.includes('super_admin');
               const isCurrentUser = userProfile.user_id === user?.id;
-              // CODE-LEVEL LOGIC SHIELD: Check if this is the designated super admin by email
-              const isDesignatedSA = isDesignatedSuperAdmin(userProfile.email);
-              // Only show super admin badge if email matches the designated super admin
-              const showSuperAdminBadge = isDesignatedSA;
+              const showSuperAdminBadge = isSuperAdminUser;
 
               return (
                 <tr
@@ -267,16 +361,19 @@ export const UserManagement = () => {
                       {isAdmin && !showSuperAdminBadge && (
                         <Badge variant="secondary">
                           <ShieldCheck className="h-3 w-3 mr-1" />
-                          Admin
+                          Content Admin
                         </Badge>
                       )}
-                      {!isAdmin && !showSuperAdminBadge && (
+                      {isInstructor && !isAdmin && !showSuperAdminBadge && (
+                        <Badge variant="secondary">Instructor</Badge>
+                      )}
+                      {!isInstructor && !isAdmin && !showSuperAdminBadge && (
                         <Badge variant="outline">Student</Badge>
                       )}
                       {isCurrentUser && (
                         <Badge variant="outline" className="border-primary text-primary">You</Badge>
                       )}
-                      {isDesignatedSA && !isCurrentUser && (
+                      {isSuperAdminUser && !isCurrentUser && (
                         <Badge variant="outline" className="border-amber-500 text-amber-500">Protected</Badge>
                       )}
                     </div>
@@ -284,10 +381,15 @@ export const UserManagement = () => {
                   <td className="p-3 text-sm text-muted-foreground">
                     {new Date(userProfile.created_at).toLocaleDateString()}
                   </td>
+                  <td className="p-3 text-sm text-muted-foreground">
+                    {lastSignIns.has(userProfile.user_id)
+                      ? new Date(lastSignIns.get(userProfile.user_id)!).toLocaleString()
+                      : "Never recorded"}
+                  </td>
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                    {/* Block any role modifications for the designated Super Admin */}
-                    {isDesignatedSA ? (
+                    {/* Super Admin roles are never editable from the browser. */}
+                    {isSuperAdminUser ? (
                       <span className="text-sm text-muted-foreground italic flex items-center gap-1">
                         <Lock className="h-3 w-3" />
                         Immutable
@@ -353,7 +455,7 @@ export const UserManagement = () => {
                     )}
                     
                     {/* Force Confirm Button - visible for non-protected users */}
-                    {!isCurrentUser && !isDesignatedSA && (
+                    {!isCurrentUser && !isSuperAdminUser && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

@@ -7,11 +7,12 @@ import { BookOpen } from 'lucide-react';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { CourseDetailModal } from '@/components/courses/CourseDetailModal';
 import { CourseFilters, Category, Subject } from '@/components/courses/CourseFilters';
-import { Course, TranscriptEntry } from '@/components/courses/types';
+import { Course, CourseCurriculumUnit, TranscriptEntry } from '@/components/courses/types';
 import apCalculusThumbnail from '@/assets/ap-calculus-thumbnail.jpg';
 
 // Map course IDs to their thumbnail images
 const courseThumbnails: Record<string, string> = {
+  '93124428-92f4-48d2-a6dc-e5f9e010248b': apCalculusThumbnail,
   'fccc7540-0c29-43be-8682-ae90ff2534cb': apCalculusThumbnail,
 };
 
@@ -38,7 +39,6 @@ export default function Courses() {
           .from('courses')
           .select(`
             *,
-            public_profiles!instructor_id (full_name),
             course_videos (*)
           `)
           .eq('category', category)
@@ -54,13 +54,63 @@ export default function Courses() {
         if (error) {
           console.error('Error fetching courses:', error);
         } else {
+          const courseIds = data?.map((course) => course.id) || [];
+          let curriculumByCourse: Record<string, Course['course_curriculum_units']> = {};
+
+          if (courseIds.length > 0) {
+            const { data: curriculumData, error: curriculumError } = await supabase
+              .from('course_curriculum_units')
+              .select(`
+                course_id,
+                order_index,
+                curriculum_units (
+                  id,
+                  unit_number,
+                  title,
+                  is_bc_only,
+                  ab_exam_weight_min,
+                  ab_exam_weight_max,
+                  bc_exam_weight_min,
+                  bc_exam_weight_max,
+                  curriculum_topics (
+                    id,
+                    topic_code,
+                    title,
+                    big_idea,
+                    is_bc_only,
+                    order_index
+                  )
+                )
+              `)
+              .in('course_id', courseIds)
+              .order('order_index', { ascending: true });
+
+            if (curriculumError) {
+              console.error('Error fetching course curriculum:', curriculumError);
+            } else {
+              const typedMappings = (curriculumData || []) as unknown as Array<
+                CourseCurriculumUnit & { course_id: string }
+              >;
+              curriculumByCourse = typedMappings.reduce<Record<string, CourseCurriculumUnit[]>>((acc, mapping) => {
+                const unit = mapping.curriculum_units;
+                if (unit?.curriculum_topics) {
+                  unit.curriculum_topics.sort((a, b) => a.order_index - b.order_index);
+                }
+                if (!acc[mapping.course_id]) acc[mapping.course_id] = [];
+                acc[mapping.course_id].push(mapping);
+                return acc;
+              }, {});
+            }
+          }
+
           // Transform the data to properly type transcripts
           const transformedData = data?.map((course) => ({
             ...course,
-            course_videos: course.course_videos?.map((video: any) => ({
+            course_videos: course.course_videos?.map((video) => ({
               ...video,
-              transcript: video.transcript as TranscriptEntry[] | null,
+              transcript: video.transcript as unknown as TranscriptEntry[] | null,
             })),
+            course_curriculum_units: curriculumByCourse[course.id] || [],
           })) as Course[];
           setCourses(transformedData || []);
 

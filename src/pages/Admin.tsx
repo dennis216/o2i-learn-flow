@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Image, FolderOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +28,7 @@ interface Course {
   subject: string;
   price: number;
   created_at: string;
+  is_published: boolean;
 }
 
 interface CourseVideo {
@@ -104,6 +106,7 @@ const Admin = () => {
     subject: "",
     category: "High School",
     price: "0.00",
+    is_published: false,
   });
 
   // Video upload form
@@ -273,7 +276,7 @@ const Admin = () => {
     try {
       const { data, error } = await supabase
         .from("courses")
-        .select("id, title, description, level, subject, price, created_at")
+        .select("id, title, description, level, subject, price, created_at, is_published")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -404,6 +407,7 @@ const Admin = () => {
           level: editingCourse.level,
           subject: editingCourse.subject,
           price: editingCourse.price,
+          is_published: editingCourse.is_published,
         })
         .eq("id", editingCourse.id);
 
@@ -417,6 +421,37 @@ const Admin = () => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const toggleCoursePublished = async (course: Course) => {
+    const nextPublished = !course.is_published;
+    setCourses((current) => current.map((item) =>
+      item.id === course.id ? { ...item, is_published: nextPublished } : item
+    ));
+
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ is_published: nextPublished })
+        .eq("id", course.id);
+
+      if (error) throw error;
+      toast({
+        title: nextPublished ? "Course published" : "Course moved to draft",
+        description: nextPublished
+          ? `${course.title} is now visible to students.`
+          : `${course.title} is now hidden from students.`,
+      });
+    } catch (error) {
+      setCourses((current) => current.map((item) =>
+        item.id === course.id ? { ...item, is_published: course.is_published } : item
+      ));
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update course visibility.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -561,6 +596,7 @@ const Admin = () => {
         category: formData.category,
         price: parseFloat(formData.price),
         instructor_id: user.id,
+        is_published: formData.is_published,
       });
 
       if (error) throw error;
@@ -574,6 +610,7 @@ const Admin = () => {
         subject: "",
         category: "High School",
         price: "0.00",
+        is_published: false,
       });
 
       fetchCourses();
@@ -1094,6 +1131,20 @@ const Admin = () => {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="course-published">Publish course</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Published courses are visible to students. New courses are drafts by default.
+                    </p>
+                  </div>
+                  <Switch
+                    id="course-published"
+                    checked={formData.is_published}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="level">Level</Label>
@@ -1545,9 +1596,26 @@ const Admin = () => {
                           <span className="px-2 py-1 bg-muted rounded">
                             {videos.filter(v => v.course_id === course.id).length} videos
                           </span>
+                          <span className={`px-2 py-1 rounded font-medium ${
+                            course.is_published
+                              ? "bg-green-500/10 text-green-700"
+                              : "bg-amber-500/10 text-amber-700"
+                          }`}>
+                            {course.is_published ? "Published" : "Draft"}
+                          </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
+                        <div className="flex items-center gap-2 mr-2">
+                          <Switch
+                            checked={course.is_published}
+                            onCheckedChange={() => toggleCoursePublished(course)}
+                            aria-label={`${course.is_published ? "Unpublish" : "Publish"} ${course.title}`}
+                          />
+                          <span className="text-xs text-muted-foreground w-16">
+                            {course.is_published ? "Published" : "Draft"}
+                          </span>
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
@@ -1848,6 +1916,17 @@ const Admin = () => {
                     onChange={(e) => setEditingCourse({ ...editingCourse, price: parseFloat(e.target.value) })}
                   />
                 </div>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor="edit-course-published">Published</Label>
+                  <p className="text-sm text-muted-foreground">Visible to students and signed-out visitors.</p>
+                </div>
+                <Switch
+                  id="edit-course-published"
+                  checked={editingCourse.is_published}
+                  onCheckedChange={(checked) => setEditingCourse({ ...editingCourse, is_published: checked })}
+                />
               </div>
             </div>
           )}

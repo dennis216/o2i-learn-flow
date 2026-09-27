@@ -1,7 +1,10 @@
 project_id = "lxoaeaewcrshjkigzyqe"
 
 [functions.force-confirm-user]
-verify_jwt = false
+verify_jwt = true
+
+[functions.admin-invite-user]
+verify_jwt = true
 
 [functions.generate-zombie-users]
 verify_jwt = false
