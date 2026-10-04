@@ -1,6 +1,12 @@
 -- Clear existing AP Calculus videos and re-insert with proper unit/lesson structure
 DELETE FROM course_videos WHERE course_id = 'fccc7540-0c29-43be-8682-ae90ff2534cb';
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.courses
+    WHERE id = 'fccc7540-0c29-43be-8682-ae90ff2534cb'::uuid
+  ) THEN
 INSERT INTO course_videos (course_id, title, subtitle, video_url, order_index) VALUES
 -- Unit 1: Limits & Continuity
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 1: Basic Calculations of Limits', 'Unit 1: Limits & Continuity', 'https://youtu.be/B-LfTZgaGnM', 1),
@@ -27,3 +33,6 @@ INSERT INTO course_videos (course_id, title, subtitle, video_url, order_index) V
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 18: Numerical Examples of Inverse Function Derivatives', 'Unit 3: Advanced Derivatives & Applications', 'https://youtu.be/RrADtVHziT8', 18),
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 19: Geometric Meaning: Comparing Slopes of Tangent Lines', 'Unit 3: Advanced Derivatives & Applications', 'https://youtu.be/UHJ3GrTuaII', 19),
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 20: Analyzing Graphs: Horizontal Tangents and Non-Differentiable Points', 'Unit 3: Advanced Derivatives & Applications', 'https://youtu.be/3u7xNpvwbFE', 20);
+  END IF;
+END;
+$$;

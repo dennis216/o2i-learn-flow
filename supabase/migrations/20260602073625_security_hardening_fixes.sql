@@ -8,7 +8,7 @@ ON storage.objects FOR UPDATE
 USING (
   bucket_id = 'course-images'
   AND (
-    auth.uid()::text = owner
+    auth.uid() = owner
     OR auth.uid()::text = metadata->>'user_id'
     OR auth.uid()::text = metadata->>'creator'
   )
@@ -16,7 +16,7 @@ USING (
 WITH CHECK (
   bucket_id = 'course-images'
   AND (
-    auth.uid()::text = owner
+    auth.uid() = owner
     OR auth.uid()::text = metadata->>'user_id'
     OR auth.uid()::text = metadata->>'creator'
   )
@@ -27,7 +27,7 @@ ON storage.objects FOR DELETE
 USING (
   bucket_id = 'course-images'
   AND (
-    auth.uid()::text = owner
+    auth.uid() = owner
     OR auth.uid()::text = metadata->>'user_id'
     OR auth.uid()::text = metadata->>'creator'
   )
@@ -38,16 +38,35 @@ ON storage.objects FOR SELECT
 USING (bucket_id = 'course-images');
 
 CREATE POLICY "Public cannot list course images"
-ON storage.objects FOR LIST
+-- PostgreSQL RLS has no LIST command. Storage listing and object reads both
+-- use SELECT, and permissive policies are OR-combined, so this policy does not
+-- override the public read policy above; it is retained only for compatibility.
+ON storage.objects FOR SELECT
 USING (false);
 
 -- 2. Extension isolation
 CREATE SCHEMA IF NOT EXISTS extensions;
 
-ALTER EXTENSION IF EXISTS "uuid-ossp" SET SCHEMA extensions;
-ALTER EXTENSION IF EXISTS "pgcrypto" SET SCHEMA extensions;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'uuid-ossp') THEN
+    ALTER EXTENSION "uuid-ossp" SET SCHEMA extensions;
+  END IF;
 
-ALTER DATABASE CURRENT SET search_path = public, extensions;
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+    ALTER EXTENSION "pgcrypto" SET SCHEMA extensions;
+  END IF;
+END;
+$$;
+
+DO $$
+BEGIN
+  EXECUTE format(
+    'ALTER DATABASE %I SET search_path = public, extensions',
+    current_database()
+  );
+END;
+$$;
 
 -- 3. SECURITY DEFINER hardening
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)

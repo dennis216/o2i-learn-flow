@@ -386,17 +386,18 @@ WHERE course_id IN (
 
 WITH framework AS (
   SELECT id FROM public.curriculum_frameworks WHERE code = 'AP-CALCULUS-2026'
+), target_courses (course_id, max_unit_number) AS (
+  VALUES
+    ('93124428-92f4-48d2-a6dc-e5f9e010248b'::uuid, 8::smallint),
+    ('fccc7540-0c29-43be-8682-ae90ff2534cb'::uuid, 10::smallint)
 )
 INSERT INTO public.course_curriculum_units (course_id, unit_id, order_index)
-SELECT '93124428-92f4-48d2-a6dc-e5f9e010248b'::uuid, units.id, units.unit_number
-FROM public.curriculum_units units
+SELECT target_courses.course_id, units.id, units.unit_number
+FROM target_courses
+JOIN public.courses courses ON courses.id = target_courses.course_id
+CROSS JOIN public.curriculum_units units
 JOIN framework ON framework.id = units.framework_id
-WHERE units.unit_number BETWEEN 1 AND 8
-UNION ALL
-SELECT 'fccc7540-0c29-43be-8682-ae90ff2534cb'::uuid, units.id, units.unit_number
-FROM public.curriculum_units units
-JOIN framework ON framework.id = units.framework_id
-WHERE units.unit_number BETWEEN 1 AND 10;
+WHERE units.unit_number BETWEEN 1 AND target_courses.max_unit_number;
 
 -- The user requested a clean lesson catalog. Storage objects are intentionally retained.
 DELETE FROM public.course_videos;

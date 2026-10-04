@@ -1,4 +1,10 @@
 -- Add 10 more YouTube videos to AP Calculus course (Lessons 11-20)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.courses
+    WHERE id = 'fccc7540-0c29-43be-8682-ae90ff2534cb'::uuid
+  ) THEN
 INSERT INTO course_videos (course_id, title, video_url, order_index) VALUES
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 11', 'https://youtu.be/0LfmOhKlB-k', 11),
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 12', 'https://youtu.be/rb_eOOl5NHY', 12),
@@ -10,3 +16,6 @@ INSERT INTO course_videos (course_id, title, video_url, order_index) VALUES
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 18', 'https://youtu.be/40DGcQ46MYE', 18),
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 19', 'https://youtu.be/9lZrqEVaSbA', 19),
 ('fccc7540-0c29-43be-8682-ae90ff2534cb', 'Lesson 20', 'https://youtu.be/HAeLcXq_41g', 20);
+  END IF;
+END;
+$$;

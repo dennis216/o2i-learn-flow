@@ -2,7 +2,15 @@
 
 ## 1. 用途
 
-本规格用于在可丢弃的本地 Supabase/PostgreSQL 环境中验证 `20260926000000_question_bank_foundation.sql`。当前仓库没有可用的本地 Supabase CLI 或数据库，因此这些场景尚未执行，不得把静态检查当成数据库集成测试。
+本规格用于在可丢弃的本地 Supabase/PostgreSQL 环境中验证 `20260926000000_question_bank_foundation.sql`。仓库使用固定版本的项目级 Supabase CLI；静态检查仍不能代替数据库集成测试。
+
+当前自动化入口：
+
+- `npx supabase test db`：运行 `supabase/tests/question_bank_foundation_test.sql`，在单个回滚事务中验证生命周期、批准完整性和 RLS；
+- `node --test supabase/tests/question_bank_revision_concurrency.test.mjs`：使用两个独立数据库事务并发调用 `create_question_revision`，验证行锁和单一 working revision；
+- `node --test supabase/tests/question_bank_foundation_static.test.mjs`：保留迁移结构与安全防护的快速静态回归检查。
+
+这些命令只允许连接 `localhost`、`127.0.0.1` 或 `::1` 的可丢弃数据库。不得使用远程 Supabase URL。
 
 测试必须创建三个身份：
 

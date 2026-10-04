@@ -3,6 +3,8 @@
 DROP POLICY IF EXISTS "Users can view all profiles" ON public.profiles;
 
 -- Create a new policy that allows users to view their own profile completely
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+
 CREATE POLICY "Users can view their own profile" 
 ON public.profiles 
 FOR SELECT 

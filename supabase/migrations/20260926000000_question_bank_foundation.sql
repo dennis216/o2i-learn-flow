@@ -863,6 +863,10 @@ DECLARE
   source_version public.question_versions%ROWTYPE;
   new_version_id uuid;
   next_version_number integer;
+  previous_transition_context text := current_setting(
+    'o2i.question_version_transition',
+    true
+  );
 BEGIN
   PERFORM public.assert_question_bank_admin();
 
@@ -1012,6 +1016,12 @@ BEGIN
    AND new_option.option_key = old_option.option_key
   WHERE old_option.question_version_id = source_version.id;
 
+  PERFORM set_config(
+    'o2i.question_version_transition',
+    COALESCE(previous_transition_context, ''),
+    true
+  );
+
   RETURN new_version_id;
 END;
 $$;
@@ -1028,6 +1038,10 @@ AS $$
 DECLARE
   question_record public.questions%ROWTYPE;
   version_status public.question_version_status;
+  previous_transition_context text := current_setting(
+    'o2i.question_version_transition',
+    true
+  );
 BEGIN
   PERFORM public.assert_question_bank_admin();
 
@@ -1062,6 +1076,12 @@ BEGIN
   SET status = 'review'::public.question_version_status
   WHERE id = _version_id;
 
+  PERFORM set_config(
+    'o2i.question_version_transition',
+    COALESCE(previous_transition_context, ''),
+    true
+  );
+
   RETURN _version_id;
 END;
 $$;
@@ -1078,6 +1098,10 @@ AS $$
 DECLARE
   question_record public.questions%ROWTYPE;
   version_status public.question_version_status;
+  previous_transition_context text := current_setting(
+    'o2i.question_version_transition',
+    true
+  );
 BEGIN
   PERFORM public.assert_question_bank_admin();
 
@@ -1112,6 +1136,12 @@ BEGIN
   SET status = 'draft'::public.question_version_status
   WHERE id = _version_id;
 
+  PERFORM set_config(
+    'o2i.question_version_transition',
+    COALESCE(previous_transition_context, ''),
+    true
+  );
+
   RETURN _version_id;
 END;
 $$;
@@ -1129,6 +1159,14 @@ DECLARE
   question_record public.questions%ROWTYPE;
   target_version public.question_versions%ROWTYPE;
   current_version_status public.question_version_status;
+  previous_transition_context text := current_setting(
+    'o2i.question_version_transition',
+    true
+  );
+  previous_lifecycle_context text := current_setting(
+    'o2i.question_lifecycle',
+    true
+  );
 BEGIN
   PERFORM public.assert_question_bank_admin();
 
@@ -1209,6 +1247,17 @@ BEGIN
   WHERE id = question_record.id
   RETURNING * INTO question_record;
 
+  PERFORM set_config(
+    'o2i.question_version_transition',
+    COALESCE(previous_transition_context, ''),
+    true
+  );
+  PERFORM set_config(
+    'o2i.question_lifecycle',
+    COALESCE(previous_lifecycle_context, ''),
+    true
+  );
+
   RETURN question_record;
 END;
 $$;
@@ -1222,6 +1271,14 @@ AS $$
 DECLARE
   question_record public.questions%ROWTYPE;
   current_version_status public.question_version_status;
+  previous_transition_context text := current_setting(
+    'o2i.question_version_transition',
+    true
+  );
+  previous_lifecycle_context text := current_setting(
+    'o2i.question_lifecycle',
+    true
+  );
 BEGIN
   PERFORM public.assert_question_bank_admin();
 
@@ -1279,6 +1336,17 @@ BEGIN
       current_version_id = NULL
   WHERE id = question_record.id
   RETURNING * INTO question_record;
+
+  PERFORM set_config(
+    'o2i.question_version_transition',
+    COALESCE(previous_transition_context, ''),
+    true
+  );
+  PERFORM set_config(
+    'o2i.question_lifecycle',
+    COALESCE(previous_lifecycle_context, ''),
+    true
+  );
 
   RETURN question_record;
 END;

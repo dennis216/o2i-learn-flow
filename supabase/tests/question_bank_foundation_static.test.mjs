@@ -154,6 +154,49 @@ test("direct question publication-state changes are rejected when no RPC context
   )
 })
 
+test("lifecycle RPCs restore their transaction-local guard context", () => {
+  for (const functionName of [
+    "create_question_revision",
+    "submit_question_version_for_review",
+    "return_question_version_to_draft",
+    "approve_question_version",
+    "retire_question",
+  ]) {
+    const start = migration.indexOf(
+      `CREATE OR REPLACE FUNCTION public.${functionName}`,
+    )
+    const nextFunction = migration.indexOf("CREATE OR REPLACE FUNCTION", start + 1)
+    const body = migration.slice(
+      start,
+      nextFunction === -1 ? migration.length : nextFunction,
+    )
+
+    assert.ok(start >= 0, `missing ${functionName}`)
+    assert.match(body, /previous_transition_context/)
+    assert.match(
+      body,
+      /set_config\(\s*'o2i\.question_version_transition',\s*COALESCE\(previous_transition_context, ''\)/,
+    )
+  }
+
+  for (const functionName of ["approve_question_version", "retire_question"]) {
+    const start = migration.indexOf(
+      `CREATE OR REPLACE FUNCTION public.${functionName}`,
+    )
+    const nextFunction = migration.indexOf("CREATE OR REPLACE FUNCTION", start + 1)
+    const body = migration.slice(
+      start,
+      nextFunction === -1 ? migration.length : nextFunction,
+    )
+
+    assert.match(body, /previous_lifecycle_context/)
+    assert.match(
+      body,
+      /set_config\(\s*'o2i\.question_lifecycle',\s*COALESCE\(previous_lifecycle_context, ''\)/,
+    )
+  }
+})
+
 test("student RLS exposes only the current approved version and children", () => {
   assert.match(
     migration,

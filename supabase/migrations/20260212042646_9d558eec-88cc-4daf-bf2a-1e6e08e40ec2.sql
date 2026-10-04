@@ -1,4 +1,9 @@
-
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.courses
+    WHERE id = 'a1594f02-e453-4a4d-9129-2ba075474769'::uuid
+  ) THEN
 INSERT INTO course_videos (course_id, title, unit, video_url, order_index, description, transcript, exam_tips) VALUES
 ('a1594f02-e453-4a4d-9129-2ba075474769', 'Ch 1 p1: Introduction to Limits & Motion', 'Unit 1: Limits and Continuity', 'https://www.youtube.com/watch?v=6OOvQQVCISY', 0, 'Introduction to calculus foundations including free fall motion, average vs. instantaneous velocity, and the graphical definition of limits.', '[{"s": 0, "t": "hi welcome to OTI Institute and I''m your"}, {"s": 5, "t": "instructor for AP Calculus AB Brandon So um"}, {"s": 10, "t": "the first thing we are going to talk about"}, {"s": 15, "t": "in AP calculus uh AB the foundation of"}, {"s": 20, "t": "everything is in it''s basically limits and the"}, {"s": 25, "t": "foundation of limits is introduction to limits right"}, {"s": 30, "t": "the first ever chapter that''s ever introduced in calculus"}]', E'• Free Fall Connection: For objects in rest under gravity, $h(t)=\\frac{1}{2}gt^2$ where $g \\approx 9.81 m/s^2$.\n\n• Limit Existence: A limit exists if and only if: $\\lim_{x \\to c^+} f(x) = \\lim_{x \\to c^-} f(x) = L$.'),
 
@@ -17,3 +22,6 @@ INSERT INTO course_videos (course_id, title, unit, video_url, order_index, descr
 ('a1594f02-e453-4a4d-9129-2ba075474769', 'Unit 5 & Ch 6: Derivative Rules & L''Hopital''s Rule', 'Unit 5: Analytical Applications of Differentiation', 'https://youtu.be/swlQt8mj0tU', 7, 'Review of derivative rules and L''Hopital''s Rule for indeterminate limits like 0/0.', '[{"s": 0, "t": "guys welcome back to O2 and today we''re"}, {"s": 5, "t": "going to talk about chapter 5 derivative rules"}, {"s": 10, "t": "okay so the first rule here is the"}, {"s": 15, "t": "constant multiple rule and we talked about this"}, {"s": 20, "t": "in the chapter 4 here we talked about"}, {"s": 25, "t": "it in chapter 4 but yeah so we''re"}, {"s": 30, "t": "going to skip this we also talked about"}]', E'• L''Hopital''s Rule: Apply only for $\\frac{0}{0}$ or $\\frac{\\infty}{\\infty}$. $\\lim \\frac{f(x)}{g(x)} = \\lim \\frac{f''(x)}{g''(x)}$.\n\n• Important: Must show that both numerator and denominator approach $0$ separately.'),
 
 ('a1594f02-e453-4a4d-9129-2ba075474769', 'Ch 6 p2: Extrema, Concavity & Linear Approximation', 'Unit 5: Analytical Applications of Differentiation', 'https://youtu.be/OjD2iYs209U', 8, 'Using 1st and 2nd derivative tests to find local extrema and applying linear approximation.', '[{"s": 0, "t": "we are going to continue our lessons So"}, {"s": 5, "t": "move on to 6.4 uh monoponicity concav concavity"}, {"s": 10, "t": "and uh extremma Okay So uh increasing or"}, {"s": 15, "t": "decreasing function So if here if f prime"}, {"s": 20, "t": "of x is greater than zero then f"}, {"s": 25, "t": "is always increasing So these are often tested"}, {"s": 30, "t": "in free response just to let you know"}]', E'• 2nd Derivative Test: $f''(c)=0, f''''(c)<0 \\to$ Local Max; $f''(c)=0, f''''(c)>0 \\to$ Local Min.\n\n• Linear Approximation: $L(x) = f(a) + f''(a)(x-a)$ to estimate values near $a$.');
+  END IF;
+END;
+$$;

@@ -1,4 +1,10 @@
 -- Insert 15 Pre-Calculus 12 videos for Unit 1
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.courses
+    WHERE id = '440355c0-4e91-4089-bb35-ab19ae639196'::uuid
+  ) THEN
 INSERT INTO course_videos (course_id, title, subtitle, video_url, order_index, description, transcript, exam_tips)
 VALUES
 -- Arithmetic Sequences (orderIndex 1, 2, 5, 13, 14, 15)
@@ -36,3 +42,6 @@ VALUES
 ('440355c0-4e91-4089-bb35-ab19ae639196', 'Sigma Notation Introduction', 'Unit 1: Notation', 'https://www.youtube.com/watch?v=_vi6I2VEZew', 11, 'Introduction to Sigma notation for sums, with examples.', '[{"s":0,"t":"Sigma notation looks like a sideways M."},{"s":5,"t":"It''s like a loop in computer programming."},{"s":10,"t":"The variable (e.g., i or n) has a start and end value."},{"s":15,"t":"Example: sum of 3n-2 from n=4 to 7."},{"s":20,"t":"This represents an arithmetic series."},{"s":25,"t":"Another example: variable in the exponent (geometric)."},{"s":30,"t":"Example with squared terms (n^2)."}]'::jsonb, 'The bottom number is the start index, and the top number is the end index.'),
 
 ('440355c0-4e91-4089-bb35-ab19ae639196', 'Uppercase Pi Notation', 'Unit 1: Notation', 'https://www.youtube.com/watch?v=iYnRwr4ZtbM', 12, 'Introduction to Uppercase Pi notation used for product series.', '[{"s":0,"t":"Uppercase Pi is used for products, not sums."},{"s":5,"t":"It''s the product equivalent of Sigma notation."},{"s":10,"t":"It means multiply the terms together."},{"s":15,"t":"Example: product of a_n from n=5 to 7."},{"s":20,"t":"This means a5 * a6 * a7."},{"s":25,"t":"If a5=9, a6=4, a7=6, the result is 216."}]'::jsonb, '$\\Sigma$ = Sum (Add); $\\Pi$ = Product (Multiply).');
+  END IF;
+END;
+$$;
