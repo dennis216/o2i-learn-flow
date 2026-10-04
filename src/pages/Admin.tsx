@@ -16,6 +16,7 @@ import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SubjectManagement } from "@/components/admin/SubjectManagement";
+import { QuestionBankPreview } from "@/components/admin/QuestionBankPreview";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, UserCog } from "lucide-react";
@@ -845,10 +846,11 @@ const Admin = () => {
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
       <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5 xl:grid-cols-10">
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice</TabsTrigger>
+          <TabsTrigger value="question-bank">Question Bank Preview</TabsTrigger>
           <TabsTrigger value="subjects" className="flex items-center gap-1">
             <FolderOpen className="h-4 w-4" />
             Subjects
@@ -1457,6 +1459,10 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="question-bank">
+          <QuestionBankPreview />
         </TabsContent>
 
         {/* Subjects Management Tab */}
