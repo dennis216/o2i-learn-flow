@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>O2I 现有选择题工作流 V2｜离线操作手册</title><style>
+    :root{color-scheme:light;--ink:#172b3a;--muted:#526575;--line:#dbe4e9;--blue:#075985;--pale:#eef7fb;--paper:#fff;--bg:#f4f7f8}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+    .hero{background:#123449;color:#fff;padding:35px max(24px,calc((100vw - 1100px)/2));border-bottom:5px solid #25a0bd}.hero h1{font-size:clamp(25px,3.5vw,38px);line-height:1.3;margin:0 0 8px}.hero p{margin:0;color:#d8edf4}
+    .layout{max-width:1200px;margin:auto;display:grid;grid-template-columns:245px minmax(0,1fr);gap:24px;padding:24px}.toc{align-self:start;position:sticky;top:20px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}.toc h2{font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.05em}.toc a{display:block;padding:7px 4px;color:var(--blue);text-decoration:none;font-size:14px;line-height:1.35}.toc a:hover{text-decoration:underline}
+    main{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:30px 38px;box-shadow:0 6px 24px #162d3b0a}main>h1{display:none}h2{font-size:26px;line-height:1.35;margin:50px 0 20px;padding:0 0 10px;border-bottom:2px solid #b8dbe7;scroll-margin-top:20px}h2:first-of-type{margin-top:12px}h3{font-size:19px;margin:28px 0 10px}p,li{overflow-wrap:anywhere}a{color:var(--blue)}blockquote{margin:0 0 26px;background:var(--pale);border-left:4px solid #25a0bd;padding:12px 18px;color:#244759}blockquote p{margin:0}strong{font-weight:700}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:#edf2f4;border-radius:4px;padding:1px 4px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:16px 0 26px}table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;line-height:1.5}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eaf4f7;white-space:nowrap}tr:last-child td{border-bottom:0}ol,ul{padding-left:1.5em}li{margin:.35em 0}
+    .prompt{border:1px solid #bdd8e3;background:#f8fbfc;border-radius:10px;margin:18px 0 34px;overflow:hidden}.prompt-bar{display:flex;align-items:center;justify-content:space-between;background:#e7f2f6;padding:8px 12px;color:#365669;font-size:13px;font-weight:600}.copy{border:0;border-radius:7px;background:#075985;color:white;padding:7px 12px;font:inherit;cursor:pointer}.copy:hover{background:#03486c}.prompt pre{margin:0;padding:18px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.prompt code{background:none;padding:0;font:inherit}.note{margin-top:30px;color:var(--muted);font-size:13px}
+    @media(max-width:800px){.layout{display:block;padding:12px}.toc{position:static;margin-bottom:14px}.toc a{display:inline-block;margin-right:10px}main{padding:22px 18px}h2{font-size:22px}}
+    @media print{body{background:#fff;font-size:11pt}.hero{background:#fff;color:#000;padding:0 0 12px;border-color:#888}.hero p{color:#333}.layout{display:block;padding:0}.toc,.copy{display:none}main{border:0;box-shadow:none;padding:0}h2{break-after:avoid}.prompt{break-inside:avoid}.prompt pre{font-size:9pt}a{color:#000}}
+  </style></head>
+<body><header class="hero"><h1>O2I AI 辅助 Practice Problem 工作流 V2</h1><p>离线操作手册 · 四步流程 · 可直接复制 Prompt</p></header><div class="layout"><nav class="toc" aria-label="目录"><h2>快速跳转</h2><div id="toc-links"></div></nav><main id="content"><h1>O2I 现有选择题：AI 辅助整理与人工筛选工作流 v2</h1>
+<blockquote>
+<p>本版依据 Unit 1 首批试跑及管理员上传预览反馈修订。适用范围是<strong>已有来源的单项选择题</strong>。它产出经过人工卡片筛选的 <strong>XLSX 暂存草稿</strong>，不等于正式批准或发布。每批保留原始文件、两轮 AI 证据、人工决策和最终 XLSX。V2 的重点是明确计算器政策与各审核关卡的证据，避免把卡片“通过”误写成正式批准。</p>
+</blockquote>
+<h2>一页总览</h2>
+<table><thead><tr><th>步骤</th><th>谁做、在哪做</th><th>上传什么</th><th>本步结束时必须拿到什么</th></tr></thead><tbody><tr><td>1. 来源整理</td><td>Chat 1</td><td>原题 PDF、答案/解析 PDF、空白模板、导入 Schema、CED taxonomy（可先打成一个 ZIP）</td><td>草稿 XLSX + 逐题来源/推断证据 JSON</td></tr><tr><td>2. 盲审</td><td><strong>新开 Chat 2</strong></td><td>与步骤 1 相同的五份原始文件；<strong>不要上传 Chat 1 输出</strong></td><td>独立复核 JSON，先保存再看 Chat 1 输出</td></tr><tr><td>3. 对照与人工卡片</td><td>继续 Chat 2</td><td>步骤 1 的草稿 XLSX + 证据 JSON；步骤 2 原始文件和独立 JSON 已在本 Chat</td><td>差异分队列、可交互审核卡、提交后的持久化人工决策 JSON</td></tr><tr><td>4. 导出暂存稿</td><td>继续 Chat 2</td><td>通常不用重新上传；若 Chat 2 无法读取，则补传原始 PDF、步骤 1/2 输出和人工决策 JSON</td><td>仅含最终选中题目的 XLSX + 校验报告；各审核关卡仅在有明确人工决定和证据时才可记为 <code>passed</code>，整体仍待正式批准</td></tr></tbody></table>
+<h3>开始前，管理员准备这些文件</h3>
+<ol>
+<li><strong>原题 PDF</strong>：完整、清晰、能找到每道题的 PDF 物理页码；题目、选项和图形不要被裁掉。</li>
+<li><strong>答案/解析 PDF</strong>：最好与原题有相同的印刷题号。若只有答案没有解析，AI 解法必须明确标为草稿，不得冒充来源解法。</li>
+<li>本包中的 <a href="O2I_QUESTION_IMPORT_SCHEMA.md">导入 Schema</a>、<a href="O2I_Question_Bank_Import_Template.xlsx">空白 XLSX 模板</a>、<a href="AP_CALCULUS_CED_TAXONOMY.md">CED taxonomy</a>。每次运行上传<strong>同一版本</strong>，不要把上一批已填数据当空白模板。</li>
+<li>告诉 AI <strong>本批印刷题号范围</strong>，例如 <code>Q1–10</code>。建议先做 10–20 题；扫描质量差、跨页或图形多时缩小批次。</li>
+<li>确认来源使用权限。PDF 能下载或能被 AI 读取，<strong>不等于</strong>可以复制、导入网站或对学生展示。权利未确认时只能保持内部审核草稿。</li>
+</ol>
+<p>优先选有明确题号、单一正确答案、答案能对应回原题、数学和图形清晰的资料。若题号缺失，按 Schema 建 <code>source_locator</code> 并交人工验证；若答案对不上、页码/图形缺失或题目本身多解，先放入异常队列，不让 AI 猜。<strong>不要把有原题的批次混入 AI 新编题。</strong></p>
+<p>推荐把上述五份文件压成一个来源包 <code>O2I_[BATCH]_Source_Packet.zip</code>，Chat 1 与 Chat 2 各上传一次。来源包里不要放上一轮 AI 输出。文件名可以不同，但在 prompt 的 <code>[原题文件名]</code>、<code>[答案文件名]</code>、<code>[题号范围]</code> 填真实值。</p>
+<p>团队分发用的 <code>O2I_AI_ASSISTED_PRACTICE_PROBLEM_WORKFLOW_V2_PACKAGE.zip</code> 不是来源包：它只含本指南、可双击打开的 HTML 和四份固定参考文件，不含任何原题。先解压，再取其中的 Schema、空白模板、CED taxonomy，加上<strong>本批自己的两个 PDF</strong>组成五文件来源包；审核 SOP 留给人工审核员使用。</p>
+<h3>交接与命名</h3>
+<ul>
+<li>Chat 1 保存：<code>[BATCH]_Chat1_Draft.xlsx</code>、<code>[BATCH]_Chat1_Evidence.json</code>。</li>
+<li>Chat 2 盲审先保存：<code>[BATCH]_Independent_Review.json</code>。<strong>完成此保存后</strong>才接收 Chat 1 输出。</li>
+<li>卡片上的决定必须点击/提交并导出：<code>[BATCH]_Human_Decisions.json</code>。仅在页面上选按钮、但没有提交为持久文件，不算完成。</li>
+<li>最终保存：<code>[BATCH]_Post_Review_Draft.xlsx</code>。同时保留所有中间文件；不要用最终 XLSX 覆盖原始草稿。</li>
+</ul>
+<p>下面的四个代码块可分别复制到对应 Chat。<code>[...]</code> 必须替换为本批真实信息；文件路径由 Chat 在当前工作区自行识别，不能照抄另一批的绝对路径。</p>
+<h2>步骤 1：Chat 1 来源整理与初次配对</h2>
+<p><strong>上传</strong>：原题 PDF、答案/解析 PDF、空白 <code>O2I_Question_Bank_Import_Template.xlsx</code>、<code>O2I_QUESTION_IMPORT_SCHEMA.md</code>、<code>AP_CALCULUS_CED_TAXONOMY.md</code>，或含这五份文件的 ZIP。不要上传旧批次草稿。</p>
+<pre><code class="language-text">你是 O2I 现有 AP Calculus 单项选择题的第一轮整理员。本批为 [BATCH]，只处理原题 PDF 中真实印刷的 [题号范围]。先列出你实际能打开的五份附件及其文件名：原题 PDF [原题文件名]、答案/解析 PDF [答案文件名]、O2I_Question_Bank_Import_Template.xlsx、O2I_QUESTION_IMPORT_SCHEMA.md、AP_CALCULUS_CED_TAXONOMY.md。缺任何一份就停止并告诉我缺什么；不要借用旧聊天、旧文件或自行找替代题目。
+
+请读取 Schema 和空白模板，严格保持 Questions、Options、Instructions 三个 sheet、表头及字段顺序。逐题从原题 PDF 转录题干、选项、印刷题号和 PDF 物理页码；将答案 PDF 按印刷题号与原题配对，并记录答案所在物理页码。来源有解析时忠实记录；来源没有解析时，才自行写解法并标记 SOLUTION_AI_DRAFT。答案是推断而非来源给出时标记 ANSWER_AI_INFERRED。不要改写原题、补造题号、补造来源、图形、权限或计算器政策；图形缺失、跨页、OCR 不清、题号冲突和解法疑点都要留下证据并加 flag。没有印刷题号时，只能建立 pPPP-itemII 形式的暂存 locator，并标记 SOURCE_LOCATOR_UNVERIFIED。
+
+根据提供的 taxonomy 给出 course_scope、primary_topic_code、practice_skill_codes 和综合判断的 easy/medium/hard 作为候选。不要把解法行数或文字长度当唯一难度依据。若给定文档不足以核实规范代码，保留候选并标 CODE_UNVERIFIED/TAXONOMY_UNCERTAIN，不得宣称已核实。misconception_code 留空，不猜干扰项心理过程。检查来源是否明确写了计算器要求：有明确原文时，calculator_policy 可填写 no_calculator、calculator_allowed 或 calculator_required，并在 Evidence JSON 中记录原文、PDF 物理页及提取依据，仍待人工核实；没有明确原文或依据冲突时留空，并标 CALCULATOR_POLICY_UNCERTAIN。不要因“这题不用计算器也能做”推断 no_calculator。数学内容采用 Markdown + LaTeX：行内 \(...\)，独立公式 \[...\]；保留正负号、极限方向、指数、上下标和选项顺序。
+
+所有 Questions 行的 math_review_status、source_rights_status、taxonomy_review_status、render_review_status、human_review_status 均为 pending；reviewed_by/reviewed_at 留空。不得写 approved。source_type 不在此模板中，不要自行推断。
+
+输出两个可下载文件：① [BATCH]_Chat1_Draft.xlsx；② [BATCH]_Chat1_Evidence.json。证据 JSON 每题至少包含题号、原题 PDF 物理页、答案 PDF 物理页、答案配对依据、哪些内容是逐字转录、哪些是 AI 推断、计算器政策候选及其原文依据或不确定原因、疑点/flags 和图形需求。重新打开 XLSX 验证 sheet、字段顺序、题数、选项数、唯一正确选项、外键关联、待审状态、中文及 LaTeX 文本；报告检查结果和所有无法确定之处。不要入库或声称题目已获批准。
+</code></pre>
+<h2>步骤 2：新 Chat 2 独立盲审</h2>
+<p><strong>上传</strong>：与步骤 1 相同的五份原始文件/ZIP。<strong>此时不要上传 Chat 1 的 XLSX、证据 JSON，也不要引用 Chat 1 内容。</strong></p>
+<pre><code class="language-text">你是 O2I 的第二轮独立复核员。本批 [BATCH]，只审核原题 PDF 中真实印刷的 [题号范围]。先列出实际能打开的五份附件：原题 PDF [原题文件名]、答案/解析 PDF [答案文件名]、空白 O2I_Question_Bank_Import_Template.xlsx、O2I_QUESTION_IMPORT_SCHEMA.md、AP_CALCULUS_CED_TAXONOMY.md。缺文件就停止。这是盲审：目前不得读取或请求 Chat 1 草稿、证据或旧聊天结果；不得参考其答案和标签。
+
+独立逐题定位原题及答案/解析的 PDF 物理页和印刷题号；独立解题，核对恰好一个正确选项，检查来源解析是否完整、有效；记录原始题干/选项中的易错符号，特别是极限方向、负号、指数、上下标、图形依赖。给出 course_scope、CED Topic/Practice Skill 与 easy/medium/hard 的独立候选及理由。检查计算器政策是否在来源中明示，独立给出候选值与原文及页码；没有依据就写 uncertain，不以解题便利性代替政策依据。规范代码无法从附件核实时标 CODE_UNVERIFIED，不要猜成已核实。区分来源事实与 AI 推断；无法判定则明确 uncertain，给出需要人工翻查的页码和原因。不要做正式权利批准或渲染批准。
+
+先把完整独立结果保存为可下载的 [BATCH]_Independent_Review.json。每题至少包含印刷题号、原题/答案物理页、正确选项、关键数学步骤、Topic/Skill/难度/计算器政策候选、问题及证据。重读文件验证覆盖了 [题号范围] 的每题。保存完成后停下，明确告诉我现在才可以上传 Chat 1 的两个输出文件；在看到它们之前不得做对照或改写独立结论。
+</code></pre>
+<h2>步骤 3：同一 Chat 2 对照，并用卡片人工筛选</h2>
+<p><strong>前提</strong>：步骤 2 的独立 JSON 已保存。<strong>现在上传</strong>步骤 1 的 <code>[BATCH]_Chat1_Draft.xlsx</code> 和 <code>[BATCH]_Chat1_Evidence.json</code>；原始 PDF、Schema、taxonomy 和独立 JSON 仍在本 Chat 可读。若不可读，补传，不依赖记忆。</p>
+<pre><code class="language-text">继续本 Chat 的 [BATCH] 盲审。先确认你已保存 [BATCH]_Independent_Review.json，再打开我刚上传的 Chat 1 草稿 XLSX 与 Evidence JSON。将 Chat 1、独立 JSON、原题 PDF 和答案 PDF 按真实印刷题号逐题对照；不要让后看到的 Chat 1 结果覆盖独立发现。
+
+把每题分为「一致/低风险」「冲突」「不确定」三队列，逐项比较：原题逐字性（尤其极限方向、符号、数值）、选项及顺序、来源页和答案配对、唯一正确答案、解法逻辑、图形、course_scope、Topic/Skill、难度、计算器政策及依据、LaTeX。给每个冲突提供可回查的 PDF 文件名、物理页和印刷题号；不要仅写“有问题”。未核实的 taxonomy 代码仍标 CODE_UNVERIFIED。不要把两 AI 一致当作人工或正式批准。
+
+为人工审核员生成可交互的逐题卡片。卡片正面必须显示批次/题号、来源文件和物理页、题干与全部选项、答案；可展开解法、来源证据、标签/难度/计算器政策和两轮差异。每题提供「通过」「需修改」「排除」三个选题决定，以及简短备注；允许直接改简单字段（例如难度 dropdown、明确的符号转录修正），复杂修改写在备注并带来源定位。计算器政策 dropdown 必须有 no_calculator、calculator_allowed、calculator_required、未确定四项，显示当前值、来源原文依据与 PDF 页码；人工可据来源或明确的 O2I 编辑政策选择/修正。若无来源也无编辑政策依据，必须保持未确定及 CALCULATOR_POLICY_UNCERTAIN，不能因题目可心算就默认 no_calculator。
+
+卡片另设与「选题通过」分开的四关卡记录：math_review_status、source_rights_status、taxonomy_review_status、render_review_status。每一关只有审核员明确选择通过并提交审核人、时间、依据时才能成为 passed；否则保持 pending 或记录 failed/blocked。数学关须人工确认答案及解法；权利关须有使用许可/公有领域等可查证依据，若通过则在 Decisions JSON 中另记建议的 source_type，供后续管理员正式核定，不能增加不存在的 XLSX 列；分类关须确认代码确实存在且语义匹配；渲染关须在真实 Admin 预览核对公式/图形，Chat 中的 LaTeX 检查不算通过。当前卡片无法完成的关卡保持 pending；不要从两轮 AI 一致或选题通过自动推导关卡通过。把每关的审核人、时间、证据保存在 Decisions JSON；不要将部分关卡审核人冒充整体最终批准人的 reviewed_by/reviewed_at。
+
+先展示两张有代表性的样例卡并暂停，等我确认交互方式后再生成余下卡片。若当前环境不能保存真正的交互选择，必须直说并暂停；不要把静态 Markdown 表格说成可提交的审核卡。
+
+我逐题操作后，你必须获取并确认“提交”的结构化结果，将所有决定、修改前后值、备注、来源定位、计算器政策依据与逐关卡审核证据保存为可下载的 [BATCH]_Human_Decisions.json；检查每个题号恰有一个最终决定、没有遗漏或重复。卡片「通过」仅表示该题进入后续暂存稿候选，不代表数学/权利/分类/渲染四个关卡自动 passed，更不代表数据库 approved。请在没有收到我的提交结果之前停止，不要自行替我按通过。
+</code></pre>
+<p>样例卡可用后，管理员回复一句：<code>样例可以，继续生成本批剩余卡片。</code> 全部操作后再明确点击卡片的提交动作；只点选但不提交，决策可能只存在于临时 UI 状态。</p>
+<h2>步骤 4：同一 Chat 2 导出最终暂存 XLSX</h2>
+<p><strong>上传</strong>：通常无需新附件；本 Chat 应已有原始五份文件、Chat 1 两个输出、独立 JSON、已提交的人工决策 JSON。缺哪份补哪份。<strong>只在人工决策 JSON 确实保存后执行。</strong></p>
+<pre><code class="language-text">继续处理 [BATCH]。先列出并重新打开你实际读取的：原题 PDF、答案/解析 PDF、O2I_Question_Bank_Import_Template.xlsx、O2I_QUESTION_IMPORT_SCHEMA.md、AP_CALCULUS_CED_TAXONOMY.md、[BATCH]_Chat1_Draft.xlsx、[BATCH]_Chat1_Evidence.json、[BATCH]_Independent_Review.json、[BATCH]_Human_Decisions.json。缺任一必要文件就停止。以人工“已提交”的 Decisions JSON 为最终筛选依据，不得用聊天里未提交的口头/卡片状态代替。
+
+按真实题号逐题处理：只把最终决定为「通过」且所有直接修改已明确、可追溯的题目写入新的 [BATCH]_Post_Review_Draft.xlsx；「排除」不写入；「需修改」在修改尚未由人工再次确认前不写入，列入单独待处理清单。应用已确认的简单修正到题干、选项、答案、解法、标签、难度或计算器政策，并把重要修改和来源证据写入 notes；不得因两轮 AI 一致而覆盖人工决定。若数学或来源冲突尚未消除，停止该题导出并列为未解决，不自行猜一个答案。
+
+使用原空白模板结构，保持且仅保留 Questions、Options、Instructions 三个 sheet、既定表头和字段顺序；每个导出题目保留所有对应选项，正确选项恰好一个，Options.question_external_id 必须关联 Questions.external_id。数学保持 Markdown + LaTeX 的 \(...\) 与 \[...\]，检查反斜杠、负号和极限方向在 XLSX 重新打开后未损坏。misconception_code 证据不足则留空。calculator_policy 只取审核员明确确认、且在 Decisions JSON 中有来源原文或 O2I 编辑政策依据的值；未确定则留空并保留 CALCULATOR_POLICY_UNCERTAIN。source_type/权利依据不能从 PDF 可下载推断。
+
+四个关卡字段仅依据 Decisions JSON 中逐关的明确人工决定填写；无审核人、时间或证据的 passed 一律退回 pending 并报告。特别是 taxonomy 规范代码存在不等于语义匹配，只有人工确认后才可清除 TAXONOMY_UNCERTAIN；难度 dropdown 经人工确认后才可清除 DIFFICULTY_UNCERTAIN；计算器政策经人工有据决定后才可清除 CALCULATOR_POLICY_UNCERTAIN。其他阻断性 flags 也只在对应问题有证据地解决后清除，不能为通过导入而批量清空。Chat 阶段无法完成的真实网站渲染检查保持 render_review_status=pending。每关审核的姓名、时间、依据写入 human_review_notes 和 Decisions JSON，不写入最终批准字段 reviewed_by/reviewed_at。human_review_status 保持 pending；不得自动写 approved 或伪造整体最终审核人。
+
+重新打开输出 XLSX，核验三个 sheet、表头、通过题数与选项数、排除/需修改数量、题号与来源定位、唯一正确项、外键、人工修正、计算器政策和依据、各关卡状态与证据、未决 flags、中文和 LaTeX 字符。给出下载链接、逐题导出/未导出摘要、未解决风险和校验报告。可以做 LaTeX 语法检查，但不能将其描述成网站实际渲染已通过。此 XLSX 用于管理员预览和保存为未发布草稿；后续正式审核、批准、发布在网站题目版本流程中完成。不要访问网站、数据库或发布题目，除非我另行明确要求。
+</code></pre>
+<h2>审核员速查 Checklist</h2>
+<p>逐题卡片优先看异常队列；低风险题也要快速扫一遍，不要无条件批量通过。</p>
+<ul class="contains-task-list">
+<li class="task-list-item"><input type="checkbox" disabled=""/> 批次、真实印刷题号、原题和答案 PDF 的<strong>物理页码</strong>能对上；必要时一键/按定位回原页。</li>
+<li class="task-list-item"><input type="checkbox" disabled=""/> 题干与选项的数字、正负号、极限方向、上下标、图形、顺序无错；答案<strong>恰好一个</strong>，解法关键步骤成立。</li>
+<li class="task-list-item"><input type="checkbox" disabled=""/> Topic/Skill/course_scope 有依据且语义相符；难度不合理时用 dropdown 改。计算器政策选项有来源原文或明确 O2I 编辑政策依据；不确定就留空并保留 flag。</li>
+<li class="task-list-item"><input type="checkbox" disabled=""/> 小错在卡片上改并记来源；复杂错选「需修改」并写清位置和要求；不值得修或不可靠的选「排除」。</li>
+<li class="task-list-item"><input type="checkbox" disabled=""/> “选题通过”与数学/权利/分类/渲染四关分开；逐关通过须有人、时间、依据。真实 Admin 渲染未看过就保持 pending；权利不明不得发布。</li>
+<li class="task-list-item"><input type="checkbox" disabled=""/> <strong>提交</strong>卡片决定，核对决策 JSON 覆盖全批，再核对导出 XLSX 的题数、修正、flags 与关卡状态；整体 human_review_status 在此阶段仍为 pending。</li>
+</ul>
+<p>“30 题 10 分钟”只可作为<strong>卡片快速分流</strong>的优化目标，不是已验证的正式题库审核时长；数学独立验证、来源/权利、规范分类和真实页面渲染仍按 <a href="O2I_HUMAN_REVIEW_SOP_ZH.md">人工审核 SOP</a> 完成。题目正式入库、管理员上传确认和发布属于后续网站流程，当前四步没有完成或验证这些操作。</p>
+<h2>固定参考文件与已知限制</h2>
+<ul>
+<li><a href="O2I_QUESTION_IMPORT_SCHEMA.md">O2I_QUESTION_IMPORT_SCHEMA.md</a>：XLSX 暂存格式与到版本化数据库的映射边界。</li>
+<li><a href="O2I_Question_Bank_Import_Template.xlsx">O2I_Question_Bank_Import_Template.xlsx</a>：唯一空白模板，不要拿上一批填好的 XLSX 当模板。</li>
+<li><a href="AP_CALCULUS_CED_TAXONOMY.md">AP_CALCULUS_CED_TAXONOMY.md</a>：分类原则；<strong>此文档不是完整规范代码清单</strong>，而且其“下一次迁移”说明是历史文字，不能据此判断当前数据库状态。代码候选必须与当前规范数据再核对。</li>
+<li><a href="O2I_HUMAN_REVIEW_SOP_ZH.md">O2I_HUMAN_REVIEW_SOP_ZH.md</a>：正式四关卡批准标准。本工作流中的卡片“通过”与此文档的 <code>approved</code> 不同。</li>
+</ul>
+<p>首次试跑的 Q1–10 最终只导出 8 题：Q7、Q10 被排除；Q6 极限方向从误转录的负无穷修回来源的正无穷；Q8/Q9 的最终难度经人工调整为 hard。该结果证明对照和卡片能发现并保留修正，但<strong>不能证明</strong>所有题的权利、taxonomy 代码、计算器政策或网站数学排版已通过正式审核。管理员上传时即使保存成功，数据库也应是未发布草稿；“已保存”不等于“可给学生做”。</p></main></div><script>
+    const main=document.getElementById('content');
+    const toc=document.getElementById('toc-links');
+    main.querySelectorAll('h2').forEach((heading,index)=>{heading.id='section-'+(index+1);const link=document.createElement('a');link.href='#'+heading.id;link.textContent=heading.textContent;toc.appendChild(link)});
+    main.querySelectorAll('table').forEach(table=>{const wrap=document.createElement('div');wrap.className='table-wrap';table.parentNode.insertBefore(wrap,table);wrap.appendChild(table)});
+    main.querySelectorAll('pre').forEach((pre,index)=>{const wrap=document.createElement('div');wrap.className='prompt';const bar=document.createElement('div');bar.className='prompt-bar';const label=document.createElement('span');label.textContent='可复制 Prompt '+(index+1);const button=document.createElement('button');button.className='copy';button.type='button';button.textContent='复制全文';button.addEventListener('click',async()=>{const value=pre.textContent;try{if(!navigator.clipboard)throw new Error('clipboard unavailable');await navigator.clipboard.writeText(value)}catch(error){const helper=document.createElement('textarea');helper.value=value;document.body.appendChild(helper);helper.select();const ok=document.execCommand('copy');helper.remove();if(!ok){alert('自动复制失败，请选中下方文字手动复制。');return}}button.textContent='已复制 ✓';setTimeout(()=>button.textContent='复制全文',1800)});bar.append(label,button);pre.parentNode.insertBefore(wrap,pre);wrap.append(bar,pre)});
+  </script></body></html>

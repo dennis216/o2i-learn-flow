@@ -1043,6 +1043,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          import_evidence: NonNullable<Json>
           is_correct: boolean
           option_key: string
           option_text: string
@@ -1052,6 +1053,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          import_evidence?: NonNullable<Json>
           is_correct?: boolean
           option_key: string
           option_text: string
@@ -1061,6 +1063,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          import_evidence?: NonNullable<Json>
           is_correct?: boolean
           option_key?: string
           option_text?: string
@@ -1146,13 +1149,14 @@ export type Database = {
       question_versions: {
         Row: {
           approved_at: string | null
-          calculator_policy: Database["public"]["Enums"]["question_calculator_policy"]
+          calculator_policy: Database["public"]["Enums"]["question_calculator_policy"] | null
           course_scope: Database["public"]["Enums"]["question_course_scope"]
           created_at: string
           created_by: string
           difficulty: Database["public"]["Enums"]["question_difficulty"]
           id: string
           image_url: string | null
+          import_evidence: NonNullable<Json>
           primary_topic_id: string
           question_id: string
           question_type: Database["public"]["Enums"]["question_type"]
@@ -1166,20 +1170,21 @@ export type Database = {
           source_page: number
           source_question_number: string | null
           source_reference: string | null
-          source_type: Database["public"]["Enums"]["question_source_type"]
+          source_type: Database["public"]["Enums"]["question_source_type"] | null
           status: Database["public"]["Enums"]["question_version_status"]
           stem: string
           version_number: number
         }
         Insert: {
           approved_at?: string | null
-          calculator_policy: Database["public"]["Enums"]["question_calculator_policy"]
+          calculator_policy?: Database["public"]["Enums"]["question_calculator_policy"] | null
           course_scope: Database["public"]["Enums"]["question_course_scope"]
           created_at?: string
           created_by?: string
           difficulty: Database["public"]["Enums"]["question_difficulty"]
           id?: string
           image_url?: string | null
+          import_evidence?: NonNullable<Json>
           primary_topic_id: string
           question_id: string
           question_type?: Database["public"]["Enums"]["question_type"]
@@ -1193,20 +1198,21 @@ export type Database = {
           source_page: number
           source_question_number?: string | null
           source_reference?: string | null
-          source_type: Database["public"]["Enums"]["question_source_type"]
+          source_type?: Database["public"]["Enums"]["question_source_type"] | null
           status?: Database["public"]["Enums"]["question_version_status"]
           stem: string
           version_number: number
         }
         Update: {
           approved_at?: string | null
-          calculator_policy?: Database["public"]["Enums"]["question_calculator_policy"]
+          calculator_policy?: Database["public"]["Enums"]["question_calculator_policy"] | null
           course_scope?: Database["public"]["Enums"]["question_course_scope"]
           created_at?: string
           created_by?: string
           difficulty?: Database["public"]["Enums"]["question_difficulty"]
           id?: string
           image_url?: string | null
+          import_evidence?: NonNullable<Json>
           primary_topic_id?: string
           question_id?: string
           question_type?: Database["public"]["Enums"]["question_type"]
@@ -1220,7 +1226,7 @@ export type Database = {
           source_page?: number
           source_question_number?: string | null
           source_reference?: string | null
-          source_type?: Database["public"]["Enums"]["question_source_type"]
+          source_type?: Database["public"]["Enums"]["question_source_type"] | null
           status?: Database["public"]["Enums"]["question_version_status"]
           stem?: string
           version_number?: number
@@ -1698,6 +1704,10 @@ export type Database = {
       }
     }
     Functions: {
+      save_question_bank_drafts: {
+        Args: { _items: Json }
+        Returns: Json
+      }
       approve_question_version: {
         Args: { _question_id: string; _version_id: string }
         Returns: Database["public"]["Tables"]["questions"]["Row"]

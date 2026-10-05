@@ -63,6 +63,8 @@ export interface PreviewQuestion {
   requiresFigure: boolean | null;
   figureReference: string;
   imageUrl: string;
+  sourceTranscriptionNotes: string;
+  aiInferenceNotes: string;
   aiFlags: string[];
   humanReviewStatus: string;
   humanReviewNotes: string;
@@ -275,6 +277,8 @@ export function validateQuestionBankSheets(
       difficulty: get("difficulty"), courseScope: get("course_scope"),
       representationType: get("representation_type"), calculatorPolicy: get("calculator_policy"),
       requiresFigure, figureReference: get("figure_reference"), imageUrl,
+      sourceTranscriptionNotes: get("source_transcription_notes"),
+      aiInferenceNotes: get("ai_inference_notes"),
       aiFlags: flags, humanReviewStatus: status, humanReviewNotes: get("human_review_notes"),
       reviewedBy: get("reviewed_by").trim(), reviewedAt: get("reviewed_at").trim(),
       reviewGates: gates, options: [], readiness: "pending",

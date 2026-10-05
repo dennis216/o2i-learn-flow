@@ -2,7 +2,7 @@
 
 ## 1. 用途
 
-本 Schema 定义管理员从真实来源 PDF 处理现有单项选择题时使用的 XLSX 暂存格式。它不是数据库迁移，也不保证当前应用可以直接导入。生产导入器上线前，仍需把本格式映射到正式的版本化题库表。
+本 Schema 定义管理员从真实来源 PDF 处理现有单项选择题时使用的 XLSX 暂存格式。Task 3B 的 Admin 页面可预览并确认保存为**未发布草稿**；此操作不是人工批准或学生发布。
 
 工作簿必须且只能包含三个工作表：
 
@@ -14,9 +14,11 @@
 
 ### 1.1 与生产题库表的映射边界
 
-Task 2 的生产表采用 `questions`（稳定身份与生命周期）、`question_versions`（版本化内容与来源）、`question_options`（结构化选项）以及关联表。当前 XLSX 仍是人工审核暂存格式，不能直接写数据库；后续导入器必须显式完成以下转换：
+Task 2 的生产表采用 `questions`（稳定身份与生命周期）、`question_versions`（版本化内容与来源）、`question_options`（结构化选项）以及关联表。Task 3B 通过管理员专用的单次事务 RPC 保存整个工作簿；任何一题失败，整批回滚。转换边界如下：
 
-- 首次导入先创建 `questions.status=draft` 和 `question_versions.status=draft`。XLSX 的 `human_review_status=pending` 绝不能直接映射为任何 `approved` 状态。
+Task 3B 每次确认最多保存 100 题。超过上限时应拆分工作簿，并分别预览、核验和确认；不能把一次失败的批次视为部分成功。
+
+- 首次保存创建 `questions.status=draft` 和 `question_versions.status=draft`，且 `questions.current_version_id=NULL`。无论 XLSX 的 `human_review_status` 是 `pending` 还是 `approved`，都不映射为数据库批准状态。
 - 题目级 `questions.status` 只表示整体发布生命周期：`draft`、`approved`、`retired`。编辑过程属于版本级状态：`draft`、`review`、`approved`、`superseded`。
 - `questions.current_version_id` 只指向当前发布的 `approved` 版本；题目处于 `draft` 或 `retired` 时该字段为空。学生只能读取题目级 `approved` 且由该字段指向的版本。
 - 管理员完成初版内容后，调用 `submit_question_version_for_review(question_id, version_id)` 送审；review 版本只读，需要修改时必须调用 `return_question_version_to_draft(question_id, version_id)`。
@@ -27,8 +29,9 @@ Task 2 的生产表采用 `questions`（稳定身份与生命周期）、`questi
 - `primary_topic_code` 与 `practice_skill_codes` 必须解析为规范表中的 UUID；不得把代码或名称作为自由文本复制到关联表。
 - XLSX 可暂存跨页 `source_page`（例如 `12-13`）；生产库的 `question_versions.source_page` 必须是题目开始位置的单个正整数 PDF 物理页码，完整跨页信息写入 `source_reference`。不得使用书本印刷页码替代 PDF 物理页码。
 - 使用 `source_locator` 时，人工确认其可唯一定位后，生产库才可设置 `source_locator_verified=TRUE`。该布尔值是审核结果，不得由 AI 自行设置。
-- 生产库的 `source_type` 是权利审核人选择的受控值：`original`、`licensed`、`public_domain` 或 `permission_granted`。当前模板不自动推断该值。
-- `figure_reference`、转录/推断 notes、四个审核关卡以及选项解释仍属于暂存与审核证据；本基础迁移没有为这些工作流字段创建生产列或导入批次。后续导入任务必须决定留存位置，不得静默丢弃。
+- 生产库的 `source_type` 是权利审核人选择的受控值：`original`、`licensed`、`public_domain` 或 `permission_granted`。当前模板不自动推断该值，草稿保存为 `NULL`。未知 `calculator_policy` 同样保存为 `NULL`；版本正式批准前，两者必须由管理员确认并补齐。
+- `question_versions.import_evidence` 保存原始跨页文本、图形定位、转录/推断 notes、AI flags、XLSX 审核状态、四个审核关卡、审核备注及表格中的审核人/时间；`question_options.import_evidence` 保存 misconception 代码和选项解释。这些是导入证据，不等于数据库版本级 `reviewed_by` / `approved_at`，也不会自动映射到受控 misconception 关系。
+- 草稿保存仍要求题干、解析、难度、课程范围、表示方式、规范 Topic/Skill、来源文件和页码、2–6 个选项及唯一正确项。`pending` 可以预览；缺失这些入库所需值时，页面会明确阻断保存。保存阶段不根据 XLSX 的人工审核状态发布题目。
 
 ## 2. 通用规则
 
