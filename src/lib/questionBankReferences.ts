@@ -21,7 +21,8 @@ async function readAll<T>(
 }
 
 /** Only SELECT queries after verifying the current authenticated user is an admin. */
-export async function loadQuestionBankReferences(client: SupabaseClient<Database>): Promise<QuestionBankReferences> {
+export async function loadQuestionBankReferences(// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: SupabaseClient<any>): Promise<QuestionBankReferences> {
   const { data: identity, error: identityError } = await client.auth.getUser();
   if (identityError || !identity.user) throw new Error("请先以管理员身份登录，再核对现有题目 ID");
   const { data: isAdmin, error: roleError } = await client.rpc("has_role", {
