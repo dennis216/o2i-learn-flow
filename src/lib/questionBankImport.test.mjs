@@ -50,7 +50,7 @@ test('a structurally valid pending draft previews but is not import-ready', () =
   assert.equal(report.questions[0].readiness, 'pending');
   assert.equal(report.topicVerification, 'unverified');
   assert.equal(report.skillVerification, 'unverified');
-  assert.ok(hasIssue(report, 'Questions', 'primary_topic_code', '未验证'));
+  assert.ok(hasIssue(report, 'Questions', 'primary_topic_code', 'unverified'));
   assert.equal(report.questions[0].stem, '求 \\(x^2\\) 的导数。');
 });
 
@@ -74,8 +74,8 @@ test('missing sheet and wrong header are reported at their exact locations', () 
   sheets[0].data[0][0] = 'wrong_id';
   sheets.pop();
   const report = validateQuestionBankSheets(sheets);
-  assert.ok(hasIssue(report, 'Questions', 'external_id', '表头'));
-  assert.ok(hasIssue(report, 'Instructions', 'sheet', '缺少'));
+  assert.ok(hasIssue(report, 'Questions', 'external_id', 'Header'));
+  assert.ok(hasIssue(report, 'Instructions', 'sheet', 'missing'));
   assert.equal(report.questions[0].readiness, 'blocked');
 });
 
@@ -83,8 +83,8 @@ test('an extra sheet violates the exact three-sheet contract', () => {
   const sheets = workbook();
   sheets.push({ sheet: 'Extra', data: [['not part of template']] });
   const report = validateQuestionBankSheets(sheets);
-  assert.ok(hasIssue(report, '工作簿', 'sheet', '恰好三张'));
-  assert.ok(hasIssue(report, 'Extra', 'sheet', '额外'));
+  assert.ok(hasIssue(report, 'Workbook', 'sheet', 'Exactly three'));
+  assert.ok(hasIssue(report, 'Extra', 'sheet', 'Unexpected'));
   assert.equal(report.questions[0].readiness, 'blocked');
 });
 
@@ -93,8 +93,8 @@ test('duplicate external ID and orphan option are rejected', () => {
     [question(), question()],
     [option('A', true), option('B', false), option('C', false, { question_external_id: 'absent' })],
   ));
-  assert.ok(hasIssue(report, 'Questions', 'external_id', '重复'));
-  assert.ok(hasIssue(report, 'Options', 'question_external_id', '孤儿'));
+  assert.ok(hasIssue(report, 'Questions', 'external_id', 'Duplicate'));
+  assert.ok(hasIssue(report, 'Options', 'question_external_id', 'orphan'));
 });
 
 test('an orphan option blocks a batch with an otherwise valid approved question without hiding pending previews', () => {
@@ -107,7 +107,7 @@ test('an orphan option blocks a batch with an otherwise valid approved question 
   const options = [option('A', true), option('B', false), option('C', false, { question_external_id: 'absent' })];
   const canonical = { topicCodes: new Set(['2.1']), practiceSkillCodes: new Set(['1.A']) };
   const approvedReport = validateQuestionBankSheets(workbook([approved], options), canonical);
-  assert.ok(hasIssue(approvedReport, 'Options', 'question_external_id', '孤儿'));
+  assert.ok(hasIssue(approvedReport, 'Options', 'question_external_id', 'orphan'));
   assert.equal(approvedReport.questions[0].readiness, 'blocked');
   assert.equal(approvedReport.questions[0].options.length, 2);
 
@@ -118,13 +118,13 @@ test('an orphan option blocks a batch with an otherwise valid approved question 
 
 test('option key duplication, zero or multiple correct options, and answer mismatch are rejected', () => {
   const duplicate = validateQuestionBankSheets(workbook([question()], [option('A', true), option('A', false)]));
-  assert.ok(hasIssue(duplicate, 'Options', 'option_key', '重复'));
+  assert.ok(hasIssue(duplicate, 'Options', 'option_key', 'Duplicate'));
   const zero = validateQuestionBankSheets(workbook([question()], [option('A', false), option('B', false)]));
-  assert.ok(hasIssue(zero, 'Questions', 'correct_option_key', '当前 0 个'));
+  assert.ok(hasIssue(zero, 'Questions', 'correct_option_key', 'found 0'));
   const multiple = validateQuestionBankSheets(workbook([question()], [option('A', true), option('B', true)]));
-  assert.ok(hasIssue(multiple, 'Questions', 'correct_option_key', '当前 2 个'));
+  assert.ok(hasIssue(multiple, 'Questions', 'correct_option_key', 'found 2'));
   const mismatch = validateQuestionBankSheets(workbook([question({ correct_option_key: 'B' })]));
-  assert.ok(hasIssue(mismatch, 'Questions', 'correct_option_key', '不一致'));
+  assert.ok(hasIssue(mismatch, 'Questions', 'correct_option_key', 'Does not match'));
 });
 
 test('source, figure, review and enum errors retain sheet, row and field', () => {

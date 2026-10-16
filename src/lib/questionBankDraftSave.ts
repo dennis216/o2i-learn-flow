@@ -10,6 +10,7 @@ export interface DraftSaveItem {
 
 export interface DraftSavePlan {
   items: DraftSaveItem[];
+  issues: ValidationIssue[];
   batchReasons: string[];
   payload: Record<string, unknown>[];
   canSave: boolean;
@@ -20,27 +21,24 @@ const requiredForStoredDraft: (keyof PreviewQuestion)[] = [
   "difficulty", "courseScope", "primaryTopicCode", "representationType",
 ];
 
-const publicationFields = new Set([
-  "math_review_status", "source_rights_status", "taxonomy_review_status",
-  "render_review_status", "reviewed_by", "reviewed_at", "ai_flags",
-]);
-
 /** Editorial approval metadata is evidence, not a prerequisite for storing an unpublished draft. */
 export function isPublicationReviewIssue(issue: ValidationIssue): boolean {
-  return (publicationFields.has(issue.field) && !issue.message.startsWith("无效关卡状态"))
-    || (issue.field === "calculator_policy" && issue.message === "必填值缺失");
+  return issue.category === "publication_review";
 }
+
+export const describeQuestionBankIssue = (issue: ValidationIssue): string =>
+  `${issue.sheet} row ${issue.row} · ${issue.field}: ${issue.message}`;
 
 export function getPublicationReviewTasks(question: PreviewQuestion): string[] {
   return [
-    ...(question.humanReviewStatus !== "approved" ? [`人工审核状态仍为 ${question.humanReviewStatus || "空"}`] : []),
+    ...(question.humanReviewStatus !== "approved" ? [`Human review status: ${question.humanReviewStatus || "not provided"}`] : []),
     ...Object.entries(question.reviewGates).filter(([, value]) => value !== "passed")
-      .map(([gate, value]) => `${gate}=${value || "空"}，尚未通过`),
-    ...(!question.reviewedBy ? ["reviewed_by 尚未填写"] : []),
-    ...(!isValidReviewTimestamp(question.reviewedAt) ? ["reviewed_at 尚未填写有效审核时间"] : []),
-    ...question.aiFlags.map((flag) => `AI flag 待人工核实：${flag}`),
-    ...(!question.calculatorPolicy ? ["calculator_policy 未确定"] : []),
-    "source_type 未由 XLSX 提供，正式批准前需核定",
+      .map(([gate, value]) => `${gate}: ${value || "not provided"}; not passed`),
+    ...(!question.reviewedBy ? ["Human reviewer not provided"] : []),
+    ...(!isValidReviewTimestamp(question.reviewedAt) ? ["Valid review timestamp not provided"] : []),
+    ...question.aiFlags.map((flag) => `AI flag for human review: ${flag}`),
+    ...(!question.calculatorPolicy ? ["Calculator policy is undecided"] : []),
+    "source_type is not supplied by this XLSX; establish it before publication",
   ];
 }
 
@@ -52,36 +50,50 @@ export function buildQuestionBankDraftSavePlan(
 ): DraftSavePlan {
   const topicCodes = new Set(references?.topics.map((topic) => topic.topic_code) ?? []);
   const skillCodes = new Set(references?.skills.map((skill) => skill.skill_code) ?? []);
+  const issues = report.issues.filter((issue) => issue.severity === "error" && !isPublicationReviewIssue(issue));
+  const addIssue = (question: PreviewQuestion, field: string, message: string) => {
+    if (!issues.some((issue) => issue.sheet === "Questions" && issue.row === question.row && issue.field === field)) {
+      issues.push({ severity: "error", sheet: "Questions", row: question.row, field, message, questionExternalId: question.externalId.trim() });
+    }
+  };
+  const storedFields: Partial<Record<keyof PreviewQuestion, string>> = {
+    externalId: "external_id", sourceDocument: "source_document", sourcePage: "source_page",
+    courseScope: "course_scope", primaryTopicCode: "primary_topic_code", representationType: "representation_type",
+  };
+  for (const question of report.questions) {
+    for (const field of requiredForStoredDraft) {
+      if (!String(question[field] ?? "").trim()) addIssue(question, storedFields[field] ?? field, "Required to save a draft");
+    }
+    if (question.requiresFigure === null) addIssue(question, "requires_figure", "Must be TRUE or FALSE");
+    if (question.sourceDocument !== question.sourceDocument.trim()) addIssue(question, "source_document", "Filename has leading or trailing spaces; check the XLSX");
+    if (question.sourcePage !== question.sourcePage.trim()) addIssue(question, "source_page", "Physical page has leading or trailing spaces; check the XLSX");
+    if (!question.practiceSkillCodes.length) addIssue(question, "practice_skill_codes", "At least one canonical Practice Skill is required");
+    // Unavailable references are a single batch-level problem, never evidence that codes do not exist.
+    if (references) {
+      if (!topicCodes.has(question.primaryTopicCode)) addIssue(question, "primary_topic_code", `Topic code does not exist in the loaded reference data: ${question.primaryTopicCode}`);
+      for (const code of question.practiceSkillCodes.filter((code) => !skillCodes.has(code))) {
+        addIssue(question, "practice_skill_codes", `Skill code does not exist in the loaded reference data: ${code}`);
+      }
+      if (references.existingExternalIds.has(question.externalId.trim())) addIssue(question, "external_id", "external_id already exists in the database");
+    }
+  }
   const batchReasons = [
-    ...(report.questions.length === 0 ? ["Questions 没有题目"] : []),
-    ...(report.questions.length > 100 ? ["单次草稿保存最多 100 题；请先拆分工作簿"] : []),
-    ...(references ? [] : ["尚未以管理员身份核对规范代码及现有 external_id"]),
-    ...(report.topicVerification === "verified" && report.skillVerification === "verified"
-      ? [] : ["Topic 或 Practice Skill 尚未核验"]),
-    ...report.issues.filter((issue) => issue.severity === "error" && !isPublicationReviewIssue(issue))
-      .map((issue) => `${issue.sheet} 第 ${issue.row} 行 · ${issue.field}：${issue.message}`),
+    ...(report.questions.length === 0 ? ["Questions contains no questions"] : []),
+    ...(report.questions.length > 100 ? ["Save at most 100 drafts at a time; split the workbook first"] : []),
+    ...(!references || report.topicVerification !== "verified" || report.skillVerification !== "verified"
+      ? ["Reference data is unverified; saving is disabled"] : []),
+    ...issues.map(describeQuestionBankIssue),
   ];
+  const items = report.questions.map((question) => ({
+    row: question.row, externalId: question.externalId,
+    reasons: issues.filter((issue) => issue.sheet === "Questions" ? issue.row === question.row : issue.questionExternalId === question.externalId.trim())
+      .map(describeQuestionBankIssue),
+  }));
 
-  const items = report.questions.map((question) => {
-    const reasons = [
-      ...requiredForStoredDraft.filter((field) => !String(question[field] ?? "").trim())
-        .map((field) => `Questions 第 ${question.row} 行 · ${field}：保存草稿仍需填写`),
-      ...(question.requiresFigure === null ? [`Questions 第 ${question.row} 行 · requires_figure：必须为 TRUE 或 FALSE`] : []),
-      ...(question.sourceDocument !== question.sourceDocument.trim() ? [`Questions 第 ${question.row} 行 · source_document：文件名首尾有空格，请在 XLSX 中确认`] : []),
-      ...(question.sourcePage !== question.sourcePage.trim() ? [`Questions 第 ${question.row} 行 · source_page：物理页码首尾有空格，请在 XLSX 中确认`] : []),
-      ...(question.practiceSkillCodes.length === 0 ? [`Questions 第 ${question.row} 行 · practice_skill_codes：至少需要一个规范 Skill`] : []),
-      ...(!topicCodes.has(question.primaryTopicCode) ? [`Questions 第 ${question.row} 行 · primary_topic_code：规范 Topic 未核验或不存在`] : []),
-      ...question.practiceSkillCodes.filter((code) => !skillCodes.has(code))
-        .map((code) => `Questions 第 ${question.row} 行 · practice_skill_codes：${code} 不存在`),
-      ...(references?.existingExternalIds.has(question.externalId.trim())
-        ? [`Questions 第 ${question.row} 行 · external_id：数据库中已经存在`] : []),
-    ];
-    return { row: question.row, externalId: question.externalId, reasons };
-  });
-
-  const canSave = batchReasons.length === 0 && items.every((item) => item.reasons.length === 0);
+  const canSave = batchReasons.length === 0;
   return {
     items,
+    issues,
     batchReasons: [...new Set(batchReasons)],
     canSave,
     payload: canSave ? report.questions.map((question) => {

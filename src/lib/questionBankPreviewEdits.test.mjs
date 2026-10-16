@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { QUESTION_HEADERS, OPTION_HEADERS, validateQuestionBankSheets } from './questionBankImport.ts';
-import { buildQuestionBankDraftSavePlan, getPublicationReviewTasks } from './questionBankDraftSave.ts';
+import { buildQuestionBankDraftSavePlan, getPublicationReviewTasks, isPublicationReviewIssue } from './questionBankDraftSave.ts';
 import {
   applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits,
 } from './questionBankPreviewEdits.ts';
@@ -40,13 +40,41 @@ const validated = (input) => validateQuestionBankSheets(input, {
   practiceSkillCodes: new Set(references.skills.map((item) => item.skill_code)),
 });
 
+test('unavailable reference data blocks the batch once without inventing invalid codes', () => {
+  const report = validateQuestionBankSheets(sheets());
+  const plan = buildQuestionBankDraftSavePlan(report, null);
+  assert.equal(plan.canSave, false);
+  assert.equal(plan.batchReasons.length, 1);
+  assert.equal(plan.items[0].reasons.length, 0);
+  assert.deepEqual(plan.payload, []);
+});
+
+test('loaded empty canonical sets are verified and genuinely missing codes still block', () => {
+  const report = validateQuestionBankSheets(sheets(), { topicCodes: new Set(), practiceSkillCodes: new Set() });
+  assert.equal(report.topicVerification, 'verified');
+  assert.equal(report.skillVerification, 'verified');
+  assert.ok(report.issues.some(issue => issue.field === 'primary_topic_code' && issue.severity === 'error'));
+  assert.ok(report.issues.some(issue => issue.field === 'practice_skill_codes' && issue.severity === 'error'));
+  assert.equal(buildQuestionBankDraftSavePlan(report, { topics: [], skills: [], existingExternalIds: new Set() }).canSave, false);
+});
+
+test('publication classification is stable when display messages change language', () => {
+  const report = validated(sheets());
+  const calculatorIssue = report.issues.find(issue => issue.field === 'calculator_policy');
+  assert.equal(isPublicationReviewIssue({ ...calculatorIssue, message: 'Any translated missing-policy message' }), true);
+  const input = sheets();
+  input[0].data[1][input[0].data[0].indexOf('math_review_status')] = 'invalid';
+  const invalidGate = validated(input).issues.find(issue => issue.field === 'math_review_status' && issue.severity === 'error');
+  assert.equal(isPublicationReviewIssue({ ...invalidGate, message: 'Any translated invalid-enum message' }), false);
+});
+
 test('working-copy edits revalidate page, locator, Topic and Skills without changing source sheets', () => {
   const original = sheets();
   let working = applyQuestionFieldEdit(original, 2, 'source_page', '13');
-  assert.ok(validated(working).issues.some((issue) => issue.field === 'source_locator' && issue.message.includes('不一致')));
+  assert.ok(validated(working).issues.some((issue) => issue.field === 'source_locator' && issue.message.includes('does not match')));
   working = applyQuestionFieldEdit(working, 2, 'source_locator', 'p013-item03');
   working = applyQuestionFieldEdit(working, 2, 'primary_topic_code', '9.9');
-  assert.ok(validated(working).issues.some((issue) => issue.field === 'primary_topic_code' && issue.message.includes('不存在')));
+  assert.ok(validated(working).issues.some((issue) => issue.field === 'primary_topic_code' && issue.message.includes('does not exist')));
   working = applyQuestionFieldEdit(working, 2, 'primary_topic_code', '2.2');
   working = applyQuestionFieldEdit(working, 2, 'practice_skill_codes', '1.A|2.B');
   assert.equal(buildQuestionBankDraftSavePlan(validated(working), references).canSave, true);
@@ -133,8 +161,8 @@ test('invalid controlled review values still block the workbook contract', () =>
 
 test('Admin preview labels draft blockers separately from publication review and never edits approval gates', () => {
   const preview = readFileSync(new URL('../components/admin/QuestionBankPreview.tsx', import.meta.url), 'utf8');
-  assert.match(preview, /阻止保存未发布草稿/);
-  assert.match(preview, /正式发布前待审核/);
-  assert.match(preview, /原 XLSX 不会被改写/);
+  assert.match(preview, /field issue\(s\) block draft saving/);
+  assert.match(preview, /Review details/);
+  assert.match(preview, /original XLSX stays unchanged/);
   assert.doesNotMatch(preview, /editQuestion\([^\n]*"(?:human_review_status|math_review_status|source_rights_status|taxonomy_review_status|render_review_status|ai_flags)"/);
 });

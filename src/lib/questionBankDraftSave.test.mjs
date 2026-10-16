@@ -88,7 +88,7 @@ test('blocked or cancelled preview cannot call the write RPC; valid confirmation
   assert.equal(writes, 1);
 
   const preview = readFileSync(new URL('../components/admin/QuestionBankPreview.tsx', import.meta.url), 'utf8');
-  const cancelBody = preview.split('const cancelPreview = () => {')[1].split('const draftItemByRow =')[0];
+  const cancelBody = preview.split('const cancelPreview = () => {')[1].split('const confirmSave =')[0];
   assert.doesNotMatch(cancelBody, /saveQuestionBankDrafts|\.rpc\s*\(/);
   assert.match(cancelBody, /setOriginalSheets\(null\)/);
   assert.match(cancelBody, /setWorkingSheets\(null\)/);
