@@ -28,7 +28,7 @@ export default function Lesson() {
     return () => window.clearInterval(timer);
   }, [lesson, playing]);
 
-  const segment = useMemo(() => lesson?.segments.find((item) => currentTime >= item.startSeconds && currentTime < item.endSeconds) ?? lesson?.segments.at(-1), [lesson, currentTime]);
+  const segment = useMemo(() => lesson?.segments.find((item) => currentTime >= item.startSeconds && currentTime < item.endSeconds) ?? lesson?.segments[lesson.segments.length - 1], [lesson, currentTime]);
   const skill = segment ? getSkill(segment.skillId) : undefined;
 
   useEffect(() => {
