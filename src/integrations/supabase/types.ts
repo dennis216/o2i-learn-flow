@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -692,80 +692,6 @@ export type Database = {
           },
         ]
       }
-      misconceptions: {
-        Row: {
-          code: string
-          created_at: string
-          description: string
-          framework_id: string | null
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          description: string
-          framework_id?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          description?: string
-          framework_id?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "misconceptions_framework_id_fkey"
-            columns: ["framework_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_frameworks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      option_misconceptions: {
-        Row: {
-          created_at: string
-          misconception_id: string
-          option_id: string
-        }
-        Insert: {
-          created_at?: string
-          misconception_id: string
-          option_id: string
-        }
-        Update: {
-          created_at?: string
-          misconception_id?: string
-          option_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "option_misconceptions_misconception_id_fkey"
-            columns: ["misconception_id"]
-            isOneToOne: false
-            referencedRelation: "misconceptions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "option_misconceptions_option_id_fkey"
-            columns: ["option_id"]
-            isOneToOne: false
-            referencedRelation: "question_options"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       pending_zombie_comments: {
         Row: {
           comment_content: string
@@ -1005,286 +931,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      question_course_videos: {
-        Row: {
-          course_video_id: string
-          created_at: string
-          question_id: string
-        }
-        Insert: {
-          course_video_id: string
-          created_at?: string
-          question_id: string
-        }
-        Update: {
-          course_video_id?: string
-          created_at?: string
-          question_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "question_course_videos_course_video_id_fkey"
-            columns: ["course_video_id"]
-            isOneToOne: false
-            referencedRelation: "course_videos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "question_course_videos_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      question_options: {
-        Row: {
-          created_at: string
-          id: string
-          import_evidence: NonNullable<Json>
-          is_correct: boolean
-          option_key: string
-          option_text: string
-          order_index: number
-          question_version_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          import_evidence?: NonNullable<Json>
-          is_correct?: boolean
-          option_key: string
-          option_text: string
-          order_index: number
-          question_version_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          import_evidence?: NonNullable<Json>
-          is_correct?: boolean
-          option_key?: string
-          option_text?: string
-          order_index?: number
-          question_version_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "question_options_question_version_id_fkey"
-            columns: ["question_version_id"]
-            isOneToOne: false
-            referencedRelation: "question_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      question_practice_skills: {
-        Row: {
-          created_at: string
-          practice_skill_id: string
-          question_version_id: string
-        }
-        Insert: {
-          created_at?: string
-          practice_skill_id: string
-          question_version_id: string
-        }
-        Update: {
-          created_at?: string
-          practice_skill_id?: string
-          question_version_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "question_practice_skills_practice_skill_id_fkey"
-            columns: ["practice_skill_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_practice_skills"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "question_practice_skills_question_version_id_fkey"
-            columns: ["question_version_id"]
-            isOneToOne: false
-            referencedRelation: "question_versions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      question_topics: {
-        Row: {
-          created_at: string
-          question_version_id: string
-          topic_id: string
-        }
-        Insert: {
-          created_at?: string
-          question_version_id: string
-          topic_id: string
-        }
-        Update: {
-          created_at?: string
-          question_version_id?: string
-          topic_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "question_topics_question_version_id_fkey"
-            columns: ["question_version_id"]
-            isOneToOne: false
-            referencedRelation: "question_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "question_topics_topic_id_fkey"
-            columns: ["topic_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_topics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      question_versions: {
-        Row: {
-          approved_at: string | null
-          calculator_policy: Database["public"]["Enums"]["question_calculator_policy"] | null
-          course_scope: Database["public"]["Enums"]["question_course_scope"]
-          created_at: string
-          created_by: string
-          difficulty: Database["public"]["Enums"]["question_difficulty"]
-          id: string
-          image_url: string | null
-          import_evidence: NonNullable<Json>
-          primary_topic_id: string
-          question_id: string
-          question_type: Database["public"]["Enums"]["question_type"]
-          representation_type: Database["public"]["Enums"]["question_representation_type"]
-          requires_figure: boolean
-          reviewed_by: string | null
-          solution: string
-          source_document: string
-          source_locator: string | null
-          source_locator_verified: boolean
-          source_page: number
-          source_question_number: string | null
-          source_reference: string | null
-          source_type: Database["public"]["Enums"]["question_source_type"] | null
-          status: Database["public"]["Enums"]["question_version_status"]
-          stem: string
-          version_number: number
-        }
-        Insert: {
-          approved_at?: string | null
-          calculator_policy?: Database["public"]["Enums"]["question_calculator_policy"] | null
-          course_scope: Database["public"]["Enums"]["question_course_scope"]
-          created_at?: string
-          created_by?: string
-          difficulty: Database["public"]["Enums"]["question_difficulty"]
-          id?: string
-          image_url?: string | null
-          import_evidence?: NonNullable<Json>
-          primary_topic_id: string
-          question_id: string
-          question_type?: Database["public"]["Enums"]["question_type"]
-          representation_type: Database["public"]["Enums"]["question_representation_type"]
-          requires_figure?: boolean
-          reviewed_by?: string | null
-          solution: string
-          source_document: string
-          source_locator?: string | null
-          source_locator_verified?: boolean
-          source_page: number
-          source_question_number?: string | null
-          source_reference?: string | null
-          source_type?: Database["public"]["Enums"]["question_source_type"] | null
-          status?: Database["public"]["Enums"]["question_version_status"]
-          stem: string
-          version_number: number
-        }
-        Update: {
-          approved_at?: string | null
-          calculator_policy?: Database["public"]["Enums"]["question_calculator_policy"] | null
-          course_scope?: Database["public"]["Enums"]["question_course_scope"]
-          created_at?: string
-          created_by?: string
-          difficulty?: Database["public"]["Enums"]["question_difficulty"]
-          id?: string
-          image_url?: string | null
-          import_evidence?: NonNullable<Json>
-          primary_topic_id?: string
-          question_id?: string
-          question_type?: Database["public"]["Enums"]["question_type"]
-          representation_type?: Database["public"]["Enums"]["question_representation_type"]
-          requires_figure?: boolean
-          reviewed_by?: string | null
-          solution?: string
-          source_document?: string
-          source_locator?: string | null
-          source_locator_verified?: boolean
-          source_page?: number
-          source_question_number?: string | null
-          source_reference?: string | null
-          source_type?: Database["public"]["Enums"]["question_source_type"] | null
-          status?: Database["public"]["Enums"]["question_version_status"]
-          stem?: string
-          version_number?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "question_versions_primary_topic_id_fkey"
-            columns: ["primary_topic_id"]
-            isOneToOne: false
-            referencedRelation: "curriculum_topics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "question_versions_question_id_fkey"
-            columns: ["question_id"]
-            isOneToOne: false
-            referencedRelation: "questions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      questions: {
-        Row: {
-          created_at: string
-          created_by: string
-          current_version_id: string | null
-          external_id: string
-          id: string
-          status: Database["public"]["Enums"]["question_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string
-          current_version_id?: string | null
-          external_id: string
-          id?: string
-          status?: Database["public"]["Enums"]["question_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          current_version_id?: string | null
-          external_id?: string
-          id?: string
-          status?: Database["public"]["Enums"]["question_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "questions_current_version_belongs_to_question"
-            columns: ["current_version_id", "id"]
-            isOneToOne: false
-            referencedRelation: "question_versions"
-            referencedColumns: ["id", "question_id"]
-          },
-        ]
       }
       roadmaps: {
         Row: {
@@ -1704,18 +1350,6 @@ export type Database = {
       }
     }
     Functions: {
-      save_question_bank_drafts: {
-        Args: { _items: Json }
-        Returns: Json
-      }
-      approve_question_version: {
-        Args: { _question_id: string; _version_id: string }
-        Returns: Database["public"]["Tables"]["questions"]["Row"]
-      }
-      create_question_revision: {
-        Args: { _question_id: string }
-        Returns: string
-      }
       count_all_profiles: { Args: never; Returns: number }
       count_real_users: { Args: never; Returns: number }
       has_role: {
@@ -1726,18 +1360,6 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
-      retire_question: {
-        Args: { _question_id: string }
-        Returns: Database["public"]["Tables"]["questions"]["Row"]
-      }
-      return_question_version_to_draft: {
-        Args: { _question_id: string; _version_id: string }
-        Returns: string
-      }
-      submit_question_version_for_review: {
-        Args: { _question_id: string; _version_id: string }
-        Returns: string
-      }
     }
     Enums: {
       app_role: "admin" | "instructor" | "student" | "super_admin"
@@ -1750,26 +1372,6 @@ export type Database = {
         | "pre_calculus"
         | "statistics"
         | "other"
-      question_calculator_policy:
-        | "no_calculator"
-        | "calculator_allowed"
-        | "calculator_required"
-      question_course_scope: "AB" | "BC" | "BOTH"
-      question_difficulty: "easy" | "medium" | "hard"
-      question_representation_type:
-        | "analytical"
-        | "graphical"
-        | "numerical"
-        | "verbal"
-        | "mixed"
-      question_source_type:
-        | "original"
-        | "licensed"
-        | "public_domain"
-        | "permission_granted"
-      question_status: "draft" | "approved" | "retired"
-      question_type: "mcq_single"
-      question_version_status: "draft" | "review" | "approved" | "superseded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1908,29 +1510,6 @@ export const Constants = {
         "statistics",
         "other",
       ],
-      question_calculator_policy: [
-        "no_calculator",
-        "calculator_allowed",
-        "calculator_required",
-      ],
-      question_course_scope: ["AB", "BC", "BOTH"],
-      question_difficulty: ["easy", "medium", "hard"],
-      question_representation_type: [
-        "analytical",
-        "graphical",
-        "numerical",
-        "verbal",
-        "mixed",
-      ],
-      question_source_type: [
-        "original",
-        "licensed",
-        "public_domain",
-        "permission_granted",
-      ],
-      question_status: ["draft", "approved", "retired"],
-      question_type: ["mcq_single"],
-      question_version_status: ["draft", "review", "approved", "superseded"],
     },
   },
 } as const
