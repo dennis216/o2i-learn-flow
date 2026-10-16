@@ -8,14 +8,6 @@ ON public.profiles
 FOR SELECT 
 USING (auth.uid() = user_id);
 
--- Create a separate policy for public profile information (name only, no email)
--- This allows forum posts and other features to display usernames without exposing emails
-CREATE POLICY "Public can view basic profile info" 
-ON public.profiles 
-FOR SELECT 
-USING (true)
-WITH CHECK (false); -- This is a SELECT-only policy
-
 -- Since we can't have column-level RLS in a single policy, we'll need to create a view
 -- for public profile data that excludes sensitive information
 CREATE OR REPLACE VIEW public.public_profiles AS

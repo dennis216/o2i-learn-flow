@@ -42,11 +42,12 @@ UPDATE course_videos SET title = 'Lesson 28: Analyzing Horizontal Tangents', uni
 
 -- Lesson 29 placeholder: insert new video record for Non-Differentiable Points Analysis
 INSERT INTO course_videos (course_id, title, unit, video_url, order_index, description)
-VALUES (
-  'fccc7540-0c29-43be-8682-ae90ff2534cb',
+SELECT
+  id,
   'Lesson 29: Non-Differentiable Points Analysis',
   'Unit 6: Inverse Functions & Special Derivatives',
   '',
   28,
   'Placeholder - video pending upload'
-);
+FROM public.courses
+WHERE id = 'fccc7540-0c29-43be-8682-ae90ff2534cb'::uuid;

@@ -1,4 +1,9 @@
-
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE user_id = 'c0a54985-dc0e-4e84-8e05-7d5a08e30c7a'::uuid
+  ) THEN
 -- Insert AP Calculus AB course
 INSERT INTO courses (title, description, level, subject, category, price, instructor_id)
 VALUES (
@@ -62,3 +67,6 @@ VALUES (
   'Linearization $L(x) \approx f(a) + f''(a)(x-a)$ is only accurate near the point of tangency $x=a$.',
   '[{"s": 0, "t": "Section 6.4: Monotonicity, Concavity, and Extrema."}, {"s": 5, "t": "Determining increasing/decreasing intervals using f''(x)."}, {"s": 10, "t": "Critical points: Where f''(x) = 0 or is undefined."}, {"s": 15, "t": "Concavity: f''''(x) > 0 (Up) vs f''''(x) < 0 (Down)."}, {"s": 20, "t": "Inflection Points: Where the concavity changes sign."}, {"s": 25, "t": "First Derivative Test for local maximum and minimum."}, {"s": 30, "t": "Second Derivative Test for identifying extrema."}, {"s": 35, "t": "Example: Local max/min of f(x) = x - sin(x)."}, {"s": 40, "t": "Finding critical points within the interval [0, 2π]."}, {"s": 45, "t": "Linear Approximation: Approximating values using tangent lines."}, {"s": 50, "t": "Linearization formula: L(x) = f(a) + f''(a)(x - a)."}, {"s": 55, "t": "Example: Linear approximation of e^x at x = 0."}, {"s": 60, "t": "Final result: L(x) = 1 + x."}]'::jsonb
 );
+  END IF;
+END;
+$$;

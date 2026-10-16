@@ -3,10 +3,12 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import 'katex/dist/katex.min.css';
+import { analyzeQuestionBankMath } from '@/lib/questionBankMath';
 
 interface MarkdownWithMathProps {
   content: string;
   className?: string;
+  strictMath?: boolean;
 }
 
 /**
@@ -131,8 +133,11 @@ const preprocessMathContent = (content: string): string => {
   return processed.trim();
 };
 
-export default function MarkdownWithMath({ content, className = '' }: MarkdownWithMathProps) {
-  const processedContent = preprocessMathContent(content);
+export default function MarkdownWithMath({ content, className = '', strictMath = false }: MarkdownWithMathProps) {
+  // Strict previews adapt delimiters for rendering but never run the legacy auto-repair path.
+  const processedContent = strictMath
+    ? analyzeQuestionBankMath(content).renderContent
+    : preprocessMathContent(content);
   
   return (
     <div className={`prose prose-sm max-w-none dark:prose-invert math-content ${className}`}>
