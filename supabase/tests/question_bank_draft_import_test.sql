@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
-SELECT plan(28);
+SELECT plan(29);
 
 INSERT INTO auth.users (id, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 VALUES
@@ -26,7 +26,7 @@ SELECT 'valid', jsonb_build_array(jsonb_build_object(
   'source_document', 'SYNTHETIC_SOURCE.pdf', 'source_page', '12-13',
   'source_question_number', '1', 'source_locator', NULL,
   'requires_figure', false, 'image_url', NULL,
-  'import_evidence', '{"original_source_page":"12-13","source_transcription_notes":"合成抄录备注","ai_flags":["ANSWER_AI_INFERRED"],"human_review_status":"pending","human_review_notes":"合成审核备注"}'::jsonb,
+  'import_evidence', '{"original_source_page":"12-13","source_transcription_notes":"合成抄录备注","ai_flags":["ANSWER_AI_INFERRED"],"human_review_status":"pending","human_review_notes":"合成审核备注","manual_edits":[{"row":2,"field":"difficulty","before":"medium","after":"easy"}]}'::jsonb,
   'options', '[{"option_key":"A","option_text":"\\(2x\\)","is_correct":true,"import_evidence":{"option_explanation":"合成解析 A"}},{"option_key":"B","option_text":"\\(x\\)","is_correct":false,"import_evidence":{"option_explanation":"合成解析 B"}}]'::jsonb
 ));
 GRANT SELECT ON draft_import_fixture TO authenticated;
@@ -66,6 +66,9 @@ SELECT is((SELECT v.import_evidence->>'human_review_notes' FROM public.question_
 SELECT is((SELECT v.import_evidence->'ai_flags'->>0 FROM public.question_versions v
   JOIN public.questions q ON q.id = v.question_id WHERE q.external_id = 'DB-DRAFT-IMPORT-001'),
   'ANSWER_AI_INFERRED', 'AI uncertainty flag is preserved');
+SELECT is((SELECT v.import_evidence->'manual_edits'->0->>'before' FROM public.question_versions v
+  JOIN public.questions q ON q.id = v.question_id WHERE q.external_id = 'DB-DRAFT-IMPORT-001'),
+  'medium', 'manual before/after edit evidence is retained');
 SELECT is((SELECT count(*)::integer FROM public.question_options o JOIN public.question_versions v
   ON v.id = o.question_version_id JOIN public.questions q ON q.id = v.question_id
   WHERE q.external_id = 'DB-DRAFT-IMPORT-001'), 2, 'both options are saved');

@@ -1,5 +1,6 @@
-import type { QuestionBankReport, PreviewQuestion } from "./questionBankImport.ts";
+import { isValidReviewTimestamp, type QuestionBankReport, type PreviewQuestion, type ValidationIssue } from "./questionBankImport.ts";
 import type { QuestionBankReferences } from "./questionBankImportPlan.ts";
+import type { QuestionEditChange } from "./questionBankPreviewEdits.ts";
 
 export interface DraftSaveItem {
   row: number;
@@ -19,10 +20,35 @@ const requiredForStoredDraft: (keyof PreviewQuestion)[] = [
   "difficulty", "courseScope", "primaryTopicCode", "representationType",
 ];
 
+const publicationFields = new Set([
+  "math_review_status", "source_rights_status", "taxonomy_review_status",
+  "render_review_status", "reviewed_by", "reviewed_at", "ai_flags",
+]);
+
+/** Editorial approval metadata is evidence, not a prerequisite for storing an unpublished draft. */
+export function isPublicationReviewIssue(issue: ValidationIssue): boolean {
+  return (publicationFields.has(issue.field) && !issue.message.startsWith("无效关卡状态"))
+    || (issue.field === "calculator_policy" && issue.message === "必填值缺失");
+}
+
+export function getPublicationReviewTasks(question: PreviewQuestion): string[] {
+  return [
+    ...(question.humanReviewStatus !== "approved" ? [`人工审核状态仍为 ${question.humanReviewStatus || "空"}`] : []),
+    ...Object.entries(question.reviewGates).filter(([, value]) => value !== "passed")
+      .map(([gate, value]) => `${gate}=${value || "空"}，尚未通过`),
+    ...(!question.reviewedBy ? ["reviewed_by 尚未填写"] : []),
+    ...(!isValidReviewTimestamp(question.reviewedAt) ? ["reviewed_at 尚未填写有效审核时间"] : []),
+    ...question.aiFlags.map((flag) => `AI flag 待人工核实：${flag}`),
+    ...(!question.calculatorPolicy ? ["calculator_policy 未确定"] : []),
+    "source_type 未由 XLSX 提供，正式批准前需核定",
+  ];
+}
+
 /** Pure client-side gate. The database RPC repeats security and integrity checks. */
 export function buildQuestionBankDraftSavePlan(
   report: QuestionBankReport,
   references: QuestionBankReferences | null,
+  edits: readonly QuestionEditChange[] = [],
 ): DraftSavePlan {
   const topicCodes = new Set(references?.topics.map((topic) => topic.topic_code) ?? []);
   const skillCodes = new Set(references?.skills.map((skill) => skill.skill_code) ?? []);
@@ -32,7 +58,7 @@ export function buildQuestionBankDraftSavePlan(
     ...(references ? [] : ["尚未以管理员身份核对规范代码及现有 external_id"]),
     ...(report.topicVerification === "verified" && report.skillVerification === "verified"
       ? [] : ["Topic 或 Practice Skill 尚未核验"]),
-    ...report.issues.filter((issue) => issue.severity === "error")
+    ...report.issues.filter((issue) => issue.severity === "error" && !isPublicationReviewIssue(issue))
       .map((issue) => `${issue.sheet} 第 ${issue.row} 行 · ${issue.field}：${issue.message}`),
   ];
 
@@ -58,47 +84,53 @@ export function buildQuestionBankDraftSavePlan(
     items,
     batchReasons: [...new Set(batchReasons)],
     canSave,
-    payload: canSave ? report.questions.map((question) => ({
-      external_id: question.externalId,
-      correct_option_key: question.correctOptionKey,
-      stem: question.stem,
-      solution: question.solution,
-      difficulty: question.difficulty,
-      course_scope: question.courseScope,
-      primary_topic_code: question.primaryTopicCode,
-      practice_skill_codes: question.practiceSkillCodes,
-      representation_type: question.representationType,
-      calculator_policy: question.calculatorPolicy || null,
-      source_document: question.sourceDocument,
-      source_page: question.sourcePage,
-      source_question_number: question.sourceQuestionNumber || null,
-      source_locator: question.sourceLocator || null,
-      requires_figure: question.requiresFigure,
-      image_url: question.imageUrl || null,
-      import_evidence: {
-        original_source_page: question.sourcePage,
-        original_source_question_number: question.sourceQuestionNumber,
-        original_source_locator: question.sourceLocator,
+    payload: canSave ? report.questions.map((question) => {
+      const manualEdits = edits.filter((edit) => edit.row === question.row);
+      const originalValue = (field: QuestionEditChange["field"], current: string) =>
+        manualEdits.find((edit) => edit.field === field)?.before ?? current;
+      return {
+        external_id: question.externalId,
         correct_option_key: question.correctOptionKey,
-        figure_reference: question.figureReference,
-        source_transcription_notes: question.sourceTranscriptionNotes,
-        ai_inference_notes: question.aiInferenceNotes,
-        ai_flags: question.aiFlags,
-        human_review_status: question.humanReviewStatus,
-        human_review_notes: question.humanReviewNotes,
-        reviewed_by_text: question.reviewedBy,
-        reviewed_at_text: question.reviewedAt,
-        review_gates: question.reviewGates,
-      },
-      options: question.options.map((option) => ({
-        option_key: option.key,
-        option_text: option.text,
-        is_correct: option.isCorrect,
+        stem: question.stem,
+        solution: question.solution,
+        difficulty: question.difficulty,
+        course_scope: question.courseScope,
+        primary_topic_code: question.primaryTopicCode,
+        practice_skill_codes: question.practiceSkillCodes,
+        representation_type: question.representationType,
+        calculator_policy: question.calculatorPolicy || null,
+        source_document: question.sourceDocument,
+        source_page: question.sourcePage,
+        source_question_number: question.sourceQuestionNumber || null,
+        source_locator: question.sourceLocator || null,
+        requires_figure: question.requiresFigure,
+        image_url: question.imageUrl || null,
         import_evidence: {
-          misconception_code: option.misconceptionCode,
-          option_explanation: option.explanation,
+          original_source_page: originalValue("source_page", question.sourcePage),
+          original_source_question_number: question.sourceQuestionNumber,
+          original_source_locator: originalValue("source_locator", question.sourceLocator),
+          manual_edits: manualEdits,
+          correct_option_key: question.correctOptionKey,
+          figure_reference: question.figureReference,
+          source_transcription_notes: question.sourceTranscriptionNotes,
+          ai_inference_notes: question.aiInferenceNotes,
+          ai_flags: question.aiFlags,
+          human_review_status: question.humanReviewStatus,
+          human_review_notes: question.humanReviewNotes,
+          reviewed_by_text: question.reviewedBy,
+          reviewed_at_text: question.reviewedAt,
+          review_gates: question.reviewGates,
         },
-      })),
-    })) : [],
+        options: question.options.map((option) => ({
+          option_key: option.key,
+          option_text: option.text,
+          is_correct: option.isCorrect,
+          import_evidence: {
+            misconception_code: option.misconceptionCode,
+            option_explanation: option.explanation,
+          },
+        })),
+      };
+    }) : [],
   };
 }
