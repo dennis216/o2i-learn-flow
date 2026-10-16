@@ -14,7 +14,8 @@ export class DraftSaveResultError extends Error {}
 
 /** The only write path for XLSX drafts. One RPC call is one database transaction. */
 export async function saveQuestionBankDrafts(
-  client: SupabaseClient<Database>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: SupabaseClient<any>,
   plan: DraftSavePlan,
 ): Promise<string[]> {
   if (!plan.canSave || plan.payload.length === 0) throw new Error("当前工作簿未通过草稿保存检查");
@@ -35,7 +36,8 @@ export async function saveQuestionBankDrafts(
 
 /** Fresh admin read after a successful RPC; never infer persistence from the preview. */
 export async function loadSavedQuestionBankDrafts(
-  client: SupabaseClient<Database>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: SupabaseClient<any>,
   externalIds: string[],
 ): Promise<SavedDraft[]> {
   const { data: questions, error: questionError } = await client.from("questions")
