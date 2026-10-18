@@ -128,7 +128,9 @@ test('Task 4B real disposable PostgreSQL integration', {timeout:180000}, async t
     const original=await unchangedSnapshot();
     await t.test('original foundation and draft-import pgTAP regressions execute (99 + 29 assertions)',async()=>{
       for(const file of ['question_bank_foundation_test.sql','question_bank_draft_import_test.sql']) {
-        const results=await rootClient.query(read(`supabase/tests/${file}`));
+        // Historical pgTAP fixtures target the three-migration 4B baseline,
+        // not the intentionally stricter 4C publication contract.
+        const results=await rootClient.query(read(`supabase/tests/fixtures/${file}.fixture`));
         const lines=results.flatMap(result=>result.rows.flatMap(row=>Object.values(row))).filter(value=>typeof value==='string');
         assert.ok(!lines.some(line=>/^(not ok|# Looks like)/m.test(line)),lines.filter(line=>/not ok|Looks like/.test(line)).join('\n'));
         assert.equal(lines.filter(line=>/^ok \d+/m.test(line)).length,file.includes('foundation')?99:29);

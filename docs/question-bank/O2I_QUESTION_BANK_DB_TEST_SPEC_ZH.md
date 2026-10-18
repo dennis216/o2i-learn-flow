@@ -4,10 +4,14 @@
 
 本规格用于在可丢弃的本地 Supabase/PostgreSQL 环境中验证 `20260926000000_question_bank_foundation.sql`。仓库使用固定版本的项目级 Supabase CLI；静态检查仍不能代替数据库集成测试。
 
+Task 4C 已更新发布审核与答案读取边界。下面第 2 节起保留的是 Task 2 历史基线规格；**最新接口与状态规则以 [Task 4C 接口说明](O2I_QUESTION_PUBLICATION_API_ZH.md) 为准**，不能再按旧接口直接批准或向学生读取原始答案表。
+
 当前自动化入口：
 
-- `npx supabase test db`：运行 `supabase/tests/question_bank_foundation_test.sql`，在单个回滚事务中验证生命周期、批准完整性和 RLS；
-- `node --test supabase/tests/question_bank_revision_concurrency.test.mjs`：使用两个独立数据库事务并发调用 `create_question_revision`，验证行锁和单一 working revision；
+- `npm run test:question-bank:db-publication`：建立独立 tmpfs PostgreSQL，按提交顺序验证最新迁移、真实双连接竞争，并执行最新 30 条 pgTAP；不 reset 既有本地工作库；
+- `npx supabase test db`：仅在已应用最新迁移的可丢弃 Supabase 环境运行 `supabase/tests/question_bank_publication_test.sql`；
+- `npm run test:question-bank:db-drafts`：在独立 Task 4B 基线环境执行旧 99 + 29 条 pgTAP 及草稿操作回归。历史 SQL 原样保存在 `supabase/tests/fixtures/*.sql.fixture`，不会混入最新 schema 的标准 pgTAP 扫描；
+- `question_bank_revision_concurrency.test.mjs` 是旧基础 schema 的并发基线；最新发布/修订竞争已在 Task 4C 集成测试中覆盖，不在最新 schema 上调用已私有化的旧创建 RPC；
 - `node --test supabase/tests/question_bank_foundation_static.test.mjs`：保留迁移结构与安全防护的快速静态回归检查。
 
 这些命令只允许连接 `localhost`、`127.0.0.1` 或 `::1` 的可丢弃数据库。不得使用远程 Supabase URL。

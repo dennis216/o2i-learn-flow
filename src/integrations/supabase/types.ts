@@ -1146,6 +1146,94 @@ export type Database = {
           },
         ]
       }
+      question_version_reviews: {
+        Row: {
+          id: string
+          question_version_id: string
+          content_fingerprint: string
+          review_data: NonNullable<Json>
+          reviewed_by: string
+          reviewed_at: string
+        }
+        Insert: {
+          id?: string
+          question_version_id: string
+          content_fingerprint: string
+          review_data: NonNullable<Json>
+          reviewed_by: string
+          reviewed_at?: string
+        }
+        Update: {
+          id?: string
+          question_version_id?: string
+          content_fingerprint?: string
+          review_data?: NonNullable<Json>
+          reviewed_by?: string
+          reviewed_at?: string
+        }
+        Relationships: [{
+          foreignKeyName: "question_version_reviews_question_version_id_fkey"
+          columns: ["question_version_id"]
+          isOneToOne: false
+          referencedRelation: "question_versions"
+          referencedColumns: ["id"]
+        }]
+      }
+      question_publication_events: {
+        Row: {
+          id: string
+          question_id: string
+          version_id: string
+          previous_version_id: string | null
+          action: string
+          request_fingerprint: string
+          actor_id: string
+          occurred_at: string
+        }
+        Insert: {
+          id?: string
+          question_id: string
+          version_id: string
+          previous_version_id?: string | null
+          action: string
+          request_fingerprint: string
+          actor_id: string
+          occurred_at?: string
+        }
+        Update: {
+          id?: string
+          question_id?: string
+          version_id?: string
+          previous_version_id?: string | null
+          action?: string
+          request_fingerprint?: string
+          actor_id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_publication_events_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_publication_events_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "question_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_publication_events_previous_version_id_fkey"
+            columns: ["previous_version_id"]
+            isOneToOne: false
+            referencedRelation: "question_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_versions: {
         Row: {
           approved_at: string | null
@@ -1154,6 +1242,7 @@ export type Database = {
           created_at: string
           created_by: string
           difficulty: Database["public"]["Enums"]["question_difficulty"]
+          editorial_revision: number
           id: string
           image_url: string | null
           import_evidence: NonNullable<Json>
@@ -1182,6 +1271,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           difficulty: Database["public"]["Enums"]["question_difficulty"]
+          editorial_revision?: number
           id?: string
           image_url?: string | null
           import_evidence?: NonNullable<Json>
@@ -1210,6 +1300,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           difficulty?: Database["public"]["Enums"]["question_difficulty"]
+          editorial_revision?: number
           id?: string
           image_url?: string | null
           import_evidence?: NonNullable<Json>
@@ -1250,6 +1341,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          lifecycle_revision: number
           created_at: string
           created_by: string
           current_version_id: string | null
@@ -1259,6 +1351,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          lifecycle_revision?: number
           created_at?: string
           created_by?: string
           current_version_id?: string | null
@@ -1268,6 +1361,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          lifecycle_revision?: number
           created_at?: string
           created_by?: string
           current_version_id?: string | null
@@ -1704,6 +1798,42 @@ export type Database = {
       }
     }
     Functions: {
+      precheck_question_publication: {
+        Args: { _question_id: string; _version_id: string; _action: string }
+        Returns: Json
+      }
+      get_question_publication_state: {
+        Args: { _question_id: string }
+        Returns: Json
+      }
+      record_question_version_review: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string; _review: Json }
+        Returns: Json
+      }
+      save_question_bank_revision: {
+        Args: { _question_id: string; _source_version_id: string; _expected_fingerprint: string; _metadata: Json }
+        Returns: Json
+      }
+      publish_question_versions: {
+        Args: { _items: Json }
+        Returns: Json
+      }
+      publish_question_version: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string }
+        Returns: Json
+      }
+      unpublish_question: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string }
+        Returns: Json
+      }
+      republish_question: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string }
+        Returns: Json
+      }
+      archive_question: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string }
+        Returns: Json
+      }
       get_question_bank_draft: {
         Args: { _question_id: string; _version_id: string }
         Returns: Json
@@ -1779,7 +1909,7 @@ export type Database = {
         | "licensed"
         | "public_domain"
         | "permission_granted"
-      question_status: "draft" | "approved" | "retired"
+      question_status: "draft" | "approved" | "retired" | "unpublished"
       question_type: "mcq_single"
       question_version_status: "draft" | "review" | "approved" | "superseded"
     }
@@ -1940,7 +2070,7 @@ export const Constants = {
         "public_domain",
         "permission_granted",
       ],
-      question_status: ["draft", "approved", "retired"],
+      question_status: ["draft", "approved", "retired", "unpublished"],
       question_type: ["mcq_single"],
       question_version_status: ["draft", "review", "approved", "superseded"],
     },
