@@ -24,9 +24,9 @@ test('existing dollar delimiters remain unchanged', () => {
 });
 
 test('unclosed, extra and invalid LaTeX delimiters are reported, not repaired', () => {
-  assert.match(analyzeQuestionBankMath('\\(x+1').issues[0].message, /未闭合/);
-  assert.match(analyzeQuestionBankMath('x \\)').issues[0].message, /多余/);
-  assert.match(analyzeQuestionBankMath('\\(\\frac{1}\\)').issues[0].message, /无法渲染/);
+  assert.match(analyzeQuestionBankMath('\\(x+1').issues[0].message, /Unclosed/);
+  assert.match(analyzeQuestionBankMath('x \\)').issues[0].message, /Unexpected/);
+  assert.match(analyzeQuestionBankMath('\\(\\frac{1}\\)').issues[0].message, /cannot be rendered/);
 });
 
 test('code spans are not interpreted as formulas', () => {

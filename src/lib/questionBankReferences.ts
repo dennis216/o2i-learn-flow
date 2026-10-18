@@ -13,8 +13,8 @@ async function readAll<T>(
   const rows: T[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
-    if (error) throw new Error(`${label} 读取失败：${error.message}`);
-    if (!data) throw new Error(`${label} 读取失败：未返回数据`);
+    if (error) throw new Error(`Could not load ${label}: ${error.message}`);
+    if (!data) throw new Error(`Could not load ${label}: no data returned`);
     rows.push(...data);
     if (data.length < PAGE_SIZE) return rows;
   }
@@ -24,18 +24,19 @@ async function readAll<T>(
 export async function loadQuestionBankReferences(// eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: SupabaseClient<any>): Promise<QuestionBankReferences> {
   const { data: identity, error: identityError } = await client.auth.getUser();
-  if (identityError || !identity.user) throw new Error("请先以管理员身份登录，再核对现有题目 ID");
+  if (identityError || !identity.user) throw new Error("Sign in as an administrator to verify reference data and existing question IDs");
   const { data: isAdmin, error: roleError } = await client.rpc("has_role", {
     _user_id: identity.user.id, _role: "admin",
   });
-  if (roleError || isAdmin !== true) throw new Error("当前账号没有管理员权限，不能核对全部 external_id");
+  if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
+  if (isAdmin !== true) throw new Error("Administrator access is required to check all existing external_id values");
 
   const [topics, skills, questions] = await Promise.all([
     readAll("Topic", async (from, to) => await client.from("curriculum_topics")
       .select("id, topic_code, title").order("id").range(from, to)),
     readAll("Practice Skill", async (from, to) => await client.from("curriculum_practice_skills")
       .select("id, skill_code, description").order("id").range(from, to)),
-    readAll("现有题目 ID", async (from, to) => await client.from("questions")
+    readAll("existing question IDs", async (from, to) => await client.from("questions")
       .select("external_id").order("id").range(from, to)),
   ]);
 

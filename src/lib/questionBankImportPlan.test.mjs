@@ -58,9 +58,9 @@ test('missing canonical Topic and Skill codes block the question with exact shee
   assert.equal(plan.items[0].status, 'canonical_blocked');
   assert.equal(plan.candidateCount, 0);
   assert.ok(report.issues.some((issue) => issue.sheet === 'Questions' && issue.row === 2
-    && issue.field === 'primary_topic_code' && issue.message.includes('不存在')));
+    && issue.field === 'primary_topic_code' && issue.message.includes('does not exist')));
   assert.ok(report.issues.some((issue) => issue.sheet === 'Questions' && issue.row === 2
-    && issue.field === 'practice_skill_codes' && issue.message.includes('不存在')));
+    && issue.field === 'practice_skill_codes' && issue.message.includes('does not exist')));
 });
 
 test('an existing database external_id blocks an otherwise valid candidate', () => {
@@ -124,7 +124,7 @@ test('an orphan option blocks the entire batch rather than leaving a candidate',
     option('missing-id', 'C', false),
   ]));
   assert.equal(plan.items[0].status, 'blocked');
-  assert.ok(plan.items[0].reasons.some((reason) => reason.includes('孤儿选项')));
+  assert.ok(plan.items[0].reasons.some((reason) => reason.includes('orphan option')));
   assert.equal(plan.candidateCount, 0);
 });
 
@@ -173,6 +173,26 @@ test('reference loading checks this user is admin before any SELECT and reads ev
     auth: client.auth,
     rpc: async () => ({ data: false, error: null }),
     from: () => { queried = true; throw new Error('SELECT must not run'); },
-  }), /没有管理员权限/);
+  }), /Administrator access is required/);
   assert.equal(queried, false);
+});
+
+test('missing questions schema rejects the reference snapshot and a read-only retry succeeds', async () => {
+  let unavailable = true;
+  const calls = [];
+  const client = {
+    auth: { getUser: async () => ({ data: { user: { id: 'temporary-admin' } }, error: null }) },
+    rpc: async (name) => { calls.push(name); return { data: true, error: null }; },
+    from: (table) => ({ select: () => ({ order: () => ({ range: async () => {
+      if (table === 'questions' && unavailable) return { data: null, error: { message: "Could not find the table 'public.questions' in the schema cache" } };
+      return { data: [], error: null };
+    } }) }) }),
+  };
+  await assert.rejects(loadQuestionBankReferences(client), /Could not load existing question IDs:.*schema cache/);
+  unavailable = false;
+  const loaded = await loadQuestionBankReferences(client);
+  assert.deepEqual(loaded.topics, []);
+  assert.deepEqual(loaded.skills, []);
+  assert.equal(loaded.existingExternalIds.size, 0);
+  assert.deepEqual(calls, ['has_role', 'has_role']);
 });

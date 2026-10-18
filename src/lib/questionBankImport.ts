@@ -27,6 +27,7 @@ export interface ValidationIssue {
   row: number;
   field: string;
   message: string;
+  category?: "publication_review";
   questionExternalId?: string;
 }
 
@@ -119,13 +120,13 @@ function records(sheet: WorkbookSheet | undefined, headers: readonly string[], i
     if (actual[index] !== headers[index]) {
       issues.push({
         severity: "error", sheet: sheet.sheet, row: 1, field: headers[index],
-        message: `表头第 ${index + 1} 列应为 ${headers[index]}，实际为 ${actual[index] || "空"}`,
+        message: `Header column ${index + 1} must be ${headers[index]}; found ${actual[index] || "blank"}`,
       });
     }
   }
   for (let index = headers.length; index < actual.length; index += 1) {
     if (actual[index]) {
-      issues.push({ severity: "error", sheet: sheet.sheet, row: 1, field: actual[index], message: "模板外的多余列" });
+      issues.push({ severity: "error", sheet: sheet.sheet, row: 1, field: actual[index], message: "Unexpected column outside the template" });
     }
   }
   const positions = new Map(actual.map((name, index) => [name, index]));
@@ -143,7 +144,7 @@ function addMathIssues(
   for (const problem of analyzeQuestionBankMath(value).issues) {
     issues.push({
       severity: "error", sheet, row, field,
-      message: `${problem.message}（字符位置 ${problem.offset + 1}）`, questionExternalId,
+      message: `${problem.message} (character ${problem.offset + 1})`, questionExternalId,
     });
   }
 }
@@ -161,27 +162,27 @@ export function validateQuestionBankSheets(
   const expectedNames = ["Questions", "Options", "Instructions"];
   const names = sheets.map((sheet) => sheet.sheet);
   if (sheets.length !== expectedNames.length) {
-    issues.push({ severity: "error", sheet: "工作簿", row: 1, field: "sheet", message: `必须恰好三张工作表，当前 ${sheets.length} 张` });
+    issues.push({ severity: "error", sheet: "Workbook", row: 1, field: "sheet", message: `Exactly three worksheets are required; found ${sheets.length}` });
   }
   for (const name of new Set(names)) {
     if (names.filter((item) => item === name).length > 1) {
-      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "工作表名称重复" });
+      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "Duplicate worksheet name" });
     }
   }
   for (const name of expectedNames) {
     if (!names.includes(name)) {
-      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "缺少必需工作表" });
+      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "Required worksheet is missing" });
     }
   }
   for (const name of names) {
     if (!expectedNames.includes(name)) {
-      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "不允许的额外工作表" });
+      issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "Unexpected worksheet" });
     }
   }
   const questionRows = records(sheets.find((sheet) => sheet.sheet === "Questions"), QUESTION_HEADERS, issues);
   const optionRows = records(sheets.find((sheet) => sheet.sheet === "Options"), OPTION_HEADERS, issues);
-  const topicVerified = Boolean(canonical.topicCodes?.size);
-  const skillVerified = Boolean(canonical.practiceSkillCodes?.size);
+  const topicVerified = canonical.topicCodes !== undefined;
+  const skillVerified = canonical.practiceSkillCodes !== undefined;
   const questions: PreviewQuestion[] = [];
   const byId = new Map<string, PreviewQuestion>();
 
@@ -189,82 +190,83 @@ export function validateQuestionBankSheets(
     const get = (field: string) => text(record.cells[field]);
     const id = get("external_id").trim();
     const status = get("human_review_status").trim();
-    const issue = (field: string, message: string, severity: ValidationIssue["severity"] = "error") => {
-      issues.push({ severity, sheet: "Questions", row: record.row, field, message, questionExternalId: id || undefined });
+    const issue = (field: string, message: string, severity: ValidationIssue["severity"] = "error", category?: ValidationIssue["category"]) => {
+      issues.push({ severity, sheet: "Questions", row: record.row, field, message, questionExternalId: id || undefined, category });
     };
     const required = (field: string, stage: "source" | "review" = "source") => {
-      if (!filled(record.cells[field])) issue(field, "必填值缺失", stage === "review" && status !== "approved" ? "warning" : "error");
+      if (!filled(record.cells[field])) issue(field, "Required value is missing", stage === "review" && status !== "approved" ? "warning" : "error",
+        field === "calculator_policy" ? "publication_review" : undefined);
     };
 
     for (const field of ["external_id", "source_document", "source_page", "stem", "requires_figure", "human_review_status"]) required(field);
     for (const field of ["solution", "correct_option_key", "difficulty", "course_scope", "primary_topic_code", "practice_skill_codes", "representation_type", "calculator_policy"]) required(field, "review");
     for (const field of ["stem", "solution"]) {
-      if (filled(record.cells[field]) && typeof record.cells[field] !== "string") issue(field, "内容必须是文本，不能用数字、日期或公式计算值代替");
+      if (filled(record.cells[field]) && typeof record.cells[field] !== "string") issue(field, "Content must be text, not a number, date or computed formula value");
     }
-    if (id && byId.has(id)) issue("external_id", "external_id 重复，选项关联存在歧义");
-    if (get("external_id") !== id) issue("external_id", "ID 首尾有空格；预览不会自动修改单元格");
-    if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "应填写原始 PDF 文件名（含 .pdf）");
+    if (id && byId.has(id)) issue("external_id", "Duplicate external_id makes option associations ambiguous");
+    if (get("external_id") !== id) issue("external_id", "ID has leading or trailing spaces; the preview does not repair cells");
+    if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "Enter the original PDF filename including .pdf");
 
     const pageText = get("source_page").trim();
     const pageMatch = pageText.match(/^(\d+)(?:-(\d+))?$/);
     const startPage = pageMatch ? Number(pageMatch[1]) : 0;
     const endPage = pageMatch?.[2] ? Number(pageMatch[2]) : startPage;
     if (pageText && (!pageMatch || startPage < 1 || endPage < startPage)) {
-      issue("source_page", "必须是正整数 PDF 物理页码，跨页可写 12-13");
+      issue("source_page", "Use positive physical PDF page numbers; a page range such as 12-13 is allowed");
     }
 
     const locator = get("source_locator").trim();
     const printedNumber = get("source_question_number").trim();
-    if (!printedNumber && !locator) issue("source_locator", "无印刷题号时需要独立的 source_locator；不能用 Excel 行号代替");
+    if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
     if (locator) {
       const locatorMatch = locator.match(/^p(\d{3,})-item(\d{2,})$/);
-      if (!locatorMatch) issue("source_locator", "格式应为 p012-item03，且必须由人工验证唯一性");
-      else if (startPage && Number(locatorMatch[1]) !== startPage) issue("source_locator", "locator 的页码与 source_page 起始物理页不一致");
+      if (!locatorMatch) issue("source_locator", "Use a locator such as p012-item03; a human must verify that it is unique");
+      else if (startPage && Number(locatorMatch[1]) !== startPage) issue("source_locator", "Locator page does not match the first physical source_page");
     }
 
     for (const [field, allowed] of Object.entries(ENUMS)) {
       const value = get(field).trim();
-      if (value && !allowed.has(value)) issue(field, `无效受控值：${value}`);
+      if (value && !allowed.has(value)) issue(field, `Invalid controlled value: ${value}`);
     }
-    if (status && !REVIEW_VALUES.has(status)) issue("human_review_status", `无效审核状态：${status}`);
+    if (status && !REVIEW_VALUES.has(status)) issue("human_review_status", `Invalid review status: ${status}`);
     const gates: Record<string, string> = {};
     for (const field of REVIEW_GATES) {
       gates[field] = get(field).trim();
-      if (!gates[field]) issue(field, "审核关卡状态缺失", status === "approved" ? "error" : "warning");
-      else if (!GATE_VALUES.has(gates[field])) issue(field, `无效关卡状态：${gates[field]}`);
-      if (status === "approved" && gates[field] !== "passed") issue(field, "最终批准要求四个关卡均为 passed");
+      if (!gates[field]) issue(field, "Review gate status is missing", status === "approved" ? "error" : "warning", "publication_review");
+      else if (!GATE_VALUES.has(gates[field])) issue(field, `Invalid review gate status: ${gates[field]}`);
+      if (status === "approved" && gates[field] !== "passed") issue(field, "Publication requires all four review gates to be passed", "error", "publication_review");
     }
     if (status === "approved") {
-      if (!filled(record.cells.reviewed_by)) issue("reviewed_by", "approved 必须有人工审核人");
+      if (!filled(record.cells.reviewed_by)) issue("reviewed_by", "Approval requires a human reviewer", "error", "publication_review");
       const reviewedAt = get("reviewed_at").trim();
-      if (!isValidReviewTimestamp(reviewedAt)) issue("reviewed_at", "approved 必须有有效 ISO 8601 审核时间");
+      if (!isValidReviewTimestamp(reviewedAt)) issue("reviewed_at", "Approval requires a valid ISO 8601 review timestamp", "error", "publication_review");
     }
 
     const flags = codeList(record.cells.ai_flags);
     if (status === "approved" && flags.some((flag) => flag !== "FIGURE_REQUIRED")) {
-      issue("ai_flags", "仍有待人工处理的 AI 标记；不能仅凭 approved 单元格视为通过");
+      issue("ai_flags", "AI flags still need human review; an approved cell alone is insufficient", "error", "publication_review");
     }
     const requiresFigure = booleanValue(record.cells.requires_figure);
-    if (filled(record.cells.requires_figure) && requiresFigure === null) issue("requires_figure", "必须为 TRUE 或 FALSE");
+    if (filled(record.cells.requires_figure) && requiresFigure === null) issue("requires_figure", "Must be TRUE or FALSE");
     if (requiresFigure) {
-      if (!get("figure_reference").trim()) issue("figure_reference", "图形题必须定位来源图形");
-      if (!get("image_url").trim()) issue("image_url", "图形题缺少稳定、已授权的图片 URL；不可导入");
+      if (!get("figure_reference").trim()) issue("figure_reference", "A figure-dependent question must identify its source figure");
+      if (!get("image_url").trim()) issue("image_url", "A figure-dependent question needs a stable, authorized image URL");
     }
     const imageUrl = get("image_url").trim();
-    if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) issue("image_url", "必须是 HTTP(S) URL；可访问性和授权仍需人工核验");
+    if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) issue("image_url", "Must be an HTTP(S) URL; availability and rights need human verification");
 
     const topic = get("primary_topic_code").trim();
-    if (topic && !/^\d+\.\d+$/.test(topic)) issue("primary_topic_code", "须使用 CED Topic 代码，如 1.6");
-    if (topic && topicVerified && !canonical.topicCodes?.has(topic)) issue("primary_topic_code", `规范 Topic 中不存在 ${topic}`);
-    if (topic && !topicVerified) issue("primary_topic_code", "未读取到规范 Topic 数据，代码未验证", "unverified");
+    if (topic && !/^\d+\.\d+$/.test(topic)) issue("primary_topic_code", "Use a CED Topic code such as 1.6");
+    if (topic && topicVerified && !canonical.topicCodes?.has(topic)) issue("primary_topic_code", `Topic code does not exist in the loaded reference data: ${topic}`);
+    if (topic && !topicVerified) issue("primary_topic_code", "Topic code is unverified because reference data is unavailable", "unverified");
     const skills = codeList(record.cells.practice_skill_codes);
-    if (skills.length !== new Set(skills).size) issue("practice_skill_codes", "Practice Skill 代码重复");
-    if (get("practice_skill_codes").includes("||") || get("practice_skill_codes").endsWith("|")) issue("practice_skill_codes", "代码列表有空项");
+    if (skills.length !== new Set(skills).size) issue("practice_skill_codes", "Duplicate Practice Skill codes");
+    if (get("practice_skill_codes").includes("||") || get("practice_skill_codes").endsWith("|")) issue("practice_skill_codes", "Code list contains an empty entry");
     for (const skill of skills) {
-      if (!/^\d+\.[A-Z]$/.test(skill)) issue("practice_skill_codes", `无效 Skill 代码格式：${skill}`);
-      else if (skillVerified && !canonical.practiceSkillCodes?.has(skill)) issue("practice_skill_codes", `规范 Skill 中不存在 ${skill}`);
+      if (!/^\d+\.[A-Z]$/.test(skill)) issue("practice_skill_codes", `Invalid Skill code format: ${skill}`);
+      else if (skillVerified && !canonical.practiceSkillCodes?.has(skill)) issue("practice_skill_codes", `Skill code does not exist in the loaded reference data: ${skill}`);
     }
-    if (skills.length && !skillVerified) issue("practice_skill_codes", "未读取到规范 Practice Skill 数据，代码未验证", "unverified");
+    if (skills.length && !skillVerified) issue("practice_skill_codes", "Practice Skill codes are unverified because reference data is unavailable", "unverified");
 
     addMathIssues(issues, "Questions", record.row, "stem", get("stem"), id);
     addMathIssues(issues, "Questions", record.row, "solution", get("solution"), id);
@@ -296,20 +298,20 @@ export function validateQuestionBankSheets(
       questionExternalId: questionId || undefined,
     });
     for (const field of ["question_external_id", "option_key", "option_text", "is_correct"]) {
-      if (!filled(record.cells[field])) issue(field, "必填值缺失");
+      if (!filled(record.cells[field])) issue(field, "Required value is missing");
     }
-    if (filled(record.cells.option_text) && typeof record.cells.option_text !== "string") issue("option_text", "选项必须是文本");
+    if (filled(record.cells.option_text) && typeof record.cells.option_text !== "string") issue("option_text", "Option content must be text");
     const correct = booleanValue(record.cells.is_correct);
-    if (filled(record.cells.is_correct) && correct === null) issue("is_correct", "必须为 TRUE 或 FALSE");
-    if (correct && get("misconception_code").trim()) issue("misconception_code", "正确选项不得映射 misconception");
+    if (filled(record.cells.is_correct) && correct === null) issue("is_correct", "Must be TRUE or FALSE");
+    if (correct && get("misconception_code").trim()) issue("misconception_code", "A correct option cannot have a misconception mapping");
     addMathIssues(issues, "Options", record.row, "option_text", get("option_text"), questionId);
     addMathIssues(issues, "Options", record.row, "option_explanation", get("option_explanation"), questionId);
     const question = byId.get(questionId);
     if (!question) {
-      if (questionId) issue("question_external_id", "找不到关联的 Questions.external_id（孤儿选项）");
+      if (questionId) issue("question_external_id", "No matching Questions.external_id (orphan option)");
       continue;
     }
-    if (question.options.some((option) => option.key === key) && key) issue("option_key", "同一题的 option_key 重复");
+    if (question.options.some((option) => option.key === key) && key) issue("option_key", "Duplicate option_key within this question");
     question.options.push({
       row: record.row, key: get("option_key"), text: get("option_text"), isCorrect: correct,
       misconceptionCode: get("misconception_code"), explanation: get("option_explanation"),
@@ -322,11 +324,11 @@ export function validateQuestionBankSheets(
       severity: "error", sheet: "Questions", row: question.row, field, message,
       questionExternalId: id || undefined,
     });
-    if (question.options.length < 2 || question.options.length > 6) issue("external_id", `每题必须有 2–6 个选项，当前 ${question.options.length} 个`);
+    if (question.options.length < 2 || question.options.length > 6) issue("external_id", `Each question needs 2–6 options; found ${question.options.length}`);
     const correctOptions = question.options.filter((option) => option.isCorrect === true);
-    if (correctOptions.length !== 1) issue("correct_option_key", `必须恰好一个 TRUE 选项，当前 ${correctOptions.length} 个`);
+    if (correctOptions.length !== 1) issue("correct_option_key", `Exactly one option must be TRUE; found ${correctOptions.length}`);
     if (correctOptions.length === 1 && question.correctOptionKey.trim() !== correctOptions[0].key.trim()) {
-      issue("correct_option_key", `与唯一正确选项 ${correctOptions[0].key} 不一致`);
+      issue("correct_option_key", `Does not match the only correct option: ${correctOptions[0].key}`);
     }
   }
 

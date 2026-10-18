@@ -18,7 +18,7 @@ export function analyzeQuestionBankMath(content: string): MathAnalysis {
 
   const checkLatex = (body: string, displayMode: boolean, offset: number) => {
     if (!body.trim()) {
-      issues.push({ offset, message: "数学公式为空" });
+      issues.push({ offset, message: "Math expression is empty" });
       return;
     }
     try {
@@ -26,7 +26,7 @@ export function analyzeQuestionBankMath(content: string): MathAnalysis {
     } catch (error) {
       issues.push({
         offset,
-        message: `LaTeX 无法渲染：${error instanceof Error ? error.message : String(error)}`,
+        message: `LaTeX cannot be rendered: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   };
@@ -70,7 +70,7 @@ export function analyzeQuestionBankMath(content: string): MathAnalysis {
         end = content.indexOf(opener.close, end + opener.close.length);
       }
       if (end < 0) {
-        issues.push({ offset: index, message: `数学分隔符未闭合：${content.slice(index, bodyStart)}` });
+        issues.push({ offset: index, message: `Unclosed math delimiter: ${content.slice(index, bodyStart)}` });
         renderContent += content.slice(index);
         break;
       }
@@ -87,7 +87,7 @@ export function analyzeQuestionBankMath(content: string): MathAnalysis {
     }
 
     if (content.startsWith("\\)", index) || content.startsWith("\\]", index)) {
-      issues.push({ offset: index, message: `多余的数学结束分隔符：${content.slice(index, index + 2)}` });
+      issues.push({ offset: index, message: `Unexpected closing math delimiter: ${content.slice(index, index + 2)}` });
       renderContent += content.slice(index, index + 2);
       index += 2;
       continue;
