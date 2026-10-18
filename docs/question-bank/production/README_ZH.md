@@ -2,9 +2,9 @@
 
 目标项目：`lxoaeaewcrshjkigzyqe`。准备日期：2026-10-16。
 
-**当前状态：材料已准备、本地演练通过；生产未执行、生产验收未完成。**
+**当前状态：两项迁移已由用户在生产 SQL Editor 手动执行；生产数据库目录只读验收通过（2026-10-18 03:24 UTC）。管理员真实使用验收尚未完成。不要重跑部署脚本。**
 
-上线 SQL 默认拒绝执行。用户已决定采用受控增量上线，不再以完整备份为前提；本包改为要求显式接受无完整备份的风险，**默认 `accept_no_full_backup_risk := false`，本次不授权生产执行**。生产六列迁移账本的两个约束及权限检查全部保留。项目名称、文件注释、手动填写的项目 ref 都不是数据库连接目标的技术证明，必须亲自在 Dashboard 核对当前项目和地址栏。
+仓库中的上线 SQL 仍默认拒绝执行。用户已明确接受无完整备份风险，授权受控增量上线并手动执行；**仓库仍保持 `accept_no_full_backup_risk := false`，不保存解锁后的副本**。生产六列迁移账本的两个约束及权限检查全部保留。项目名称、文件注释、手动填写的项目 ref 都不是数据库连接目标的技术证明。
 
 ## 文件与使用顺序
 
@@ -17,9 +17,19 @@
 | `build_release_package.mjs` | 从原迁移机械生成并核对 SQL，不连接数据库 | 不会 |
 | `rehearse_release.test.mjs` | 专供隔离临时容器的测试程序 | **绝不能用于生产** |
 
-## 已有生产证据与本次审查
+## 本次生产执行与只读验收
 
-用户提供的生产元数据表明：8 张题库物理表、题库 RPC、两个目标迁移记录都缺失；taxonomy 已存在；`has_role(uuid, app_role)`、`is_super_admin(uuid)`、`update_updated_at_column()` 的签名与函数体匹配仓库。这个结果解释了 `public.questions` 的 PGRST205，不是仅凭截图推测缓存故障。
+- 上线前于 2026-10-16 22:38 UTC，通过已有管理授权的只读接口确认目标项目及数据库主机匹配、前置表/角色/函数匹配、111 个 Topic 和 23 个 Skill 存在、六列账本兼容。两项目标记录、8 张题库表、8 个题库枚举和题库函数均缺失，没有混合状态；`postgres` 账本权限为系统目录检查，不冒充实际 SQL Editor 会话。
+- 用户随后在该项目 SQL Editor 手动执行完整 `10_deploy_question_bank.sql`，回报 `Success, no rows returned`。Executor 未调用生产写入接口，也未代替用户执行部署 SQL。
+- 2026-10-18 03:24 UTC，再次确认项目 `lxoaeaewcrshjkigzyqe` 及数据库主机匹配，通过官方只读接口复用 `20_verify_readonly.sql` 的两条 SELECT（仅合并查询包装，不改验收文件或检查规则）。结果 `all_catalog_checks_pass=true`：8/8 表及 authenticated 表授权/RLS、18/18 函数签名/函数体指纹/安全属性、16/16 policy、14/14 trigger、7/7 关键约束、3/3 部分唯一索引、9/9 草稿相关列检查通过。
+- 两条记录恰好为 `20260926000000 / question_bank_foundation`、`20261004000000 / question_bank_draft_import`；均 `statement_blocks=1`、`matches_packaged_migration=true`。额外审计列 `created_by`、`idempotency_key`、`rollback` 均为 NULL，与脚本一致，没有伪造审计内容。
+- RPC 授权目录检查：authenticated 可执行受管理员检查保护的保存/生命周期接口；anon 对 `save_question_bank_drafts(jsonb)` 的 EXECUTE 被拒绝。部分生命周期/内部函数仍有 anon EXECUTE，属于下文已注明的原迁移默认授权情况；本次未变更权限，也没有调用这些函数验证生产会话。
+- **本轮完成的是生产数据库目录验收，不是管理员真实使用验收。** 未创建生产测试账号、导入或批准题目；管理员登录、学生/访客实际会话、REST/API/schema cache 可达性、真实 XLSX 保存/readback 均留待前端更新后另行验收。生产既有业务行未导出或做全量前后比对；本地哨兵测试不冒充生产数据审计。
+- 没有完整备份或经验证的提交后全库恢复能力；没有前端部署、push、merge、分支切换，也没有重放 taxonomy/角色初始化或全部历史迁移。历史本地演练记录保持原样，与本次生产结果分开。
+
+## 上线前生产证据与原迁移审查
+
+上线前用户提供的生产元数据表明：8 张题库物理表、题库 RPC、两个目标迁移记录都缺失；taxonomy 已存在；`has_role(uuid, app_role)`、`is_super_admin(uuid)`、`update_updated_at_column()` 的签名与函数体匹配仓库。这个结果解释了上线前 `public.questions` 的 PGRST205，不是仅凭截图推测缓存故障；本次部署后这些题库对象已存在，REST/API 是否已识别仍未验收。
 
 本包只复用以下两个原迁移，原文件没有修改。生成文件中以 dollar-quoted 文本逐字嵌入原 SQL；SHA-256 写在文件头，账本保存原 SQL 文本而不是只有一个空的成功标记。
 
@@ -41,12 +51,12 @@
 - 目前没有已完成并经恢复验证的完整数据库备份；后台此前显示 **No backups**。本包不伪造备份引用，也不把只读访问、本地演练或空的私有备份目录当作恢复保障。
 - 两项迁移和两条账本记录在同一事务中完成。**事务只保护提交前的失败，不提供提交后的完整恢复能力。** 成功提交后才发现问题，不能靠 `ROLLBACK` 撤销已提交内容。
 - 采用受控增量方式：只增加这两项题库迁移，不重放 taxonomy、不导入题目、不改旧课程/视频/账号/`practice_problems`。这降低变更范围，但不等于零风险或已经有备份。
-- 新门禁 `accept_no_full_backup_risk boolean := false` 必须由用户在另行决定生产执行后，于 SQL Editor 工作副本中明确设为 `true`；`false` 或 `NULL` 都拒绝执行。项目和账本确认门禁仍独立生效。
-- 本次只调整上线包并在一次性本地库演练，不连接生产，不继续密码尝试、备份工具或账号/权限研究。原有私有资料保持不动。
+- 门禁 `accept_no_full_backup_risk boolean := false` 由用户在已授权的 SQL Editor 工作副本中明确设为 `true`；`false` 或 `NULL` 都拒绝执行。项目和账本确认门禁仍独立生效；仓库默认门禁没有改变。
+- 本地准备阶段仅调整上线包并在一次性本地库演练；本次由用户手动部署，Executor 仅连接生产做只读前检/验收。不继续密码尝试、备份工具或账号/权限研究，原有私有资料保持不动。
 
 ## 给非技术操作者的步骤
 
-### A. 先看风险与账本；现在不要执行生产
+### A. 上线前风险与账本核查（本次已完成）
 
 1. 用户回传的生产 `ledger_preflight` JSON 已确认下列结构。本包严格检查这六列、所有列无默认值/identity/generated、RLS 关闭、无用户触发器，以及执行者的 SELECT/INSERT 权限。
    - `version text NOT NULL`，约束 `schema_migrations_pkey: PRIMARY KEY(version)`。
@@ -54,10 +64,12 @@
    - `created_by text NULL`、`idempotency_key text NULL`、`rollback text[] NULL`。
    - 另一个且仅另一个约束为 `schema_migrations_idempotency_key_key: UNIQUE(idempotency_key)`，非延迟、允许多个 NULL 的标准唯一约束。
 2. 这份六列结构已在隔离本地库实际演练。上线仍只 INSERT `version、name、statements`；另外三列保持 NULL，不编造执行者、幂等键或回滚 SQL，也不修改已有账本记录。
-3. 阅读上述风险说明。**无完整备份仍是事实**；明确风险确认替代备份引用要求，不代表恢复能力已补齐。仓库文件中的三个发布 gate 均保持关闭；本次任务不是生产执行授权。
+3. 阅读上述风险说明。**无完整备份仍是事实**；明确风险确认替代备份引用要求，不代表恢复能力已补齐。仓库文件中的三个发布 gate 均保持关闭；本次已获授权并执行，不能把这份说明当作再次执行指令。
 4. `00_ledger_preflight_readonly.sql` 保留供必要时重新只读核查，不需要为了补同一份已收到证据反复运行。若执行前环境有变化或证据过期，可在目标项目 SQL Editor 重新运行。任何未知列、类型/可空性/默认值变化、额外/不同约束、RLS、触发器或权限不兼容，均必须**停止，不绕过前检**。
 
-### B. 用户另行决定生产执行后，才修改 SQL Editor 工作副本
+### B. 用户手动执行步骤（本次已执行，勿重跑）
+
+以下保留实际使用步骤供审计；不是重新部署指令。两项迁移已完成，后续只读检查或修复须按实际状态处理，不能重新解锁运行整包。
 
 1. 关闭其他题库数据库变更窗口；不要同时跑 CLI migrations 或另一份上线脚本。此包对自身使用 advisory lock，对账本短暂加锁；不能替代人工协调所有部署工具。
 2. 再确认 Dashboard 的项目 ref 与本包相同，并选择 SQL Editor 的 `postgres` 执行身份。不能用浏览器 anon key、管理员业务登录或注释替代连接确认。
