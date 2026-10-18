@@ -19,12 +19,13 @@ Task 2 的生产表采用 `questions`（稳定身份与生命周期）、`questi
 Task 3B 每次确认最多保存 100 题。超过上限时应拆分工作簿，并分别预览、核验和确认；不能把一次失败的批次视为部分成功。
 
 - 首次保存创建 `questions.status=draft` 和 `question_versions.status=draft`，且 `questions.current_version_id=NULL`。无论 XLSX 的 `human_review_status` 是 `pending` 还是 `approved`，都不映射为数据库批准状态。
-- 题目级 `questions.status` 只表示整体发布生命周期：`draft`、`approved`、`retired`。编辑过程属于版本级状态：`draft`、`review`、`approved`、`superseded`。
-- `questions.current_version_id` 只指向当前发布的 `approved` 版本；题目处于 `draft` 或 `retired` 时该字段为空。学生只能读取题目级 `approved` 且由该字段指向的版本。
+- 题目级 `questions.status` 表示整体生命周期：`draft`、`approved`、`unpublished`（可恢复撤回）、`retired`（归档）。编辑过程属于版本级状态：`draft`、`review`、`approved`、`superseded`。
+- `questions.current_version_id` 指向当前保留的 `approved` 版本；`approved` 和 `unpublished` 均保留该指针，`draft` 或 `retired` 时为空。只有题目级 `approved` 身份可对学生可见；Task 4C 将答案、解析及原始版本/选项表限定为管理员读取，未来学生取题/判分须另建安全接口。
 - 管理员完成初版内容后，调用 `submit_question_version_for_review(question_id, version_id)` 送审；review 版本只读，需要修改时必须调用 `return_question_version_to_draft(question_id, version_id)`。
-- 生产批准只能调用 `approve_question_version(question_id, version_id)`。该函数记录版本级 `reviewed_by`、`approved_at`，并原子切换发布指针；AI 不得调用或模拟批准。
-- 已发布题目需要修改时，必须调用 `create_question_revision(question_id)` 克隆当前版本。旧版继续向学生发布，新版作为唯一 working draft/review；新版批准后旧版变为不可修改的 `superseded` 历史。
-- 退役通过 `retire_question(question_id)` 隐藏题目并清空发布指针；版本历史保留，不得硬删除。
+- Task 4C 通过 `record_question_version_review` 接收真实管理员明确提交的四项确认、使用依据和逐 flag 解决记录。操作人、时间由服务端生成，绑定版本与内容修订号；导入的审核状态永不替代此记录。任何内容/关联变更均使旧确认失效，即使随后改回旧值。
+- 发布使用带明确题目/版本/旧值指纹的 `publish_question_version` 或 `publish_question_versions`；批次上限 20，任一失败整批回滚。旧 `approve_question_version` 仅作私有实现核心，不再允许客户端直接执行。
+- 已发布或撤回题需要修改时，读取/打开编辑窗口不会创建版本；明确 Save 后通过 `save_question_bank_revision` 原子克隆当前版本并保存 Task 4B 允许的元数据。旧版保持不变，新版为唯一 working draft/review；新版发布后旧版保留为 `superseded`。旧 `create_question_revision` 不再供客户端直接调用。
+- `unpublish_question` 可恢复撤回并保留当前批准版本；`republish_question` 必须明确指定恢复的版本。有工作修订时不能省略目标并默认发布旧版。撤回后可用 `archive_question` 归档为 `retired`，须先处理工作修订；历史保留、不硬删除。旧 `retire_question` 客户端权限已撤销。参数、返回值和错误码见 [Task 4C 接口说明](O2I_QUESTION_PUBLICATION_API_ZH.md)。
 - `correct_option_key` 仅用于交叉校验；生产库不在题目行保存答案键，而是在唯一一个 `question_options.is_correct=TRUE` 的选项行保存正确性。
 - `primary_topic_code` 与 `practice_skill_codes` 必须解析为规范表中的 UUID；不得把代码或名称作为自由文本复制到关联表。
 - XLSX 可暂存跨页 `source_page`（例如 `12-13`）；生产库的 `question_versions.source_page` 必须是题目开始位置的单个正整数 PDF 物理页码，完整跨页信息写入 `source_reference`。不得使用书本印刷页码替代 PDF 物理页码。

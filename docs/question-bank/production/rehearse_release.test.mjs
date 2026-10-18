@@ -253,7 +253,7 @@ test('isolated production-package PostgreSQL rehearsal', async (t) => {
     })
     for (const file of ['question_bank_foundation_test.sql','question_bank_draft_import_test.sql']) {
       await t.test(`existing pgTAP regression: ${file}`, async () => {
-        const results = await client.query(read(`supabase/tests/${file}`))
+        const results = await client.query(read(`supabase/tests/fixtures/${file}.fixture`))
         const tap = results.flatMap((r) => r.rows ?? []).flatMap((row) => Object.values(row)).filter((value) => typeof value === 'string')
         const failed = tap.filter((line) => /(^|\n)not ok\b|Looks like you (?:failed|planned)/.test(line))
         assert.deepEqual(failed, [], failed.join('\n'))

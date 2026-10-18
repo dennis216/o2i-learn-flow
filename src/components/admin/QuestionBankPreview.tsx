@@ -8,22 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { parseQuestionBankWorkbook, validateQuestionBankSheets, QUESTION_HEADERS, type WorkbookSheet } from "@/lib/questionBankImport";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { buildQuestionBankDraftSavePlan, describeQuestionBankIssue, getPublicationReviewTasks, isPublicationReviewIssue } from "@/lib/questionBankDraftSave";
-import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts, type SavedDraft } from "@/lib/questionBankDraftRepository";
+import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts } from "@/lib/questionBankDraftRepository";
+import { QuestionBankLibrary } from "./QuestionBankLibrary";
+import { QuestionBankMetadataFields } from "./QuestionBankMetadataFields";
 import type { QuestionBankReferences } from "@/lib/questionBankImportPlan";
-import { applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits, type EditableQuestionField } from "@/lib/questionBankPreviewEdits";
-
-const FIELD_LABELS: Record<EditableQuestionField, string> = {
-  difficulty: "Difficulty", calculator_policy: "Calculator policy", course_scope: "Course scope",
-  representation_type: "Representation", primary_topic_code: "CED Topic",
-  practice_skill_codes: "Practice Skills", source_page: "Physical PDF page", source_locator: "Source locator",
-};
-const SELECT_VALUES = {
-  difficulty: ["easy", "medium", "hard"],
-  calculator_policy: ["no_calculator", "calculator_allowed", "calculator_required"],
-  course_scope: ["AB", "BC", "BOTH"],
-  representation_type: ["analytical", "graphical", "numerical", "verbal", "mixed"],
-};
-const selectClassName = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+import { FIELD_LABELS, applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits, type EditableQuestionField } from "@/lib/questionBankPreviewEdits";
 
 export function QuestionBankPreview() {
   const requestId = useRef(0);
@@ -35,7 +24,7 @@ export function QuestionBankPreview() {
   const [references, setReferences] = useState<QuestionBankReferences | null>(null);
   const [referenceBusy, setReferenceBusy] = useState(false);
   const [referenceError, setReferenceError] = useState("");
-  const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
+  const [libraryRefresh, setLibraryRefresh] = useState(0);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -99,7 +88,6 @@ export function QuestionBankPreview() {
     setSaveMessage("");
     setSaveError("");
     setSaved(false);
-    setSavedDrafts([]);
     setBusy(false);
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
@@ -150,8 +138,9 @@ export function QuestionBankPreview() {
     try {
       const ids = await saveQuestionBankDrafts(supabase, draftPlan);
       setSaved(true);
+      setLibraryRefresh(value => value + 1);
       try {
-        setSavedDrafts(await loadSavedQuestionBankDrafts(supabase, ids));
+        await loadSavedQuestionBankDrafts(supabase, ids);
         setSaveMessage(`Saved ${ids.length} unpublished drafts. Nothing was approved or published.`);
       } catch (error) {
         setSaveError(error instanceof Error ? error.message : String(error));
@@ -159,6 +148,7 @@ export function QuestionBankPreview() {
     } catch (error) {
       if (error instanceof DraftSaveResultError) {
         setSaved(true);
+        setLibraryRefresh(value => value + 1);
         setSaveError(error.message);
       } else {
         setSaveError(`Save could not be confirmed: ${error instanceof Error ? error.message : String(error)}. Database rejection rolls back the entire batch. After a network interruption, check the question bank before submitting again.`);
@@ -222,7 +212,6 @@ export function QuestionBankPreview() {
           const topicKnown = references?.topics.some((topic) => topic.topic_code === question.primaryTopicCode);
           const knownSkillCodes = new Set(references?.skills.map((skill) => skill.skill_code));
           const unknownSkills = references ? question.practiceSkillCodes.filter((code) => !knownSkillCodes.has(code)) : [];
-          const selectValues = { difficulty: question.difficulty, calculator_policy: question.calculatorPolicy, course_scope: question.courseScope, representation_type: question.representationType };
           return <Card key={question.row} id={`question-${question.row}`}>
             <CardHeader className="pb-3">
               <CardTitle className="break-all text-base">{question.externalId || `Questions row ${question.row}`}</CardTitle>
@@ -267,45 +256,8 @@ export function QuestionBankPreview() {
               <details open={editableErrors || undefined} className="rounded border p-3">
                 <summary className="cursor-pointer font-medium">Adjust metadata</summary>
                 <p className="mt-2 text-muted-foreground">Changes are revalidated immediately. Correct stems, options, solutions and complex LaTeX in the XLSX, then upload it again.</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {(Object.keys(SELECT_VALUES) as (keyof typeof SELECT_VALUES)[]).map((field) => <label key={field} className="space-y-1">{FIELD_LABELS[field]}
-                    <select aria-label={`${question.externalId} ${FIELD_LABELS[field]}`} aria-invalid={fieldHasError(field)} className={selectClassName} value={selectValues[field]} disabled={!canEdit}
-                      onChange={(event) => editQuestion(question.row, field, event.target.value)}>
-                      <option value="">{field === "calculator_policy" ? "Undecided (allowed for drafts)" : "Not provided"}</option>
-                      {selectValues[field] && !SELECT_VALUES[field].includes(selectValues[field]) && <option value={selectValues[field]}>Invalid value: {selectValues[field]}</option>}
-                      {SELECT_VALUES[field].map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
-                    </select>{errors(field)}
-                  </label>)}
-                  <label className="space-y-1">CED Topic
-                    <select aria-label={`${question.externalId} CED Topic`} aria-invalid={fieldHasError("primary_topic_code")} className={selectClassName} value={question.primaryTopicCode} disabled={!canEdit || !references}
-                      onChange={(event) => editQuestion(question.row, "primary_topic_code", event.target.value)}>
-                      <option value="">Choose a canonical Topic</option>
-                      {question.primaryTopicCode && !topicKnown && <option value={question.primaryTopicCode}>{references ? "Invalid code" : "Unverified code"}: {question.primaryTopicCode}</option>}
-                      {references?.topics.map((topic) => <option key={topic.id} value={topic.topic_code}>{topic.topic_code} · {topic.title}</option>)}
-                    </select>{errors("primary_topic_code")}
-                  </label>
-                  <label className="space-y-1">Physical PDF page (ranges such as 12-13 allowed)
-                    <Input aria-label={`${question.externalId} Physical PDF page`} aria-invalid={fieldHasError("source_page")} value={question.sourcePage} disabled={!canEdit}
-                      onChange={(event) => editQuestion(question.row, "source_page", event.target.value)} />{errors("source_page")}
-                  </label>
-                  <label className="space-y-1">Source locator
-                    <Input aria-label={`${question.externalId} Source locator`} aria-invalid={fieldHasError("source_locator")} value={question.sourceLocator} disabled={!canEdit}
-                      onChange={(event) => editQuestion(question.row, "source_locator", event.target.value)} />{errors("source_locator")}
-                  </label>
-                  <fieldset className="space-y-2 rounded border p-2" disabled={!canEdit || !references}>
-                    <legend>Practice Skills</legend>
-                    {references?.skills.map((skill) => <label key={skill.id} className="flex items-start gap-2">
-                      <input type="checkbox" checked={question.practiceSkillCodes.includes(skill.skill_code)} onChange={(event) => {
-                        const selected = event.target.checked ? [...question.practiceSkillCodes, skill.skill_code] : question.practiceSkillCodes.filter((code) => code !== skill.skill_code);
-                        editQuestion(question.row, "practice_skill_codes", selected.join("|"));
-                      }} /><span>{skill.skill_code} · {skill.description}</span>
-                    </label>)}
-                    {unknownSkills.map((code) => <Button key={code} type="button" variant="outline" size="sm" disabled={!canEdit}
-                      onClick={() => editQuestion(question.row, "practice_skill_codes", question.practiceSkillCodes.filter((item) => item !== code).join("|"))}>Remove invalid Skill: {code}</Button>)}
-                    {!references && <p>Unverified. Canonical choices become available after reference data loads.</p>}
-                    {errors("practice_skill_codes")}
-                  </fieldset>
-                </div>
+                <div className="mt-3"><QuestionBankMetadataFields question={question} references={references} disabled={!canEdit}
+                  onChange={(field, value) => editQuestion(question.row, field, value)} errors={errors} fieldHasError={fieldHasError} /></div>
                 <div className="mt-3 space-y-1 rounded bg-muted/50 p-2">
                   <p className="font-medium">Changes: {ownEdits.length}</p>
                   {ownEdits.length ? ownEdits.map((edit) => <p key={edit.field}>{FIELD_LABELS[edit.field]}: {edit.before || "(blank)"} → {edit.after || "(blank)"}</p>) : <p>No changes to this question.</p>}
@@ -334,16 +286,7 @@ export function QuestionBankPreview() {
         })}
       </section>}
 
-      {savedDrafts.length > 0 && <Card>
-        <CardHeader><CardTitle>Saved drafts</CardTitle><CardDescription>Read back from the question bank after saving.</CardDescription></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          {savedDrafts.map((item) => <div key={item.id} className="min-w-0 rounded border p-3 text-sm">
-            <p className="break-all font-semibold">{item.externalId}</p>
-            <MarkdownWithMath content={item.stem} className="overflow-x-auto" strictMath />
-            <p className="mt-2 text-amber-700 dark:text-amber-400">Unpublished · Question: {item.questionStatus} · Version: {item.versionStatus}</p>
-          </div>)}
-        </CardContent>
-      </Card>}
+      <QuestionBankLibrary refreshKey={libraryRefresh} />
 
       {report && <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 shadow-lg" aria-label="Draft save actions">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">

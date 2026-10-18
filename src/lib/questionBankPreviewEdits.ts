@@ -7,6 +7,12 @@ export const EDITABLE_QUESTION_FIELDS = [
 
 export type EditableQuestionField = typeof EDITABLE_QUESTION_FIELDS[number];
 
+export const FIELD_LABELS: Record<EditableQuestionField, string> = {
+  difficulty: "Difficulty", calculator_policy: "Calculator policy", course_scope: "Course scope",
+  representation_type: "Representation", primary_topic_code: "CED Topic",
+  practice_skill_codes: "Practice Skills", source_page: "Physical PDF page", source_locator: "Source locator",
+};
+
 export interface QuestionEditChange {
   row: number;
   field: EditableQuestionField;
