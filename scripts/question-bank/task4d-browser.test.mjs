@@ -55,22 +55,21 @@ const dialog=()=>page.getByRole('dialog');
 const selectFixture=async path=>{await page.getByLabel('Choose question bank XLSX').setInputFiles(path);await page.getByRole('button',{name:/^Save \d+ drafts$/}).waitFor();};
 const saveImport=async()=>{await page.getByRole('button',{name:/^Save \d+ drafts$/}).click();await page.getByText(/Saved \d+ unpublished drafts\. Nothing was approved or published\./).waitFor();};
 const closeEditor=async()=>{await dialog().getByRole('button',{name:'Cancel',exact:true}).click();};
-const fillReview=async scope=>{
-  const policy=scope.getByLabel('Verified calculator policy');if(await policy.isEnabled())await policy.selectOption('no_calculator');
-  const source=scope.getByLabel('Source-use category');if(await source.isEnabled())await source.selectOption('original');
-  const provenance=scope.getByRole('checkbox',{name:/I checked that/});if(await provenance.isEnabled())await provenance.check();
-  for(const name of ['Mathematical verification','Topic and Skills verification','Source-use rights and provenance','Formula, option and figure rendering']){
-    await scope.getByRole('checkbox',{name,exact:true}).check();await scope.getByLabel(name+' notes',{exact:true}).fill('Synthetic local fixture: independently checked '+name+'.');
-  }
-  for(const input of await scope.getByRole('textbox',{name:/Resolution for/}).all())await input.fill('Synthetic fixture independently verified; original flag retained.');
+const confirmation=()=>dialog().getByRole('checkbox',{name:/I have checked the selected problems/});
+const fillReview=async()=>{
+  await confirmation().waitFor();assert.equal(await confirmation().isChecked(),false);
+  assert.equal(await dialog().getByRole('button',{name:/^Publish \d+ problems$/}).isEnabled(),false);
+  assert.equal(await dialog().getByRole('textbox').count(),0);
+  await confirmation().check();
 };
-const finishPublish=async(n=1)=>{await dialog().getByRole('button',{name:`Publish ${n} problems`,exact:true}).click();
+const finishPublish=async(n=1)=>{
   const count=writeRequests.filter(name=>name==='publish_question_versions').length;
-  await dialog().getByRole('button',{name:`Confirm and publish ${n} problems`,exact:true}).evaluate(button=>{button.click();button.click();});
+  await dialog().getByRole('button',{name:`Publish ${n} problems`,exact:true}).evaluate(button=>{button.click();button.click();});
   await page.getByText(new RegExp(`Published ${n} problems? and verified`)).waitFor();
-  assert.equal(writeRequests.filter(name=>name==='publish_question_versions').length,count+1,'Double confirmation must send one publication RPC');};
+  assert.equal(writeRequests.filter(name=>name==='publish_question_versions').length,count+1,'Double clicks must send one publication RPC');
+};
 const publishOne=async id=>{await card(id).getByRole('button',{name:'Publish',exact:true}).click();await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
-  if(!await dialog().getByText('Valid human confirmation is already bound to this version.',{exact:false}).count())await fillReview(dialog());await finishPublish();};
+  await fillReview();await finishPublish();};
 
 try {
   console.log('Starting isolated local Auth, REST and PostgreSQL; no existing database is used.');
@@ -128,6 +127,16 @@ try {
   const admin=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});assert.ifError((await admin.auth.signInWithPassword({email:accounts[0].email,password:testPassword})).error);
   const topics=(await admin.from('curriculum_topics').select('id,topic_code,title')).data,skills=(await admin.from('curriculum_practice_skills').select('id,skill_code,description')).data;
   assert.equal(topics.length,111);assert.equal(skills.length,23);check('Actual local migrations and canonical 111 Topics / 23 Skills loaded');
+  if(real){
+    const oldSheets=await parse(real),oldReport=validateQuestionBankSheets(oldSheets,{topicCodes:new Set(topics.map(t=>t.topic_code)),practiceSkillCodes:new Set(skills.map(s=>s.skill_code))});
+    const oldPlan=buildQuestionBankDraftSavePlan(oldReport,{topics,skills,existingExternalIds:new Set()});
+    assert.equal(oldPlan.payload.length,8);assert.equal(oldPlan.canSave,true);
+    assert.ifError((await admin.rpc('save_question_bank_drafts',{_items:oldPlan.payload})).error);
+  }
+  const oldState=await state();
+  await db.query('BEGIN;'+read('supabase/migrations/20261020000000_question_bank_simple_publication.sql')+'COMMIT;');
+  assert.deepEqual(await state(),oldState);check('New migration preserves pre-existing drafts and original evidence without reimport');
+
   const syntheticSheets=await parse(synthetic),syntheticReport=validateQuestionBankSheets(syntheticSheets);
   assert.equal(syntheticReport.questions.length,1);assert.match(syntheticReport.questions[0].externalId,/^synthetic-/i);const synthId=syntheticReport.questions[0].externalId;
   vite=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(appPort),'--strictPort'],{cwd:root,env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});
@@ -148,8 +157,15 @@ try {
   before=await state();await card(synthId).getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('hard');await closeEditor();assert.deepEqual(await state(),before);
   await card(synthId).getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('hard');await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByText('Changes saved and read back.',{exact:false}).waitFor();await closeEditor();
   assert.equal((await questionVersions(synthId))[0].difficulty,'hard');check('Draft metadata edit saves and reads back; edit Cancel writes nothing');
-  before=await state();await card(synthId).getByRole('button',{name:'Publish',exact:true}).click();await fillReview(dialog());await closeEditor();assert.deepEqual(await state(),before);check('Publication review work copy and Cancel write nothing');
-  await publishOne(synthId);await card(synthId,'Published problems').waitFor();const first=(await questionState(synthId)).current_version_id;assert.ok(first);await shot('01-published');check('First publication uses real review and atomic publication RPCs');
+  before=await state();await card(synthId).getByRole('button',{name:'Publish',exact:true}).click();
+  await dialog().getByText('Question preview',{exact:true}).click();
+  await dialog().getByText('Correct answer',{exact:true}).waitFor();
+  await dialog().locator('summary').filter({hasText:/^Solution$/}).click();
+  await fillReview();
+  const targetChoice=dialog().getByRole('article').getByRole('checkbox').first();
+  await targetChoice.uncheck();assert.equal(await confirmation().isChecked(),false);
+  await targetChoice.check();await fillReview();await closeEditor();assert.deepEqual(await state(),before);check('Publication review work copy and Cancel write nothing');
+  await publishOne(synthId);await card(synthId,'Published problems').waitFor();const first=(await questionState(synthId)).current_version_id;assert.ok(first);const published=(await questionVersions(synthId))[0];assert.equal(published.calculator_policy,null);assert.equal(published.source_type,null);assert.deepEqual(published.import_evidence.ai_flags,syntheticReport.questions[0].aiFlags);await shot('01-published');check('First publication uses real review and atomic publication RPCs');
   before=await state();await card(synthId,'Published problems').getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('easy');await closeEditor();assert.deepEqual(await state(),before);check('Opening/cancelling published Edit creates no revision');
   await card(synthId,'Published problems').getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('easy');await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByText('Changes saved and read back.',{exact:false}).waitFor();await closeEditor();
   assert.equal((await questionState(synthId)).current_version_id,first);assert.equal((await questionVersions(synthId)).length,2);await card(synthId,'Published problems').getByText('Unpublished changes',{exact:false}).waitFor();check('Revision is created only on Save; old published pointer remains');
@@ -157,7 +173,7 @@ try {
   await card(synthId,'Published problems').getByRole('button',{name:'Unpublish',exact:true}).click();await dialog().getByRole('button',{name:'Confirm unpublish',exact:true}).click();await page.getByText('Problem unpublished.',{exact:false}).waitFor();assert.equal((await questionState(synthId)).current_version_id,first);assert.equal((await questionVersions(synthId)).length,2);check('Unpublish retains current approved version and working revision; Cancel writes nothing');
   await card(synthId).getByRole('button',{name:'Archive',exact:true}).click();await dialog().getByText('A working revision exists.',{exact:false}).waitFor();assert.equal(await dialog().getByRole('button',{name:'Confirm archive',exact:true}).isEnabled(),false);await closeEditor();
   await card(synthId).getByRole('button',{name:'Delete draft',exact:true}).click();await dialog().getByRole('button',{name:'Confirm deletion',exact:true}).click();await dialog().waitFor({state:'hidden'});assert.equal((await questionVersions(synthId)).length,1);assert.equal((await questionState(synthId)).current_version_id,first);check('Delete draft removes only working revision; Archive never silently deletes it');
-  await card(synthId).getByText('Unpublished · Version',{exact:false}).waitFor();await publishOne(synthId);assert.equal((await questionState(synthId)).current_version_id,first);check('Withdrawn current approved version is listed and republished with its valid review reused');
+  await card(synthId).getByText('Unpublished · Version',{exact:false}).waitFor();await publishOne(synthId);assert.equal((await questionState(synthId)).current_version_id,first);check('Withdrawn current approved version is listed and republished with one new explicit confirmation and retained history');
   await card(synthId,'Published problems').getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('medium');await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByText('Changes saved and read back.',{exact:false}).waitFor();await closeEditor();await publishOne(synthId);
   const history=await questionVersions(synthId);assert.equal(history.length,2);assert.equal(history[0].status,'superseded');assert.equal(history[1].status,'approved');assert.equal((await questionState(synthId)).current_version_id,history[1].id);check('Publishing a reviewed revision switches pointer and preserves superseded history');
   // Extra synthetic drafts for deletion, stale edits and atomic batch failure.
@@ -172,37 +188,50 @@ try {
   await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByRole('alert').waitFor();assert.equal(await dialog().getByLabel('SYNTHETIC-STALE Difficulty',{exact:true}).inputValue(),'hard');assert.equal((await questionVersions('SYNTHETIC-STALE'))[0].difficulty,'medium');await closeEditor();check('Real stale editing is rejected without overwriting another admin; local input retained');
   // Real workbook: draft-only acceptance. No claims of actual math/rights approval.
   if(real){assert.ok(existsSync(real));const bytes=readFileSync(real),hash=createHash('sha256').update(bytes).digest('hex');const sheets=await parse(real),r=validateQuestionBankSheets(sheets);assert.equal(r.questions.length,8);assert.equal(r.questions.reduce((n,q)=>n+q.options.length,0),32);
-    await selectFixture(real);assert.ok(await page.getByRole('region',{name:'Preview and adjust',exact:true}).locator('.katex').count()>0);assert.ok(await page.getByRole('region',{name:'Preview and adjust',exact:true}).locator('.katex-display').count()>0);await shot('02-real-eight-preview');await saveImport();
+    await selectFixture(real);assert.ok(await page.getByRole('region',{name:'Preview and adjust',exact:true}).locator('.katex').count()>0);assert.ok(await page.getByRole('region',{name:'Preview and adjust',exact:true}).locator('.katex-display').count()>0);await shot('02-real-eight-preview');assert.equal(await page.getByRole('button',{name:'Save 8 drafts',exact:true}).isEnabled(),false);await page.getByRole('button',{name:'Cancel',exact:true}).click();
     for(const q of r.questions){const saved=await questionState(q.externalId),v=(await questionVersions(q.externalId))[0];assert.equal(saved.status,'draft');assert.equal(saved.current_version_id,null);assert.equal(v.status,'draft');assert.equal(v.stem,q.stem);assert.equal(v.solution,q.solution);assert.deepEqual(v.import_evidence.ai_flags,q.aiFlags);assert.equal(v.import_evidence.human_review_notes,q.humanReviewNotes);
       assert.equal(v.source_document,q.sourceDocument);assert.equal(v.source_page,Number(q.sourcePage.split('-')[0]));assert.equal(v.source_question_number,q.sourceQuestionNumber||null);assert.equal(v.source_locator,q.sourceLocator||null);
       const options=(await db.query('SELECT * FROM public.question_options WHERE question_version_id=$1 ORDER BY order_index',[v.id])).rows;assert.equal(options.length,q.options.length);
       for(const o of q.options){const saved=options.find(row=>row.option_key===o.key);assert.equal(saved.option_text,o.text);assert.equal(saved.is_correct,o.isCorrect);assert.equal(saved.import_evidence.option_explanation,o.explanation);}
     }
     const displayQuestion=r.questions.find(q=>q.solution.includes(String.fromCharCode(92)+'['));assert.ok(displayQuestion,'Real acceptance needs a representative display formula');
-    await openBank();await card(displayQuestion.externalId).getByRole('button',{name:/^Preview /}).click();await dialog().getByText('Correct answer',{exact:true}).waitFor();await shot('03-real-saved-preview');
+    await openBank();
+    const preExisting=await state();await card(displayQuestion.externalId).getByRole('button',{name:'Publish',exact:true}).click();
+    await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
+    assert.equal(await confirmation().isChecked(),false);assert.equal(await dialog().getByRole('alert').count(),0);
+    await dialog().getByText('Source and original AI information',{exact:true}).click();
+    await dialog().getByText('Original AI flags (reference only):',{exact:false}).waitFor();
+    await closeEditor();assert.deepEqual(await state(),preExisting);
+    check('Real eight old drafts open simplified publication checks with no reimport or fabricated approval');
+    await card(displayQuestion.externalId).getByRole('button',{name:/^Preview /}).click();await dialog().getByText('Correct answer',{exact:true}).waitFor();await shot('03-real-saved-preview');
     await dialog().locator('summary').filter({hasText:/^Solution$/}).click();await dialog().locator('.katex-display').first().scrollIntoViewIfNeeded();await shot('03a-real-solution-formula');await dialog().getByRole('button',{name:'Close preview',exact:true}).click();
     await selectFixture(real);await page.getByText(/field issue\(s\) block draft saving/).waitFor();assert.equal(await page.getByRole('button',{name:'Save 8 drafts',exact:true}).isEnabled(),false);await page.getByRole('button',{name:'Cancel',exact:true}).click();
     assert.equal(createHash('sha256').update(readFileSync(real)).digest('hex'),hash);report.realWorkbook='8 questions / 32 options: preview, formulas, draft save/readback, evidence and duplicate block passed; not published';check('Real 8/32 XLSX saved only as drafts; original file unchanged, evidence retained, duplicate blocked');
   }
   // Full all-page scope and a real server failure after the first publication mutation.
-  await seed('SYNTHETIC-BATCH-A');await seed('SYNTHETIC-BATCH-B');await openBank();await page.getByRole('button',{name:'Publish all',exact:true}).click();await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
+  await seed('SYNTHETIC-BATCH-A');await seed('SYNTHETIC-BATCH-B');await seed('SYNTHETIC-BATCH-BAD');
+  await db.query("UPDATE public.question_versions SET requires_figure=true,image_url=NULL WHERE question_id=(SELECT id FROM public.questions WHERE external_id='SYNTHETIC-BATCH-BAD')");
+  await openBank();await page.getByRole('button',{name:'Publish all',exact:true}).click();await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
+  await fillReview();assert.equal(await dialog().getByRole('button',{name:/^Publish \d+ problems$/}).isEnabled(),false);
+  check('A selected content blocker disables publication even with confirmation; users can exclude it');
   for(const target of await dialog().getByRole('article').all()){
-    const label=await target.getAttribute('aria-label');if(!['Publication target SYNTHETIC-BATCH-A','Publication target SYNTHETIC-BATCH-B'].includes(label))await target.getByRole('checkbox').first().uncheck();else await fillReview(target);
+    const label=await target.getAttribute('aria-label');if(!['Publication target SYNTHETIC-BATCH-A','Publication target SYNTHETIC-BATCH-B'].includes(label))await target.getByRole('checkbox').first().uncheck();
   }
+  await fillReview();
   await dialog().evaluate(el=>{el.scrollTop=0;});await shot('04-batch-review');
   await db.query(`CREATE FUNCTION public.local_4d_fail_second() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF EXISTS(SELECT 1 FROM public.question_publication_events e JOIN public.questions q ON q.id=e.question_id WHERE q.external_id IN ('SYNTHETIC-BATCH-A','SYNTHETIC-BATCH-B')) THEN RAISE EXCEPTION 'Synthetic injected event failure'; END IF; RETURN NEW; END$$;
     CREATE TRIGGER local_4d_batch_failure BEFORE INSERT ON public.question_publication_events FOR EACH ROW EXECUTE FUNCTION public.local_4d_fail_second();`);
-  await dialog().getByRole('button',{name:'Publish 2 problems',exact:true}).click();await dialog().getByRole('button',{name:'Confirm and publish 2 problems',exact:true}).click();await dialog().getByText('Publication could not be confirmed.',{exact:false}).waitFor();
+  await dialog().getByRole('button',{name:'Publish 2 problems',exact:true}).click();await dialog().getByText('Publication could not be confirmed.',{exact:false}).waitFor();
   for(const id of ['SYNTHETIC-BATCH-A','SYNTHETIC-BATCH-B']){assert.equal((await questionState(id)).status,'draft');assert.equal((await questionState(id)).current_version_id,null);}check('Publish all exact selection: real database failure rolls back both publication targets');
   await db.query('DROP TRIGGER local_4d_batch_failure ON public.question_publication_events; DROP FUNCTION public.local_4d_fail_second();');
-  await dialog().getByRole('button',{name:'Reload checks (keep notes)',exact:true}).click();await dialog().getByText('Loading the complete publication scope…',{exact:true}).waitFor({state:'hidden'});await finishPublish(2);check('Batch retry reads actual saved reviews and atomically publishes both explicit targets');
+  await dialog().getByRole('button',{name:'Reload checks',exact:true}).click();await dialog().getByText('Loading the complete publication scope…',{exact:true}).waitFor({state:'hidden'});await fillReview();await finishPublish(2);check('Batch retry reads actual saved reviews and atomically publishes both explicit targets');
   await openBank();await card('SYNTHETIC-STALE').getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel('SYNTHETIC-STALE Difficulty',{exact:true}).selectOption('hard');before=await state();
   const offline=route=>route.abort();await page.route(api+'/rest/v1/rpc/update_question_bank_draft_metadata',offline);
   await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByRole('alert').waitFor();assert.equal(await dialog().getByLabel('SYNTHETIC-STALE Difficulty',{exact:true}).inputValue(),'hard');assert.deepEqual(await state(),before);
   await page.unroute(api+'/rest/v1/rpc/update_question_bank_draft_metadata',offline);await closeEditor();check('Disconnected save reports failure, retains local edits and writes nothing');
-  await card('SYNTHETIC-STALE').getByRole('button',{name:'Publish',exact:true}).click();await fillReview(dialog());before=await state();
+  await card('SYNTHETIC-STALE').getByRole('button',{name:'Publish',exact:true}).click();await fillReview();before=await state();
   await db.query("DELETE FROM public.user_roles WHERE user_id=$1 AND role='admin'",[accounts[0].id]);
-  await dialog().getByRole('button',{name:'Publish 1 problems',exact:true}).click();await dialog().getByRole('button',{name:'Confirm and publish 1 problems',exact:true}).click();await dialog().getByText('Administrator permission was denied.',{exact:false}).waitFor();assert.deepEqual(await state(),before);
+  await dialog().getByRole('button',{name:'Publish 1 problems',exact:true}).click();await dialog().getByText('Administrator permission was denied.',{exact:false}).waitFor();assert.deepEqual(await state(),before);
   await db.query("INSERT INTO public.user_roles(user_id,role) VALUES($1,'admin')",[accounts[0].id]);await closeEditor();check('Permission revoked before confirmation is rejected by actual server and shown clearly');
   await openBank();await card(synthId,'Published problems').getByRole('button',{name:'Unpublish',exact:true}).click();await dialog().getByRole('button',{name:'Confirm unpublish',exact:true}).click();await page.getByText('Problem unpublished.',{exact:false}).waitFor();
   await card(synthId).getByRole('button',{name:'Archive',exact:true}).click();before=await state();await closeEditor();assert.deepEqual(await state(),before);
@@ -220,7 +249,7 @@ try {
   assert.ok((await student.rpc('precheck_question_publication',{_question_id:stale.question_id,_version_id:stale.id,_action:'publish'})).error);check('Actual REST student/anonymous draft and answer isolation; unauthorized management RPC rejected');
   await openBank();await page.setViewportSize({width:390,height:844});await card('SYNTHETIC-BATCH-A','Published problems').scrollIntoViewIfNeeded();await shot('05-narrow');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));check('Narrow layout has no horizontal page overflow');
   assert.deepEqual(remoteRequests,[]);assert.ok(writeRequests.includes('publish_question_versions'));check('All tested lifecycle buttons use real local RPCs, with no remote Supabase request');
-  check('Repeated final-confirm clicks send only one publication RPC');
+  check('Repeated Publish clicks send only one publication RPC');
 } catch(error) {
   if(page)await page.screenshot({path:resolve(output,'failure.png'),fullPage:false}).catch(()=>{});
   report.error=redact(error.stack??error);console.error(report.error);process.exitCode=1;

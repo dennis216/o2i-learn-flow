@@ -276,7 +276,7 @@ export function QuestionBankPreview() {
                   <p>Reviewer: {question.reviewedBy || "not provided"} · Reviewed at: {question.reviewedAt || "not provided"}</p>
                   {Object.entries(question.reviewGates).map(([gate, value]) => <div key={gate}><p>{gate}: {value || "not provided"}</p>{errors(gate)}</div>)}
                   <p className="font-medium">Before publication</p>
-                  <ul className="list-disc space-y-1 pl-5">{getPublicationReviewTasks(question).map((task) => <li key={task}>{task}</li>)}</ul>
+                  <ul className="list-disc space-y-1 pl-5">{getPublicationReviewTasks().map((task) => <li key={task}>{task}</li>)}</ul>
                   {report.issues.filter((issue) => issue.questionExternalId === question.externalId.trim() && isPublicationReviewIssue(issue)).map((issue, index) => <p key={index}>{describeQuestionBankIssue(issue)}</p>)}
                   {question.options.some((option) => option.misconceptionCode) && <p>Option misconception evidence: {question.options.filter((option) => option.misconceptionCode).map((option) => `${option.key}: ${option.misconceptionCode}`).join(" · ")}</p>}
                 </div>

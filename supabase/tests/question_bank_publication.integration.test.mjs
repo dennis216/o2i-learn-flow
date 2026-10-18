@@ -69,10 +69,11 @@ async function fixture(c,overrides={}){
   const s=(await scalar(c,'SELECT public.save_question_bank_drafts($1::jsonb) result',[JSON.stringify([item])]))[0];
   return {q:s.question_id,v:s.version_id};
 }
-const reviewInput=()=>({math:{confirmed:true,notes:'Synthetic independent computation checked.'},taxonomy:{confirmed:true,notes:'Synthetic Topic and Skill checked.'},
+const legacyReviewInput=()=>({math:{confirmed:true,notes:'Synthetic independent computation checked.'},taxonomy:{confirmed:true,notes:'Synthetic Topic and Skill checked.'},
   source:{confirmed:true,notes:'Synthetic local test fixture only; original author is the test.',source_type:'original',locator_verified:true,printed_number_verified:false},
   render:{confirmed:true,notes:'Synthetic inline and display rendering checked.'},calculator_policy:'no_calculator',
   flag_resolutions:{ANSWER_AI_INFERRED:'Independently recomputed the synthetic answer.'}});
+const reviewInput=()=>({confirmed:true});
 const record=async(c,s,input=reviewInput())=>scalar(c,'SELECT public.record_question_version_review($1,$2,$3,$4::jsonb) result',[s.q,s.v,(await precheck(c,s)).fingerprint,JSON.stringify(input)]);
 const ready=async(c,s)=>{const r=await record(c,s);assert.equal(r.precheck.eligible,true,JSON.stringify(r.precheck.issues));return r.precheck;};
 const publish=async(c,s,p)=>scalar(c,'SELECT public.publish_question_version($1,$2,$3) result',[s.q,s.v,(p??await precheck(c,s)).fingerprint]);
@@ -122,6 +123,41 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       await db.query(`BEGIN;${enumSql}COMMIT;`);await db.query(`BEGIN;${publicationSql}COMMIT;`);
     });
     admin=await connect();
+    const oldDrafts=[];
+    for(let i=0;i<8;i++)oldDrafts.push(await fixture(admin));
+    const oldReviewed=await fixture(admin);
+    await record(admin,oldReviewed,legacyReviewInput());
+    const preserved=async()=>scalar(db,`SELECT jsonb_build_object(
+      'versions',(SELECT jsonb_agg(to_jsonb(v) ORDER BY id) FROM public.question_versions v),
+      'reviews',(SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM public.question_version_reviews r)) result`);
+    const beforeSimplification=await preserved();
+    await t.test('new migration preserves eight old drafts, all evidence and genuine old review records byte-for-byte',async()=>{
+      const migration=read('supabase/migrations/20261020000000_question_bank_simple_publication.sql');
+      const release=read('docs/question-bank/production/simple-publication/10_deploy.sql');
+      assert.equal(release.split('$o2i_simple_source$')[1],migration,'Execution copy must contain the exact migration');
+      await db.query('CREATE SCHEMA IF NOT EXISTS supabase_migrations; CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations(version text PRIMARY KEY,statements text[],name text);');
+      for(const name of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management','20261019000000_question_bank_unpublished_status','20261019010000_question_bank_publication']){
+        const [version,...parts]=name.split('_');
+        await db.query('INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES($1,$2,$3)',[version,parts.join('_'),[read('supabase/migrations/'+name+'.sql')]]);
+      }
+      await db.query("UPDATE supabase_migrations.schema_migrations SET statements=ARRAY['unexpected drift'] WHERE version='20261019010000'");
+      await assert.rejects(db.query(release),/prerequisite ledger/);await db.query('ROLLBACK');assert.deepEqual(await preserved(),beforeSimplification);
+      await db.query('UPDATE supabase_migrations.schema_migrations SET statements=$1 WHERE version=$2',[[read('supabase/migrations/20261019010000_question_bank_publication.sql')],'20261019010000']);
+      await db.query(release);
+      assert.equal(await scalar(db,"SELECT statements[1] result FROM supabase_migrations.schema_migrations WHERE version='20261020000000'"),migration);
+      const checks=await db.query(read('docs/question-bank/production/simple-publication/20_verify_readonly.sql'));
+      const report=checks.flatMap(r=>r.rows).find(r=>r.simple_publication_verification)?.simple_publication_verification;
+      assert.equal(report.all_catalog_checks_pass,true);assert.equal(report.all_ledger_checks_pass,true);assert.equal(report.checks.length,19);
+      await assert.rejects(db.query(release),/already recorded/);await db.query('ROLLBACK');
+
+      assert.deepEqual(await preserved(),beforeSimplification);
+      for(const d of oldDrafts){const loaded=await getDraft(admin,d);assert.equal(loaded.version.calculator_policy,null);assert.equal(loaded.version.source_type,null);
+        assert.deepEqual(loaded.version.import_evidence.ai_flags,['ANSWER_AI_INFERRED']);
+        assert.deepEqual((await precheck(admin,d)).issues.map(i=>i.code),['QB_REVIEW_REQUIRED']);}
+      assert.equal((await precheck(admin,oldReviewed)).eligible,true);
+      await publish(admin,oldReviewed);await action(admin,'unpublish_question',oldReviewed);await action(admin,'republish_question',oldReviewed);
+      assert.deepEqual(await scalar(db,'SELECT review_data result FROM public.question_version_reviews WHERE question_version_id=$1',[oldReviewed.v]),legacyReviewInput());
+    });
     await t.test('main public-profile view and own-profile access coexist with question-bank RLS',async()=>{
       for(const [role,id,own] of [['authenticated',studentId,1],['anon','',0]]){
         const c=await connect(role,id);try{
@@ -140,8 +176,8 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
     await t.test('import remains draft; precheck is read-only and XLSX claims never establish trusted review',async()=>{
       const s=await fixture(admin,{import_evidence:{human_review_status:'approved',ai_flags:['ANSWER_AI_INFERRED'],review_gates:{math_review_status:'passed',taxonomy_review_status:'passed',source_rights_status:'passed',render_review_status:'passed'}}});
       const before=await state(admin,s),p=await precheck(admin,s);assert.equal(p.eligible,false);assert.ok(p.issues.some(i=>i.code==='QB_REVIEW_REQUIRED'));
-      assert.ok(p.issues.some(i=>i.code==='QB_FLAG_UNRESOLVED'));assert.deepEqual(await state(admin,s),before);
-      await blocked(publish(admin,s,p),'QB_LOCATOR_UNVERIFIED');assert.equal((await state(admin,s)).status,'draft');
+      assert.deepEqual(p.issues.map(i=>i.code),['QB_REVIEW_REQUIRED']);assert.deepEqual(await state(admin,s),before);
+      await blocked(publish(admin,s,p),'QB_REVIEW_REQUIRED');assert.equal((await state(admin,s)).status,'draft');
       assert.equal(await scalar(db,'SELECT count(*)::int result FROM public.question_version_reviews WHERE question_version_id=$1',[s.v]),0);
     });
     await t.test('first publication uses explicit server review; withdraw/republish retain same approved version and audit',async()=>{
@@ -149,6 +185,8 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       await publish(admin,s,await ready(admin,s));let st=await state(admin,s);assert.equal(st.status,'approved');assert.equal(st.current_version_id,s.v);
       const r=await scalar(db,'SELECT to_jsonb(r) result FROM public.question_version_reviews r WHERE question_version_id=$1',[s.v]);assert.equal(r.reviewed_by,adminId);assert.ok(Date.parse(r.reviewed_at));
       assert.deepEqual(await scalar(db,'SELECT import_evidence result FROM public.question_versions WHERE id=$1',[s.v]),originalEvidence);
+      assert.deepEqual(await scalar(db,"SELECT jsonb_build_array(calculator_policy,source_type,source_locator_verified) result FROM public.question_versions WHERE id=$1",[s.v]),[null,null,false]);
+      assert.deepEqual(r.review_data,{confirmed:true});assert.equal(r.content_fingerprint,await scalar(db,'SELECT public.question_bank_content_fingerprint($1) result',[s.v]));
       await action(admin,'unpublish_question',s);st=await state(admin,s);assert.equal(st.status,'unpublished');assert.equal(st.current_version_id,s.v);assert.equal(st.versions[0].status,'approved');
       await action(admin,'republish_question',s);st=await state(admin,s);assert.equal(st.status,'approved');assert.equal(st.versions.length,1);
       assert.deepEqual(st.events.map(e=>e.action),['publish','unpublish','republish']);assert.ok(st.events.every(e=>e.actor_id===adminId));
@@ -172,14 +210,16 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       st=await state(admin,s);assert.equal(st.status,'unpublished');assert.equal(st.current_version_id,r.v);
       await publish(admin,withdrawn,await ready(admin,withdrawn));st=await state(admin,s);assert.equal(st.status,'approved');assert.equal(st.current_version_id,withdrawn.v);
     });
-    await t.test('missing confirmations, unresolved/unknown flags and spoofed audit identity fail without mutations',async()=>{
-      const s=await fixture(admin),before=await getDraft(admin,s);
-      for(const [change,code] of [
-        [x=>{x.math.confirmed=false;},'QB_CONFIRMATION_REQUIRED'],[x=>{x.source.notes='';},'QB_CONFIRMATION_REQUIRED'],
-        [x=>{x.source.locator_verified=false;},'QB_LOCATOR_UNVERIFIED'],[x=>{x.flag_resolutions={};},'QB_FLAG_UNRESOLVED'],
-        [x=>{x.flag_resolutions.UNKNOWN='Invented';},'QB_UNKNOWN_FLAG'],[x=>{x.reviewed_by=studentId;},'QB_INVALID_REVIEW'],
-        [x=>{x.calculator_policy='unknown';},'QB_INVALID_REVIEW'],
-      ]){const input=reviewInput();change(input);await blocked(record(admin,s,input),code);assert.deepEqual(await getDraft(admin,s),before);}
+    await t.test('missing/false/spoofed confirmation is rejected without any review or content write',async()=>{
+      const d=await fixture(admin),before=await getDraft(admin,d);
+      for(const [input,code] of [[{},'QB_INVALID_REVIEW'],[{confirmed:false},'QB_CONFIRMATION_REQUIRED'],
+        [{confirmed:'true'},'QB_CONFIRMATION_REQUIRED'],[{confirmed:null},'QB_CONFIRMATION_REQUIRED'],
+        [{confirmed:true,reviewed_by:studentId},'QB_INVALID_REVIEW'],[{confirmed:true,reviewed_at:'2026-01-01'},'QB_INVALID_REVIEW']]){
+        await blocked(record(admin,d,input),code);assert.deepEqual(await getDraft(admin,d),before);
+      }
+      assert.equal(await scalar(db,'SELECT count(*)::int result FROM public.question_version_reviews WHERE question_version_id=$1',[d.v]),0);
+      const p=await precheck(admin,d);await admin.query("UPDATE public.question_versions SET difficulty='hard' WHERE id=$1",[d.v]);
+      await blocked(scalar(admin,'SELECT public.record_question_version_review($1,$2,$3,$4::jsonb) result',[d.q,d.v,p.fingerprint,JSON.stringify(reviewInput())]),'QB_STALE');
     });
     await t.test('raw answer/solution tables and reviews remain admin-only; withdrawal hides identity from students and anon',async()=>{
       const s=await fixture(admin);await publish(admin,s,await ready(admin,s));
@@ -217,7 +257,7 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       const latest=await getDraft(admin,s);await admin.query('SELECT public.update_question_bank_draft_metadata($1,$2,$3,$4::jsonb)',[s.q,s.v,latest.fingerprint,JSON.stringify(metadata())]);
       assert.equal((await getDraft(admin,s)).version.difficulty,'hard');assert.ok((await precheck(admin,s)).issues.some(i=>i.code==='QB_REVIEW_STALE'));
     });
-    await t.test('missing options, correct answer, canonical skill, figure or publication facts block content checks',async()=>{
+    await t.test('invalid structure, missing/duplicate answers, canonical skills, required figures and source location still fail',async()=>{
       const s=await fixture(admin);await ready(admin,s);
       await admin.query('UPDATE public.question_options SET is_correct=false WHERE question_version_id=$1',[s.v]);
       assert.ok((await precheck(admin,s)).issues.some(i=>i.code==='QB_CORRECT_COUNT'));
@@ -227,10 +267,20 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       await admin.query('DELETE FROM public.question_practice_skills WHERE question_version_id=$1',[s.v]);
       assert.ok((await precheck(admin,s)).issues.some(i=>i.code==='QB_TAXONOMY'));
       await admin.query('UPDATE public.question_versions SET requires_figure=true,calculator_policy=NULL,source_type=NULL WHERE id=$1',[s.v]);
-      const codes=(await precheck(admin,s)).issues.map(i=>i.code);for(const code of ['QB_FIGURE_REQUIRED','QB_CALCULATOR_REQUIRED','QB_SOURCE_TYPE_REQUIRED'])assert.ok(codes.includes(code));
+      const codes=(await precheck(admin,s)).issues.map(i=>i.code);assert.ok(codes.includes('QB_FIGURE_REQUIRED'));assert.ok(!codes.includes('QB_CALCULATOR_REQUIRED'));assert.ok(!codes.includes('QB_SOURCE_TYPE_REQUIRED'));
       await assert.rejects(publish(admin,s));assert.equal((await state(admin,s)).status,'draft');
-      const printed=await fixture(admin,{source_question_number:'8',source_locator:null});const input=reviewInput();input.source.locator_verified=false;
-      await blocked(record(admin,printed,input),'QB_PRINTED_NUMBER_UNVERIFIED');input.source.printed_number_verified=true;assert.equal((await record(admin,printed,input)).precheck.eligible,true);
+      const printed=await fixture(admin,{source_question_number:'8',source_locator:null});
+      assert.equal((await record(admin,printed)).precheck.eligible,true);
+      const multiple=await fixture(admin);await assert.rejects(admin.query('UPDATE public.question_options SET is_correct=true WHERE question_version_id=$1',[multiple.v]),e=>e.code==='23505');
+      assert.equal((await record(admin,multiple)).precheck.eligible,true);
+      const source=await fixture(admin);
+      await assert.rejects(admin.query("UPDATE public.question_versions SET stem='' WHERE id=$1",[source.v]),/check constraint/);
+      await assert.rejects(admin.query("UPDATE public.question_versions SET solution='' WHERE id=$1",[source.v]),/check constraint/);
+      await assert.rejects(admin.query('UPDATE public.question_versions SET primary_topic_id=$2 WHERE id=$1',[source.v,'ffffffff-ffff-ffff-ffff-ffffffffffff']),/foreign key constraint/);
+      await admin.query("UPDATE public.question_versions SET source_locator='p013-item01' WHERE id=$1",[source.v]);
+      await blocked(record(admin,source),'QB_LOCATOR_PAGE');
+      await assert.rejects(admin.query('UPDATE public.question_versions SET source_locator=NULL WHERE id=$1',[source.v]),/check constraint/);
+
     });
     await t.test('no reparenting can steal published options, skills or secondary topics into another draft',async()=>{
       const s=await fixture(admin),d=await fixture(admin);

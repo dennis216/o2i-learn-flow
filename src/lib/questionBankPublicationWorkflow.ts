@@ -5,62 +5,23 @@ import { loadAllUnpublishedQuestions } from "./questionBankDraftRepository.ts";
 import { loadQuestionPublicationState, precheckQuestionPublication, recordQuestionVersionReview,
   publishQuestionVersions, type HumanQuestionReview, type PublicationPrecheck, type PublicationTarget } from "./questionBankPublication.ts";
 
-export interface ReviewWorkCopy {
-  calculator: string; sourceType: string; locatorVerified: boolean; printedNumberVerified: boolean;
-  math: { confirmed: boolean; notes: string }; taxonomy: { confirmed: boolean; notes: string };
-  source: { confirmed: boolean; notes: string }; render: { confirmed: boolean; notes: string };
-  resolutions: Record<string, string>;
-}
 export interface PublicationPlanItem {
   item: QuestionBankListItem; check: PublicationPrecheck; flags: string[];
   printedNumber: string | null; locator: string | null; sourceDocument: string; sourcePage: number;
   sourceType: string | null; calculator: string | null; locatorVerified: boolean;
-  evidence: Json; form: ReviewWorkCopy;
+  evidence: Json;
 }
 const object = (v: Json): Record<string, Json> => v && typeof v === "object" && !Array.isArray(v) ? v : {};
 
-/** Match the server's original flag union; malformed evidence is never silently treated as resolved. */
+/** Reference only. Raw evidence is also retained and displayed, including unsupported flag formats. */
 export function originalReviewFlags(evidence: Json): string[] {
   const data = object(evidence), original = object(data.original_import_evidence ?? null);
   const flags = [Object.prototype.hasOwnProperty.call(data, "ai_flags") ? data.ai_flags : [],
     Object.prototype.hasOwnProperty.call(original, "ai_flags") ? original.ai_flags : []];
-  if (flags.some(value => !Array.isArray(value) || value.some(flag => typeof flag !== "string" || !flag.trim())))
-    throw new Error("Original flag evidence is invalid. It cannot be cleared or ignored here.");
-  return [...new Set(flags.flat() as string[])].sort();
+  return [...new Set(flags.flatMap(value => Array.isArray(value)
+    ? value.filter((flag): flag is string => typeof flag === "string" && !!flag.trim()) : []))].sort();
 }
-export function emptyReviewWorkCopy(calculator = "", sourceType = ""): ReviewWorkCopy {
-  return { calculator, sourceType, locatorVerified: false, printedNumberVerified: false,
-    math: { confirmed: false, notes: "" }, taxonomy: { confirmed: false, notes: "" },
-    source: { confirmed: false, notes: "" }, render: { confirmed: false, notes: "" }, resolutions: {} };
-}
-
-/** A publication-fact change invalidates browser confirmations too, not only saved server reviews. */
-export function changeReviewFacts(form: ReviewWorkCopy, patch: Partial<Pick<ReviewWorkCopy, "calculator" | "sourceType">>): ReviewWorkCopy {
-  return { ...form, ...patch, math: { ...form.math, confirmed: false }, taxonomy: { ...form.taxonomy, confirmed: false },
-    source: { ...form.source, confirmed: false }, render: { ...form.render, confirmed: false } };
-}
-/** No imported status, notes, flags, reviewer or identity can set a confirmation to true. */
-export function buildHumanReview(plan: PublicationPlanItem, form: ReviewWorkCopy): HumanQuestionReview {
-  for (const key of ["math", "taxonomy", "source", "render"] as const)
-    if (form[key].confirmed !== true || !form[key].notes.trim()) throw new Error(`Confirm ${key} review and explain the verification.`);
-  if (!["no_calculator", "calculator_allowed", "calculator_required"].includes(form.calculator)) throw new Error("Choose the verified calculator policy.");
-  if (!["original", "licensed", "public_domain", "permission_granted"].includes(form.sourceType)) throw new Error("Choose a supported source-use category based on actual evidence.");
-  if (plan.printedNumber ? !form.printedNumberVerified : !plan.locator || !form.locatorVerified)
-    throw new Error(plan.printedNumber ? "Verify the question number is printed in the source." : "Verify that the locator uniquely identifies the source question.");
-  if (form.locatorVerified && !plan.locator) throw new Error("An absent locator cannot be verified.");
-  if (plan.item.versionStatus !== "draft" && (form.calculator !== plan.calculator || form.sourceType !== plan.sourceType
-    || form.locatorVerified !== plan.locatorVerified)) throw new Error("Publication facts are read-only for this version. Return to draft or save a revision before changing them.");
-  const flag_resolutions = Object.fromEntries(plan.flags.map(flag => {
-    if (!form.resolutions[flag]?.trim()) throw new Error(`Record how ${flag} was resolved.`);
-    return [flag, form.resolutions[flag].trim()];
-  }));
-  return { math: { confirmed: true, notes: form.math.notes.trim() }, taxonomy: { confirmed: true, notes: form.taxonomy.notes.trim() },
-    source: { confirmed: true, notes: form.source.notes.trim(), source_type: form.sourceType as HumanQuestionReview["source"]["source_type"],
-      locator_verified: form.locatorVerified, printed_number_verified: form.printedNumberVerified },
-    render: { confirmed: true, notes: form.render.notes.trim() }, calculator_policy: form.calculator as HumanQuestionReview["calculator_policy"], flag_resolutions };
-}
-const reviewFixable = new Set(["QB_REVIEW_REQUIRED", "QB_REVIEW_STALE", "QB_CALCULATOR_REQUIRED", "QB_SOURCE_TYPE_REQUIRED",
-  "QB_LOCATOR_UNVERIFIED", "QB_PRINTED_NUMBER_UNVERIFIED", "QB_FLAG_UNRESOLVED"]);
+const reviewFixable = new Set(["QB_REVIEW_REQUIRED", "QB_REVIEW_STALE"]);
 export const publicationContentBlockers = (plan: PublicationPlanItem) => plan.check.issues.filter(issue => !reviewFixable.has(issue.code));
 export const publicationTarget = (plan: PublicationPlanItem): PublicationTarget => {
   if (!plan.check.fingerprint) throw new Error("Reload this publication target before continuing.");
@@ -79,32 +40,29 @@ export async function loadPublicationPlan(client: SupabaseClient<Database>, sing
     const v = response.data;
     if (!v || v.status !== item.versionStatus || check.question_status !== item.questionStatus || !check.fingerprint)
       throw new Error("The selected question changed. Refresh the list before publishing.");
-    const form = emptyReviewWorkCopy(v.calculator_policy ?? "", v.source_type ?? "");
-    // Existing content facts may be shown, but never infer a human confirmation.
-    if (v.status !== "draft") form.locatorVerified = v.source_locator_verified;
     return { item, check, flags: originalReviewFlags(v.import_evidence), printedNumber: v.source_question_number,
       locator: v.source_locator, locatorVerified: v.source_locator_verified, sourceDocument: v.source_document,
-      sourcePage: v.source_page, calculator: v.calculator_policy, sourceType: v.source_type, evidence: v.import_evidence, form };
+      sourcePage: v.source_page, calculator: v.calculator_policy, sourceType: v.source_type, evidence: v.import_evidence };
   }));
 }
 
-export function validatePublicationSelection(plans: readonly PublicationPlanItem[], selected: ReadonlySet<string>, freshReviews: ReadonlySet<string>) {
+export function validatePublicationSelection(plans: readonly PublicationPlanItem[], selected: ReadonlySet<string>, confirmed: boolean) {
+  if (confirmed !== true) throw new Error("Confirm that you checked the selected content, answers, display and Topic/Skills.");
   const chosen = plans.filter(plan => selected.has(plan.item.id));
   if (!chosen.length || chosen.length > 20 || chosen.length !== selected.size) throw new Error("Select 1–20 listed problems for one atomic publication.");
   if (new Set(chosen.map(plan => plan.item.id)).size !== chosen.length) throw new Error("A question cannot appear twice.");
   return chosen.map(plan => {
     if (publicationContentBlockers(plan).length) throw new Error(`${plan.item.externalId}: resolve the content issues before publication.`);
-    const reuse = plan.check.eligible && plan.check.review?.current && !freshReviews.has(plan.item.id);
-    return { plan, target: publicationTarget(plan), review: reuse ? null : buildHumanReview(plan, plan.form) };
+    return { plan, target: publicationTarget(plan), review: { confirmed: true } satisfies HumanQuestionReview };
   });
 }
 
-/** Only the FINAL confirmation calls this. Review records are explicit writes; publication itself is one atomic RPC. */
-export async function confirmPublicationPlan(client: SupabaseClient<Database>, plans: readonly PublicationPlanItem[], selected: ReadonlySet<string>, freshReviews: ReadonlySet<string>) {
-  const chosen = validatePublicationSelection(plans, selected, freshReviews);
+/** Only the final Publish click calls this. Review records are explicit writes; publication itself is one atomic RPC. */
+export async function confirmPublicationPlan(client: SupabaseClient<Database>, plans: readonly PublicationPlanItem[], selected: ReadonlySet<string>, confirmed: boolean) {
+  const chosen = validatePublicationSelection(plans, selected, confirmed);
   const targets: PublicationTarget[] = [];
   for (const { plan, target, review } of chosen) {
-    const check = review ? (await recordQuestionVersionReview(client, target, review)).precheck : plan.check;
+    const check = (await recordQuestionVersionReview(client, target, review)).precheck;
     if (!check.eligible || !check.fingerprint) throw new Error(`${plan.item.externalId}: server review did not pass. No publication request was made.`);
     targets.push({ ...target, expected_fingerprint: check.fingerprint });
   }

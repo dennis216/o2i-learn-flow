@@ -60,8 +60,8 @@ test('loaded empty canonical sets are verified and genuinely missing codes still
 
 test('publication classification is stable when display messages change language', () => {
   const report = validated(sheets());
-  const calculatorIssue = report.issues.find(issue => issue.field === 'calculator_policy');
-  assert.equal(isPublicationReviewIssue({ ...calculatorIssue, message: 'Any translated missing-policy message' }), true);
+  assert.ok(!report.issues.some(issue => issue.field === 'calculator_policy'));
+  assert.equal(isPublicationReviewIssue({ category:'publication_review', message:'Any translated message' }), true);
   const input = sheets();
   input[0].data[1][input[0].data[0].indexOf('math_review_status')] = 'invalid';
   const invalidGate = validated(input).issues.find(issue => issue.field === 'math_review_status' && issue.severity === 'error');
@@ -121,7 +121,7 @@ test('undo restores one row and cancellation never creates a save payload', () =
   assert.deepEqual(getQuestionEditChanges(original, original), []);
 });
 
-test('pending review and unresolved flags are publication tasks, not draft-save errors', () => {
+test('pending review and original flags remain evidence; only one publication confirmation is requested', () => {
   const original = sheets();
   const report = validated(original);
   const plan = buildQuestionBankDraftSavePlan(report, references);
@@ -129,8 +129,9 @@ test('pending review and unresolved flags are publication tasks, not draft-save 
   assert.equal(plan.batchReasons.length, 0);
   assert.equal(report.questions[0].humanReviewStatus, 'pending');
   assert.equal(report.questions[0].reviewGates.math_review_status, 'pending');
-  assert.ok(getPublicationReviewTasks(report.questions[0]).some((item) => item.includes('ANSWER_AI_INFERRED')));
-  assert.ok(getPublicationReviewTasks(report.questions[0]).some((item) => item.includes('source_type')));
+  assert.deepEqual(plan.payload[0].import_evidence.ai_flags,['ANSWER_AI_INFERRED']);
+  assert.equal(getPublicationReviewTasks().length,1);
+  assert.match(getPublicationReviewTasks()[0],/confirm once/);
 });
 
 test('claimed XLSX approval with unpassed gates or AI flags still saves only a draft', () => {
@@ -138,7 +139,7 @@ test('claimed XLSX approval with unpassed gates or AI flags still saves only a d
   const header = input[0].data[0];
   input[0].data[1][header.indexOf('human_review_status')] = 'approved';
   const report = validated(input);
-  assert.ok(report.issues.some((issue) => issue.severity === 'error' && issue.field === 'math_review_status'));
+  assert.ok(!report.issues.some((issue) => issue.severity === 'error' && issue.field === 'math_review_status'));
   const plan = buildQuestionBankDraftSavePlan(report, references);
   assert.equal(plan.canSave, true);
   assert.equal(plan.payload[0].import_evidence.human_review_status, 'approved');

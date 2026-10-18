@@ -16,15 +16,7 @@ export interface PublicationPrecheck {
 export interface PublicationTarget {
   question_id: string; version_id: string; expected_fingerprint: string; action: PublicationAction;
 }
-export interface HumanQuestionReview {
-  math: { confirmed: true; notes: string };
-  taxonomy: { confirmed: true; notes: string };
-  source: { confirmed: true; notes: string; source_type: Database["public"]["Enums"]["question_source_type"];
-    locator_verified: boolean; printed_number_verified: boolean };
-  render: { confirmed: true; notes: string };
-  calculator_policy: Database["public"]["Enums"]["question_calculator_policy"];
-  flag_resolutions: Record<string, string>;
-}
+export interface HumanQuestionReview { confirmed: true }
 export interface PublicationEvent {
   id: string; question_id: string; version_id: string; previous_version_id: string | null;
   action: PublicationAction | "unpublish" | "archive"; request_fingerprint: string; actor_id: string; occurred_at: string;

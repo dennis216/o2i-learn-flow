@@ -1,4 +1,4 @@
-import { isValidReviewTimestamp, type QuestionBankReport, type PreviewQuestion, type ValidationIssue } from "./questionBankImport.ts";
+import type { QuestionBankReport, PreviewQuestion, ValidationIssue } from "./questionBankImport.ts";
 import type { QuestionBankReferences } from "./questionBankImportPlan.ts";
 import type { QuestionEditChange } from "./questionBankPreviewEdits.ts";
 
@@ -29,17 +29,8 @@ export function isPublicationReviewIssue(issue: ValidationIssue): boolean {
 export const describeQuestionBankIssue = (issue: ValidationIssue): string =>
   `${issue.sheet} row ${issue.row} · ${issue.field}: ${issue.message}`;
 
-export function getPublicationReviewTasks(question: PreviewQuestion): string[] {
-  return [
-    ...(question.humanReviewStatus !== "approved" ? [`Human review status: ${question.humanReviewStatus || "not provided"}`] : []),
-    ...Object.entries(question.reviewGates).filter(([, value]) => value !== "passed")
-      .map(([gate, value]) => `${gate}: ${value || "not provided"}; not passed`),
-    ...(!question.reviewedBy ? ["Human reviewer not provided"] : []),
-    ...(!isValidReviewTimestamp(question.reviewedAt) ? ["Valid review timestamp not provided"] : []),
-    ...question.aiFlags.map((flag) => `AI flag for human review: ${flag}`),
-    ...(!question.calculatorPolicy ? ["Calculator policy is undecided"] : []),
-    "source_type is not supplied by this XLSX; establish it before publication",
-  ];
+export function getPublicationReviewTasks(): string[] {
+  return ["Before publishing, check the content, correct answer, display and Topic/Skills, then confirm once in the Publish window."];
 }
 
 /** Pure client-side gate. The database RPC repeats security and integrity checks. */

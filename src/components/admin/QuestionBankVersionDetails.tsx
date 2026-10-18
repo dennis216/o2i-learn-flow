@@ -7,7 +7,7 @@ import { loadQuestionBankVersionPreview, type QuestionBankListItem, type Questio
 /** Closed disclosures do not load every option/solution in a large publication plan. */
 export function QuestionBankPreviewDisclosure({ item }: { item: QuestionBankListItem }) {
   const [open, setOpen] = useState(false);
-  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary className="cursor-pointer">Question preview and source</summary>
+  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary className="cursor-pointer">Question preview</summary>
     {open && <QuestionBankVersionDetails item={item} />}
   </details>;
 }
@@ -38,12 +38,12 @@ export function QuestionBankVersionDetails({ item }: { item: QuestionBankListIte
           {option.is_correct && <p className="mt-1 font-semibold text-green-700 dark:text-green-400">Correct answer</p>}
         </div></div>)}{!preview.options.length && <p>No options recorded.</p>}</div>
       <details><summary className="cursor-pointer font-semibold">Solution</summary><MarkdownWithMath content={preview.solution} className="mt-2 overflow-x-auto" strictMath /></details>
-      <div className="space-y-1 break-words rounded bg-muted/50 p-3">
+      <p>CED {item.topicCode} · {item.topicTitle} · Practice Skills: {item.practiceSkillCodes.join(", ") || "none"}</p>
+      <details className="space-y-1 break-words rounded bg-muted/50 p-3"><summary>Source details</summary>
         <p>Source: {preview.sourceDocument} · Physical PDF page: {preview.sourcePage}</p>
         <p>Printed question number: {preview.sourceQuestionNumber || "not recorded"} · Locator: {preview.sourceLocator || "not provided"}</p>
         {preview.sourceReference && <p>Source reference: {preview.sourceReference}</p>}
-        <p>CED {item.topicCode} · {item.topicTitle} · Practice Skills: {item.practiceSkillCodes.join(", ") || "none"}</p>
-      </div>
+      </details>
       {preview.imageUrl ? <img src={preview.imageUrl} alt="Source question figure" className="max-h-96 max-w-full object-contain" />
         : preview.requiresFigure && <p className="text-amber-700">A required figure is missing.</p>}
     </>}

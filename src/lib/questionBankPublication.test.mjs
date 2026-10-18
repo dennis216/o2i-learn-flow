@@ -9,9 +9,7 @@ const precheck=(t=target())=>({question_id:t.question_id,version_id:t.version_id
 const result=(t=target(),status='approved')=>({question_id:t.question_id,version_id:t.version_id,action:t.action,status,
   current_version_id:status==='retired'?null:t.version_id,event_id:'server-event',fingerprint:'new-snapshot'});
 const client=handler=>({calls:[],async rpc(name,args){this.calls.push([name,structuredClone(args)]);return handler(name,args);}});
-const review={math:{confirmed:true,notes:'Synthetic math verification'},taxonomy:{confirmed:true,notes:'Synthetic taxonomy verification'},
-  source:{confirmed:true,notes:'Synthetic source-use basis',source_type:'original',locator_verified:true,printed_number_verified:false},
-  render:{confirmed:true,notes:'Synthetic rendering verification'},calculator_policy:'no_calculator',flag_resolutions:{ANSWER_AI_INFERRED:'Independent recomputation'}};
+const review={confirmed:true};
 const metadata={difficulty:'hard',calculator_policy:null,course_scope:'AB',representation_type:'analytical',primary_topic_code:'1.1',
   practice_skill_codes:['1.A'],source_page:'12-13',source_locator:'p012-item01'};
 
@@ -53,8 +51,8 @@ test('withdraw/archive preserve exact target and expected old value; status is n
   assert.ok(c.calls.every(([,args])=>args._version_id==='v'&&args._expected_fingerprint==='expected-old-snapshot'));
 });
 test('stable server issue codes survive translated messages and failed requests are never automatically retried',async()=>{
-  const c=client(()=>({data:null,error:{code:'P0001',message:'Any translated message',details:JSON.stringify({code:'QB_FLAG_UNRESOLVED',flag:'ANSWER_AI_INFERRED'})}}));
-  await assert.rejects(publishQuestionVersion(c,target()),e=>e instanceof QuestionPublicationError&&e.code==='QB_FLAG_UNRESOLVED'&&e.details.flag==='ANSWER_AI_INFERRED');
+  const c=client(()=>({data:null,error:{code:'P0001',message:'Any translated message',details:JSON.stringify({code:'QB_TAXONOMY',flag:'ANSWER_AI_INFERRED'})}}));
+  await assert.rejects(publishQuestionVersion(c,target()),e=>e instanceof QuestionPublicationError&&e.code==='QB_TAXONOMY'&&e.details.flag==='ANSWER_AI_INFERRED');
   assert.equal(c.calls.length,1);
   const permission=client(()=>({data:null,error:{code:'42501',message:'permission denied',details:''}}));
   await assert.rejects(loadQuestionPublicationState(permission,'q'),e=>e.code==='QB_FORBIDDEN');

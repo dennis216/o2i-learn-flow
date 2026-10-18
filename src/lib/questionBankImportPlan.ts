@@ -1,4 +1,4 @@
-import { isValidReviewTimestamp, type QuestionBankReport, type ValidationIssue } from "./questionBankImport.ts";
+import type { QuestionBankReport, ValidationIssue } from "./questionBankImport.ts";
 
 export interface QuestionBankReferences {
   topics: readonly { id: string; topic_code: string; title: string }[];
@@ -32,10 +32,6 @@ export interface QuestionBankImportPlan {
   practiceSkillMappingCount: number;
 }
 
-const REVIEW_GATES = [
-  "math_review_status", "source_rights_status", "taxonomy_review_status", "render_review_status",
-] as const;
-
 const describeIssue = (issue: ValidationIssue) =>
   `${issue.sheet} 第 ${issue.row} 行 · ${issue.field}：${issue.message}`;
 
@@ -59,8 +55,6 @@ export function buildQuestionBankImportPlan(
     const canonicalBlocked = !topic || question.practiceSkillCodes.length === 0 || missingSkills.length > 0;
     const ownErrors = report.issues.filter((issue) =>
       issue.severity === "error" && issue.questionExternalId === id);
-    const unresolvedFlags = question.aiFlags.filter((flag) =>
-      flag !== "FIGURE_REQUIRED" || !question.requiresFigure || !question.figureReference || !question.imageUrl);
     const reasons = [
       ...batchErrors.map(describeIssue),
       ...ownErrors.map(describeIssue),
@@ -68,12 +62,7 @@ export function buildQuestionBankImportPlan(
       ...(!topic ? [`primary_topic_code ${question.primaryTopicCode || "空"} 无法解析为规范 Topic UUID`] : []),
       ...(question.practiceSkillCodes.length === 0 ? ["practice_skill_codes 为空，无法解析规范 Skill UUID"] : []),
       ...missingSkills.map((code) => `practice_skill_codes ${code} 无法解析为规范 Skill UUID`),
-      ...(question.humanReviewStatus !== "approved" ? [`human_review_status=${question.humanReviewStatus || "空"}，尚未人工批准`] : []),
-      ...REVIEW_GATES.filter((gate) => question.reviewGates[gate] !== "passed")
-        .map((gate) => `${gate}=${question.reviewGates[gate] || "空"}，尚未通过`),
-      ...(!question.reviewedBy ? ["reviewed_by 缺失"] : []),
-      ...(!isValidReviewTimestamp(question.reviewedAt) ? ["reviewed_at 缺失或不是有效 ISO 8601 时间"] : []),
-      ...unresolvedFlags.map((flag) => `未解决的阻断性 ai_flags：${flag}`),
+      ...(question.humanReviewStatus !== "approved" ? [`human_review_status=${question.humanReviewStatus || "空"}，导入后仍需在 Publish 窗口确认`] : []),
     ];
     if (question.readiness === "blocked" && !ownErrors.length && !batchErrors.length) {
       reasons.push("题目未通过现有结构与内容校验");
