@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { QuestionBankDraftEditor } from "./QuestionBankDraftEditor";
 import { loadQuestionBankPage, loadQuestionBankVersionPreview,
   type QuestionBankListItem, type QuestionBankListKind, type QuestionBankPage,
   type QuestionBankVersionPreview } from "@/lib/questionBankDraftRepository";
@@ -14,8 +15,9 @@ const message = (error: unknown) => error instanceof Error ? error.message : Str
 const statusLabel = (item: QuestionBankListItem) => item.kind === "published" ? "Published"
   : item.versionStatus === "review" ? "Under review · Unpublished" : "Draft · Unpublished";
 
-function QuestionBankList({ kind, refreshKey, onPreview }: {
+function QuestionBankList({ kind, refreshKey, onPreview, onEdit }: {
   kind: QuestionBankListKind; refreshKey: number; onPreview: (item: QuestionBankListItem) => void;
+  onEdit: (item: QuestionBankListItem) => void;
 }) {
   const [page, setPage] = useState(0);
   const [retry, setRetry] = useState(0);
@@ -71,6 +73,9 @@ function QuestionBankList({ kind, refreshKey, onPreview }: {
           <p className="text-muted-foreground">Practice Skills: {item.practiceSkillCodes.join(", ") || "none"}</p>
           <Button type="button" variant="outline" size="sm" aria-label={`Preview ${item.externalId} ${kind === "drafts" ? "working" : "published"} version`}
             onClick={() => onPreview(item)}>Preview</Button>
+          {kind === "drafts" && <Button type="button" variant="outline" size="sm" className="ml-2"
+            aria-label={`${item.versionStatus === "draft" ? "Edit" : "Return to draft"} ${item.externalId}`}
+            onClick={() => onEdit(item)}>{item.versionStatus === "draft" ? "Edit" : "Return to draft"}</Button>}
         </article>)}
         {!busy && !error && result && result.total > 0 && <nav aria-label={`${title} pagination`} className="flex flex-wrap items-center justify-between gap-3 text-sm">
           <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, result.total)} of {result.total}</span>
@@ -138,9 +143,12 @@ function VersionPreview({ item, onClose }: { item: QuestionBankListItem; onClose
 /** Independent of workbook state: remounts always read the database again. */
 export function QuestionBankLibrary({ refreshKey }: { refreshKey: number }) {
   const [selected, setSelected] = useState<QuestionBankListItem | null>(null);
+  const [editing, setEditing] = useState<QuestionBankListItem | null>(null);
+  const [editRefresh, setEditRefresh] = useState(0);
   return <>
-    <QuestionBankList kind="drafts" refreshKey={refreshKey} onPreview={setSelected} />
-    <QuestionBankList kind="published" refreshKey={refreshKey} onPreview={setSelected} />
+    <QuestionBankList kind="drafts" refreshKey={refreshKey + editRefresh} onPreview={setSelected} onEdit={setEditing} />
+    <QuestionBankList kind="published" refreshKey={refreshKey + editRefresh} onPreview={setSelected} onEdit={setEditing} />
     {selected && <VersionPreview key={selected.versionId} item={selected} onClose={() => setSelected(null)} />}
+    {editing && <QuestionBankDraftEditor key={editing.versionId} item={editing} onClose={() => setEditing(null)} onChanged={() => setEditRefresh(value => value + 1)} />}
   </>;
 }

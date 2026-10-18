@@ -1704,6 +1704,18 @@ export type Database = {
       }
     }
     Functions: {
+      get_question_bank_draft: {
+        Args: { _question_id: string; _version_id: string }
+        Returns: Json
+      }
+      update_question_bank_draft_metadata: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string; _metadata: Json }
+        Returns: string
+      }
+      delete_question_bank_draft: {
+        Args: { _question_id: string; _version_id: string; _expected_fingerprint: string; _delete_question: boolean }
+        Returns: Json
+      }
       save_question_bank_drafts: {
         Args: { _items: Json }
         Returns: Json
