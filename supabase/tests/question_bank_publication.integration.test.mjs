@@ -28,11 +28,18 @@ const bootstrap=()=>{
     CREATE TABLE public.courses(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text);
     CREATE TABLE public.course_videos(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),course_id uuid REFERENCES public.courses(id),title text);
     CREATE TABLE public.practice_problems(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),sentinel text);
+    ${read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql').split('-- Create courses table')[0]}
+    ALTER TABLE public.profiles ADD COLUMN is_zombie boolean DEFAULT false;
+    ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT TO authenticated USING(auth.uid()=user_id);
+    CREATE POLICY "Authenticated users can view profiles" ON public.profiles FOR SELECT TO authenticated USING(true);
+    ${read('supabase/migrations/20260525044729_00ea1da8-8cd3-47b3-8b34-1c9988f575cf.sql').slice(read('supabase/migrations/20260525044729_00ea1da8-8cd3-47b3-8b34-1c9988f575cf.sql').indexOf('CREATE VIEW public.public_profiles'))}
     ${tax.slice(tax.indexOf('CREATE TABLE public.curriculum_frameworks'),tax.indexOf('ALTER TABLE public.course_videos'))}
     ${fn(roles,'has_role')}${fn(roles,'is_super_admin')}
     ${fn(read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql'),'update_updated_at_column')}
     INSERT INTO auth.users(id,email) VALUES('${adminId}','task4c-admin@example.test'),('${studentId}','task4c-student@example.test'),('${superId}','task4c-super@example.test');
     INSERT INTO public.user_roles(user_id,role) VALUES('${adminId}','admin'),('${studentId}','student'),('${superId}','super_admin');
+    INSERT INTO public.profiles(user_id,full_name,email) SELECT id,'Synthetic profile',email FROM auth.users;
     INSERT INTO public.courses(title) VALUES('Synthetic existing course');
     INSERT INTO public.course_videos(course_id,title) SELECT id,'Synthetic existing video' FROM public.courses;
     INSERT INTO public.practice_problems(sentinel) VALUES('Synthetic legacy unchanged');
@@ -94,8 +101,14 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
     let available=false;for(let i=0;i<120;i++){try{docker(['exec',container,'pg_isready','-h','127.0.0.1','-U','supabase_admin']);available=true;break;}catch{await new Promise(r=>setTimeout(r,250));}}assert.ok(available);
     docker(['exec',container,'psql','-U','supabase_admin','-d','postgres','-c',`ALTER ROLE postgres PASSWORD '${password}';`]);
     db=await connect(null);await db.query(bootstrap());
+    await t.test('main profile-permission migration applies unchanged alongside question-bank dependencies',async()=>{
+      assert.equal(await scalar(db,"SELECT count(*)::int result FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='Authenticated users can view profiles'"),1);
+      await db.query(`BEGIN;${read('supabase/migrations/20261016060546_48537db1-0846-4605-ac50-a306203f5d18.sql')}COMMIT;`);
+      assert.equal(await scalar(db,"SELECT count(*)::int result FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='Authenticated users can view profiles'"),0);
+      assert.deepEqual((await db.query("SELECT reloptions FROM pg_class WHERE oid='public.public_profiles'::regclass")).rows[0].reloptions,['security_invoker=false']);
+    });
     for(const name of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management'])await db.query(`BEGIN;${read(`supabase/migrations/${name}.sql`)}COMMIT;`);
-    const baseline=async()=>{const hashes={};for(const table of ['auth.users','public.user_roles','public.courses','public.course_videos','public.practice_problems'])hashes[table]=await scalar(db,`SELECT md5(jsonb_agg(to_jsonb(t) ORDER BY id)::text) result FROM ${table} t`);return hashes;};
+    const baseline=async()=>{const hashes={};for(const table of ['auth.users','public.user_roles','public.profiles','public.courses','public.course_videos','public.practice_problems'])hashes[table]=await scalar(db,`SELECT md5(jsonb_agg(to_jsonb(t) ORDER BY id)::text) result FROM ${table} t`);return hashes;};
     const original=await baseline();
     // Simulate a previously approved row from the old lifecycle before applying 4C.
     const legacyAdmin=await connect();let legacy;
@@ -109,6 +122,16 @@ test('Task 4C real disposable PostgreSQL publication', {timeout:180000},async t=
       await db.query(`BEGIN;${enumSql}COMMIT;`);await db.query(`BEGIN;${publicationSql}COMMIT;`);
     });
     admin=await connect();
+    await t.test('main public-profile view and own-profile access coexist with question-bank RLS',async()=>{
+      for(const [role,id,own] of [['authenticated',studentId,1],['anon','',0]]){
+        const c=await connect(role,id);try{
+          assert.equal((await c.query('SELECT id FROM public.profiles')).rowCount,own);
+          const visible=await c.query('SELECT * FROM public.public_profiles');assert.equal(visible.rowCount,3);
+          assert.ok(!visible.fields.some(field=>field.name==='email'));
+          assert.equal((await c.query('SELECT id FROM public.question_versions')).rowCount,0);
+        }finally{await c.end();}
+      }
+    });
     await t.test('legacy approved content is preserved but restoration requires fresh trusted confirmation',async()=>{
       const before=await state(admin,legacy);assert.equal(before.status,'approved');assert.equal(before.versions[0].version_id,legacy.v);
       await action(admin,'unpublish_question',legacy);await blocked(action(admin,'republish_question',legacy),'QB_REVIEW_REQUIRED');
