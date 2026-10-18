@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { loadQuestionBankPage, loadQuestionBankVersionPreview } from './questionBankDraftRepository.ts';
+import { loadQuestionBankPage, loadQuestionBankVersionPreview, loadAllUnpublishedQuestions } from './questionBankDraftRepository.ts';
 
 const version = (id, questionId, status, number) => ({
   id, question_id: questionId, status, version_number: number,
@@ -44,7 +44,7 @@ function fixtureClient({ admin = true, authenticated = true, failTable, missingD
       const steps = [];
       calls.push([table, steps]);
       const builder = {};
-      for (const method of ['select', 'eq', 'neq', 'in', 'order', 'range', 'single']) {
+      for (const method of ['select', 'eq', 'neq', 'in', 'order', 'range', 'single', 'or']) {
         builder[method] = (...args) => { steps.push([method, ...args]); return builder; };
       }
       builder.then = (resolve, reject) => Promise.resolve().then(() => {
@@ -52,21 +52,18 @@ function fixtureClient({ admin = true, authenticated = true, failTable, missingD
         if (missingData) return { data: null, error: null, count: null };
         let rows = table === 'questions' ? questions : table === 'question_versions' ? versions : options;
         const select = steps.find(s => s[0] === 'select')?.[1] ?? '';
-        if (table === 'questions' && select.includes('version:')) {
-          const published = select.includes('!questions_current_version_belongs_to_question!inner');
-          rows = rows.map(q => ({ ...q, version: published
-            ? versions.find(v => v.id === q.current_version_id && v.question_id === q.id) ?? null
-            : versions.filter(v => v.question_id === q.id) }));
+        if (table === 'questions' && select.includes('working:')) {
+          rows = rows.map(q => ({ ...q, current: versions.find(v => v.id === q.current_version_id && v.question_id === q.id) ?? null,
+            working: versions.filter(v => v.question_id === q.id) }));
         }
         for (const [method, field, value] of steps) {
           if (!['eq', 'neq', 'in'].includes(method)) continue;
           const matches = actual => method === 'in' ? value.includes(actual) : method === 'eq' ? actual === value : actual !== value;
-          if (field.startsWith('version.')) {
-            rows = rows.map(q => ({ ...q, version: Array.isArray(q.version)
-              ? q.version.filter(v => matches(v[field.slice(8)]))
-              : q.version && matches(q.version[field.slice(8)]) ? q.version : null }));
+          if (field.startsWith('working.')) {
+            rows = rows.map(q => ({ ...q, working: q.working.filter(v => matches(v[field.slice(8)])) }));
           } else rows = rows.filter(r => matches(r[field]));
         }
+        if (steps.some(s => s[0] === 'or')) rows = rows.filter(q => q.status === 'unpublished' || q.working.length);
         if (select.includes('!inner')) rows = rows.filter(q => Array.isArray(q.version) ? q.version.length : q.version);
         const ordering = steps.filter(s => s[0] === 'order');
         rows = [...rows].sort((a, b) => {
@@ -111,6 +108,25 @@ test('published list uses the publication pointer while a newer working revision
   assert.equal(page.items[0].versionNumber, 3);
   assert.equal(page.items[0].topicCode, '1.1');
   assert.deepEqual(page.items[0].practiceSkillCodes, ['1.A']);
+  assert.equal(page.items[0].workingVersionId, 'published-v4');
+});
+
+test('withdrawn identities appear once, preferring a working revision and retaining current pointer', async () => {
+  const {client,questions,versions}=fixtureClient();
+  questions.push(question('withdrawn','unpublished','withdrawn-v2'));
+  versions.push(version('withdrawn-v1','withdrawn','superseded',1),version('withdrawn-v2','withdrawn','approved',2));
+  let item=(await loadQuestionBankPage(client,'drafts',0,100)).items.find(i=>i.id==='withdrawn');
+  assert.equal(item.versionId,'withdrawn-v2');assert.equal(item.questionStatus,'unpublished');
+  versions.push(version('withdrawn-v3','withdrawn','draft',3));
+  const all=await loadAllUnpublishedQuestions(client);item=all.find(i=>i.id==='withdrawn');
+  assert.equal(item.versionId,'withdrawn-v3');assert.equal(item.currentVersionId,'withdrawn-v2');
+  assert.equal(all.filter(i=>i.id==='withdrawn').length,1);
+});
+
+test('Publish all reads the entire identity scope beyond the first page',async()=>{
+  const {client,questions,versions}=fixtureClient();
+  for(let i=24;i<128;i++){questions.push(question(`extra-${i}`));versions.push(version(`extra-${i}-v1`,`extra-${i}`,'draft',1));}
+  const all=await loadAllUnpublishedQuestions(client);assert.equal(all.length,129);assert.equal(new Set(all.map(i=>i.id)).size,129);
 });
 
 test('a fresh load after remount reads persisted identities rather than an XLSX batch', async () => {

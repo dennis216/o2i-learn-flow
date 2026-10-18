@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { draftSnapshotSheets, draftSourcePage, validateDraftMetadata, loadQuestionBankDraft,
+import { draftSnapshotSheets, draftSourcePage, validateDraftMetadata, loadQuestionBankDraft, loadQuestionBankEditor,
   updateQuestionBankDraft, deleteQuestionBankDraft } from './questionBankDraftManagement.ts';
 import { applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits } from './questionBankPreviewEdits.ts';
 
@@ -58,6 +58,24 @@ test('open, validation, undo and Cancel path cause no write calls; read errors a
   const editor=readFileSync(new URL('../components/admin/QuestionBankDraftEditor.tsx',import.meta.url),'utf8');
   assert.match(editor,/onClick=\{onClose\}>Cancel/);assert.match(editor,/writing\.current/);
   assert.match(editor,/await loadQuestionBankDraft[\s\S]*Changes saved and read back/);
+});
+
+test('opening published Edit selects the explicit existing working revision without creating another',async()=>{
+  const s=snapshot();s.question.status='approved';s.question.current_version_id='published';
+  const c={calls:[],async rpc(name,args){this.calls.push([name,args]);return {data:name==='get_question_publication_state'
+    ?{question_id:'q',status:'approved',current_version_id:'published',versions:[{version_id:'published',status:'approved',fingerprint:'current'},
+      {version_id:'v',status:'draft',fingerprint:'working'}],events:[]}:s,error:null};}};
+  const loaded=await loadQuestionBankEditor(c,'q','published');assert.equal(loaded.snapshot.version.id,'v');assert.equal(loaded.revisionTarget,null);
+  assert.deepEqual(c.calls.map(c=>c[0]),['get_question_publication_state','get_question_bank_draft']);
+  assert.equal(c.calls[1][1]._version_id,'v');
+});
+
+test('stale or archived revision source is rejected before any write or clone',async()=>{
+  for(const status of ['retired','draft']){
+    const c=client({question_id:'q',status,current_version_id:null,versions:[],events:[]});
+    await assert.rejects(loadQuestionBankEditor(c,'q','old'),/no longer editable/);
+    assert.deepEqual(c.calls.map(c=>c[0]),['get_question_publication_state']);
+  }
 });
 test('RPC failure retains input and never claims success; review target cannot save/delete directly',async()=>{
   const s=snapshot(),sheets=draftSnapshotSheets(s),before=structuredClone(sheets),c=client(null,{message:'Draft changed since it was opened'});

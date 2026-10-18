@@ -4,6 +4,7 @@ import { OPTION_HEADERS, QUESTION_HEADERS, validateQuestionBankSheets, type Work
 import type { QuestionBankReferences } from "./questionBankImportPlan.ts";
 import { buildQuestionBankDraftSavePlan } from "./questionBankDraftSave.ts";
 import { EDITABLE_QUESTION_FIELDS, type EditableQuestionField } from "./questionBankPreviewEdits.ts";
+import { loadQuestionPublicationState, type PublicationTarget } from "./questionBankPublication.ts";
 
 type Version = Database["public"]["Tables"]["question_versions"]["Row"];
 type Option = Database["public"]["Tables"]["question_options"]["Row"];
@@ -80,6 +81,33 @@ export async function loadQuestionBankDraft(client: SupabaseClient<Database>, qu
     || !Array.isArray(snapshot.options) || !Array.isArray(snapshot.skill_codes)
     || !["question", "revision"].includes(snapshot.delete_scope)) throw new Error("Invalid draft snapshot; refresh the list.");
   return snapshot;
+}
+
+/** Opening a published editor only reads. Select an existing working version rather than cloning again. */
+export async function loadQuestionBankEditor(client: SupabaseClient<Database>, questionId: string, versionId: string) {
+  const state = await loadQuestionPublicationState(client, questionId);
+  const working = state.versions.filter(version => ["draft", "review"].includes(version.status));
+  if (working.length > 1) throw new Error("Multiple working revisions were returned. Refresh before editing.");
+  if (working[0]) return { snapshot: await loadQuestionBankDraft(client, questionId, working[0].version_id), revisionTarget: null };
+  if (!["approved", "unpublished"].includes(state.status) || state.current_version_id !== versionId)
+    throw new Error("The selected version is no longer editable. Refresh the question list.");
+  const selected = state.versions.find(version => version.version_id === versionId && version.status === "approved");
+  if (!selected) throw new Error("The current approved version could not be verified.");
+  const [q, v, options, skills] = await Promise.all([
+    client.from("questions").select("*").eq("id", questionId).single(),
+    client.from("question_versions").select("*, topic:curriculum_topics!question_versions_primary_topic_id_fkey(topic_code)")
+      .eq("id", versionId).eq("question_id", questionId).single(),
+    client.from("question_options").select("*").eq("question_version_id", versionId).order("order_index"),
+    client.from("question_practice_skills").select("skill:curriculum_practice_skills!question_practice_skills_practice_skill_id_fkey(skill_code)").eq("question_version_id", versionId),
+  ]);
+  for (const result of [q, v, options, skills]) if (result.error) throw new Error(`Could not load revision source: ${result.error.message}`);
+  if (!q.data || !v.data?.topic || !options.data || !skills.data || q.data.current_version_id !== versionId || v.data.status !== "approved"
+    || skills.data.some(link => !link.skill)) throw new Error("Revision source changed or is incomplete. Reload before saving.");
+  const snapshot: DraftSnapshot = { question: q.data, version: v.data, options: options.data,
+    topic_code: v.data.topic.topic_code, skill_codes: skills.data.map(link => link.skill.skill_code),
+    fingerprint: selected.fingerprint, delete_scope: "revision" };
+  const revisionTarget: PublicationTarget = { question_id: questionId, version_id: versionId, expected_fingerprint: selected.fingerprint, action: "publish" };
+  return { snapshot, revisionTarget };
 }
 
 /** Called only by explicit confirmation, never by loading, validation, undo or Cancel. */

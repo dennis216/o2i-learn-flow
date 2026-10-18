@@ -75,6 +75,8 @@ export interface QuestionBankListItem extends SavedDraft {
   topicCode: string;
   topicTitle: string;
   practiceSkillCodes: string[];
+  currentVersionId: string | null;
+  workingVersionId: string | null;
 }
 
 export interface QuestionBankPage {
@@ -123,24 +125,26 @@ export async function loadQuestionBankPage(
   if (!Number.isSafeInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100
     || !Number.isSafeInteger((page + 1) * pageSize)) throw new Error("Invalid question bank page");
   await requireQuestionBankAdmin(client);
+  // Left embeds keep a withdrawn identity visible even without a working draft.
+  // Count/page identities once, selecting the working version before the retained current version.
+  const base = client.from("questions").select(
+    `id, external_id, status, current_version_id,
+     working:question_versions!question_versions_question_id_fkey(${VERSION_SUMMARY}),
+     current:question_versions!questions_current_version_belongs_to_question(${VERSION_SUMMARY})`, { count: "exact" },
+  ).in("working.status", ["draft", "review"]);
   const query = kind === "drafts"
-    ? client.from("questions").select(
-      `id, external_id, status, current_version_id, version:question_versions!question_versions_question_id_fkey!inner(${VERSION_SUMMARY})`,
-      { count: "exact" },
-    ).neq("status", "retired").in("version.status", ["draft", "review"])
-    : client.from("questions").select(
-      `id, external_id, status, current_version_id, version:question_versions!questions_current_version_belongs_to_question!inner(${VERSION_SUMMARY})`,
-      { count: "exact" },
-    ).eq("status", "approved").eq("version.status", "approved");
+    ? base.neq("status", "retired").or("status.eq.unpublished,working.not.is.null")
+    : base.eq("status", "approved");
   const { data, error, count } = await query.order("created_at", { ascending: false })
     .order("id", { ascending: true }).range(page * pageSize, (page + 1) * pageSize - 1);
   if (error) throw new Error(`Could not load ${kind === "drafts" ? "saved drafts" : "published problems"}: ${error.message}`);
   if (!data || count === null) throw new Error("Could not load the question bank: incomplete database response");
   const items = data.map((question): QuestionBankListItem => {
-    const versions = Array.isArray(question.version) ? question.version : question.version ? [question.version] : [];
-    const version = versions[0];
-    if (versions.length !== 1 || !version || version.question_id !== question.id
-      || (kind === "drafts" ? !["draft", "review"].includes(version.status)
+    const working = question.working;
+    const current = question.current;
+    const version = kind === "drafts" ? working[0] ?? current : current;
+    if (working.length > 1 || !version || version.question_id !== question.id
+      || (kind === "drafts" && working.length ? !["draft", "review"].includes(version.status)
         : version.id !== question.current_version_id || version.status !== "approved")) {
       throw new Error(`Could not load ${question.external_id}: its active version could not be verified. Refresh the list.`);
     }
@@ -153,9 +157,25 @@ export async function loadQuestionBankPage(
       stem: version.stem, difficulty: version.difficulty, courseScope: version.course_scope,
       topicCode: version.topic.topic_code, topicTitle: version.topic.title,
       practiceSkillCodes: [...new Set<string>(version.skills.map(mapping => mapping.skill.skill_code))].sort(),
+      currentVersionId: question.current_version_id, workingVersionId: working[0]?.id ?? null,
     };
   });
   return { items, total: count };
+}
+
+/** Full scope for Publish all, never just the visible page. No writes or silent truncation. */
+export async function loadAllUnpublishedQuestions(client: SupabaseClient<Database>): Promise<QuestionBankListItem[]> {
+  const items: QuestionBankListItem[] = [];
+  let total: number | null = null;
+  for (let page = 0; ; page++) {
+    const loaded = await loadQuestionBankPage(client, "drafts", page, 100);
+    total ??= loaded.total;
+    if (loaded.total !== total) throw new Error("The question list changed while loading. Retry the publication plan.");
+    items.push(...loaded.items);
+    if (new Set(items.map(item => item.id)).size !== items.length || items.length > total
+      || (!loaded.items.length && items.length < total)) throw new Error("The publication scope changed. Reload before selecting targets.");
+    if (items.length === total) return items;
+  }
 }
 
 /** Preview exactly the selected active version; never substitute version 1 or write data. */

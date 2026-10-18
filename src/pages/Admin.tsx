@@ -850,7 +850,7 @@ const Admin = () => {
           <TabsTrigger value="videos">Add Video</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice</TabsTrigger>
-          <TabsTrigger value="question-bank">Question Bank Preview</TabsTrigger>
+          <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
           <TabsTrigger value="subjects" className="flex items-center gap-1">
             <FolderOpen className="h-4 w-4" />
             Subjects

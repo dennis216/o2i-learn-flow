@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { draftSnapshotSheets, loadQuestionBankDraft, updateQuestionBankDraft, deleteQuestionBankDraft,
   returnQuestionBankDraft, validateDraftMetadata, type DraftSnapshot } from "@/lib/questionBankDraftManagement";
+import { loadQuestionBankEditor } from "@/lib/questionBankDraftManagement";
+import { saveQuestionBankRevision, type PublicationTarget } from "@/lib/questionBankPublication";
 import { FIELD_LABELS, applyQuestionFieldEdit, getQuestionEditChanges } from "@/lib/questionBankPreviewEdits";
 import type { WorkbookSheet } from "@/lib/questionBankImport";
 import type { QuestionBankReferences } from "@/lib/questionBankImportPlan";
@@ -14,11 +16,12 @@ import { QuestionBankMetadataFields } from "./QuestionBankMetadataFields";
 
 const message = (reason: unknown) => reason instanceof Error ? reason.message : String(reason);
 
-export function QuestionBankDraftEditor({ item, onClose, onChanged }: {
-  item: QuestionBankListItem; onClose: () => void; onChanged: () => void;
+export function QuestionBankDraftEditor({ item, onClose, onChanged, initialAction }: {
+  item: QuestionBankListItem; onClose: () => void; onChanged: () => void; initialAction?: "delete";
 }) {
   const writing = useRef(false);
   const [snapshot, setSnapshot] = useState<DraftSnapshot | null>(null);
+  const [revisionTarget, setRevisionTarget] = useState<PublicationTarget | null>(null);
   const [references, setReferences] = useState<QuestionBankReferences | null>(null);
   const [original, setOriginal] = useState<WorkbookSheet[]>([]);
   const [working, setWorking] = useState<WorkbookSheet[]>([]);
@@ -32,33 +35,41 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged }: {
   const changes = useMemo(() => getQuestionEditChanges(original, working), [original, working]);
   const question = validated?.report.questions[0];
   const issues = validated?.plan.issues ?? [];
-  const readOnly = snapshot?.version.status !== "draft";
+  const readOnly = !revisionTarget && snapshot?.version.status !== "draft";
 
   useEffect(() => {
     let active = true;
     setBusy(true); setError(""); setSnapshot(null); setReferences(null); setConfirm(null);
-    void Promise.all([loadQuestionBankDraft(supabase, item.id, item.versionId), loadQuestionBankReferences(supabase)])
-      .then(([latest, refs]) => {
+    void Promise.all([loadQuestionBankEditor(supabase, item.id, item.versionId), loadQuestionBankReferences(supabase)])
+      .then(([loaded, refs]) => {
         if (!active) return;
+        const latest = loaded.snapshot;
+        setRevisionTarget(loaded.revisionTarget);
         setSnapshot(latest); setReferences(refs);
         const sheets = draftSnapshotSheets(latest); setOriginal(sheets); setWorking(sheets); setNeedsReload(false);
+        if (initialAction && latest.version.status === "draft") setConfirm("delete");
       }).catch(reason => { if (active) setError(message(reason)); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [item.id, item.versionId, retry]);
+  }, [item.id, item.versionId, retry, initialAction]);
 
   const act = async (action: "save" | "delete" | "return") => {
     if (writing.current || !snapshot) return;
     writing.current = true; setBusy(true); setError(""); setNotice("");
     let committed = false;
     try {
-      if (action === "save") await updateQuestionBankDraft(supabase, snapshot, working, references);
+      let savedVersionId = snapshot.version.id;
+      if (action === "save" && revisionTarget) {
+        if (!validated?.plan.canSave || !validated.metadata) throw new Error("Resolve metadata issues before saving a revision.");
+        savedVersionId = (await saveQuestionBankRevision(supabase, revisionTarget, validated.metadata)).versionId;
+      } else if (action === "save") await updateQuestionBankDraft(supabase, snapshot, working, references);
       else if (action === "delete") await deleteQuestionBankDraft(supabase, snapshot);
       else await returnQuestionBankDraft(supabase, snapshot);
       committed = true; onChanged();
       if (action === "delete") { onClose(); return; }
       // Success is shown only after reading the actual saved values back from the database.
-      const latest = await loadQuestionBankDraft(supabase, item.id, item.versionId);
+      const latest = await loadQuestionBankDraft(supabase, item.id, savedVersionId);
+      setRevisionTarget(null);
       setSnapshot(latest);
       const sheets = draftSnapshotSheets(latest); setOriginal(sheets); setWorking(sheets);
       setConfirm(null); setNotice(action === "save" ? "Changes saved and read back. This version is still unpublished." : "Returned to draft. Review is required again before publication.");
@@ -76,7 +87,9 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged }: {
         <Button type="button" variant="outline" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Reload latest (discard local changes)</Button></div>}
       {notice && <p role="status" className="text-sm text-green-700">{notice}</p>}
       {snapshot && question && <div className="space-y-4 text-sm">
-        <p>Version {snapshot.version.version_number} · {readOnly ? "Under review · Read-only" : "Draft · Unpublished"}</p>
+        <p>Version {snapshot.version.version_number} · {revisionTarget ? "Current approved version · Revision work copy" : readOnly ? "Under review · Read-only" : "Draft · Unpublished"}</p>
+        {revisionTarget && <p className="rounded border p-3">Save creates a new unpublished revision. The current published version stays unchanged. Opening or cancelling creates nothing.</p>}
+        {snapshot.version.id !== item.versionId && <p className="rounded border p-3">Editing existing working version {snapshot.version.version_number}; the current approved version is not overwritten.</p>}
         <MarkdownWithMath content={question.stem} strictMath className="overflow-x-auto" />
         <p className="break-words text-muted-foreground">Source: {question.sourceDocument} · Printed question number: {question.sourceQuestionNumber || "not recorded"}</p>
         {readOnly && <p className="rounded border p-3">Review versions cannot be edited or deleted. Explicitly return this version to draft first.</p>}
@@ -103,7 +116,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged }: {
             onClick={() => void act(confirm)}>{confirm === "delete" ? "Confirm deletion" : "Confirm return to draft"}</Button>
         </div>}
         <div className="flex flex-wrap justify-between gap-2 border-t pt-3">
-          {readOnly ? <Button type="button" variant="outline" disabled={busy || needsReload} onClick={() => setConfirm("return")}>Return to draft</Button>
+          {revisionTarget ? <span /> : readOnly ? <Button type="button" variant="outline" disabled={busy || needsReload} onClick={() => setConfirm("return")}>Return to draft</Button>
             : <Button type="button" variant="destructive" disabled={busy || needsReload} onClick={() => setConfirm("delete")}>{snapshot.delete_scope === "question" ? "Delete" : "Delete draft"}</Button>}
           <div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</Button>
             {!readOnly && <Button type="button" disabled={busy || needsReload || !changes.length || !validated?.plan.canSave || !!confirm} onClick={() => void act("save")}>Save changes</Button>}</div>
