@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { parseQuestionBankWorkbook, validateQuestionBankSheets, QUESTION_HEADERS, type WorkbookSheet } from "@/lib/questionBankImport";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { buildQuestionBankDraftSavePlan, describeQuestionBankIssue, getPublicationReviewTasks, isPublicationReviewIssue } from "@/lib/questionBankDraftSave";
-import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts, type SavedDraft } from "@/lib/questionBankDraftRepository";
+import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts } from "@/lib/questionBankDraftRepository";
+import { QuestionBankLibrary } from "./QuestionBankLibrary";
 import type { QuestionBankReferences } from "@/lib/questionBankImportPlan";
 import { applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits, type EditableQuestionField } from "@/lib/questionBankPreviewEdits";
 
@@ -35,7 +36,7 @@ export function QuestionBankPreview() {
   const [references, setReferences] = useState<QuestionBankReferences | null>(null);
   const [referenceBusy, setReferenceBusy] = useState(false);
   const [referenceError, setReferenceError] = useState("");
-  const [savedDrafts, setSavedDrafts] = useState<SavedDraft[]>([]);
+  const [libraryRefresh, setLibraryRefresh] = useState(0);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -99,7 +100,6 @@ export function QuestionBankPreview() {
     setSaveMessage("");
     setSaveError("");
     setSaved(false);
-    setSavedDrafts([]);
     setBusy(false);
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".xlsx")) {
@@ -150,8 +150,9 @@ export function QuestionBankPreview() {
     try {
       const ids = await saveQuestionBankDrafts(supabase, draftPlan);
       setSaved(true);
+      setLibraryRefresh(value => value + 1);
       try {
-        setSavedDrafts(await loadSavedQuestionBankDrafts(supabase, ids));
+        await loadSavedQuestionBankDrafts(supabase, ids);
         setSaveMessage(`Saved ${ids.length} unpublished drafts. Nothing was approved or published.`);
       } catch (error) {
         setSaveError(error instanceof Error ? error.message : String(error));
@@ -159,6 +160,7 @@ export function QuestionBankPreview() {
     } catch (error) {
       if (error instanceof DraftSaveResultError) {
         setSaved(true);
+        setLibraryRefresh(value => value + 1);
         setSaveError(error.message);
       } else {
         setSaveError(`Save could not be confirmed: ${error instanceof Error ? error.message : String(error)}. Database rejection rolls back the entire batch. After a network interruption, check the question bank before submitting again.`);
@@ -334,16 +336,7 @@ export function QuestionBankPreview() {
         })}
       </section>}
 
-      {savedDrafts.length > 0 && <Card>
-        <CardHeader><CardTitle>Saved drafts</CardTitle><CardDescription>Read back from the question bank after saving.</CardDescription></CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2">
-          {savedDrafts.map((item) => <div key={item.id} className="min-w-0 rounded border p-3 text-sm">
-            <p className="break-all font-semibold">{item.externalId}</p>
-            <MarkdownWithMath content={item.stem} className="overflow-x-auto" strictMath />
-            <p className="mt-2 text-amber-700 dark:text-amber-400">Unpublished · Question: {item.questionStatus} · Version: {item.versionStatus}</p>
-          </div>)}
-        </CardContent>
-      </Card>}
+      <QuestionBankLibrary refreshKey={libraryRefresh} />
 
       {report && <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 shadow-lg" aria-label="Draft save actions">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">

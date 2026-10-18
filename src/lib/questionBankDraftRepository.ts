@@ -48,7 +48,7 @@ export async function loadSavedQuestionBankDrafts(
   const { data: versions, error: versionError } = await client.from("question_versions")
     .select("question_id, status, stem, version_number")
     .in("question_id", questions.map((question) => question.id))
-    .eq("version_number", 1);
+    .in("status", ["draft", "review"]);
   if (versionError) throw new Error(`Saved, but reading question_versions failed: ${versionError.message}`);
   if (!versions || versions.length !== externalIds.length) throw new Error("Saved, but the question_versions readback count does not match");
   const versionByQuestion = new Map(versions.map((version) => [version.question_id, version]));
@@ -62,4 +62,121 @@ export async function loadSavedQuestionBankDrafts(
       questionStatus: question.status, versionStatus: version.status,
     };
   });
+}
+
+export type QuestionBankListKind = "drafts" | "published";
+
+export interface QuestionBankListItem extends SavedDraft {
+  kind: QuestionBankListKind;
+  versionId: string;
+  versionNumber: number;
+  difficulty: string;
+  courseScope: string;
+  topicCode: string;
+  topicTitle: string;
+  practiceSkillCodes: string[];
+}
+
+export interface QuestionBankPage {
+  items: QuestionBankListItem[];
+  total: number;
+}
+
+export interface QuestionBankVersionPreview {
+  versionId: string;
+  stem: string;
+  solution: string;
+  sourceDocument: string;
+  sourcePage: number;
+  sourceQuestionNumber: string | null;
+  sourceLocator: string | null;
+  sourceReference: string | null;
+  requiresFigure: boolean;
+  imageUrl: string | null;
+  options: Pick<Database["public"]["Tables"]["question_options"]["Row"],
+    "id" | "option_key" | "option_text" | "is_correct" | "order_index">[];
+}
+
+async function requireQuestionBankAdmin(client: SupabaseClient<Database>) {
+  const { data, error } = await client.auth.getUser();
+  if (error) throw new Error(`Could not verify administrator sign-in: ${error.message}`);
+  if (!data.user) throw new Error("Sign in as an administrator to read the question bank");
+  const { data: admin, error: roleError } = await client.rpc("has_role", {
+    _user_id: data.user.id, _role: "admin",
+  });
+  if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
+  if (admin !== true) throw new Error("Administrator access is required to read the question bank");
+}
+
+const VERSION_SUMMARY = `id, question_id, status, version_number, stem, difficulty, course_scope,
+  topic:curriculum_topics!question_versions_primary_topic_id_fkey(topic_code, title),
+  skills:question_practice_skills!question_practice_skills_question_version_id_fkey(
+    skill:curriculum_practice_skills!question_practice_skills_practice_skill_id_fkey(skill_code))` as const;
+
+/** Paginate question identities, not historical versions. All operations here are read-only.
+ * A working revision and its published version can appear in their respective sections.
+ * Explicit FK names disambiguate the two directions of the question/version relationship.
+ */
+export async function loadQuestionBankPage(
+  client: SupabaseClient<Database>, kind: QuestionBankListKind, page: number, pageSize = 20,
+): Promise<QuestionBankPage> {
+  if (!Number.isSafeInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100
+    || !Number.isSafeInteger((page + 1) * pageSize)) throw new Error("Invalid question bank page");
+  await requireQuestionBankAdmin(client);
+  const query = kind === "drafts"
+    ? client.from("questions").select(
+      `id, external_id, status, current_version_id, version:question_versions!question_versions_question_id_fkey!inner(${VERSION_SUMMARY})`,
+      { count: "exact" },
+    ).neq("status", "retired").in("version.status", ["draft", "review"])
+    : client.from("questions").select(
+      `id, external_id, status, current_version_id, version:question_versions!questions_current_version_belongs_to_question!inner(${VERSION_SUMMARY})`,
+      { count: "exact" },
+    ).eq("status", "approved").eq("version.status", "approved");
+  const { data, error, count } = await query.order("created_at", { ascending: false })
+    .order("id", { ascending: true }).range(page * pageSize, (page + 1) * pageSize - 1);
+  if (error) throw new Error(`Could not load ${kind === "drafts" ? "saved drafts" : "published problems"}: ${error.message}`);
+  if (!data || count === null) throw new Error("Could not load the question bank: incomplete database response");
+  const items = data.map((question): QuestionBankListItem => {
+    const versions = Array.isArray(question.version) ? question.version : question.version ? [question.version] : [];
+    const version = versions[0];
+    if (versions.length !== 1 || !version || version.question_id !== question.id
+      || (kind === "drafts" ? !["draft", "review"].includes(version.status)
+        : version.id !== question.current_version_id || version.status !== "approved")) {
+      throw new Error(`Could not load ${question.external_id}: its active version could not be verified. Refresh the list.`);
+    }
+    if (!version.topic || version.skills.some(mapping => !mapping.skill)) {
+      throw new Error(`Could not load taxonomy for ${question.external_id}`);
+    }
+    return {
+      kind, id: question.id, externalId: question.external_id, questionStatus: question.status,
+      versionId: version.id, versionStatus: version.status, versionNumber: version.version_number,
+      stem: version.stem, difficulty: version.difficulty, courseScope: version.course_scope,
+      topicCode: version.topic.topic_code, topicTitle: version.topic.title,
+      practiceSkillCodes: [...new Set<string>(version.skills.map(mapping => mapping.skill.skill_code))].sort(),
+    };
+  });
+  return { items, total: count };
+}
+
+/** Preview exactly the selected active version; never substitute version 1 or write data. */
+export async function loadQuestionBankVersionPreview(
+  client: SupabaseClient<Database>, item: QuestionBankListItem,
+): Promise<QuestionBankVersionPreview> {
+  await requireQuestionBankAdmin(client);
+  const { data: version, error } = await client.from("question_versions")
+    .select("id, question_id, status, stem, solution, source_document, source_page, source_question_number, source_locator, source_reference, requires_figure, image_url")
+    .eq("id", item.versionId).eq("question_id", item.id).single();
+  if (error) throw new Error(`Could not load preview: ${error.message}`);
+  if (!version || version.status !== item.versionStatus) throw new Error("This version changed. Refresh the list before previewing it again.");
+  const { data: options, error: optionError } = await client.from("question_options")
+    .select("id, option_key, option_text, order_index, is_correct")
+    .eq("question_version_id", version.id).order("order_index").order("id");
+  if (optionError) throw new Error(`Could not load preview options: ${optionError.message}`);
+  if (!options) throw new Error("Could not load preview options: no database response");
+  return {
+    versionId: version.id, stem: version.stem, solution: version.solution, options,
+    sourceDocument: version.source_document, sourcePage: version.source_page,
+    sourceQuestionNumber: version.source_question_number, sourceLocator: version.source_locator,
+    sourceReference: version.source_reference, requiresFigure: version.requires_figure, imageUrl: version.image_url,
+  };
 }

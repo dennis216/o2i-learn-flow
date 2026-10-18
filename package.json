@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "test:adaptive": "node --experimental-strip-types --test src/lib/adaptivePractice.test.mjs",
-    "test:question-bank": "node --experimental-strip-types --test src/lib/questionBankImport.test.mjs src/lib/questionBankImportPlan.test.mjs src/lib/questionBankMath.test.mjs src/lib/questionBankDraftSave.test.mjs src/lib/questionBankPreviewEdits.test.mjs",
+    "test:question-bank": "node --experimental-strip-types --test src/lib/questionBankImport.test.mjs src/lib/questionBankImportPlan.test.mjs src/lib/questionBankMath.test.mjs src/lib/questionBankDraftSave.test.mjs src/lib/questionBankPreviewEdits.test.mjs src/lib/questionBankDraftRepository.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
