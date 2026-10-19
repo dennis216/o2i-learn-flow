@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { groupTeamMembers } from "@/lib/teamDepartments";
 import { Badge } from "@/components/ui/badge";
 import { Users, Crown, Shield } from "lucide-react";
 
@@ -12,30 +14,21 @@ interface TeamMember {
   bio: string | null;
   photo_url: string | null;
   order_index: number;
-  department: string;
+  department: string | null;
 }
-
-const DEPARTMENT_ORDER = [
-  "Publicity & Marketing",
-  "Web Development & Management",
-  "Curriculum Content & Media Production",
-];
-
-const DEPARTMENT_LABELS: Record<string, string> = {
-  "Publicity & Marketing": "Publicity & Marketing Team",
-  "Web Development & Management": "Web Development & Management Team",
-  "Curriculum Content & Media Production": "Curriculum Content & Media Production Team",
-};
 
 const Team = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetchTeamMembers();
   }, []);
 
   const fetchTeamMembers = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const { data, error } = await supabase
         .from("team_members")
@@ -46,16 +39,13 @@ const Team = () => {
       setTeamMembers(data || []);
     } catch (error) {
       console.error("Error fetching team members:", error);
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
-  const groupedMembers = DEPARTMENT_ORDER.map((dept) => ({
-    department: dept,
-    label: DEPARTMENT_LABELS[dept] || dept,
-    members: teamMembers.filter((m) => m.department === dept),
-  })).filter((g) => g.members.length > 0);
+  const groupedMembers = groupTeamMembers(teamMembers);
 
   if (loading) {
     return (
@@ -94,7 +84,12 @@ const Team = () => {
       </div>
 
       {/* Grouped by Department */}
-      {groupedMembers.length === 0 ? (
+      {error ? (
+        <div role="alert" className="space-y-3 py-16 text-center">
+          <p>Could not load team members. Please try again.</p>
+          <Button type="button" onClick={() => void fetchTeamMembers()}>Retry</Button>
+        </div>
+      ) : groupedMembers.length === 0 ? (
         <div className="text-center py-16">
           <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
           <h2 className="text-xl font-semibold text-muted-foreground mb-2">
