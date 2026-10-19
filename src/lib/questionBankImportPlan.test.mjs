@@ -86,7 +86,7 @@ test('pending AI draft remains previewable but does not enter the plan', () => {
   assert.equal(rejected.plan.items[0].status, 'blocked');
 });
 
-test('any unpassed gate, invalid review timestamp or unresolved flag blocks approval', () => {
+test('legacy review metadata and AI flags do not block a structurally valid intake candidate', () => {
   const cases = [
     { source_rights_status: 'pending' },
     { reviewed_at: '2026-02-30T12:00:00Z' },
@@ -94,9 +94,9 @@ test('any unpassed gate, invalid review timestamp or unresolved flag blocks appr
   ];
   for (const values of cases) {
     const { plan } = planFor(sheets([approvedQuestion(values)]));
-    assert.equal(plan.items[0].status, 'blocked');
-    assert.equal(plan.candidateCount, 0);
-    assert.ok(plan.items[0].reasons.length > 0);
+    assert.equal(plan.items[0].status, 'candidate');
+    assert.equal(plan.candidateCount, 1);
+    assert.equal(plan.items[0].reasons.length, 0);
   }
 });
 

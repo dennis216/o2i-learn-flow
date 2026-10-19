@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { QUESTION_HEADERS, OPTION_HEADERS, validateQuestionBankSheets } from './questionBankImport.ts';
-import { buildQuestionBankDraftSavePlan } from './questionBankDraftSave.ts';
+import { buildQuestionBankDraftSavePlan, getPublicationReviewTasks } from './questionBankDraftSave.ts';
 import { saveQuestionBankDrafts } from './questionBankDraftRepository.ts';
 import { analyzeQuestionBankMath } from './questionBankMath.ts';
 
@@ -100,4 +100,13 @@ test('existing strict math renderer handles template delimiters and flags bad La
   assert.match(result.renderContent, /\$x\^2\$/);
   assert.match(result.renderContent, /\$\$\s*\\frac\{1\}\{2\}\s*\$\$/);
   assert.ok(analyzeQuestionBankMath('坏公式 \\(\\frac{1}\\)').issues.length > 0);
+});
+
+test('unknown calculator and original flags remain evidence without obsolete publication tasks',()=>{
+  const data=sheets([question({human_review_status:'approved'})]);
+  const plan=planFor(data);assert.equal(plan.canSave,true);assert.equal(plan.payload[0].calculator_policy,null);
+  assert.deepEqual(plan.payload[0].import_evidence.ai_flags,['ANSWER_AI_INFERRED']);
+  const tasks=getPublicationReviewTasks();
+  assert.equal(tasks.length,1);assert.match(tasks[0],/confirm once/);
+  assert.doesNotMatch(tasks.join(),/source_type|undecided|not passed|timestamp|AI flag/);
 });

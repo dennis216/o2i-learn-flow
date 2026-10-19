@@ -1,3 +1,4 @@
+import { TEAM_DEPARTMENTS, normalizeTeamDepartment } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -137,12 +138,11 @@ const Admin = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Team member form
-  const DEPARTMENTS = ["Publicity", "Web Development & Management", "Curriculum Content & Production"];
   const [teamFormData, setTeamFormData] = useState({
     name: "",
     role: "",
     bio: "",
-    department: "Publicity",
+    department: TEAM_DEPARTMENTS[0],
     order_index: "0",
   });
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
@@ -526,17 +526,17 @@ const Admin = () => {
           name: editingTeamMember.name,
           role: editingTeamMember.role,
           bio: editingTeamMember.bio,
-          department: editingTeamMember.department,
+          department: normalizeTeamDepartment(editingTeamMember.department),
           photo_url: editingTeamMember.photo_url,
           order_index: editingTeamMember.order_index,
         })
-        .eq("id", editingTeamMember.id);
+        .eq("id", editingTeamMember.id).select("id").single();
 
       if (error) throw error;
+      await fetchTeamMembers();
       toast({ title: "Team member updated successfully" });
       setEditTeamDialogOpen(false);
       setEditingTeamMember(null);
-      fetchTeamMembers();
     } catch (error: any) {
       console.error("Error updating team member:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -773,7 +773,7 @@ const Admin = () => {
         name: "",
         role: "",
         bio: "",
-        department: "Publicity",
+        department: TEAM_DEPARTMENTS[0],
         order_index: "0",
       });
       setTeamPhotoFile(null);
@@ -1704,11 +1704,11 @@ const Admin = () => {
                       value={teamFormData.department}
                       onValueChange={(value) => setTeamFormData({ ...teamFormData, department: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="team_department">
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {DEPARTMENTS.map((dept) => (
+                        {TEAM_DEPARTMENTS.map((dept) => (
                           <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                         ))}
                       </SelectContent>
@@ -1811,7 +1811,7 @@ const Admin = () => {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold truncate">{member.name}</h3>
                           <p className="text-sm text-primary">{member.role}</p>
-                          <p className="text-xs font-medium" style={{ color: '#4A90E2' }}>{member.department}</p>
+                          <p className="text-xs font-medium" style={{ color: '#4A90E2' }}>Group: {normalizeTeamDepartment(member.department) || "Team Members (unassigned)"}</p>
                           {member.bio && (
                             <p className="text-sm text-muted-foreground line-clamp-1">{member.bio}</p>
                           )}
@@ -1821,6 +1821,7 @@ const Admin = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            aria-label={"Edit team member " + member.name}
                             onClick={() => {
                               setEditingTeamMember(member);
                               setEditTeamDialogOpen(true);
@@ -2203,14 +2204,17 @@ const Admin = () => {
               <div className="space-y-2">
                 <Label>Department</Label>
                 <Select
-                  value={editingTeamMember.department}
+                  value={normalizeTeamDepartment(editingTeamMember.department)}
                   onValueChange={(value) => setEditingTeamMember({ ...editingTeamMember, department: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
+                  <SelectTrigger aria-label="Team member department">
+                    <SelectValue placeholder="Team Members (unassigned)" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEPARTMENTS.map((dept) => (
+                    {normalizeTeamDepartment(editingTeamMember.department) && !TEAM_DEPARTMENTS.some(dept => dept === normalizeTeamDepartment(editingTeamMember.department)) && (
+                      <SelectItem value={normalizeTeamDepartment(editingTeamMember.department)}>{editingTeamMember.department} (unrecognized group)</SelectItem>
+                    )}
+                    {TEAM_DEPARTMENTS.map((dept) => (
                       <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                     ))}
                   </SelectContent>

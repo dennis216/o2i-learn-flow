@@ -30,9 +30,7 @@ SELECT ok(NOT has_column_privilege('authenticated','public.question_versions','i
 SELECT lives_ok($test$
   SELECT public.record_question_version_review((saved->>'question_id')::uuid,(saved->>'version_id')::uuid,
     public.precheck_question_publication((saved->>'question_id')::uuid,(saved->>'version_id')::uuid,'publish')->>'fingerprint',
-    '{"math":{"confirmed":true,"notes":"Synthetic independent calculation"},"taxonomy":{"confirmed":true,"notes":"Synthetic canonical tags checked"},
-      "source":{"confirmed":true,"notes":"Synthetic fixture authored for tests","source_type":"original","locator_verified":true,"printed_number_verified":false},
-      "render":{"confirmed":true,"notes":"Synthetic rendering checked"},"calculator_policy":"no_calculator","flag_resolutions":{"ANSWER_AI_INFERRED":"Synthetic independent recomputation"}}'::jsonb)
+    '{"confirmed":true}'::jsonb)
     FROM publication_fixture
 $test$,'explicit manual review is recorded');
 SELECT is((SELECT count(*)::int FROM public.question_version_reviews r JOIN publication_fixture f ON r.question_version_id=(f.saved->>'version_id')::uuid),1,'one trusted review exists');

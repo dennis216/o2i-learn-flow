@@ -199,7 +199,7 @@ export function validateQuestionBankSheets(
     };
 
     for (const field of ["external_id", "source_document", "source_page", "stem", "requires_figure", "human_review_status"]) required(field);
-    for (const field of ["solution", "correct_option_key", "difficulty", "course_scope", "primary_topic_code", "practice_skill_codes", "representation_type", "calculator_policy"]) required(field, "review");
+    for (const field of ["solution", "correct_option_key", "difficulty", "course_scope", "primary_topic_code", "practice_skill_codes", "representation_type"]) required(field, "review");
     for (const field of ["stem", "solution"]) {
       if (filled(record.cells[field]) && typeof record.cells[field] !== "string") issue(field, "Content must be text, not a number, date or computed formula value");
     }
@@ -220,7 +220,7 @@ export function validateQuestionBankSheets(
     if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
     if (locator) {
       const locatorMatch = locator.match(/^p(\d{3,})-item(\d{2,})$/);
-      if (!locatorMatch) issue("source_locator", "Use a locator such as p012-item03; a human must verify that it is unique");
+      if (!locatorMatch) issue("source_locator", "Use a source locator such as p012-item03");
       else if (startPage && Number(locatorMatch[1]) !== startPage) issue("source_locator", "Locator page does not match the first physical source_page");
     }
 
@@ -232,20 +232,9 @@ export function validateQuestionBankSheets(
     const gates: Record<string, string> = {};
     for (const field of REVIEW_GATES) {
       gates[field] = get(field).trim();
-      if (!gates[field]) issue(field, "Review gate status is missing", status === "approved" ? "error" : "warning", "publication_review");
-      else if (!GATE_VALUES.has(gates[field])) issue(field, `Invalid review gate status: ${gates[field]}`);
-      if (status === "approved" && gates[field] !== "passed") issue(field, "Publication requires all four review gates to be passed", "error", "publication_review");
+      if (gates[field] && !GATE_VALUES.has(gates[field])) issue(field, `Invalid review gate status: ${gates[field]}`);
     }
-    if (status === "approved") {
-      if (!filled(record.cells.reviewed_by)) issue("reviewed_by", "Approval requires a human reviewer", "error", "publication_review");
-      const reviewedAt = get("reviewed_at").trim();
-      if (!isValidReviewTimestamp(reviewedAt)) issue("reviewed_at", "Approval requires a valid ISO 8601 review timestamp", "error", "publication_review");
-    }
-
     const flags = codeList(record.cells.ai_flags);
-    if (status === "approved" && flags.some((flag) => flag !== "FIGURE_REQUIRED")) {
-      issue("ai_flags", "AI flags still need human review; an approved cell alone is insufficient", "error", "publication_review");
-    }
     const requiresFigure = booleanValue(record.cells.requires_figure);
     if (filled(record.cells.requires_figure) && requiresFigure === null) issue("requires_figure", "Must be TRUE or FALSE");
     if (requiresFigure) {
