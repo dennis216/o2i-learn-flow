@@ -1,4 +1,4 @@
-import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES } from "@/lib/teamDepartments";
+import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,16 +59,6 @@ interface PracticeProblem {
   created_at: string;
 }
 
-interface TeamMember {
-  id: string;
-  name: string;
-  roles: string[];
-  bio: string | null;
-  photo_url: string | null;
-  order_index: number;
-  departments: string[];
-}
-
 interface Subject {
   id: string;
   name: string;
@@ -100,6 +90,9 @@ const Admin = () => {
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamCanSave, setTeamCanSave] = useState(false);
+  const [teamLoadFailed, setTeamLoadFailed] = useState(false);
+  const [teamSaveNotice, setTeamSaveNotice] = useState('Loading Team schema…');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [practiceSubjectFilter, setPracticeSubjectFilter] = useState<string>("");
   const [formData, setFormData] = useState({
@@ -319,15 +312,18 @@ const Admin = () => {
 
   const fetchTeamMembers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("*")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      setTeamMembers(data || []);
+      const { members, canSave } = await loadTeamMembers(supabase);
+      setTeamMembers(members);
+      setTeamCanSave(canSave);
+      setTeamLoadFailed(false);
+      setTeamSaveNotice(canSave ? '' : TEAM_LEGACY_READ_ONLY);
+      return true;
     } catch (error) {
       console.error("Error fetching team members:", error);
+      setTeamCanSave(false);
+      setTeamLoadFailed(true);
+      setTeamSaveNotice('Could not load Team data or verify its schema. Adding and saving edits are disabled. Retry loading Team data.');
+      return false;
     }
   };
 
@@ -519,6 +515,7 @@ const Admin = () => {
 
   const updateTeamMember = async () => {
     if (!editingTeamMember) return;
+    if (!teamCanSave) { toast({ title: 'Team editing unavailable', description: teamSaveNotice, variant: 'destructive' }); return; }
     if (editingTeamMember.roles.length === 0 || editingTeamMember.departments.length === 0) {
       toast({ title: "Role and membership required", description: "Select at least one role and one department or group.", variant: "destructive" });
       return;
@@ -538,7 +535,7 @@ const Admin = () => {
         .eq("id", editingTeamMember.id).select("id").single();
 
       if (error) throw error;
-      await fetchTeamMembers();
+      if (!await fetchTeamMembers()) throw new Error('The save request completed, but Team reload failed. Reload to verify the saved member before retrying.');
       toast({ title: "Team member updated successfully" });
       setEditTeamDialogOpen(false);
       setEditingTeamMember(null);
@@ -749,6 +746,7 @@ const Admin = () => {
   const handleTeamSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (!teamCanSave) { toast({ title: 'Team editing unavailable', description: teamSaveNotice, variant: 'destructive' }); return; }
     if (teamFormData.roles.length === 0 || teamFormData.departments.length === 0) {
       toast({ title: "Role and membership required", description: "Select at least one role and one department or group.", variant: "destructive" });
       return;
@@ -776,6 +774,7 @@ const Admin = () => {
 
       if (error) throw error;
 
+      if (!await fetchTeamMembers()) throw new Error('The add request completed, but Team reload failed. Reload to verify before adding again.');
       toast({ title: "Success", description: "Team member added!" });
 
       setTeamFormData({
@@ -786,8 +785,6 @@ const Admin = () => {
         order_index: "0",
       });
       setTeamPhotoFile(null);
-
-      fetchTeamMembers();
     } catch (error: any) {
       console.error("Error creating team member:", error);
       toast({ title: "Error", description: error.message || "Failed to create team member.", variant: "destructive" });
@@ -1674,6 +1671,9 @@ const Admin = () => {
 
         {/* Team Management Tab */}
         <TabsContent value="team">
+          {teamSaveNotice && <div role="status" className="mb-6 rounded border border-amber-400 bg-amber-50 p-4 text-amber-950">
+            <p>{teamSaveNotice}</p><Button type="button" variant="outline" className="mt-2" onClick={() => void fetchTeamMembers()}>Reload Team data</Button>
+          </div>}
           <div className="grid gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -1802,7 +1802,7 @@ const Admin = () => {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={submitting}>
+                  <Button type="submit" className="w-full" disabled={submitting || !teamCanSave}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1823,7 +1823,7 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {teamMembers.length === 0 ? (
+                  {teamLoadFailed ? <p role="alert">Team data could not be loaded. Use Reload Team data to retry.</p> : teamMembers.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">No team members yet</p>
                   ) : (
                     teamMembers.map((member) => (
@@ -2223,9 +2223,11 @@ const Admin = () => {
           </DialogHeader>
           {editingTeamMember && (
             <div className="space-y-4">
+              {!teamCanSave && <p role="status" className="text-sm text-amber-800">{teamSaveNotice}</p>}
+              <p className="text-sm text-muted-foreground">Current roles: {editingTeamMember.roles.join(' · ') || 'Not specified'}<br />Current memberships: {editingTeamMember.departments.join(', ') || 'Not specified'}</p>
               <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
+                <Label htmlFor="edit_team_name">Name</Label>
+                <Input id="edit_team_name"
                   value={editingTeamMember.name}
                   onChange={(e) => setEditingTeamMember({ ...editingTeamMember, name: e.target.value })}
                 />
@@ -2283,16 +2285,16 @@ const Admin = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Bio</Label>
-                <Textarea
+                <Label htmlFor="edit_team_bio">Bio</Label>
+                <Textarea id="edit_team_bio"
                   value={editingTeamMember.bio || ""}
                   onChange={(e) => setEditingTeamMember({ ...editingTeamMember, bio: e.target.value })}
                   rows={3}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Photo URL</Label>
-                <Input
+                <Label htmlFor="edit_team_photo">Photo URL</Label>
+                <Input id="edit_team_photo"
                   value={editingTeamMember.photo_url || ""}
                   onChange={(e) => setEditingTeamMember({ ...editingTeamMember, photo_url: e.target.value })}
                   placeholder="https://..."
@@ -2302,8 +2304,8 @@ const Admin = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Order Index</Label>
-                <Input
+                <Label htmlFor="edit_team_order">Order Index</Label>
+                <Input id="edit_team_order"
                   type="number"
                   value={editingTeamMember.order_index}
                   onChange={(e) => setEditingTeamMember({ ...editingTeamMember, order_index: parseInt(e.target.value) || 0 })}
@@ -2313,7 +2315,7 @@ const Admin = () => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTeamDialogOpen(false)}>Cancel</Button>
-            <Button onClick={updateTeamMember} disabled={submitting}>
+            <Button onClick={updateTeamMember} disabled={submitting || !teamCanSave}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Changes
             </Button>

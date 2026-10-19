@@ -1534,6 +1534,8 @@ export type Database = {
       }
       team_members: {
         Row: {
+          role: string | null
+          department: string | null
           bio: string | null
           created_at: string
           departments: string[]
@@ -1545,6 +1547,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          role?: string | null
+          department?: string | null
           bio?: string | null
           created_at?: string
           departments?: string[]
@@ -1556,6 +1560,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          role?: string | null
+          department?: string | null
           bio?: string | null
           created_at?: string
           departments?: string[]
