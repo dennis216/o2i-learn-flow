@@ -94,13 +94,30 @@ try {
   await db.query('BEGIN;'+read('supabase/migrations/20261020000000_question_bank_simple_publication.sql')+'COMMIT;');
   await db.query('CREATE SCHEMA IF NOT EXISTS supabase_migrations; CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations(version text PRIMARY KEY,name text,statements text[]);');
   await db.query("INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261020000000','question_bank_simple_publication',ARRAY[$1])",[read('supabase/migrations/20261020000000_question_bank_simple_publication.sql')]);
+  const releasePreflight = async (studentStatus, randomStatus) => {
+    const result = (await db.query(read('docs/question-bank/production/student-practice-release/00_preflight_readonly.sql'))).rows[0].release_preflight;
+    assert.deepEqual(result.stages, { simple_publication: 'matches', student_practice: studentStatus, random_selection: randomStatus });
+    assert.equal(result.adaptive_present, false);
+    assert.ok(Object.values(result.practice_tables).every(value => value === (studentStatus === 'matches')));
+    assert.equal(result.start_rpc_exists, studentStatus === 'matches');
+  };
+  await releasePreflight('absent', 'absent');
   await db.query(read('docs/question-bank/production/student-practice/10_deploy.sql'));
+  await releasePreflight('matches', 'absent');
   const verification=(await db.query(read('docs/question-bank/production/student-practice/20_verify_readonly.sql'))).rows[0].student_practice_verification;
   assert.equal(verification.all_checks_pass,true,JSON.stringify(verification));check('Copyable deployment transaction, matching ledger and all catalog/privilege checks');
   await assert.rejects(db.query(read('docs/question-bank/production/student-practice/10_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
   await db.query(read('docs/question-bank/production/practice-selection/10_random_deploy.sql'));
   assert.equal((await db.query(read('docs/question-bank/production/practice-selection/11_random_verify.sql'))).rows[0].practice_selection_verification.all_checks_pass,true);
   await assert.rejects(db.query(read('docs/question-bank/production/practice-selection/10_random_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
+  await releasePreflight('matches', 'matches');
+  await db.query('BEGIN');
+  await db.query("UPDATE supabase_migrations.schema_migrations SET name='synthetic-drift' WHERE version='20261023000000'");
+  const drift = (await db.query(read('docs/question-bank/production/student-practice-release/00_preflight_readonly.sql'))).rows[0].release_preflight;
+  assert.equal(drift.stages.random_selection, 'ledger_mismatch');
+  await db.query('ROLLBACK');
+  check('Release preflight identifies absent, matching and drifted stages without returning account or question content');
+
   await db.query("NOTIFY pgrst,'reload schema'");
   await new Promise(r=>setTimeout(r,500));
   const students=[];for(const a of accounts.slice(1)){const c=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});await ok(c.auth.signInWithPassword({email:a.email,password:testPassword}));students.push(c);}
