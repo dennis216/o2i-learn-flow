@@ -98,6 +98,9 @@ try {
   const verification=(await db.query(read('docs/question-bank/production/student-practice/20_verify_readonly.sql'))).rows[0].student_practice_verification;
   assert.equal(verification.all_checks_pass,true,JSON.stringify(verification));check('Copyable deployment transaction, matching ledger and all catalog/privilege checks');
   await assert.rejects(db.query(read('docs/question-bank/production/student-practice/10_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
+  await db.query(read('docs/question-bank/production/practice-selection/10_random_deploy.sql'));
+  assert.equal((await db.query(read('docs/question-bank/production/practice-selection/11_random_verify.sql'))).rows[0].practice_selection_verification.all_checks_pass,true);
+  await assert.rejects(db.query(read('docs/question-bank/production/practice-selection/10_random_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
   await db.query("NOTIFY pgrst,'reload schema'");
   await new Promise(r=>setTimeout(r,500));
   const students=[];for(const a of accounts.slice(1)){const c=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});await ok(c.auth.signInWithPassword({email:a.email,password:testPassword}));students.push(c);}
@@ -153,7 +156,8 @@ try {
   await db.query("UPDATE public.question_options SET is_correct=(option_key='B') WHERE question_version_id=$1",[newV]);
   await publish({question_id:original.question_id,version_id:newV});
   const retained=await submit(student,session,failureQ,failureQ.options.find(o=>o.key==='A').id);assert.equal(retained.questions[2].version_id,original.version_id);assert.equal(retained.questions[2].attempt.is_correct,true);
-  const newSession=await start(student,t1.id);assert.equal(newSession.questions.find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
+  const revisionSets=[await start(student,t1.id),await start(student,t1.id)];assert.equal(revisionSets.flatMap(s=>s.questions).find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
+  await (await import('./practice-selection.acceptance.mjs')).verifyRandomSelection({db,fixture,topics,start,student,other,rpc,safe,check});
   let realRows=[];
   if(process.env.O2I_ACCEPTANCE_XLSX){
     const b=readFileSync(process.env.O2I_ACCEPTANCE_XLSX),sheets=await parseQuestionBankWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
