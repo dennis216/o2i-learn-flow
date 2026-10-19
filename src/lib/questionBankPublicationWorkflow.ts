@@ -1,26 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json } from "../integrations/supabase/types.ts";
+import type { Database } from "../integrations/supabase/types.ts";
 import type { QuestionBankListItem } from "./questionBankDraftRepository.ts";
-import { loadAllUnpublishedQuestions } from "./questionBankDraftRepository.ts";
+import { loadAllUnpublishedQuestions, QUESTION_BANK_VERSION_SUMMARY } from "./questionBankDraftRepository.ts";
 import { loadQuestionPublicationState, precheckQuestionPublication, recordQuestionVersionReview,
   publishQuestionVersions, type HumanQuestionReview, type PublicationPrecheck, type PublicationTarget } from "./questionBankPublication.ts";
 
-export interface PublicationPlanItem {
-  item: QuestionBankListItem; check: PublicationPrecheck; flags: string[];
-  printedNumber: string | null; locator: string | null; sourceDocument: string; sourcePage: number;
-  sourceType: string | null; calculator: string | null; locatorVerified: boolean;
-  evidence: Json;
-}
-const object = (v: Json): Record<string, Json> => v && typeof v === "object" && !Array.isArray(v) ? v : {};
-
-/** Reference only. Raw evidence is also retained and displayed, including unsupported flag formats. */
-export function originalReviewFlags(evidence: Json): string[] {
-  const data = object(evidence), original = object(data.original_import_evidence ?? null);
-  const flags = [Object.prototype.hasOwnProperty.call(data, "ai_flags") ? data.ai_flags : [],
-    Object.prototype.hasOwnProperty.call(original, "ai_flags") ? original.ai_flags : []];
-  return [...new Set(flags.flatMap(value => Array.isArray(value)
-    ? value.filter((flag): flag is string => typeof flag === "string" && !!flag.trim()) : []))].sort();
-}
+export interface PublicationPlanItem { item: QuestionBankListItem; check: PublicationPrecheck }
 const reviewFixable = new Set(["QB_REVIEW_REQUIRED", "QB_REVIEW_STALE"]);
 export const publicationContentBlockers = (plan: PublicationPlanItem) => plan.check.issues.filter(issue => !reviewFixable.has(issue.code));
 export const publicationTarget = (plan: PublicationPlanItem): PublicationTarget => {
@@ -33,16 +18,18 @@ export async function loadPublicationPlan(client: SupabaseClient<Database>, sing
   const items = single ? [single] : await loadAllUnpublishedQuestions(client);
   return Promise.all(items.map(async item => {
     const action = item.versionStatus === "approved" && item.questionStatus === "unpublished" ? "republish" : "publish";
-    const [check, response] = await Promise.all([precheckQuestionPublication(client, item.id, item.versionId, action),
-      client.from("question_versions").select("id, question_id, status, calculator_policy, source_type, source_locator_verified, source_question_number, source_locator, source_document, source_page, import_evidence")
-        .eq("id", item.versionId).eq("question_id", item.id).single()]);
-    if (response.error) throw new Error(`Could not load review evidence: ${response.error.message}`);
+    // Read labels after the checked snapshot; later changes fail the publication fingerprint guard.
+    const check = await precheckQuestionPublication(client, item.id, item.versionId, action);
+    const response = await client.from("question_versions").select(QUESTION_BANK_VERSION_SUMMARY)
+      .eq("id", item.versionId).eq("question_id", item.id).single();
+    if (response.error) throw new Error(`Could not load saved question metadata: ${response.error.message}`);
     const v = response.data;
     if (!v || v.status !== item.versionStatus || check.question_status !== item.questionStatus || !check.fingerprint)
       throw new Error("The selected question changed. Refresh the list before publishing.");
-    return { item, check, flags: originalReviewFlags(v.import_evidence), printedNumber: v.source_question_number,
-      locator: v.source_locator, locatorVerified: v.source_locator_verified, sourceDocument: v.source_document,
-      sourcePage: v.source_page, calculator: v.calculator_policy, sourceType: v.source_type, evidence: v.import_evidence };
+    if (!v.topic || v.skills.some(mapping => !mapping.skill)) throw new Error(`Could not load taxonomy for ${item.externalId}`);
+    return { item: { ...item, stem: v.stem, difficulty: v.difficulty, calculatorPolicy: v.calculator_policy, courseScope: v.course_scope,
+      topicCode: v.topic.topic_code, topicTitle: v.topic.title,
+      practiceSkillCodes: [...new Set<string>(v.skills.map(mapping => mapping.skill.skill_code))].sort() }, check };
   }));
 }
 
@@ -52,7 +39,8 @@ export function validatePublicationSelection(plans: readonly PublicationPlanItem
   if (!chosen.length || chosen.length > 20 || chosen.length !== selected.size) throw new Error("Select 1–20 listed problems for one atomic publication.");
   if (new Set(chosen.map(plan => plan.item.id)).size !== chosen.length) throw new Error("A question cannot appear twice.");
   return chosen.map(plan => {
-    if (publicationContentBlockers(plan).length) throw new Error(`${plan.item.externalId}: resolve the content issues before publication.`);
+    const blockers = publicationContentBlockers(plan);
+    if (blockers.length) throw new Error(`${plan.item.externalId}: ${blockers.map(issue => `${issue.field}: ${issue.message}`).join("; ")}`);
     return { plan, target: publicationTarget(plan), review: { confirmed: true } satisfies HumanQuestionReview };
   });
 }

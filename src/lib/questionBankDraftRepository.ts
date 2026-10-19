@@ -71,6 +71,7 @@ export interface QuestionBankListItem extends SavedDraft {
   versionId: string;
   versionNumber: number;
   difficulty: string;
+  calculatorPolicy: Database["public"]["Enums"]["question_calculator_policy"] | null;
   courseScope: string;
   topicCode: string;
   topicTitle: string;
@@ -84,7 +85,7 @@ export interface QuestionBankPage {
   total: number;
 }
 
-export interface QuestionBankVersionPreview {
+export interface QuestionBankVersionPreview extends Pick<QuestionBankListItem, "difficulty" | "calculatorPolicy" | "courseScope" | "topicCode" | "topicTitle" | "practiceSkillCodes"> {
   versionId: string;
   stem: string;
   solution: string;
@@ -95,6 +96,7 @@ export interface QuestionBankVersionPreview {
   sourceReference: string | null;
   requiresFigure: boolean;
   imageUrl: string | null;
+  evidence: Json;
   options: Pick<Database["public"]["Tables"]["question_options"]["Row"],
     "id" | "option_key" | "option_text" | "is_correct" | "order_index">[];
 }
@@ -110,7 +112,7 @@ async function requireQuestionBankAdmin(client: SupabaseClient<Database>) {
   if (admin !== true) throw new Error("Administrator access is required to read the question bank");
 }
 
-const VERSION_SUMMARY = `id, question_id, status, version_number, stem, difficulty, course_scope,
+export const QUESTION_BANK_VERSION_SUMMARY = `id, question_id, status, version_number, stem, difficulty, calculator_policy, course_scope,
   topic:curriculum_topics!question_versions_primary_topic_id_fkey(topic_code, title),
   skills:question_practice_skills!question_practice_skills_question_version_id_fkey(
     skill:curriculum_practice_skills!question_practice_skills_practice_skill_id_fkey(skill_code))` as const;
@@ -129,8 +131,8 @@ export async function loadQuestionBankPage(
   // Count/page identities once, selecting the working version before the retained current version.
   const base = client.from("questions").select(
     `id, external_id, status, current_version_id,
-     working:question_versions!question_versions_question_id_fkey(${VERSION_SUMMARY}),
-     current:question_versions!questions_current_version_belongs_to_question(${VERSION_SUMMARY})`, { count: "exact" },
+     working:question_versions!question_versions_question_id_fkey(${QUESTION_BANK_VERSION_SUMMARY}),
+     current:question_versions!questions_current_version_belongs_to_question(${QUESTION_BANK_VERSION_SUMMARY})`, { count: "exact" },
   ).in("working.status", ["draft", "review"]);
   const query = kind === "drafts"
     ? base.neq("status", "retired").or("status.eq.unpublished,working.not.is.null")
@@ -154,7 +156,7 @@ export async function loadQuestionBankPage(
     return {
       kind, id: question.id, externalId: question.external_id, questionStatus: question.status,
       versionId: version.id, versionStatus: version.status, versionNumber: version.version_number,
-      stem: version.stem, difficulty: version.difficulty, courseScope: version.course_scope,
+      stem: version.stem, difficulty: version.difficulty, calculatorPolicy: version.calculator_policy, courseScope: version.course_scope,
       topicCode: version.topic.topic_code, topicTitle: version.topic.title,
       practiceSkillCodes: [...new Set<string>(version.skills.map(mapping => mapping.skill.skill_code))].sort(),
       currentVersionId: question.current_version_id, workingVersionId: working[0]?.id ?? null,
@@ -184,16 +186,21 @@ export async function loadQuestionBankVersionPreview(
 ): Promise<QuestionBankVersionPreview> {
   await requireQuestionBankAdmin(client);
   const { data: version, error } = await client.from("question_versions")
-    .select("id, question_id, status, stem, solution, source_document, source_page, source_question_number, source_locator, source_reference, requires_figure, image_url")
+    .select(`${QUESTION_BANK_VERSION_SUMMARY}, solution, source_document, source_page, source_question_number, source_locator, source_reference, requires_figure, image_url, import_evidence`)
     .eq("id", item.versionId).eq("question_id", item.id).single();
   if (error) throw new Error(`Could not load preview: ${error.message}`);
   if (!version || version.status !== item.versionStatus) throw new Error("This version changed. Refresh the list before previewing it again.");
+  if (!version.topic || version.skills.some(mapping => !mapping.skill)) throw new Error(`Could not load taxonomy for ${item.externalId}`);
   const { data: options, error: optionError } = await client.from("question_options")
     .select("id, option_key, option_text, order_index, is_correct")
     .eq("question_version_id", version.id).order("order_index").order("id");
   if (optionError) throw new Error(`Could not load preview options: ${optionError.message}`);
   if (!options) throw new Error("Could not load preview options: no database response");
   return {
+    difficulty: version.difficulty, calculatorPolicy: version.calculator_policy, courseScope: version.course_scope,
+    topicCode: version.topic.topic_code, topicTitle: version.topic.title,
+    practiceSkillCodes: [...new Set<string>(version.skills.map(mapping => mapping.skill.skill_code))].sort(),
+    evidence: version.import_evidence,
     versionId: version.id, stem: version.stem, solution: version.solution, options,
     sourceDocument: version.source_document, sourcePage: version.source_page,
     sourceQuestionNumber: version.source_question_number, sourceLocator: version.source_locator,

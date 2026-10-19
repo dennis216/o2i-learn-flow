@@ -13,6 +13,8 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { parseQuestionBankWorkbook, validateQuestionBankSheets } from '../../src/lib/questionBankImport.ts';
 import { buildQuestionBankDraftSavePlan } from '../../src/lib/questionBankDraftSave.ts';
+import { loadQuestionBankPage, loadQuestionBankVersionPreview } from '../../src/lib/questionBankDraftRepository.ts';
+import { loadPublicationPlan } from '../../src/lib/questionBankPublicationWorkflow.ts';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 assert.equal(process.cwd(),root.replace(/\/$/,''),'Run only from the repository root');
@@ -49,7 +51,13 @@ const parse=async path=>{const b=readFileSync(path);return parseQuestionBankWork
 const questionState=async id=>scalar('SELECT to_jsonb(q) result FROM public.questions q WHERE external_id=$1',[id]);
 const questionVersions=async id=>(await db.query('SELECT v.* FROM public.question_versions v JOIN public.questions q ON q.id=v.question_id WHERE q.external_id=$1 ORDER BY version_number',[id])).rows;
 const shot=async name=>page.screenshot({path:resolve(output,name+'.png'),fullPage:false});
-const openBank=async()=>{await page.goto(app+'/admin');await page.getByRole('tab',{name:'Question Bank',exact:true}).click();await page.getByRole('button',{name:'Refresh saved drafts',exact:true}).waitFor();await page.getByText('Loading saved drafts…',{exact:true}).waitFor({state:'hidden'});};
+const openBank=async()=>{
+  if(page.url()!==app+'/admin')await page.goto(app+'/admin');
+  await page.getByRole('tab',{name:'Question Bank',exact:true}).click();
+  await page.getByRole('button',{name:'Refresh saved drafts',exact:true}).click();
+  await page.getByRole('button',{name:'Refresh published problems',exact:true}).click();
+  await page.getByText('Loading saved drafts…',{exact:true}).waitFor({state:'hidden'});
+};
 const card=(id,kind='Saved drafts')=>page.getByRole('region',{name:kind,exact:true}).getByRole('article',{name:'Problem '+id,exact:true});
 const dialog=()=>page.getByRole('dialog');
 const selectFixture=async path=>{await page.getByLabel('Choose question bank XLSX').setInputFiles(path);await page.getByRole('button',{name:/^Save \d+ drafts$/}).waitFor();};
@@ -59,7 +67,8 @@ const confirmation=()=>dialog().getByRole('checkbox',{name:/I have checked the s
 const fillReview=async()=>{
   await confirmation().waitFor();assert.equal(await confirmation().isChecked(),false);
   assert.equal(await dialog().getByRole('button',{name:/^Publish \d+ problems$/}).isEnabled(),false);
-  assert.equal(await dialog().getByRole('textbox').count(),0);
+  assert.equal(await dialog().locator('input:not([type=checkbox]),select,textarea').count(),0);
+  assert.equal(await dialog().getByText(/TAXONOMY_UNCERTAIN|DIFFICULTY_UNCERTAIN|CALCULATOR_POLICY_UNCERTAIN|Original import evidence|Source and original AI information/).count(),0);
   await confirmation().check();
 };
 const finishPublish=async(n=1)=>{
@@ -127,15 +136,48 @@ try {
   const admin=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});assert.ifError((await admin.auth.signInWithPassword({email:accounts[0].email,password:testPassword})).error);
   const topics=(await admin.from('curriculum_topics').select('id,topic_code,title')).data,skills=(await admin.from('curriculum_practice_skills').select('id,skill_code,description')).data;
   assert.equal(topics.length,111);assert.equal(skills.length,23);check('Actual local migrations and canonical 111 Topics / 23 Skills loaded');
+  let realAudit;
   if(real){
     const oldSheets=await parse(real),oldReport=validateQuestionBankSheets(oldSheets,{topicCodes:new Set(topics.map(t=>t.topic_code)),practiceSkillCodes:new Set(skills.map(s=>s.skill_code))});
     const oldPlan=buildQuestionBankDraftSavePlan(oldReport,{topics,skills,existingExternalIds:new Set()});
     assert.equal(oldPlan.payload.length,8);assert.equal(oldPlan.canSave,true);
+    const raw=process.env.O2I_RAW_AUDIT_JSON?JSON.parse(readFileSync(process.env.O2I_RAW_AUDIT_JSON,'utf8')):null;
+    realAudit=oldReport.questions.map(q=>{
+      const payload=oldPlan.payload.find(p=>p.external_id===q.externalId);
+      const parsed={external_id:q.externalId,source_question_number:q.sourceQuestionNumber||null,difficulty:q.difficulty,
+        calculator_policy:q.calculatorPolicy||null,course_scope:q.courseScope,primary_topic_code:q.primaryTopicCode,practice_skill_codes:q.practiceSkillCodes,
+        source_document:q.sourceDocument,source_page:q.sourcePage,source_locator:q.sourceLocator||null,ai_flags:q.aiFlags,human_review_notes:q.humanReviewNotes};
+      const savedPayload=Object.fromEntries(Object.keys(parsed).map(k=>[k,payload[k]??payload.import_evidence[k]??null]));
+      assert.deepEqual(savedPayload,parsed);
+      const source=raw?.questions.find(r=>r.external_id===q.externalId);
+      if(raw)assert.deepEqual(parsed,source,'Raw XLSX cells must match parsed data and save payload');
+      return {number:q.sourceQuestionNumber,raw:source,parsed,payload:savedPayload};
+    });
+
     assert.ifError((await admin.rpc('save_question_bank_drafts',{_items:oldPlan.payload})).error);
   }
   const oldState=await state();
   await db.query('BEGIN;'+read('supabase/migrations/20261020000000_question_bank_simple_publication.sql')+'COMMIT;');
   assert.deepEqual(await state(),oldState);check('New migration preserves pre-existing drafts and original evidence without reimport');
+  if(realAudit){
+    const items=(await loadQuestionBankPage(admin,'drafts',0,100)).items;
+    for(const row of realAudit){
+      const item=items.find(i=>i.externalId===row.parsed.external_id),v=(await questionVersions(item.externalId))[0];
+      const view=await loadQuestionBankVersionPreview(admin,item),[plan]=await loadPublicationPlan(admin,item);
+      const readback={external_id:item.externalId,source_question_number:v.source_question_number,difficulty:v.difficulty,calculator_policy:v.calculator_policy,
+        course_scope:v.course_scope,primary_topic_code:item.topicCode,practice_skill_codes:item.practiceSkillCodes,source_document:v.source_document,
+        source_page:String(v.source_page),source_locator:v.source_locator,ai_flags:v.import_evidence.ai_flags,human_review_notes:v.import_evidence.human_review_notes};
+      assert.deepEqual(readback,row.parsed);row.readback=readback;
+      for(const meta of [item,view,plan.item]){
+        assert.equal(meta.difficulty,row.parsed.difficulty);assert.equal(meta.calculatorPolicy,row.parsed.calculator_policy);
+        assert.equal(meta.courseScope,row.parsed.course_scope);assert.equal(meta.topicCode,row.parsed.primary_topic_code);assert.deepEqual(meta.practiceSkillCodes,row.parsed.practice_skill_codes);
+      }
+      assert.deepEqual(view.evidence.ai_flags,row.parsed.ai_flags);assert.deepEqual(plan.check.issues.map(i=>i.code),['QB_REVIEW_REQUIRED']);
+    }
+    writeFileSync(resolve(output,'real-metadata-audit.json'),JSON.stringify(realAudit,null,2));
+    check('All eight raw XLSX metadata rows match parser, payload, local database and exact-version preview/plan readback');
+  }
+
 
   const syntheticSheets=await parse(synthetic),syntheticReport=validateQuestionBankSheets(syntheticSheets);
   assert.equal(syntheticReport.questions.length,1);assert.match(syntheticReport.questions[0].externalId,/^synthetic-/i);const synthId=syntheticReport.questions[0].externalId;
@@ -158,9 +200,8 @@ try {
   await card(synthId).getByRole('button',{name:/^Edit /}).click();await dialog().getByLabel(synthId+' Difficulty',{exact:true}).selectOption('hard');await dialog().getByRole('button',{name:'Save changes',exact:true}).click();await dialog().getByText('Changes saved and read back.',{exact:false}).waitFor();await closeEditor();
   assert.equal((await questionVersions(synthId))[0].difficulty,'hard');check('Draft metadata edit saves and reads back; edit Cancel writes nothing');
   before=await state();await card(synthId).getByRole('button',{name:'Publish',exact:true}).click();
-  await dialog().getByText('Question preview',{exact:true}).click();
   await dialog().getByText('Correct answer',{exact:true}).waitFor();
-  await dialog().locator('summary').filter({hasText:/^Solution$/}).click();
+  assert.equal(await dialog().getByText('Question preview',{exact:true}).locator('..').getAttribute('open')!==null,true);
   await fillReview();
   const targetChoice=dialog().getByRole('article').getByRole('checkbox').first();
   await targetChoice.uncheck();assert.equal(await confirmation().isChecked(),false);
@@ -196,22 +237,49 @@ try {
     }
     const displayQuestion=r.questions.find(q=>q.solution.includes(String.fromCharCode(92)+'['));assert.ok(displayQuestion,'Real acceptance needs a representative display formula');
     await openBank();
-    const preExisting=await state();await card(displayQuestion.externalId).getByRole('button',{name:'Publish',exact:true}).click();
-    await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
-    assert.equal(await confirmation().isChecked(),false);assert.equal(await dialog().getByRole('alert').count(),0);
-    await dialog().getByText('Source and original AI information',{exact:true}).click();
-    await dialog().getByText('Original AI flags (reference only):',{exact:false}).waitFor();
-    await closeEditor();assert.deepEqual(await state(),preExisting);
-    check('Real eight old drafts open simplified publication checks with no reimport or fabricated approval');
+    for(const q of r.questions){
+      const preExisting=await state();await card(q.externalId).getByRole('button',{name:'Publish',exact:true}).click();
+      await dialog().getByText('Correct answer',{exact:true}).waitFor();
+      const summary=dialog().getByLabel('Saved question metadata',{exact:true});
+      const value=label=>summary.getByText(label,{exact:true}).locator('..').locator('dd');
+      assert.equal(await value('Difficulty').textContent(),q.difficulty);
+      assert.equal(await value('Calculator policy').textContent(),q.calculatorPolicy?q.calculatorPolicy.replaceAll('_',' '):'Not specified (optional)');
+      assert.equal(await value('AB/BC').textContent(),q.courseScope==='BOTH'?'AB & BC':q.courseScope);
+      assert.ok((await value('Topic').textContent()).startsWith(q.primaryTopicCode+' · '));
+      assert.equal(await value('Skills').textContent(),q.practiceSkillCodes.join(', '));
+      assert.equal(await confirmation().isChecked(),false);assert.equal(await dialog().getByRole('alert').count(),0);
+      assert.equal(await dialog().locator('input:not([type=checkbox]),select,textarea,pre').count(),0);
+      assert.equal(await dialog().getByText(/UNCERTAIN|Original import evidence/).count(),0);
+      await dialog().locator('summary').filter({hasText:/^Source details$/}).click();
+      await dialog().getByText('Printed question number: '+q.sourceQuestionNumber+' · Locator: not provided',{exact:true}).waitFor();
+      if(q.sourceQuestionNumber==='4'){
+        await page.setViewportSize({width:1280,height:1440});await dialog().locator('summary').filter({hasText:/^Source details$/}).click();
+        await shot('07-real-q004-publication-preview');await page.setViewportSize({width:1280,height:960});
+      }
+      await closeEditor();assert.deepEqual(await state(),preExisting);
+    }
+    check('All eight real drafts show saved read-only tags, default-open question/answer/solution and no flags or review fields; Cancel writes nothing');
     await card(displayQuestion.externalId).getByRole('button',{name:/^Preview /}).click();await dialog().getByText('Correct answer',{exact:true}).waitFor();await shot('03-real-saved-preview');
+    await dialog().getByText('Original import evidence',{exact:true}).click();await dialog().getByText(/TAXONOMY_UNCERTAIN/).waitFor();
     await dialog().locator('summary').filter({hasText:/^Solution$/}).click();await dialog().locator('.katex-display').first().scrollIntoViewIfNeeded();await shot('03a-real-solution-formula');await dialog().getByRole('button',{name:'Close preview',exact:true}).click();
     await selectFixture(real);await page.getByText(/field issue\(s\) block draft saving/).waitFor();assert.equal(await page.getByRole('button',{name:'Save 8 drafts',exact:true}).isEnabled(),false);await page.getByRole('button',{name:'Cancel',exact:true}).click();
     assert.equal(createHash('sha256').update(readFileSync(real)).digest('hex'),hash);report.realWorkbook='8 questions / 32 options: preview, formulas, draft save/readback, evidence and duplicate block passed; not published';check('Real 8/32 XLSX saved only as drafts; original file unchanged, evidence retained, duplicate blocked');
   }
+  const uncertaintyFlags=['TAXONOMY_UNCERTAIN','DIFFICULTY_UNCERTAIN','CALCULATOR_POLICY_UNCERTAIN'];
+  assert.ifError((await admin.rpc('save_question_bank_drafts',{_items:[{...base,external_id:'SYNTHETIC-UNCERTAIN',difficulty:'medium',calculator_policy:'calculator_allowed',course_scope:'BOTH',import_evidence:{...base.import_evidence,ai_flags:uncertaintyFlags}}]})).error);
+  await openBank();await card('SYNTHETIC-UNCERTAIN').getByRole('button',{name:'Publish',exact:true}).click();
+  await dialog().getByText('Correct answer',{exact:true}).waitFor();
+  await dialog().getByLabel('Saved question metadata',{exact:true}).getByText('calculator allowed',{exact:true}).waitFor();
+  await shot('08-synthetic-complete-publication-preview');await fillReview();await finishPublish();
+  const complete=(await questionVersions('SYNTHETIC-UNCERTAIN'))[0];assert.equal(complete.difficulty,'medium');assert.equal(complete.calculator_policy,'calculator_allowed');
+  assert.equal(complete.course_scope,'BOTH');assert.deepEqual(complete.import_evidence.ai_flags,uncertaintyFlags);
+  check('Complete synthetic saved fields with all three legacy UNCERTAIN flags publish without refilling or evidence changes');
   // Full all-page scope and a real server failure after the first publication mutation.
   await seed('SYNTHETIC-BATCH-A');await seed('SYNTHETIC-BATCH-B');await seed('SYNTHETIC-BATCH-BAD');
   await db.query("UPDATE public.question_versions SET requires_figure=true,image_url=NULL WHERE question_id=(SELECT id FROM public.questions WHERE external_id='SYNTHETIC-BATCH-BAD')");
   await openBank();await page.getByRole('button',{name:'Publish all',exact:true}).click();await dialog().getByText('Maximum 20 per atomic batch.',{exact:false}).waitFor();
+  assert.equal(await dialog().getByText('Correct answer',{exact:true}).count(),0);
+  await dialog().getByRole('article',{name:'Publication target SYNTHETIC-BATCH-BAD',exact:true}).getByText('SYNTHETIC-BATCH-BAD · image_url:',{exact:false}).waitFor();
   await fillReview();assert.equal(await dialog().getByRole('button',{name:/^Publish \d+ problems$/}).isEnabled(),false);
   check('A selected content blocker disables publication even with confirmation; users can exclude it');
   for(const target of await dialog().getByRole('article').all()){

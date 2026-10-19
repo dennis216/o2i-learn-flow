@@ -6,7 +6,7 @@ import type { QuestionBankListItem } from "@/lib/questionBankDraftRepository";
 import { QuestionPublicationError } from "@/lib/questionBankPublication";
 import { loadPublicationPlan, confirmPublicationPlan, validatePublicationSelection, publicationContentBlockers,
   type PublicationPlanItem } from "@/lib/questionBankPublicationWorkflow";
-import { QuestionBankPreviewDisclosure } from "./QuestionBankVersionDetails";
+import { QuestionBankPreviewDisclosure, QuestionBankVersionMetadata } from "./QuestionBankVersionDetails";
 
 export function QuestionBankPublicationDialog({ single, onClose, onChanged, onSuccess }: {
   single?: QuestionBankListItem; onClose: () => void; onChanged: () => void; onSuccess: (message: string) => void;
@@ -69,17 +69,11 @@ export function QuestionBankPublicationDialog({ single, onClose, onChanged, onSu
             onChange={e => { setSelected(current => { const next = new Set(current); if (e.target.checked) next.add(plan.item.id); else next.delete(plan.item.id); return next; }); setConfirmed(false); }} />
             {plan.item.externalId} · Version {plan.item.versionNumber} · {plan.check.action === "republish" ? "Restore retained approved version" : "Publish working version"}</label>
           {plan.check.working_version_id && plan.check.working_version_id !== plan.item.versionId && <p className="text-amber-700">Unpublished changes exist. This action restores the retained approved version. Select the working revision separately to publish its changes.</p>}
-          <QuestionBankPreviewDisclosure item={plan.item} />
-          {blockers.length > 0 && <div role="alert" className="space-y-1 text-destructive">{blockers.map((issue, i) => <p key={i}>{issue.message}</p>)}
+          <QuestionBankVersionMetadata item={plan.item} />
+          <QuestionBankPreviewDisclosure item={plan.item} defaultOpen={!!single} />
+          {blockers.length > 0 && <div role="alert" className="space-y-1 text-destructive">{blockers.map((issue, i) => <p key={i}>{plan.item.externalId} · {issue.field}: {issue.message}</p>)}
             <p>Deselect this problem, resolve metadata issues in Edit, or correct the XLSX and re-upload. This window cannot edit question text, options, solutions or figures.</p></div>}
-          <details><summary>Source and original AI information</summary>
-            <p>Source: {plan.sourceDocument} · Physical PDF page {plan.sourcePage}</p>
-            <p>Printed question number: {plan.printedNumber || "not recorded"} · Locator: {plan.locator || "not provided"}</p>
-            <p>Calculator policy: {plan.calculator || "unknown"} · Source-use category: {plan.sourceType || "not recorded"}</p>
-            <p>Original AI flags (reference only): {plan.flags.join(" | ") || "none recorded"}</p>
-            <p>Original evidence is preserved. Imported review status does not grant publication approval.</p>
-            <pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(plan.evidence, null, 2)}</pre>
-          </details>
+
         </article>;
       })}</div>
       <div className="sticky -bottom-6 space-y-2 border-t bg-background py-3 text-sm">

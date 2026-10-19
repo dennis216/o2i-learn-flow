@@ -6,12 +6,12 @@ import { loadQuestionBankPage, loadQuestionBankVersionPreview, loadAllUnpublishe
 const version = (id, questionId, status, number) => ({
   id, question_id: questionId, status, version_number: number,
   stem: `Synthetic ${id} \\(x^2\\)`, solution: 'Synthetic solution \\[2x\\]',
-  difficulty: 'easy', course_scope: 'AB', primary_topic_id: 'topic-1',
+  difficulty: 'easy', calculator_policy:'no_calculator', course_scope: 'AB', primary_topic_id: 'topic-1',
   topic: { topic_code: '1.1', title: 'Synthetic topic' },
   skills: [{ skill: { skill_code: '1.A' } }],
   source_document: 'SYNTHETIC.pdf', source_page: 12,
   source_question_number: null, source_locator: 'p012-item01', source_reference: null,
-  requires_figure: false, image_url: null,
+  requires_figure: false, image_url: null, import_evidence:{ai_flags:['DIFFICULTY_UNCERTAIN','CALCULATOR_POLICY_UNCERTAIN','TAXONOMY_UNCERTAIN']},
 });
 const question = (id, status = 'draft', current = null) => ({
   id, external_id: `synthetic-${id}`, status, current_version_id: current,
@@ -204,4 +204,16 @@ test('component lists mount independently of upload state; cancel does not clear
   assert.match(list, /role="alert"/);
   assert.match(list, /Retry/);
   assert.doesNotMatch(list, /\.rpc\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/);
+});
+
+test('exact-version preview carries saved metadata and original evidence without applying UNCERTAIN flags',async()=>{
+  const f=fixtureClient();const item=(await loadQuestionBankPage(f.client,'published',0,20)).items[0];
+  const current=f.versions.find(v=>v.id===item.versionId);
+  Object.assign(current,{difficulty:'hard',calculator_policy:'calculator_allowed',course_scope:'BOTH',topic:{topic_code:'1.6',title:'Saved topic'},skills:[{skill:{skill_code:'1.E'}}]});
+  let preview=await loadQuestionBankVersionPreview(f.client,item);
+  assert.equal(preview.difficulty,'hard');assert.equal(preview.calculatorPolicy,'calculator_allowed');assert.equal(preview.courseScope,'BOTH');
+  assert.equal(preview.topicCode,'1.6');assert.deepEqual(preview.practiceSkillCodes,['1.E']);assert.deepEqual(preview.evidence,current.import_evidence);
+  current.calculator_policy=null;preview=await loadQuestionBankVersionPreview(f.client,item);assert.equal(preview.calculatorPolicy,null);
+  const query=f.calls.filter(([name])=>name==='question_versions').at(-1)[1].find(([name])=>name==='select')[1];
+  assert.match(query,/calculator_policy/);assert.match(query,/difficulty/);assert.match(query,/import_evidence/);
 });
