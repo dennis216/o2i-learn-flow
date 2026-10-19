@@ -60,7 +60,7 @@ export default function Lesson() {
     if (segment) addSignal({ lessonId: lesson.id, subjectId: lesson.subjectId, skillId: segment.skillId, kind: 'ask_ai', timestampSeconds: currentTime, confirmed: true });
     setHelpOpen(true);
   };
-  const finish = () => { completeLesson(lesson.id); navigate(`/quiz?subject=${lesson.subjectId}&lesson=${lesson.id}&source=lesson`); };
+  const finish = () => { completeLesson(lesson.id); navigate('/practice'); };
   const lessonSignals = signals.filter((signal) => signal.lessonId === lesson.id);
 
   return (
@@ -123,7 +123,7 @@ export default function Lesson() {
               </CardContent>
             </Card>
 
-            <Button className="h-12 w-full" onClick={finish}><Check />Finish lesson and practice</Button>
+            <Button className="h-12 w-full" onClick={finish}><Check />Finish lesson and choose practice</Button>
           </aside>
         </div>
       </div>

@@ -25,7 +25,7 @@ export default function Review() {
         <div className="mb-10 text-center">
           <h1 className="mb-4 flex items-center justify-center gap-3 text-4xl font-bold"><BookOpen className="h-10 w-10 text-primary" />Your Review</h1>
           <p className="mx-auto max-w-2xl text-xl text-muted-foreground">A personal collection of ideas worth another look, ready whenever you are.</p>
-          <Button asChild size="lg" className="mt-7"><Link to="/quiz?subject=calculus&source=review">Practice these topics <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+          <Button asChild size="lg" className="mt-7"><Link to="/practice">Choose published practice <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
         </div>
 
         <div className="mb-10 grid gap-6 sm:grid-cols-3">
