@@ -1,4 +1,4 @@
-import { TEAM_DEPARTMENTS, normalizeTeamDepartment } from "@/lib/teamDepartments";
+import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Image, FolderOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,11 +62,11 @@ interface PracticeProblem {
 interface TeamMember {
   id: string;
   name: string;
-  role: string;
+  roles: string[];
   bio: string | null;
   photo_url: string | null;
   order_index: number;
-  department: string;
+  departments: string[];
 }
 
 interface Subject {
@@ -140,9 +141,9 @@ const Admin = () => {
   // Team member form
   const [teamFormData, setTeamFormData] = useState({
     name: "",
-    role: "",
+    roles: ["Team Member"],
     bio: "",
-    department: TEAM_DEPARTMENTS[0],
+    departments: [TEAM_DEPARTMENTS[0]],
     order_index: "0",
   });
   const [teamPhotoFile, setTeamPhotoFile] = useState<File | null>(null);
@@ -518,15 +519,19 @@ const Admin = () => {
 
   const updateTeamMember = async () => {
     if (!editingTeamMember) return;
+    if (editingTeamMember.roles.length === 0 || editingTeamMember.departments.length === 0) {
+      toast({ title: "Role and membership required", description: "Select at least one role and one department or group.", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
       const { error } = await supabase
         .from("team_members")
         .update({
           name: editingTeamMember.name,
-          role: editingTeamMember.role,
+          roles: editingTeamMember.roles,
           bio: editingTeamMember.bio,
-          department: normalizeTeamDepartment(editingTeamMember.department),
+          departments: editingTeamMember.departments,
           photo_url: editingTeamMember.photo_url,
           order_index: editingTeamMember.order_index,
         })
@@ -744,6 +749,10 @@ const Admin = () => {
   const handleTeamSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (teamFormData.roles.length === 0 || teamFormData.departments.length === 0) {
+      toast({ title: "Role and membership required", description: "Select at least one role and one department or group.", variant: "destructive" });
+      return;
+    }
 
     setSubmitting(true);
     setUploadingTeamPhoto(true);
@@ -758,9 +767,9 @@ const Admin = () => {
 
       const { error } = await supabase.from("team_members").insert({
         name: teamFormData.name,
-        role: teamFormData.role,
+        roles: teamFormData.roles,
         bio: teamFormData.bio || null,
-        department: teamFormData.department,
+        departments: teamFormData.departments,
         photo_url: photoUrl,
         order_index: parseInt(teamFormData.order_index) || 0,
       });
@@ -771,9 +780,9 @@ const Admin = () => {
 
       setTeamFormData({
         name: "",
-        role: "",
+        roles: ["Team Member"],
         bio: "",
-        department: TEAM_DEPARTMENTS[0],
+        departments: [TEAM_DEPARTMENTS[0]],
         order_index: "0",
       });
       setTeamPhotoFile(null);
@@ -1688,31 +1697,58 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="team_role">Role *</Label>
-                    <Input
-                      id="team_role"
-                      value={teamFormData.role}
-                      onChange={(e) => setTeamFormData({ ...teamFormData, role: e.target.value })}
-                      placeholder="e.g., Head Instructor"
-                      required
-                    />
+                    <Label>Roles *</Label>
+                    <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+                      {TEAM_ROLES.map(role => (
+                        <label key={role} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={teamFormData.roles.includes(role)}
+                            onCheckedChange={(checked) => setTeamFormData({
+                              ...teamFormData,
+                              roles: checked ? [...teamFormData.roles, role] : teamFormData.roles.filter(value => value !== role),
+                            })}
+                          />
+                          {role}
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="team_department">Department *</Label>
-                    <Select
-                      value={teamFormData.department}
-                      onValueChange={(value) => setTeamFormData({ ...teamFormData, department: value })}
-                    >
-                      <SelectTrigger id="team_department">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TEAM_DEPARTMENTS.map((dept) => (
-                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Departments and Groups *</Label>
+                    <div className="space-y-2 rounded-md border p-3">
+                      {TEAM_DEPARTMENTS.map(department => (
+                        <div key={department} className="space-y-2">
+                          <label className="flex items-center gap-2 text-sm font-medium">
+                            <Checkbox
+                              checked={teamFormData.departments.includes(department)}
+                              onCheckedChange={(checked) => setTeamFormData({
+                                ...teamFormData,
+                                departments: checked ? [...teamFormData.departments, department] : teamFormData.departments.filter(value => value !== department),
+                              })}
+                            />
+                            {department}
+                          </label>
+                          {department === TEAM_DEPARTMENTS[2] && (
+                            <div className="ml-6 grid gap-2 border-l pl-3 sm:grid-cols-2">
+                              {CURRICULUM_GROUPS.map(group => (
+                                <label key={group} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Checkbox
+                                    checked={teamFormData.departments.includes(group)}
+                                    onCheckedChange={(checked) => setTeamFormData({
+                                      ...teamFormData,
+                                      departments: checked ? [...teamFormData.departments, group] : teamFormData.departments.filter(value => value !== group),
+                                    })}
+                                  />
+                                  {group}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Groups appear under Curriculum Content &amp; Media Production.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -1810,8 +1846,8 @@ const Admin = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold truncate">{member.name}</h3>
-                          <p className="text-sm text-primary">{member.role}</p>
-                          <p className="text-xs font-medium" style={{ color: '#4A90E2' }}>Group: {normalizeTeamDepartment(member.department) || "Team Members (unassigned)"}</p>
+                          <p className="text-sm text-primary">{member.roles.join(" · ")}</p>
+                          <p className="text-xs font-medium" style={{ color: '#4A90E2' }}>Memberships: {member.departments.join(", ")}</p>
                           {member.bio && (
                             <p className="text-sm text-muted-foreground line-clamp-1">{member.bio}</p>
                           )}
@@ -2195,30 +2231,56 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Role</Label>
-                <Input
-                  value={editingTeamMember.role}
-                  onChange={(e) => setEditingTeamMember({ ...editingTeamMember, role: e.target.value })}
-                />
+                <Label>Roles</Label>
+                <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-2">
+                  {TEAM_ROLES.map(role => (
+                    <label key={role} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={editingTeamMember.roles.includes(role)}
+                        onCheckedChange={(checked) => setEditingTeamMember({
+                          ...editingTeamMember,
+                          roles: checked ? [...editingTeamMember.roles, role] : editingTeamMember.roles.filter(value => value !== role),
+                        })}
+                      />
+                      {role}
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Department</Label>
-                <Select
-                  value={normalizeTeamDepartment(editingTeamMember.department)}
-                  onValueChange={(value) => setEditingTeamMember({ ...editingTeamMember, department: value })}
-                >
-                  <SelectTrigger aria-label="Team member department">
-                    <SelectValue placeholder="Team Members (unassigned)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {normalizeTeamDepartment(editingTeamMember.department) && !TEAM_DEPARTMENTS.some(dept => dept === normalizeTeamDepartment(editingTeamMember.department)) && (
-                      <SelectItem value={normalizeTeamDepartment(editingTeamMember.department)}>{editingTeamMember.department} (unrecognized group)</SelectItem>
-                    )}
-                    {TEAM_DEPARTMENTS.map((dept) => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Departments and Groups</Label>
+                <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border p-3">
+                  {TEAM_DEPARTMENTS.map(department => (
+                    <div key={department} className="space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <Checkbox
+                          checked={editingTeamMember.departments.includes(department)}
+                          onCheckedChange={(checked) => setEditingTeamMember({
+                            ...editingTeamMember,
+                            departments: checked ? [...editingTeamMember.departments, department] : editingTeamMember.departments.filter(value => value !== department),
+                          })}
+                        />
+                        {department}
+                      </label>
+                      {department === TEAM_DEPARTMENTS[2] && (
+                        <div className="ml-6 grid gap-2 border-l pl-3 sm:grid-cols-2">
+                          {CURRICULUM_GROUPS.map(group => (
+                            <label key={group} className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Checkbox
+                                checked={editingTeamMember.departments.includes(group)}
+                                onCheckedChange={(checked) => setEditingTeamMember({
+                                  ...editingTeamMember,
+                                  departments: checked ? [...editingTeamMember.departments, group] : editingTeamMember.departments.filter(value => value !== group),
+                                })}
+                              />
+                              {group}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Bio</Label>
