@@ -14,7 +14,19 @@ export interface IssuedPracticeQuestion {
   options: { id: string; key: string; text: string }[];
   attempt: SavedPracticeAnswer | null;
 }
-export interface PracticeSession { id: string; topic_id: string | null; created_at: string; questions: IssuedPracticeQuestion[] }
+export interface SelectionSummary {
+  rule_version: 'topic-difficulty-v1'; target_difficulty: 'easy' | 'medium' | 'hard' | null;
+  sample_count: number; correct_count: number; fallback_count: number;
+}
+export function selectionRationale(summary?: SelectionSummary | null): string | null {
+  if (!summary) return null;
+  if (summary.target_difficulty === null) return 'Random practice across published Topics, prioritizing questions you have not seen.';
+  const basis = summary.sample_count < 5
+    ? 'Building your practice history. Starting with medium difficulty.'
+    : `${summary.correct_count}/${summary.sample_count} correct on your most recently answered distinct questions in this Topic. Target difficulty: ${summary.target_difficulty}.`;
+  return basis + (summary.fallback_count ? ' Other difficulties are included to prioritize unseen questions or fill this set.' : '');
+}
+export interface PracticeSession { id: string; topic_id: string | null; created_at: string; selection_summary?: SelectionSummary | null; questions: IssuedPracticeQuestion[] }
 export interface RecentPracticeAnswer {
   id: string; session_id: string; question_id: string; version_id: string; selected_option_id: string;
   is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string;
@@ -40,6 +52,14 @@ export function readPracticeSession(value: unknown, expectedId: string): Practic
       || (q.attempt !== null && (!q.attempt?.id || typeof q.attempt.is_correct !== 'boolean' || !q.attempt.submitted_at || !q.attempt.solution
         || !q.options.some(o => o.id === q.attempt?.selected_option_id) || !q.options.some(o => o.id === q.attempt?.correct_option_id)))))
     throw new Error('The saved practice response could not be verified. Reload your session.');
+  const summary = s.selection_summary;
+  if (summary != null && (summary.rule_version !== 'topic-difficulty-v1'
+    || ![null, 'easy', 'medium', 'hard'].includes(summary.target_difficulty)
+    || !Number.isInteger(summary.sample_count) || summary.sample_count < 0 || summary.sample_count > 10
+    || !Number.isInteger(summary.correct_count) || summary.correct_count < 0 || summary.correct_count > summary.sample_count
+    || !Number.isInteger(summary.fallback_count) || summary.fallback_count < 0 || summary.fallback_count > s.questions.length
+    || (summary.target_difficulty === null && (summary.sample_count !== 0 || summary.correct_count !== 0 || summary.fallback_count !== 0))))
+    throw new Error('The selection summary could not be verified. Reload your session.');
   return s;
 }
 export async function startPractice(client: SupabaseClient<Database>, id: string, topicId?: string) {

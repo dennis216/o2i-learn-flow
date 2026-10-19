@@ -127,8 +127,8 @@ try {
   const precheck=async(s,action='publish')=>rpc(admin,'precheck_question_publication',{_question_id:s.question_id,_version_id:s.version_id,_action:action});
   const publish=async s=>{let p=await precheck(s);const r=await rpc(admin,'record_question_version_review',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint,_review:{confirmed:true}});assert.equal(r.precheck.eligible,true,JSON.stringify(r));p=r.precheck;return rpc(admin,'publish_question_version',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint});};
   let serial=0;
-  const fixture=async(topic='1.1',published=true)=>{
-    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty:'easy',course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
+  const fixture=async(topic='1.1',published=true,difficulty='easy')=>{
+    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty,course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
     if(published)await publish(s);return s;
   };
   const t1=topics.find(t=>t.topic_code==='1.1'),t2=topics.find(t=>t.topic_code==='1.2'),empty=topics.find(t=>t.topic_code==='1.3');
@@ -175,6 +175,12 @@ try {
   const retained=await submit(student,session,failureQ,failureQ.options.find(o=>o.key==='A').id);assert.equal(retained.questions[2].version_id,original.version_id);assert.equal(retained.questions[2].attempt.is_correct,true);
   const revisionSets=[await start(student,t1.id),await start(student,t1.id)];assert.equal(revisionSets.flatMap(s=>s.questions).find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
   await (await import('./practice-selection.acceptance.mjs')).verifyRandomSelection({db,fixture,topics,start,student,other,rpc,safe,check});
+  await db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql'));
+  assert.equal((await db.query(read('docs/question-bank/production/practice-selection/21_adaptive_verify.sql'))).rows[0].practice_selection_verification.all_checks_pass,true);
+  await assert.rejects(db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
+  await db.query("NOTIFY pgrst,'reload schema'");
+  assert.equal((await rpc(student,'get_question_practice',{_session_id:session.id})).selection_summary,null);
+  await (await import('./practice-selection.acceptance.mjs')).verifyTopicAdaptation({db,fixture,topics,start,student,other,rpc,submit,check,admin,precheck,publish});
   let realRows=[];
   if(process.env.O2I_ACCEPTANCE_XLSX){
     const b=readFileSync(process.env.O2I_ACCEPTANCE_XLSX),sheets=await parseQuestionBankWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
@@ -203,7 +209,7 @@ try {
   await page.evaluate(()=>localStorage.setItem('o2i-learning-prototype-v1',JSON.stringify({attempts:[{id:'FAKE_LOCALSTORAGE',correct:true,skillIds:[],misconceptionTags:[],overTarget:false}]})));
   await page.goto(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(await page.getByText('FAKE_LOCALSTORAGE').count(),0);
   const browserSession=randomUUID();await page.goto(app+'/quiz?topic='+t2.id+'&session='+browserSession);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.getByLabel('Saved question labels').waitFor();assert.equal(await page.getByLabel('Saved answer',{exact:true}).count(),0);assert.equal(await page.getByText('Correct answer:',{exact:false}).count(),0);
-  await wait(()=>safeResponses.length);safe(safeResponses.at(-1));assert.ok(await page.locator('.katex').count());await page.getByRole('img',{name:'Question figure',exact:true}).waitFor();assert.ok(await page.getByRole('img',{name:'Question figure',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0));await shot('01-safe-question');
+  await wait(()=>safeResponses.length);safe(safeResponses.at(-1));assert.ok(await page.locator('.katex').count());await page.getByRole('img',{name:'Question figure',exact:true}).waitFor();assert.ok(await page.getByRole('img',{name:'Question figure',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0));await page.getByLabel('Selection rationale').filter({hasText:'Building your practice history'}).waitFor();await shot('01-safe-question');
   // The first failure is before the database request; do not display a saved result.
   await page.route('**/rpc/submit_question_practice',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic server unavailable'})}));
   await page.getByRole('button',{name:'Option A',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('alert').filter({hasText:'Save could not be confirmed'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),0);

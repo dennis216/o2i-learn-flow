@@ -20,18 +20,21 @@ export type Database = {
           user_id: string
           topic_id: string | null
           created_at: string
+          selection_summary: Json | null
         }
         Insert: {
           id: string
           user_id: string
           topic_id?: string | null
           created_at?: string
+          selection_summary?: Json | null
         }
         Update: {
           id?: string
           user_id?: string
           topic_id?: string | null
           created_at?: string
+          selection_summary?: Json | null
         }
         Relationships: []
       }

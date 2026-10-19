@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { parsePracticeRoute, startPractice, readPractice, submitPractice, type IssuedPracticeQuestion, type PracticeSession } from '@/lib/studentPractice';
+import { selectionRationale, parsePracticeRoute, startPractice, readPractice, submitPractice, type IssuedPracticeQuestion, type PracticeSession } from '@/lib/studentPractice';
 import { cn } from '@/lib/utils';
 
 function SavedAnswer({ question }: { question: IssuedPracticeQuestion }) {
@@ -26,6 +26,7 @@ function AccountQuiz({ sessionId, topicId, onNextSet }: { sessionId: string; top
   const [retry, setRetry] = useState(0), [finished, setFinished] = useState(false);
   const writing = useRef(false);
   const question = session?.questions[index];
+  const rationale = selectionRationale(session?.selection_summary);
   useEffect(() => {
     let active = true; setBusy(true); setError('');
     void startPractice(supabase, sessionId, topicId).then(data => {
@@ -59,9 +60,10 @@ function AccountQuiz({ sessionId, topicId, onNextSet }: { sessionId: string; top
   if (error) return <div role="alert" className="space-y-4"><p>Could not load this practice session. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   if (!session) return <p role="status">Loading your published questions…</p>;
   if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">No published questions in this practice scope</h1><p>No sample questions have been substituted. Choose another published Topic in Practice.</p></div>;
-  if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1><p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct · Answers saved to your account</p><Button onClick={() => onNextSet(session.topic_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} /></CardContent></Card>)}</div>;
+  if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct · Answers saved to your account</p><Button onClick={() => onNextSet(session.topic_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} /></CardContent></Card>)}</div>;
   if (!question) return null;
   return <>
+    {rationale && <p aria-label="Selection rationale" className="mb-4 text-sm text-muted-foreground">{rationale}</p>}
     <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Question {index + 1} of {session.questions.length}</h1><p className="flex items-center gap-2 text-sm"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · Device time</p></div>
     <Progress className="my-5 h-2" value={session.questions.filter(q => q.attempt).length / session.questions.length * 100} />
     <Card><CardContent className="space-y-5 p-4 sm:p-7">

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome } from './studentPractice.ts';
+import { selectionRationale, parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome } from './studentPractice.ts';
 const id='11111111-1111-4111-8111-111111111111', qid='22222222-2222-4222-8222-222222222222', oid='33333333-3333-4333-8333-333333333333';
 const fixture=()=>({id,topic_id:id,created_at:'2026-01-01',questions:[{question_id:qid,version_id:id,stem:'Test',topic:{id},skills:['1.A'],options:[{id:oid,key:'A',text:'A'},{id:qid,key:'B',text:'B'}],attempt:null}]});
 test('Legacy and unknown filters never fall back to all published questions',()=>{
@@ -23,4 +23,15 @@ test('RPC inputs never contain user identity, correct answer or score; unconfirm
 });
 test('Practice never treats a failed history or topics request as an empty account',async()=>{
   await assert.rejects(loadPracticeHome({rpc:async name=>name.includes('topics')?{data:[],error:null}:{data:null,error:{message:'History failed'}}}),/History failed/);
+});
+
+test('Selection summary is optional for old sessions and validates server counts',()=>{
+  assert.equal(selectionRationale(),null); assert.equal(selectionRationale(null),null);
+  const summary={rule_version:'topic-difficulty-v1',target_difficulty:'medium',sample_count:0,correct_count:0,fallback_count:0};
+  const s={...fixture(),selection_summary:summary}; assert.equal(readPracticeSession(s,id).selection_summary,summary);
+  assert.match(selectionRationale(summary),/Building your practice history/);
+  assert.match(selectionRationale({...summary,target_difficulty:'hard',sample_count:10,correct_count:8,fallback_count:1}),/8\/10.*Other difficulties/);
+  assert.match(selectionRationale({...summary,target_difficulty:null}),/Random practice/);
+  for(const change of [{rule_version:'unknown'},{target_difficulty:'invalid'},{sample_count:11},{sample_count:1.5},{correct_count:1},{fallback_count:2},{fallback_count:-1},{target_difficulty:null,sample_count:1}])
+    assert.throws(()=>readPracticeSession({...fixture(),selection_summary:{...summary,...change}},id),/summary could not be verified/);
 });
