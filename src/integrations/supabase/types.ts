@@ -1536,34 +1536,34 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string
-          department: string
+          departments: string[]
           id: string
           name: string
           order_index: number
           photo_url: string | null
-          role: string
+          roles: string[]
           updated_at: string
         }
         Insert: {
           bio?: string | null
           created_at?: string
-          department?: string
+          departments?: string[]
           id?: string
           name: string
           order_index?: number
           photo_url?: string | null
-          role: string
+          roles?: string[]
           updated_at?: string
         }
         Update: {
           bio?: string | null
           created_at?: string
-          department?: string
+          departments?: string[]
           id?: string
           name?: string
           order_index?: number
           photo_url?: string | null
-          role?: string
+          roles?: string[]
           updated_at?: string
         }
         Relationships: []

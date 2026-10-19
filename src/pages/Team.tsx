@@ -10,12 +10,57 @@ import { Users, Crown, Shield } from "lucide-react";
 interface TeamMember {
   id: string;
   name: string;
-  role: string;
+  roles: string[];
   bio: string | null;
   photo_url: string | null;
   order_index: number;
-  department: string | null;
+  departments: string[];
 }
+
+const TeamMemberCard = ({ member }: { member: TeamMember }) => (
+  <Card className="overflow-hidden group hover:shadow-lg transition-shadow duration-300">
+    <div className="flex justify-center pt-8 pb-4">
+      {member.photo_url ? (
+        <img
+          src={member.photo_url}
+          alt={member.name}
+          className="w-32 h-32 rounded-2xl object-cover shadow-md group-hover:scale-105 transition-transform duration-300"
+        />
+      ) : (
+        <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-[#4A90E2]/30 to-[#4A90E2]/10">
+          <span className="text-5xl font-bold" style={{ color: "#4A90E2" }}>
+            {member.name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+      )}
+    </div>
+    <CardContent className="p-6 text-center">
+      <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
+      <p className="text-sm font-medium mb-2" style={{ color: "#4A90E2" }}>
+        {member.roles.join(" · ")}
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3">
+        {member.roles.filter(role => role === "Founder" || role === "Co-founder").map(role => (
+          <Badge key={role} className="bg-amber-500/15 text-amber-700 border-amber-300 hover:bg-amber-500/20 text-xs gap-1">
+            <Crown className="w-3 h-3" />
+            {role}
+          </Badge>
+        ))}
+        {member.roles.includes("Team Leader") && (
+          <Badge className="bg-[#4A90E2]/15 text-[#4A90E2] border-[#4A90E2]/30 hover:bg-[#4A90E2]/20 text-xs gap-1">
+            <Shield className="w-3 h-3" />
+            Team Leader
+          </Badge>
+        )}
+      </div>
+      {member.bio && (
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {member.bio}
+        </p>
+      )}
+    </CardContent>
+  </Card>
+);
 
 const Team = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -89,7 +134,7 @@ const Team = () => {
           <p>Could not load team members. Please try again.</p>
           <Button type="button" onClick={() => void fetchTeamMembers()}>Retry</Button>
         </div>
-      ) : groupedMembers.length === 0 ? (
+      ) : groupedMembers.leadership.length === 0 && groupedMembers.departments.length === 0 ? (
         <div className="text-center py-16">
           <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
           <h2 className="text-xl font-semibold text-muted-foreground mb-2">
@@ -101,63 +146,40 @@ const Team = () => {
         </div>
       ) : (
         <div className="space-y-12">
-          {groupedMembers.map((group) => (
-            <section key={group.department}>
+          {groupedMembers.leadership.length > 0 && (
+            <section>
+              <h2
+                className="text-2xl font-bold mb-6 pb-2 border-b-2"
+                style={{ color: "#B87503", borderColor: "#E8B94C" }}
+              >
+                Leadership
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {groupedMembers.leadership.map(member => <TeamMemberCard key={member.id} member={member} />)}
+              </div>
+            </section>
+          )}
+          {groupedMembers.departments.map((department) => (
+            <section key={department.department}>
               <h2
                 className="text-2xl font-bold mb-6 pb-2 border-b-2"
                 style={{ color: "#4A90E2", borderColor: "#4A90E2" }}
               >
-                {group.label}
+                {department.department}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {group.members.map((member) => (
-                  <Card
-                    key={member.id}
-                    className="overflow-hidden group hover:shadow-lg transition-shadow duration-300"
-                  >
-                    <div className="flex justify-center pt-8 pb-4">
-                      {member.photo_url ? (
-                        <img
-                          src={member.photo_url}
-                          alt={member.name}
-                          className="w-32 h-32 rounded-2xl object-cover shadow-md group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-32 h-32 rounded-2xl flex items-center justify-center shadow-md bg-gradient-to-br from-[#4A90E2]/30 to-[#4A90E2]/10">
-                          <span className="text-5xl font-bold" style={{ color: "#4A90E2" }}>
-                            {member.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <CardContent className="p-6 text-center">
-                      <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                      <p className="text-sm font-medium mb-2" style={{ color: "#4A90E2" }}>
-                        {member.role}
-                      </p>
-                      <div className="flex items-center justify-center gap-1.5 mb-3">
-                        {member.role.includes("Co-founder") && (
-                          <Badge className="bg-amber-500/15 text-amber-700 border-amber-300 hover:bg-amber-500/20 text-xs gap-1">
-                            <Crown className="w-3 h-3" />
-                            Co-founder
-                          </Badge>
-                        )}
-                        {member.role.includes("Team Leader") && (
-                          <Badge className="bg-[#4A90E2]/15 text-[#4A90E2] border-[#4A90E2]/30 hover:bg-[#4A90E2]/20 text-xs gap-1">
-                            <Shield className="w-3 h-3" />
-                            Team Leader
-                          </Badge>
-                        )}
-                      </div>
-                      {member.bio && (
-                        <p className="text-muted-foreground text-sm leading-relaxed">
-                          {member.bio}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {department.members.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {department.members.map(member => <TeamMemberCard key={member.id} member={member} />)}
+                </div>
+              )}
+              {department.groups.map(group => (
+                <div key={group.group} className="mt-8">
+                  <h3 className="text-xl font-semibold mb-5">{group.group}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {group.members.map(member => <TeamMemberCard key={member.id} member={member} />)}
+                  </div>
+                </div>
+              ))}
             </section>
           ))}
         </div>
