@@ -1,5 +1,34 @@
 # 8157ab6 上线前核验与生产现状
 
+## 生产修复完成（2026-10-20）
+
+用户明确授权“允许执行 Review 增量迁移并验收”后，已修复 Only incorrect 上线故障。**本次修复范围验收通过。** 下方快速验收失败及上线前记录是历史状态。
+
+1. 执行前重新只读核验：`base_matches=true`、`review_ledger=null`、`boolean_function=null`，证明基础指纹匹配且 Review 迁移与 boolean RPC 确实缺失。
+2. 在 `lxoaeaewcrshjkigzyqe` / main PRODUCTION 执行现有 `30_review_deploy.sql` 完整事务一次，返回 `Success. No rows returned`。未重放历史迁移，未执行整库 db push。
+3. 部署事务已发送 `NOTIFY pgrst,'reload schema'`。独立执行 `31_review_verify.sql`，6/6 检查通过、`all_checks_pass=true`：账本指纹匹配、两个 RPC 均 authenticated-only、sessions/attempts 禁止学生直接写入、snapshot 辅助函数私有。
+4. 正式站真实已登录账户实测：普通历史 8 条；Only incorrect 返回 6 条，全部 Incorrect、无 Correct、无 alert。该实际参数调用成功证明 REST schema cache 已能识别新增 RPC。
+5. 从错题列表进入指定保存题，准确显示原会话第 4/5 题、原错误选择、正确答案和 Solution；刷新仍为相同题与已保存结果。Back to Review 后再次筛选仍返回 6 条错题。
+
+本次只部署 Review RPC 与账本，不修改题目、选项或学生作答，不改前端。未重复跑本地测试，未重测第二账号、手机或 Admin 写入；本账户仅 8 条历史，本次未构造“最新十次以外的错题”生产数据，其算法覆盖保留在既有隔离测试中。
+
+修复截图：`outputs/review-production.local/review-incorrect-fixed.jpg`。后续按用户要求补拍三张正式站体验截图：`01-all-answers.jpg`（全部作答）、`02-only-incorrect.jpg`（只看错题）、`03-saved-solution.jpg`（原选择、正确答案及数学解析），均位于同一本地证据目录，不提交真实题目截图。
+
+本次 Git 提交仅包含本验收记录，不包含并行 Profile、AuthContext、学生接口或测试改动；不 push。实际修复是部署仓库已有的增量 SQL，没有新增应用代码。
+
+## 上线后快速验收补记（2026-10-20）
+
+用户通知已部署，并要求快速验收。本次实际正式站检查结论：**新版前端已生效，但快速验收未通过，错题筛选接口尚不可用。** 下文上线前记录保留为历史状态。
+
+- 通过：登录后新版 Review 加载本人 8 条作答，显示 Topic、对错、时间和指定题目解析链接。
+- 通过：进入一条错题链接准确打开原会话第 4/5 题，显示已保存的错误选择、正确答案与 Solution；选项禁用。
+- 通过：刷新仍停在同一题，保存结果及解析保持；Back to Review 返回 8 条账户历史。
+- 阻塞：点击 Only incorrect 后提示 `Could not find the function public.list_question_practice_attempts(_incorrect_only) in the schema cache`，无法显示错题列表。可能是迁移未部署，或部署后接口缓存未生效；本次未查询数据库区分两者。
+
+处理：先核对 Review 迁移账本；未部署则执行 `30_review_deploy.sql` 一次，已部署则不要重放，检查函数定义及 PostgREST schema cache。执行 `31_review_verify.sql` 并要求 `all_checks_pass=true`，然后重试线上错题筛选。
+
+本次按快速验收范围未重跑本地测试，未执行生产 SQL，未新增作答，未测试第二账号、手机或 Admin 写操作。此次完成的是上线核查并报告阻塞，不代表功能生产验收通过。
+
 核验日期：2026-10-20（America/Los_Angeles）。代码：`8157ab6467319f5c1715483aa58fe50b138d263f`。生产项目：`lxoaeaewcrshjkigzyqe`，main PRODUCTION；网站：https://www.o2iinstitute.org。
 
 ## 结论
