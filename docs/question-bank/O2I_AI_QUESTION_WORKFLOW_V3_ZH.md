@@ -1,5 +1,7 @@
 # O2I AI workflow v3：对齐当前题库
 
+> 历史版本。当前使用 [v4指南](O2I_AI_PRACTICE_WORKFLOW_V4_ZH.md) 和同版包；以下仅供追溯。
+
 保留“两次独立处理、四步交付”。导入字段以 [Schema](O2I_QUESTION_IMPORT_SCHEMA.md) 和现有空白模板为准；本版替代 V2 中逐项填写发布确认的操作说明。旧 ZIP/HTML 包未更新，请直接使用下列四段 prompt。旧 V1 文件不变。
 
 ## 共同规则
