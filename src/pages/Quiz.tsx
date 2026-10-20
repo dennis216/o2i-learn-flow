@@ -19,7 +19,7 @@ function SavedAnswer({ question }: { question: IssuedPracticeQuestion }) {
     <h2 className="font-semibold">Solution</h2><MarkdownWithMath content={question.attempt.solution} strictMath className="overflow-x-auto" />
   </section>;
 }
-function AccountQuiz({ sessionId, topicId, onNextSet }: { sessionId: string; topicId?: string; onNextSet: (topicId: string | null) => void }) {
+function AccountQuiz({ sessionId, topicId, questionId, onNextSet }: { sessionId: string; topicId?: string; questionId?: string; onNextSet: (topicId: string | null) => void }) {
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [index, setIndex] = useState(0), [selected, setSelected] = useState(''), [elapsed, setElapsed] = useState(0);
   const [busy, setBusy] = useState(true), [error, setError] = useState(''), [saveError, setSaveError] = useState('');
@@ -29,14 +29,19 @@ function AccountQuiz({ sessionId, topicId, onNextSet }: { sessionId: string; top
   const rationale = selectionRationale(session?.selection_summary);
   useEffect(() => {
     let active = true; setBusy(true); setError('');
-    void startPractice(supabase, sessionId, topicId).then(data => {
+    void (questionId ? readPractice(supabase, sessionId) : startPractice(supabase, sessionId, topicId)).then(data => {
       if (!active) return;
+      if (questionId) {
+        const target = data.questions.findIndex(q => q.question_id === questionId && q.attempt);
+        if (target === -1) throw new Error('This saved answer is not available in this session.');
+        setSession(data); setIndex(target); setFinished(false); return;
+      }
       setSession(data); const first = data.questions.findIndex(q => !q.attempt); setIndex(Math.max(0, first));
       setFinished(data.questions.length > 0 && first === -1);
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [sessionId, topicId, retry]);
+  }, [sessionId, topicId, questionId, retry]);
   useEffect(() => { setElapsed(question?.attempt?.elapsed_seconds ?? 0); setSelected(question?.attempt?.selected_option_id ?? ''); setSaveError(''); }, [question?.version_id, question?.attempt]);
   useEffect(() => {
     if (!question || question.attempt || busy || finished || saveError) return;
@@ -86,10 +91,10 @@ export default function Quiz() {
   useEffect(() => {
     if (user && !scope.error && !scope.sessionId) { const next = new URLSearchParams(params); next.set('session', crypto.randomUUID()); setParams(next, { replace: true }); }
   }, [user, scope.error, scope.sessionId, params, setParams]);
-  return <div className="mx-auto min-h-[70vh] max-w-5xl px-4 py-8"><Button asChild variant="ghost" className="mb-6"><Link to="/practice"><ArrowLeft />Back to Practice</Link></Button>
+  return <div className="mx-auto min-h-[70vh] max-w-5xl px-4 py-8"><Button asChild variant="ghost" className="mb-6"><Link to={scope.questionId ? '/review' : '/practice'}><ArrowLeft />{scope.questionId ? 'Back to Review' : 'Back to Practice'}</Link></Button>
     {loading ? <p role="status">Checking your account…</p> : !user ? <div className="space-y-4"><p>Sign in to practice published questions and save your answers.</p><Button asChild><Link to="/auth">Sign in</Link></Button></div>
       : scope.error ? <div role="alert" className="space-y-3"><h1 className="text-2xl font-semibold">This practice scope is not connected</h1><p>{scope.error}</p></div>
-        : scope.sessionId ? <AccountQuiz key={user.id + ':' + scope.sessionId} sessionId={scope.sessionId} topicId={scope.topicId} onNextSet={topicId => setParams({ subject: 'calculus', source: 'next', ...(topicId ? { topic: topicId } : {}) })} />
+        : scope.sessionId ? <AccountQuiz key={user.id + ':' + scope.sessionId + ':' + (scope.questionId ?? '')} sessionId={scope.sessionId} topicId={scope.topicId} questionId={scope.questionId} onNextSet={topicId => setParams({ subject: 'calculus', source: 'next', ...(topicId ? { topic: topicId } : {}) })} />
           : <p role="status">Opening your practice session…</p>}
   </div>;
 }

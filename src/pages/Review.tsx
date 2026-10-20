@@ -1,60 +1,52 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BookOpen, Bot, CheckCircle2, Clock3, Pause } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getLesson, getSkill, skills } from '@/data/learningContent';
-import { useLearning } from '@/contexts/LearningContext';
-import { skillMastery } from '@/lib/adaptivePractice';
+import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { loadPracticeHistory, type RecentPracticeAnswer } from '@/lib/studentPractice';
+
+function AnswerHistory({ incorrectOnly }: { incorrectOnly: boolean }) {
+  const [history, setHistory] = useState<RecentPracticeAnswer[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setBusy(true); setError('');
+    void loadPracticeHistory(supabase, incorrectOnly)
+      .then(data => { if (active) setHistory(data); })
+      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .finally(() => { if (active) setBusy(false); });
+    return () => { active = false; };
+  }, [incorrectOnly, retry]);
+  if (busy) return <p role="status">Loading your saved answers…</p>;
+  if (error) return <div role="alert" className="space-y-3"><p>Could not load your saved answers. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
+  if (!history.length) return <p className="rounded border p-6">{incorrectOnly ? 'No incorrect answers in your account history.' : 'Your saved answers will appear here after you submit a published question.'}</p>;
+  return <ul aria-label="Saved answer history" className="space-y-3">{history.map(answer =>
+    <li key={answer.id}><Link to={`/quiz?session=${answer.session_id}&question=${answer.question_id}`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+      <Card className="hover:border-primary"><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <div className="min-w-0"><p className="break-words font-medium">Topic {answer.topic_code} · {answer.topic_title}</p><p className={answer.is_correct ? 'text-green-700' : 'text-destructive'}>{answer.is_correct ? 'Correct' : 'Incorrect'}</p><time dateTime={answer.submitted_at} className="text-sm text-muted-foreground">{new Date(answer.submitted_at).toLocaleString()}</time></div>
+        <span className="flex items-center gap-2 text-sm text-primary">View solution <ArrowRight className="h-4 w-4" /></span>
+      </CardContent></Card>
+    </Link></li>
+  )}</ul>;
+}
+
+function AccountReview() {
+  const [incorrectOnly, setIncorrectOnly] = useState(false);
+  return <section className="space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">{incorrectOnly ? 'Latest 10 incorrect answers' : 'Latest 10 answers'}</h2><Button variant={incorrectOnly ? 'default' : 'outline'} aria-pressed={incorrectOnly} onClick={() => setIncorrectOnly(value => !value)}>Only incorrect</Button></div>
+    <p className="text-sm text-muted-foreground">{incorrectOnly ? 'The latest 10 incorrect answers across your full account history.' : 'Your latest 10 submitted answers, newest first.'} Times are shown in your local time zone.</p>
+    <AnswerHistory key={String(incorrectOnly)} incorrectOnly={incorrectOnly} />
+  </section>;
+}
 
 export default function Review() {
-  const { signals, attempts } = useLearning();
-  const signalSkillIds = [...new Set(signals.map((signal) => signal.skillId))];
-  const weakSkillIds = skills.filter((skill) => attempts.some((attempt) => attempt.skillIds.includes(skill.id) && (!attempt.correct || attempt.overTarget))).map((skill) => skill.id);
-  const reviewSkillIds = [...new Set([...signalSkillIds, ...weakSkillIds])];
-  const selectedSkills = (reviewSkillIds.length ? reviewSkillIds : ['limit-meaning', 'limit-algebra']).map(getSkill).filter(Boolean);
-
-  const summary = [
-    { label: 'Saved moments', value: signals.filter((signal) => signal.kind === 'long_pause').length, icon: Pause },
-    { label: 'Questions asked', value: signals.filter((signal) => signal.kind === 'ask_ai').length, icon: Bot },
-    { label: 'Ready to revisit', value: attempts.filter((attempt) => !attempt.correct || attempt.overTarget).length, icon: Clock3 },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center">
-          <h1 className="mb-4 flex items-center justify-center gap-3 text-4xl font-bold"><BookOpen className="h-10 w-10 text-primary" />Your Review</h1>
-          <p className="mx-auto max-w-2xl text-xl text-muted-foreground">A personal collection of ideas worth another look, ready whenever you are.</p>
-          <Button asChild size="lg" className="mt-7"><Link to="/practice">Choose published practice <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-        </div>
-
-        <div className="mb-10 grid gap-6 sm:grid-cols-3">
-          {summary.map(({ label, value, icon: Icon }) => (
-            <Card key={label}><CardContent className="flex items-center gap-4 p-6"><span className="grid h-11 w-11 place-items-center rounded-full bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span><div><p className="text-3xl font-bold">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div></CardContent></Card>
-          ))}
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-          <section className="space-y-6">
-            <div className="flex items-center gap-3"><div className="h-8 w-1 rounded-full bg-primary" /><h2 className="text-xl font-semibold">Review cards</h2></div>
-            {selectedSkills.map((skill) => skill && (
-              <Card key={skill.id}>
-                <CardHeader className="border-b"><div className="flex items-start justify-between gap-4"><div><CardTitle>{skill.name}</CardTitle><p className="mt-2 text-sm text-muted-foreground">Suggested for your next review</p></div><span className="text-sm font-medium text-primary">{attempts.length ? Math.round(skillMastery(skill.id, attempts) * 100) : 0}%</span></div></CardHeader>
-                <CardContent className="grid gap-6 p-6 md:grid-cols-[1fr_260px]">
-                  <div><p className="leading-7 text-muted-foreground">{skill.summary}</p><h3 className="mt-5 font-semibold">Keep in mind</h3><ul className="mt-3 space-y-2">{skill.keyPoints.map((point) => <li key={point} className="flex gap-3 text-sm"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />{point}</li>)}</ul></div>
-                  <div className="rounded-lg bg-accent/10 p-5"><AlertTriangle className="h-5 w-5 text-accent-foreground" /><h3 className="mt-3 font-semibold">Watch for this</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{skill.commonMistake}</p></div>
-                </CardContent>
-              </Card>
-            ))}
-          </section>
-
-          <aside className="space-y-6">
-            <div className="flex items-center gap-3"><div className="h-8 w-1 rounded-full bg-accent" /><h2 className="text-xl font-semibold">From your lessons</h2></div>
-            <Card><CardContent className="space-y-3 p-6">{signals.slice(-6).reverse().map((signal) => <div key={signal.id} className="rounded-lg border p-3"><div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">{getSkill(signal.skillId)?.shortName}</p><span className="text-xs text-muted-foreground">{Math.floor(signal.timestampSeconds / 60)}:{(signal.timestampSeconds % 60).toString().padStart(2, '0')}</span></div><p className="mt-1 text-xs text-muted-foreground">{signal.kind === 'ask_ai' ? 'You asked for help here' : signal.confirmed ? 'You saved this moment' : 'You paused here'} · {getLesson(signal.lessonId)?.title}</p></div>)}{!signals.length && <p className="py-5 text-center text-sm leading-6 text-muted-foreground">Your saved moments will appear here as you move through a lesson.</p>}</CardContent></Card>
-            <Card><CardHeader><CardTitle className="text-lg">Ready for the next step?</CardTitle></CardHeader><CardContent><p className="text-sm leading-6 text-muted-foreground">A short practice set can help turn these ideas into lasting confidence.</p><Button asChild variant="outline" className="mt-5 w-full"><Link to="/practice">Open Quick Practice <ArrowRight /></Link></Button></CardContent></Card>
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
+  const { user, loading } = useAuth();
+  return <div className="mx-auto min-h-[70vh] max-w-5xl space-y-8 px-4 py-10">
+    <header><h1 className="flex items-center gap-3 text-4xl font-bold"><BookOpen className="text-primary" />Your Review</h1><p className="mt-3 text-muted-foreground">Review answers saved to your account and revisit their solutions.</p><Button asChild className="mt-5"><Link to="/practice">Choose published practice <ArrowRight /></Link></Button></header>
+    {loading ? <p role="status">Checking your account…</p> : user ? <AccountReview key={user.id} /> : <div className="space-y-4"><p>Sign in to review your saved answers.</p><Button asChild><Link to="/auth">Sign in</Link></Button></div>}
+  </div>;
 }

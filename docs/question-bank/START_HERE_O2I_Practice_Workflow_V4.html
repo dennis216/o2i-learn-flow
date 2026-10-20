@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>O2I 现有选择题工作流 V4｜离线操作手册</title><style>
+    :root{color-scheme:light;--ink:#172b3a;--muted:#526575;--line:#dbe4e9;--blue:#075985;--pale:#eef7fb;--paper:#fff;--bg:#f4f7f8}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+    .hero{background:#123449;color:#fff;padding:35px max(24px,calc((100vw - 1100px)/2));border-bottom:5px solid #25a0bd}.hero h1{font-size:clamp(25px,3.5vw,38px);line-height:1.3;margin:0 0 8px}.hero p{margin:0;color:#d8edf4}
+    .layout{max-width:1200px;margin:auto;display:grid;grid-template-columns:245px minmax(0,1fr);gap:24px;padding:24px}.toc{align-self:start;position:sticky;top:20px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}.toc h2{font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.05em}.toc a{display:block;padding:7px 4px;color:var(--blue);text-decoration:none;font-size:14px;line-height:1.35}.toc a:hover{text-decoration:underline}
+    main{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:30px 38px;box-shadow:0 6px 24px #162d3b0a}main>h1{display:none}h2{font-size:26px;line-height:1.35;margin:50px 0 20px;padding:0 0 10px;border-bottom:2px solid #b8dbe7;scroll-margin-top:20px}h2:first-of-type{margin-top:12px}h3{font-size:19px;margin:28px 0 10px}p,li{overflow-wrap:anywhere}a{color:var(--blue)}blockquote{margin:0 0 26px;background:var(--pale);border-left:4px solid #25a0bd;padding:12px 18px;color:#244759}blockquote p{margin:0}strong{font-weight:700}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:#edf2f4;border-radius:4px;padding:1px 4px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:16px 0 26px}table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;line-height:1.5}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eaf4f7;white-space:nowrap}tr:last-child td{border-bottom:0}ol,ul{padding-left:1.5em}li{margin:.35em 0}
+    .prompt{border:1px solid #bdd8e3;background:#f8fbfc;border-radius:10px;margin:18px 0 34px;overflow:hidden}.prompt-bar{display:flex;align-items:center;justify-content:space-between;background:#e7f2f6;padding:8px 12px;color:#365669;font-size:13px;font-weight:600}.copy{border:0;border-radius:7px;background:#075985;color:white;padding:7px 12px;font:inherit;cursor:pointer}.copy:hover{background:#03486c}.prompt pre{margin:0;padding:18px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.prompt code{background:none;padding:0;font:inherit}.note{margin-top:30px;color:var(--muted);font-size:13px}
+    @media(max-width:800px){.layout{display:block;padding:12px}.toc{position:static;margin-bottom:14px}.toc a{display:inline-block;margin-right:10px}main{padding:22px 18px}h2{font-size:22px}}
+    @media print{body{background:#fff;font-size:11pt}.hero{background:#fff;color:#000;padding:0 0 12px;border-color:#888}.hero p{color:#333}.layout{display:block;padding:0}.toc,.copy{display:none}main{border:0;box-shadow:none;padding:0}h2{break-after:avoid}.prompt{break-inside:avoid}.prompt pre{font-size:9pt}a{color:#000}}
+  </style></head>
+<body><header class="hero"><h1>O2I AI 辅助 Practice Problem 工作流 V4</h1><p>离线操作手册 · 两个Chat · 三个Prompt · 可直接复制 Prompt</p></header><div class="layout"><nav class="toc" aria-label="目录"><h2>快速跳转</h2><div id="toc-links"></div></nav><main id="content"><h1>O2I Practice 真实题工作流 v4</h1>
+<p>版本：2026-10-20。适用已有来源的 AP Calculus 单项选择题。<strong>两个独立 Chat、三个 prompt、一次人工选题决定；随后在 Admin 核对实际显示并发布。</strong> 本指南取代 v1–v3 的操作步骤。字段以当前 <a href="O2I_QUESTION_IMPORT_SCHEMA.md">Schema</a> 和 <a href="templates/O2I_Question_Bank_Import_Template.xlsx">空白模板</a> 为准。</p>
+<h2>1. 新流程怎么走</h2>
+<table><thead><tr><th>阶段</th><th>操作</th><th>结束条件</th></tr></thead><tbody><tr><td>准备一次来源包</td><td>指定批次、范围、真实PDF、已知政策和使用依据；附模板、Schema、标签清单</td><td>两个Chat使用同一份原始材料，不混入AI输出</td></tr><tr><td>Chat A：整理</td><td>复制prompt 1，转录、配对答案、给标签候选</td><td>下载Draft.xlsx和Evidence.json</td></tr><tr><td>新Chat B：独立复核</td><td>只上传原始材料，复制prompt 2，先独立解题、检查来源与标签</td><td>下载Independent.json；此前不看A文件</td></tr><tr><td>Chat B：人工决定并导出</td><td>上传A两个文件，复制prompt 3；优先处理差异，人工核对每题后提交决定</td><td>保存Decisions.json，再自动导出Import.xlsx和Validation.md，不用再贴导出prompt</td></tr><tr><td>Admin：导入、核对、发布</td><td>Import XLSX → 预览 → 保存草稿 → Saved drafts回读 → Publish</td><td>人工看实际题目、答案、显示、标签，确认一次；系统回读已发布版本</td></tr></tbody></table>
+<p>不再先做两张卡等样式批准、不再逐题填四套相同审核表、不再把来源难度/计算器声明缺失一律当错误、不再给每题重复录相同批次许可。<strong>独立数学核实、原文核对、真实人工决定、实际渲染检查和原始证据继续保留。</strong> 两AI一致不能证明正确。</p>
+<h2>2. 开始前只填一次</h2>
+<p>建议每批先做10–20题；扫描件、跨页、图形多时缩小。以下方括号换成真实值：</p>
+<pre><code class="language-text">BATCH=[本批唯一名称]
+原题=[实际PDF文件名]
+范围=[PDF物理页与真实印刷题号；无题号时写页内位置]
+答案/解析=[实际文件名与范围；没有则明确写无]
+external_id前缀=[管理员指定的稳定来源标识，不随重跑批次改变]
+来源使用依据=[已有许可记录及适用范围，或待确认]
+O2I计算器政策=[明确指定的政策及适用范围，或未指定]
+已有人工标签=[如有；新题无则写无]
+</code></pre>
+<p>把批次说明、原题PDF、已有的答案/解析PDF，以及本包模板、Schema、<a href="O2I_CED_CODE_REFERENCE.md">Topic/Skill清单</a> 放在一个来源包。答案文件确实不存在时允许AI提出候选并标明推断；文件已声明存在但打不开时，报告缺失，不能假装“来源没有答案”。图形题附稳定授权图片URL；还没有图片资产的题进入待办。</p>
+<p>标签清单是<strong>仓库规范数据快照</strong>，含代码、标题/描述和BC-only标记，不冒充生产数据库查询。Chat核对代码和含义，Admin保存时再核对实际数据库。代码存在不等于选得对。旧taxonomy原则说明不是完整代码表。</p>
+<p>external_id采用稳定来源前缀加真实题号；重号再加章节/页定位。无印刷题号用经人工核对的 <code>pPPP-itemII</code>，如 <code>p012-item03</code>。重跑保持同题同ID，不能用Excel行号或临时批次名制造新身份。</p>
+<h2>3. 三个可复制prompt</h2>
+<h3>Prompt 1：Chat A整理</h3>
+<p>上传本指南、来源包与批次说明后复制：</p>
+<pre><code class="language-text">按附件《O2I Practice 真实题工作流v4》整理本批已有单选题。先列出实际可读取的原题、答案/解析（如有）、批次说明、Schema、空白模板、Topic/Skill清单及本批范围。必要文件或范围缺失则只报告缺什么；不读旧聊天、不联网找替代题、不自编题。
+
+从原PDF转录题干、全部选项与原顺序，保留真实文件名、PDF物理页、真实印刷题号；无题号时题号留空，建立pPPP-itemII locator等待人工验证。按题号加上下文匹配答案，记录答案文件/物理页/配对依据，不能按Excel行顺序配对。逐页看负号、极限方向、上下标、分数、积分界限、图形标签。区分来源印错与转录错，不静默改原题。
+
+给出一个主Topic、最少且实际考查的Skills、AB/BC/BOTH、表示方式、easy/medium/hard候选，各用一句实质理由。对照附带代码表，不造代码；确实无法核实才标CODE_UNVERIFIED。难度是编辑判断，不要求来源评级。来源和管理员都未指定计算器要求时calculator_policy留空并记未指定，不因能手算就填no_calculator；来源要求与人工政策分别记下，冲突列出。misconception_code默认空，不猜错因；option_explanation可空，有可靠说明则保留并注明来源/AI。
+
+来源答案/解法与AI候选分开记录。无来源答案时用ANSWER_AI_INFERRED，无来源解法时可写候选solution并用SOLUTION_AI_DRAFT；无法确定唯一答案则进未解决队列，不猜。必要图形无稳定授权URL时保留figure_reference和缺失原因，不造链接。
+
+输出[BATCH]_Draft.xlsx和[BATCH]_Evidence.json。XLSX保持Questions、Options、Instructions，Questions 28列、Options 6列，名称/顺序与模板一致；不加审计sheet或source_type列。布尔用TRUE/FALSE，多值用|，空值留空，内容为文本而非Excel公式；数学用\(...\)、\[...\]。五个审核状态一律pending，reviewed_by/at空。
+
+Evidence覆盖范围内每题，含稳定external_id、原题定位、答案定位/配对依据、候选解法、标签理由、来源/人工政策/AI推断的区分、原始flags及具体疑点、未形成XLSX行的题及原因。不能悄悄删题。Draft可含未完成候选，不称可导入；最后报告实际题数、选项数、缺项和下载链接。
+</code></pre>
+<h3>Prompt 2：新Chat B先独立复核</h3>
+<p>新开Chat，只上传同一本指南、来源包与批次说明。<strong>不要附A草稿/证据，也不要透露A答案。</strong></p>
+<pre><code class="language-text">按附件v4流程独立复核本批真实单选题，尚未接收Chat A输出。先确认原始文件和范围；若已经看过A结果，明确盲审无效，要求换新Chat。
+
+先只看原题独立求解并记录答案/关键理由，再对照来源答案/解析，不照抄答案表充当独立求解。逐题查题干和全部选项、唯一正确项、解法条件、易错符号、来源定位、图形依赖。独立提出Topic/Skills、课程范围、表示方式及难度候选，给简短依据；只选实际考查的Skills。代码对照附件清单。来源要求和人工计算器政策分开记，都未指定可空。缺图/看不清/无法唯一求解要具体指出，不猜，不宣称权利或网站渲染通过。
+
+保存并重新打开[BATCH]_Independent.json，确认覆盖范围内每题，记录external_id或可匹配的唯一来源定位、题目和答案来源、独立答案/关键数学依据、标签候选及具体疑点。保存后停止，给下载链接，等我上传A的Draft.xlsx和Evidence.json。不得提前对照，之后也不能覆盖此原始独立文件。
+</code></pre>
+<h3>Prompt 3：Chat B对照、人工决定、自动导出</h3>
+<p>上传A的Draft.xlsx、Evidence.json。复核已有后台题时再附当前保存版本/标签；取不到须标“未核对当前草稿”，不能据旧XLSX断言网站丢字段。</p>
+<pre><code class="language-text">确认Independent.json已在看到A输出之前保存。按external_id及唯一来源定位对照A、独立复核和原PDF，报告缺题、重号、错配。保留两轮原始证据，不覆盖独立文件。
+
+直接生成全批逐题审核卡，先冲突/不确定再一致项，默认无决定。展示来源文件/物理页/题号或locator、题干、全选项、正确答案、当前标签；可展开解法、A/B差异、定位证据。正常项简洁，差异写具体字段/前后值/依据。提供「保留、修改后保留、排除、待定」及可改字段；只对修改/异常要求说明，不重复四组审核表，不先等样式批准。有可持久化交互则提供提交动作；不能接收交互结果就直说，直接用编号决定清单接收文字回复，不假装按钮有效。
+
+人工须逐题先独立得出答案，再核对来源、AI关键解法及标签，AI不能代选。文字可用“保留Q1、Q3；Q2难度改hard后保留；Q4排除，缺图”，其余待定。争议题、AI新写解法、OCR/图形风险还须逐步完整核验。未收到决定前停止。收到明确决定后保存并重新打开[BATCH]_Decisions.json，逐题记录决定、真实人工回复原文或提交证据、修改前后值、已解决/未解决问题；审核人未知留空，不伪造正式批准时间。批次许可可引用同一记录，例外逐题列出。
+
+有决定后无需新prompt，自动应用已确认修改，只导出保留且必填完整、无未解决数学/来源/标签/必要图片错误的题。权利待确认题仅可内部未发布草稿，在报告标不可发布。当前人工已保存元数据优先于旧候选；有实质冲突由人工决定，不静默覆盖。保持稳定external_id，已有ID不能当新题重复导入。
+
+导出[BATCH]_Import.xlsx，保持模板三sheet和全部字段/顺序。五个审核状态仍pending，reviewed_by/at空。人工决定摘要/证据文件名写human_review_notes，来源说明、AI推断、图形定位、选项解释放回原列。原始flags保存在Evidence；最终ai_flags保留来源性质及未解决事项，已解决异常记解决依据，不以清空历史伪装无问题。
+
+重新打开输出，查28/6列表头、外键、ID和选项键唯一、每题2–6选项且恰一TRUE并匹配答案键；题干/解析/难度/课程范围/表示方式/Topic/至少一Skill/来源齐全；代码存在、枚举合法、布尔/空值正确、无Excel公式、必要图形定位和稳定授权URL完整、中文/LaTeX反斜杠未损坏。报告保留/排除/待定数和实际导出题数/选项数，数量须对账；无可导入题只交待办，不交空成功文件。
+
+交付Import.xlsx、Decisions.json和[BATCH]_Validation.md及证据链接，报告实际执行与未验证项。未调用网站渲染器不能称网站显示通过。不要访问后台、数据库或发布；管理员后续在Admin预览、保存草稿、回读并在Publish一次确认。
+</code></pre>
+<h2>4. 人工看什么，哪些信息必须留</h2>
+<p>先看异常，再逐题核对一致项；可一次提交明确保留列表，没列的题默认待定。每题由数学审核人先独立得出答案，再检查原文、AI解法关键条件和标签。争议题、AI新写解法和高风险转录还须逐步完整核验。正常题无需重复写一篇解题报告，但不能省去独立数学判断。</p>
+<table><thead><tr><th>必须保留</th><th>放在哪里</th><th>精简方式</th></tr></thead><tbody><tr><td>题干、全选项、答案、解析、题号/locator、物理页、图形定位</td><td>XLSX原列；原始文件保留修订前内容</td><td>不再手填另一份题目总表</td></tr><tr><td>答案PDF页/配对依据、来源解法和AI区别、标签理由</td><td>Evidence/Independent；重要摘要放XLSX notes</td><td>引用同一证据，不复制长文</td></tr><tr><td>A/B差异、人工修订前后值、明确决定、解决依据</td><td>Decisions.json；human_review_notes摘要</td><td>正常项不填长说明，异常必须具体</td></tr><tr><td>使用依据、计算器编辑政策与适用范围</td><td>批次说明；Decisions记录例外</td><td>不把批次许可套用到未覆盖图片</td></tr><tr><td>AI来源性质、未解决问题</td><td>ai_inference_notes、ai_flags和原始证据</td><td>ANSWER_AI_INFERRED/SOLUTION_AI_DRAFT不因看过而抹掉；已解决OCR异常不再列待办</td></tr><tr><td>正式发布人/时间/题目版本</td><td>Admin服务器记录</td><td>不在AI导出中伪造reviewed_by/at</td></tr></tbody></table>
+<p>归档原始来源包、A两个文件、Independent、Decisions、Import、Validation。换Chat或交接传这些文件，不靠聊天记忆。<strong>外部JSON不会自动随XLSX入库</strong>，重要摘要同步到原有notes列；不加第四个sheet。</p>
+<h2>5. 当前字段和发布规则</h2>
+<table><thead><tr><th>项目</th><th>v4规则</th></tr></thead><tbody><tr><td>工作簿</td><td>恰好Questions / Options / Instructions；28/6列；数据sheet不留占位题</td></tr><tr><td>保存草稿</td><td>题干、解析、难度、课程范围、表示方式、来源PDF/物理页、主Topic、至少一Skill、2–6选项及唯一答案齐全；最多100题，结构错误整批不存</td></tr><tr><td>计算器</td><td>三个受控值或空，未指定可空，不给全批机械加uncertain；有真实冲突再列待办</td></tr><tr><td>难度</td><td>easy/medium/hard为编辑难度，按方法选择、概念条件、推理负担判断，不按字数、解法行数或补题配额</td></tr><tr><td>标签</td><td>代码存在和语义匹配都要查；主Topic不按章节标题机械分配；Skills不挂满通用能力</td></tr><tr><td>审核列</td><td>本流程五项pending、reviewed_by/at空；选题在Decisions留证，发布在后台留证，保留列但不双份填表</td></tr><tr><td>source_type</td><td>不在模板内，不添加；导入可NULL，当前简化发布不要求补齐，人工仍须确认实际使用依据</td></tr><tr><td>图形</td><td>保留requires_figure、figure_reference、稳定授权image_url；缺必要图片阻断最终导入</td></tr><tr><td>误区/选项解释</td><td>可空；正确项misconception_code必须空；有可靠内容保留，不额外编造</td></tr><tr><td>flags</td><td>留作证据，当前服务器不要求逐flag解决表；内容错误仍须解决，发布按钮可用不能证明正确</td></tr></tbody></table>
+<p>难度口径：easy通常是已明确方法的常规直接应用；medium需要选择方法、连接表示或检查关键条件；hard需要非显然的概念组合、分情况分析或较复杂论证。用同Topic已审题作参照，理由写实际认知负担；这些是编辑参照，不是按步骤数自动评分。</p>
+<h2>6. Admin最后怎么做</h2>
+<ol>
+<li><strong>Import XLSX</strong> 选Import.xlsx，核对题数、答案、解析、公式、图片和标签。草稿字段错误先修；pending不用回Excel改approved。</li>
+<li>预览/Edit仅能改八项元数据：difficulty、calculator_policy、course_scope、representation_type、primary_topic_code、practice_skill_codes、source_page、source_locator。保存会写当前值，原XLSX不变。</li>
+<li>保存后到 <strong>Saved drafts</strong> 回读同一external_id，核对实际内容/来源/标签，后续以当前保存版本为准。题干/选项/答案/解析/图片不能在Edit修改：新建且从未发布的错误草稿，可由管理员明确删除后同ID修正版重导；有发布历史的题先撤回，保留历史并交内容修订处理，不能改ID重导伪装更新。</li>
+<li><strong>Publish</strong>选择准确版本，最多20题，超过分批。看实际显示，确认使用依据覆盖学生展示，核对内容、答案、显示和Topic/Skills，勾一次确认后点 <strong>Publish N problems</strong>，不补填历史四关卡表。</li>
+<li>以刷新后的状态/当前版本为准。过期或响应不明先回读，别盲目重试。草稿已存、发布成功、学生页面可用分别记录，本交付不代执行。</li>
+</ol>
+<h2>7. 相比旧版和验证边界</h2>
+<p>保留两个独立Chat，四段prompt缩到三段，人工决定后自动导出。保留逐题审核卡，交互不可用可用明确文字决定；去掉样式批准等待、重复四关卡表和无依据的一刀切flags。模板、SOP、Schema、完整代码快照和离线HTML随同一包交付。</p>
+<p>准确率靠独立求解、来源比对、人工核验和目标页面检查支撑，不能承诺100%。本地校验见 <a href="WORKFLOW_V4_VALIDATION.md">验证记录</a>。没有用本版重跑真实PDF、测量审核速度或替人发布；“30题10分钟”不能当已验证结果。试跑分别记录AI等待、人工审核、返工、Admin操作时间及导出/排除数，再据实调批量。</p></main></div><script>
+    const main=document.getElementById('content');
+    const toc=document.getElementById('toc-links');
+    main.querySelectorAll('h2').forEach((heading,index)=>{heading.id='section-'+(index+1);const link=document.createElement('a');link.href='#'+heading.id;link.textContent=heading.textContent;toc.appendChild(link)});
+    main.querySelectorAll('table').forEach(table=>{const wrap=document.createElement('div');wrap.className='table-wrap';table.parentNode.insertBefore(wrap,table);wrap.appendChild(table)});
+    main.querySelectorAll('pre').forEach((pre,index)=>{const wrap=document.createElement('div');wrap.className='prompt';const bar=document.createElement('div');bar.className='prompt-bar';const label=document.createElement('span');label.textContent=index===0?'批次说明':'Prompt '+index;const button=document.createElement('button');button.className='copy';button.type='button';button.textContent='复制全文';button.addEventListener('click',async()=>{const value=pre.textContent;try{if(!navigator.clipboard)throw new Error('clipboard unavailable');await navigator.clipboard.writeText(value)}catch(error){const helper=document.createElement('textarea');helper.value=value;document.body.appendChild(helper);helper.select();const ok=document.execCommand('copy');helper.remove();if(!ok){alert('自动复制失败，请选中下方文字手动复制。');return}}button.textContent='已复制 ✓';setTimeout(()=>button.textContent='复制全文',1800)});bar.append(label,button);pre.parentNode.insertBefore(wrap,pre);wrap.append(bar,pre)});
+  </script></body></html>

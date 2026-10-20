@@ -1886,7 +1886,7 @@ export type Database = {
     }
     Functions: {
       list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
-      list_question_practice_attempts: { Args: Record<PropertyKey, never>; Returns: Json }
+      list_question_practice_attempts: { Args: { _incorrect_only?: boolean }; Returns: Json }
       start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
       get_question_practice: { Args: { _session_id: string }; Returns: Json }
       submit_question_practice: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number }; Returns: Json }
