@@ -1,3 +1,7 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { loadPracticeStatistics, type PracticeStatistics } from '@/lib/studentPractice';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,9 +10,51 @@ import { Label } from '@/components/ui/label';
 import { User, Mail, Calendar, Lock, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+function LearningStatistics({ userId }: { userId: string }) {
+  const [statistics, setStatistics] = useState<PracticeStatistics | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setBusy(true); setError(''); setStatistics(null);
+    void loadPracticeStatistics(supabase, userId)
+      .then(data => { if (active) setStatistics(data); })
+      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .finally(() => { if (active) setBusy(false); });
+    return () => { active = false; };
+  }, [userId, retry]);
+
+  return <Card>
+    <CardHeader>
+      <CardTitle>Learning Statistics</CardTitle>
+      <CardDescription>All saved practice history for your account. Practice sets include unstarted and partially completed sets. Each submitted answer counts once per question per set; accuracy is correct answers divided by submitted answers.</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {busy ? <p role="status">Loading your practice statistics…</p> : error ? (
+        <div role="alert" className="space-y-3"><p>Could not load your practice statistics. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>
+      ) : statistics && <>
+        <dl aria-label="Practice statistics" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            ['Practice Sets', statistics.sessionCount],
+            ['Submitted Answers', statistics.attemptCount],
+            ['Accuracy', statistics.attemptCount ? `${(statistics.correctCount / statistics.attemptCount * 100).toFixed(1)}%` : '—'],
+          ].map(([label, value]) => <div key={label} className="text-center p-4 border rounded-lg">
+            <dt className="text-sm text-muted-foreground">{label}</dt>
+            <dd className="text-2xl font-bold text-primary">{value}</dd>
+          </div>)}
+        </dl>
+        {statistics.attemptCount === 0 && <div className="mt-4 space-y-3"><p>No submitted answers yet. Your accuracy will appear after you submit an answer.</p><Button asChild><Link to="/practice">Start practice</Link></Button></div>}
+      </>}
+    </CardContent>
+  </Card>;
+}
+
 export default function Profile() {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, loading } = useAuth();
   const isProtectedAccount = isSuperAdmin;
+
+  if (loading) return <p role="status" className="p-8">Checking your account…</p>;
 
   if (!user) {
     return (
@@ -42,7 +88,7 @@ export default function Profile() {
           <p className="text-muted-foreground mt-2">
             {isProtectedAccount 
               ? 'Protected account - some actions are restricted for security' 
-              : 'Manage your account settings and preferences'}
+              : 'View your account information and saved practice progress'}
           </p>
         </div>
 
@@ -62,7 +108,7 @@ export default function Profile() {
               <CardDescription>
                 {isProtectedAccount 
                   ? 'Your account information is protected and cannot be modified' 
-                  : 'View and manage your personal information'}
+                  : 'Your account information is read-only'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -104,63 +150,7 @@ export default function Profile() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Learning Statistics</CardTitle>
-              <CardDescription>
-                Your progress and activity on O2I Institute
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-primary">0</div>
-                  <div className="text-sm text-muted-foreground">Courses Enrolled</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-primary">0</div>
-                  <div className="text-sm text-muted-foreground">Solutions Requested</div>
-                </div>
-                <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-primary">0</div>
-                  <div className="text-sm text-muted-foreground">Practice Sets</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Actions</CardTitle>
-              <CardDescription>
-                {isProtectedAccount 
-                  ? 'Account actions are disabled for the system administrator' 
-                  : 'Manage your account settings'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isProtectedAccount ? (
-                <div className="p-4 border rounded-lg bg-muted/50 text-center">
-                  <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    This is a protected system account. Account modifications require direct database access.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button variant="outline">
-                    Change Password
-                  </Button>
-                  <Button variant="outline">
-                    Update Profile
-                  </Button>
-                  <Button variant="destructive">
-                    Delete Account
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <LearningStatistics key={user.id} userId={user.id} />
         </div>
       </div>
     </div>

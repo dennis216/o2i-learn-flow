@@ -48,7 +48,7 @@ try {
   proxy=createServer(async(req,res)=>{
     if(req.url==='/synthetic-figure.svg'){res.setHeader('Content-Type','image/svg+xml');res.end('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40"><text x="8" y="25">Synthetic figure</text></svg>');return;}
     res.setHeader('Access-Control-Allow-Origin',app);res.setHeader('Access-Control-Allow-Headers','authorization,apikey,content-type,x-client-info,prefer,range,accept-profile,content-profile,x-supabase-api-version');
-    res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');res.setHeader('Access-Control-Expose-Headers','Content-Range');
+    res.setHeader('Access-Control-Allow-Methods','GET,HEAD,POST,PATCH,DELETE,OPTIONS');res.setHeader('Access-Control-Expose-Headers','Content-Range');
     if(req.method==='OPTIONS'){res.writeHead(204);res.end();return;}
     const auth=req.url.startsWith('/auth/v1/'),rest=req.url.startsWith('/rest/v1/');if(!auth&&!rest){res.writeHead(404);res.end();return;}
     try{let body='';for await(const chunk of req)body+=chunk;
@@ -168,6 +168,7 @@ try {
   assert.equal((await rpc(student,'get_question_practice',{_session_id:session.id})).questions[0].attempt.id,results[0].questions[0].attempt.id);
   assert.equal((await rpc(student,'list_question_practice_attempts')).length,2);assert.deepEqual(await rpc(other,'list_question_practice_attempts'),[]);assert.deepEqual(await ok(other.from('question_practice_attempts').select('*')),[]);check('Server correct/wrong grading, immutable own attempts, account isolation, concurrent retries once, saved result readback');
   await (await import('./review.acceptance.mjs')).verifyReviewDatabase({db,start,submit,rpc,student,other,visitor,topicId:t2.id,check});
+  await (await import('./profile.acceptance.mjs')).verifyProfileDatabase({db,start,submit,student,other,visitor,topicId:t2.id,check});
   // A database error after INSERT must roll back both grading and the saved attempt.
   await db.query("CREATE FUNCTION public.local_practice_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic transaction failure'; END $$; CREATE TRIGGER local_practice_fail AFTER INSERT ON public.question_practice_attempts FOR EACH ROW EXECUTE FUNCTION public.local_practice_fail();");
   const failureQ=session.questions[2];await fail(student.rpc('submit_question_practice',{_session_id:session.id,_question_id:failureQ.question_id,_option_id:failureQ.options[0].id}));assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE question_id=$1',[failureQ.question_id]),0);
@@ -228,6 +229,7 @@ try {
   await page.reload();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),2);
   await page.goto(app+'/practice');await page.getByRole('heading',{name:'Recent account answers'}).waitFor();await page.locator(`a[href="/quiz?session=${browserSession}"]`).first().waitFor();await shot('04-account-history');check('Browser real authenticated practice, safe network response, correct/wrong results, server failure/retry, lost response lookup and refresh/account history');
   await (await import('./review.acceptance.mjs')).verifyReviewBrowser({page,context,app,start,submit,rpc,student,topicId:t2.id,browserSession,check,shot});
+  await (await import('./profile.acceptance.mjs')).verifyProfileBrowser({page,context,app,db,start,student,other,login,topicId:t2.id,check,shot});
   const before=startRequests;await page.goto(app+'/quiz?subject=calculus&lesson=limits&source=lesson');await page.getByRole('heading',{name:'This practice scope is not connected'}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/learn/limits-foundations');await page.getByRole('button',{name:'Finish lesson and choose practice',exact:true}).click();await page.waitForURL(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/review');await page.getByRole('link',{name:'Choose published practice',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Choose published practice',exact:true}).getAttribute('href'),'/practice');
