@@ -35,12 +35,13 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Old lesson/skill IDs have no canonical mapping. Never drop an unsupported filter. */
 export function parsePracticeRoute(params: URLSearchParams) {
-  const allowed = new Set(['subject', 'source', 'topic', 'session']);
+  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question']);
   if ([...params.keys()].some(key => !allowed.has(key)) || [...allowed].some(key => params.getAll(key).length > 1))
     return { error: 'This practice filter is not connected to the published question bank. Choose a published Topic in Practice.' };
   if (params.has('subject') && params.get('subject') !== 'calculus') return { error: 'This subject has no published practice connection.' };
-  for (const key of ['topic', 'session']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
-  return { topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined };
+  for (const key of ['topic', 'session', 'question']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
+  if (params.has('question') && !params.has('session')) return { error: 'A saved question requires its original practice session.' };
+  return { topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
 }
 export function readPracticeSession(value: unknown, expectedId: string): PracticeSession {
   const s = value as PracticeSession;
@@ -80,8 +81,21 @@ export async function submitPractice(client: SupabaseClient<Database>, sessionId
   return s;
 }
 export async function loadPracticeHome(client: SupabaseClient<Database>) {
-  const [topics, history] = await Promise.all([client.rpc('list_question_practice_topics'), client.rpc('list_question_practice_attempts')]);
-  if (topics.error || history.error) throw new Error(topics.error?.message ?? history.error?.message);
-  if (!Array.isArray(topics.data) || !Array.isArray(history.data)) throw new Error('Could not verify account practice data.');
-  return { topics: topics.data as unknown as PracticeTopic[], history: history.data as unknown as RecentPracticeAnswer[] };
+  const [topics, history] = await Promise.all([client.rpc('list_question_practice_topics'), loadPracticeHistory(client)]);
+  if (topics.error) throw new Error(topics.error.message);
+  if (!Array.isArray(topics.data)) throw new Error('Could not verify account practice data.');
+  return { topics: topics.data as unknown as PracticeTopic[], history };
+}
+export async function loadPracticeHistory(client: SupabaseClient<Database>, incorrectOnly = false): Promise<RecentPracticeAnswer[]> {
+  const { data, error } = await client.rpc('list_question_practice_attempts', incorrectOnly ? { _incorrect_only: true } : {});
+  if (error) throw new Error(error.message);
+  const rows = data as unknown as RecentPracticeAnswer[];
+  if (!Array.isArray(rows) || rows.length > 10 || new Set(rows.map(a => a?.id)).size !== rows.length
+    || rows.some(a => !a || typeof a !== 'object' || Array.isArray(a)
+      || ![a.id, a.session_id, a.question_id, a.version_id, a.selected_option_id].every(value => typeof value === 'string' && uuid.test(value))
+      || typeof a.is_correct !== 'boolean' || (incorrectOnly && a.is_correct)
+      || typeof a.submitted_at !== 'string' || !Number.isFinite(Date.parse(a.submitted_at))
+      || typeof a.topic_code !== 'string' || !a.topic_code.trim() || typeof a.topic_title !== 'string' || !a.topic_title.trim()))
+    throw new Error('Could not verify account practice history.');
+  return rows;
 }
