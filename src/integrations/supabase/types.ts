@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      question_practice_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          topic_id: string | null
+          created_at: string
+          selection_summary: Json | null
+        }
+        Insert: {
+          id: string
+          user_id: string
+          topic_id?: string | null
+          created_at?: string
+          selection_summary?: Json | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          topic_id?: string | null
+          created_at?: string
+          selection_summary?: Json | null
+        }
+        Relationships: []
+      }
+      question_practice_items: {
+        Row: {
+          session_id: string
+          question_id: string
+          version_id: string
+          position: number
+        }
+        Insert: {
+          session_id: string
+          question_id: string
+          version_id: string
+          position: number
+        }
+        Update: {
+          session_id?: string
+          question_id?: string
+          version_id?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      question_practice_attempts: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          question_id: string
+          version_id: string
+          selected_option_id: string
+          is_correct: boolean
+          elapsed_seconds: number | null
+          submitted_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          question_id: string
+          version_id: string
+          selected_option_id: string
+          is_correct: boolean
+          elapsed_seconds?: number | null
+          submitted_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          question_id?: string
+          version_id?: string
+          selected_option_id?: string
+          is_correct?: boolean
+          elapsed_seconds?: number | null
+          submitted_at?: string
+        }
+        Relationships: []
+      }
       admin_emails: {
         Row: {
           created_at: string | null
@@ -1804,6 +1885,11 @@ export type Database = {
       }
     }
     Functions: {
+      list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
+      list_question_practice_attempts: { Args: Record<PropertyKey, never>; Returns: Json }
+      start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
+      get_question_practice: { Args: { _session_id: string }; Returns: Json }
+      submit_question_practice: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number }; Returns: Json }
       precheck_question_publication: {
         Args: { _question_id: string; _version_id: string; _action: string }
         Returns: Json

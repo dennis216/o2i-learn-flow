@@ -13,7 +13,9 @@
     "test:question-bank:db-publication": "node --test supabase/tests/question_bank_publication.integration.test.mjs",
     "test:question-bank:browser": "node --experimental-strip-types scripts/question-bank/task4d-browser.test.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs",
+    "test:student-practice:integration": "node --experimental-strip-types scripts/student-practice.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
