@@ -23,8 +23,11 @@ function AccountPractice() {
   if (busy) return <p role="status">Loading published topics and your saved answers…</p>;
   if (error) return <div role="alert" className="space-y-3"><p>Could not load your practice data. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   return <>
-    {topics.length ? <Button asChild size="lg" className="mb-8"><Link to="/quiz?subject=calculus&source=quick">Start up to 5 questions <ArrowRight /></Link></Button>
-      : <p className="mb-8 rounded border p-6">No published questions are available yet.</p>}
+    <div className="mb-8 flex flex-wrap items-center gap-3">
+      {topics.length ? <Button asChild size="lg"><Link to="/quiz?subject=calculus&source=quick">Start up to 5 questions <ArrowRight /></Link></Button>
+        : <p className="rounded border p-6">No published questions are available yet.</p>}
+      <Button asChild size="lg" variant="outline"><Link to="/review"><History className="h-4 w-4" />Review</Link></Button>
+    </div>
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
       <section><h2 className="mb-5 text-xl font-semibold">Choose a published Topic</h2><div className="grid gap-4 md:grid-cols-2">{topics.map(topic =>
         <Link key={topic.id} to={`/quiz?subject=calculus&topic=${topic.id}&source=quick`}><Card className="h-full hover:border-primary"><CardHeader><BookOpen className="h-5 w-5 text-primary" /><CardTitle className="text-lg">{topic.code} · {topic.title}</CardTitle></CardHeader><CardContent>{topic.question_count} published {topic.question_count === 1 ? 'question' : 'questions'}</CardContent></Card></Link>

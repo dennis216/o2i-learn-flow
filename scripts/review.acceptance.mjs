@@ -32,6 +32,24 @@ export async function verifyReviewDatabase({db,start,submit,rpc,student,other,vi
 export async function verifyReviewBrowser({page,context,app,start,submit,rpc,student,topicId,browserSession,check,shot}) {
   const history=()=>page.getByRole('list',{name:'Saved answer history'});
   const toggle=()=>page.getByRole('button',{name:'Only incorrect',exact:true});
+  const review=()=>page.getByRole('link',{name:'Review',exact:true});
+  await page.goto(app+'/practice');await review().waitFor();
+  assert.equal(await review().getAttribute('href'),'/review');
+  assert.equal(await page.getByRole('navigation').getByRole('link',{name:'Review',exact:true}).count(),0);
+  const startButton=await page.getByRole('link',{name:'Start up to 5 questions',exact:false}).boundingBox();
+  const reviewButton=await review().boundingBox();
+  assert.ok(startButton&&reviewButton&&Math.abs(startButton.y-reviewButton.y)<1&&reviewButton.x>startButton.x);
+  await shot('11-practice-review-desktop');
+  await review().click();await history().waitFor();
+  await page.setViewportSize({width:390,height:844});
+  await page.goto(app+'/practice');await review().waitFor();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await shot('12-practice-review-mobile');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  assert.equal(await page.getByRole('dialog').getByRole('link',{name:'Review',exact:true}).count(),0);
+  await page.keyboard.press('Escape');await review().click();await history().waitFor();
+  await page.setViewportSize({width:1280,height:960});
+  check('Practice Review entry: beside start, desktop/mobile navigation, no global menu entry and no mobile overflow');
   await page.goto(app+'/review');await history().waitFor();
   const expected=await rpc(student,'list_question_practice_attempts');
   assert.equal(await history().getByRole('link').count(),expected.length);
@@ -78,6 +96,8 @@ export async function verifyReviewBrowser({page,context,app,start,submit,rpc,stu
   assert.equal(await history().count(),0);await page.unroute(pattern);
   await page.getByRole('button',{name:'Retry',exact:true}).click();await history().waitFor();
   await page.route(pattern,r=>r.fulfill({status:200,contentType:'application/json',body:'[]'}));
+  await page.goto(app+'/practice');await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();
+  await review().click();
   await page.reload();await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();
   await toggle().click();await page.getByText('No incorrect answers in your account history.',{exact:true}).waitFor();
   await page.unroute(pattern);
