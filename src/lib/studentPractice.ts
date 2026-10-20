@@ -31,6 +31,24 @@ export interface RecentPracticeAnswer {
   id: string; session_id: string; question_id: string; version_id: string; selected_option_id: string;
   is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string;
 }
+export interface PracticeStatistics { sessionCount: number; attemptCount: number; correctCount: number }
+
+export async function loadPracticeStatistics(client: SupabaseClient<Database>, userId: string): Promise<PracticeStatistics> {
+  if (!uuid.test(userId)) throw new Error('Sign in to load your practice statistics.');
+  // shortcut: counts use separate snapshots; use one aggregate RPC if atomic reporting becomes necessary.
+  const results = await Promise.all([
+    client.from('question_practice_sessions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    client.from('question_practice_attempts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    client.from('question_practice_attempts').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_correct', true),
+  ]);
+  for (const result of results) {
+    if (result.error) throw new Error(result.error.message);
+    if (!Number.isSafeInteger(result.count) || result.count! < 0) throw new Error('Could not verify account practice statistics.');
+  }
+  const [sessionCount, attemptCount, correctCount] = results.map(result => result.count!);
+  if (correctCount > attemptCount || (attemptCount > 0 && sessionCount === 0)) throw new Error('Practice statistics changed while loading. Retry to refresh them.');
+  return { sessionCount, attemptCount, correctCount };
+}
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Old lesson/skill IDs have no canonical mapping. Never drop an unsupported filter. */

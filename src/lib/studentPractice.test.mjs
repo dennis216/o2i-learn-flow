@@ -1,8 +1,38 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { selectionRationale, parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome, loadPracticeHistory } from './studentPractice.ts';
+import { selectionRationale, parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome, loadPracticeHistory, loadPracticeStatistics } from './studentPractice.ts';
 const id='11111111-1111-4111-8111-111111111111', qid='22222222-2222-4222-8222-222222222222', oid='33333333-3333-4333-8333-333333333333';
 const fixture=()=>({id,topic_id:id,created_at:'2026-01-01',questions:[{question_id:qid,version_id:id,stem:'Test',topic:{id},skills:['1.A'],options:[{id:oid,key:'A',text:'A'},{id:qid,key:'B',text:'B'}],attempt:null}]});
+function countClient(results, calls = []) {
+  return { from(table) {
+    const result = results[calls.length];
+    const call = { table, filters: [] }; calls.push(call);
+    return { select(column, options) {
+      Object.assign(call, { column, options });
+      return { eq(key, value) { call.filters.push([key, value]); return this; }, then(resolve, reject) { return Promise.resolve(result).then(resolve, reject); } };
+    } };
+  } };
+}
+test('Statistics use exact server counts for all own history, including beyond ten answers', async () => {
+  const calls = [];
+  assert.deepEqual(await loadPracticeStatistics(countClient([8, 24, 12].map(count => ({ count, error: null })), calls), id), { sessionCount: 8, attemptCount: 24, correctCount: 12 });
+  assert.deepEqual(calls.map(c => c.table), ['question_practice_sessions', 'question_practice_attempts', 'question_practice_attempts']);
+  for (const c of calls) { assert.equal(c.column, 'id'); assert.deepEqual(c.options, { count: 'exact', head: true }); assert.deepEqual(c.filters[0], ['user_id', id]); }
+  assert.deepEqual(calls[2].filters[1], ['is_correct', true]);
+  for (const counts of [[0,0,0], [3,0,0], [3,11,0], [3,11,11]]) {
+    assert.deepEqual(await loadPracticeStatistics(countClient(counts.map(count => ({ count, error: null }))), id), { sessionCount: counts[0], attemptCount: counts[1], correctCount: counts[2] });
+  }
+});
+test('Statistics reject failed, missing, malformed or inconsistent counts rather than inventing zero', async () => {
+  for (let i = 0; i < 3; i++) {
+    for (const bad of [{ count: null, error: { message: 'Count unavailable' } }, ...[null, undefined, -1, 1.5, '4', Infinity, Number.MAX_SAFE_INTEGER + 1].map(count => ({ count, error: null }))]) {
+      const results = [2,5,3].map(count => ({ count, error: null })); results[i] = bad;
+      await assert.rejects(loadPracticeStatistics(countClient(results), id));
+    }
+  }
+  for (const counts of [[1,2,3], [0,1,0]]) await assert.rejects(loadPracticeStatistics(countClient(counts.map(count => ({ count, error: null }))), id), /Retry/);
+  await assert.rejects(loadPracticeStatistics({ from() { assert.fail('Invalid account must not query'); } }, ''), /Sign in/);
+});
 test('Legacy and unknown filters never fall back to all published questions',()=>{
   for(const query of ['subject=calculus&lesson=limits&source=lesson','skill=limits','subject=physics','topic=1.1','topic='+id+'&topic='+id,'session=bad','unit=1']) assert.ok(parsePracticeRoute(new URLSearchParams(query)).error,query);
   assert.deepEqual(parsePracticeRoute(new URLSearchParams('subject=calculus&source=quick&topic='+id)),{topicId:id,sessionId:undefined,questionId:undefined});

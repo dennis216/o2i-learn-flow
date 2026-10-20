@@ -42,85 +42,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const recordSignIn = async (userId: string) => {
-    // Activity logging must never block a successful login.
-    await supabase.from('user_login_events').insert({ user_id: userId });
-  };
-
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          if (event === 'SIGNED_IN') {
-            void recordSignIn(session.user.id);
-          }
-          // Fetch profile and roles from the database.
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            checkRoles(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-        }
-        setLoading(false);
-      }
-    );
+    let active = true;
+    let revision = 0;
+    let currentUserId: string | undefined;
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        checkRoles(session.user.id);
+    const applySession = (nextSession: Session | null) => {
+      if (!active) return;
+      const requestRevision = ++revision;
+      const isCurrent = () => active && revision === requestRevision;
+      const nextUserId = nextSession?.user.id;
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (nextUserId !== currentUserId || !nextUserId) {
+        setProfile(null);
+        setIsAdmin(false);
+        setIsSuperAdmin(false);
       }
+      currentUserId = nextUserId;
       setLoading(false);
+      if (!nextUserId) return;
+
+      // Supabase requests must run outside the auth callback's lock.
+      setTimeout(() => {
+        if (!isCurrent()) return;
+        void supabase.from('profiles').select('*').eq('user_id', nextUserId).single()
+          .then(({ data, error }) => {
+            if (!isCurrent()) return;
+            if (error) { setProfile(null); console.error('Error fetching profile:', error); }
+            else setProfile(data);
+          }, error => {
+            if (isCurrent()) { setProfile(null); console.error('Error fetching profile:', error); }
+          });
+        void Promise.all([
+          supabase.rpc('has_role', { _user_id: nextUserId, _role: 'admin' }),
+          supabase.rpc('is_super_admin', { _user_id: nextUserId }),
+        ]).then(([adminResult, superAdminResult]) => {
+          if (!isCurrent()) return;
+          if (adminResult.error || superAdminResult.error) {
+            setIsAdmin(false); setIsSuperAdmin(false);
+            console.error('Error checking account roles:', adminResult.error ?? superAdminResult.error);
+            return;
+          }
+          const superAdmin = superAdminResult.data === true;
+          setIsSuperAdmin(superAdmin);
+          setIsAdmin(adminResult.data === true || superAdmin);
+        }).catch(error => {
+          if (!isCurrent()) return;
+          setIsAdmin(false); setIsSuperAdmin(false);
+          console.error('Error checking account roles:', error);
+        });
+      }, 0);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      applySession(nextSession);
+      if (event === 'SIGNED_IN' && nextSession?.user) {
+        // Activity logging must never block a successful login.
+        setTimeout(() => {
+          if (active && currentUserId === nextSession.user.id) {
+            void supabase.from('user_login_events').insert({ user_id: nextSession.user.id })
+              .then(({ error }) => { if (error) console.error('Error recording sign-in:', error); }, error => console.error('Error recording sign-in:', error));
+          }
+        }, 0);
+      }
+    });
+    const initialRevision = revision;
+    void supabase.auth.getSession().then(({ data: { session: initialSession }, error }) => {
+      // A newer auth event wins over an older initial-session response.
+      if (!active || revision !== initialRevision) return;
+      if (error) console.error('Error loading account session:', error);
+      applySession(error ? null : initialSession);
+    }).catch(error => {
+      if (!active || revision !== initialRevision) return;
+      console.error('Error loading account session:', error);
+      applySession(null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { active = false; ++revision; subscription.unsubscribe(); };
   }, []);
-
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
-  const checkRoles = async (userId: string) => {
-    try {
-      const [adminResult, superAdminResult] = await Promise.all([
-        supabase.rpc('has_role', { _user_id: userId, _role: 'admin' }),
-        supabase.rpc('is_super_admin', { _user_id: userId }),
-      ]);
-
-      if (adminResult.error) throw adminResult.error;
-      if (superAdminResult.error) throw superAdminResult.error;
-
-      const superAdmin = superAdminResult.data === true;
-      setIsSuperAdmin(superAdmin);
-      setIsAdmin(adminResult.data === true || superAdmin);
-    } catch (error) {
-      console.error('Error checking account roles:', error);
-      setIsAdmin(false);
-      setIsSuperAdmin(false);
-    }
-  };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     // Use production domain for auth emails, fallback to current origin for local dev
@@ -161,9 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setIsAdmin(false);
-    setIsSuperAdmin(false);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   const value = {
