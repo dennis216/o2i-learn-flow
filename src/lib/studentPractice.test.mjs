@@ -57,6 +57,54 @@ test('Practice never treats a failed history or topics request as an empty accou
   await assert.rejects(loadPracticeHome({rpc:async name=>name.includes('topics')?{data:[],error:null}:{data:null,error:{message:'History failed'}}}),/History failed/);
 });
 
+test('New client submits through the server-graded legacy RPC only when the exact v2 endpoint is missing',async()=>{
+  const calls=[];
+  const saved=fixture();saved.questions[0].attempt={id,selected_option_id:oid,is_correct:true,submitted_at:'2026-10-21T00:00:00Z',elapsed_seconds:12,correct_option_id:oid,solution:'Server solution'};
+  const client={rpc:async(name,args)=>{
+    calls.push({name,args});
+    return name==='submit_question_practice_v2'
+      ? {data:null,error:{code:'PGRST202',message:'Could not find the function public.submit_question_practice_v2(_elapsed_seconds, _option_id, _question_id, _selection_trajectory, _session_id, _timing_complete) in the schema cache'}}
+      : {data:saved,error:null};
+  }};
+  const result=await submitPractice(client,id,qid,oid,12,{trajectory:[{option_id:oid,elapsed_seconds:10}],complete:true});
+  assert.deepEqual(calls.map(call=>call.name),['submit_question_practice_v2','submit_question_practice']);
+  assert.deepEqual(calls[1].args,{_session_id:id,_question_id:qid,_option_id:oid,_elapsed_seconds:12});
+  assert.equal(result.questions[0].attempt.is_correct,true);
+  assert.equal(result.questions[0].attempt.timing_complete,undefined,'Do not invent reliable telemetry for an old backend');
+  assert.equal(result.questions[0].attempt.selection_trajectory,undefined);
+});
+
+test('Permission, SQL, transport, other missing RPCs, and unverified saves never trigger another write path',async()=>{
+  for(const error of [
+    {code:'42501',message:'Permission denied'},
+    {code:'22023',message:'Invalid trajectory'},
+    {code:'PGRST301',message:'JWT expired'},
+    {code:'PGRST202',message:'Could not find the function public.some_other_rpc() in the schema cache'},
+    {code:'',message:'Failed to fetch'},
+    {code:'PGRST000',message:'Database unavailable'},
+  ]) {
+    const calls=[];const client={rpc:async name=>{calls.push(name);return {data:null,error};}};
+    await assert.rejects(submitPractice(client,id,qid,oid,12,{trajectory:null,complete:false}));
+    assert.deepEqual(calls,['submit_question_practice_v2'],JSON.stringify(error));
+  }
+  let calls=0;
+  await assert.rejects(submitPractice({rpc:async()=>{calls++;throw new Error('Lost response');}},id,qid,oid,12,{trajectory:null,complete:false}),/Lost response/);
+  assert.equal(calls,1);
+  calls=0;
+  await assert.rejects(submitPractice({rpc:async()=>{calls++;return {data:fixture(),error:null};}},id,qid,oid,12,{trajectory:null,complete:false}),/save could not be verified/);
+  assert.equal(calls,1);
+});
+
+test('A refused or unverifiable legacy fallback remains an error, with no recursive retries',async()=>{
+  for(const legacy of [{data:null,error:{code:'42501',message:'Session not available'}},{data:fixture(),error:null}]) {
+    const calls=[];
+    const client={rpc:async name=>{calls.push(name);return name==='submit_question_practice_v2'
+      ? {data:null,error:{code:'PGRST202',message:'Could not find the function public.submit_question_practice_v2() in the schema cache'}} : legacy;}};
+    await assert.rejects(submitPractice(client,id,qid,oid,12,{trajectory:null,complete:false}));
+    assert.deepEqual(calls,['submit_question_practice_v2','submit_question_practice']);
+  }
+});
+
 const historyAnswer=()=>({id,session_id:id,question_id:qid,version_id:id,selected_option_id:oid,is_correct:false,submitted_at:'2026-01-01T12:00:00Z',elapsed_seconds:7,topic_code:'1.1',topic_title:'Limits'});
 test('History keeps no-argument callers compatible and requests full-history wrong answers from server',async()=>{
   const calls=[];const client={rpc:async(name,args)=>{calls.push({name,args});return {data:[historyAnswer()],error:null};}};

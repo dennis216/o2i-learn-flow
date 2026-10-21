@@ -10,6 +10,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { parseQuestionBankWorkbook,validateQuestionBankSheets } from '../src/lib/questionBankImport.ts';
 import { buildQuestionBankDraftSavePlan } from '../src/lib/questionBankDraftSave.ts';
+import { submitPractice } from '../src/lib/studentPractice.ts';
 const root=fileURLToPath(new URL('../',import.meta.url));
 assert.equal(process.cwd(),root.replace(/\/$/,''));
 const {chromium}=await import(process.env.O2I_PLAYWRIGHT_MODULE??'playwright');
@@ -182,6 +183,40 @@ try {
   const retained=await submit(student,session,failureQ,failureQ.options.find(o=>o.key==='A').id);assert.equal(retained.questions[2].version_id,original.version_id);assert.equal(retained.questions[2].attempt.is_correct,true);
   const revisionSets=[await start(student,t1.id),await start(student,t1.id)];assert.equal(revisionSets.flatMap(s=>s.questions).find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
   await (await import('./practice-selection.acceptance.mjs')).verifyRandomSelection({db,fixture,topics,start,student,other,rpc,safe,check});
+  vite=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(appPort),'--strictPort'],{cwd:root,env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});await wait(async()=> (await fetch(app)).ok);
+  browser=await chromium.launch({headless:true,executablePath:process.env.O2I_CHROME_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+  context=await browser.newContext({viewport:{width:1280,height:960}});context.setDefaultTimeout(20000);
+  const remote=[];let startRequests=0;const safeResponses=[];
+  await context.route('**/*',async route=>{const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){remote.push(u.hostname);return route.abort();}if(u.pathname.endsWith('/start_question_practice'))startRequests++;return route.continue();});
+  page=await context.newPage();page.on('response',async res=>{if(res.url().endsWith('/start_question_practice')&&res.ok())safeResponses.push(await res.json());});
+  const login=async n=>{await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[n].email);await page.locator('input[name="password"]').first().fill(testPassword);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');};
+  if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
+    assert.equal(await scalar("SELECT to_regprocedure('public.submit_question_practice_v2(uuid,uuid,uuid,integer,jsonb,boolean)') IS NULL result"),true);
+    const compatibilitySession=randomUUID();await login(1);
+    await page.goto(app+'/quiz?topic='+t2.id+'&session='+compatibilitySession);
+    await page.getByRole('heading',{name:'Question 1 of 2',exact:true}).waitFor();
+    const oldSession=await rpc(student,'get_question_practice',{_session_id:compatibilitySession}),oldQuestion=oldSession.questions[0];safe(oldSession);
+    const wrongOption=oldQuestion.options.find(option=>option.key==='B').id;
+    const missing=page.waitForResponse(response=>response.url().endsWith('/submit_question_practice_v2')&&response.status()===404);
+    const saved=page.waitForResponse(response=>response.url().endsWith('/submit_question_practice')&&response.ok());
+    await page.getByRole('button',{name:'Option B',exact:true}).click();
+    await page.getByRole('button',{name:'Submit answer',exact:true}).evaluate(button=>{button.click();button.click();});
+    assert.equal((await (await missing).json()).code,'PGRST202');await saved;
+    await page.getByRole('region',{name:'Saved answer',exact:true}).getByText('Incorrect',{exact:true}).waitFor();
+    await page.getByText('Incomplete or legacy timing; excluded from speed analysis',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('alert').count(),0);await shot('00-legacy-backend-saved');
+    const captured={trajectory:[{option_id:wrongOption,elapsed_seconds:0}],complete:true};
+    const repeated=await submitPractice(student,compatibilitySession,oldQuestion.question_id,wrongOption,2,captured);
+    assert.equal(repeated.questions[0].attempt.is_correct,false);
+    await assert.rejects(submitPractice(other,compatibilitySession,oldQuestion.question_id,wrongOption,2,captured),/not issued/);
+    assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[compatibilitySession]),1);
+    await page.goto(app+'/quiz?session='+compatibilitySession+'&question='+oldQuestion.question_id);await page.reload();
+    await page.getByRole('region',{name:'Saved answer',exact:true}).getByText('Incorrect',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('link',{name:'Sign In / Sign Up',exact:true}).waitFor();
+    await ok(student.auth.signInWithPassword({email:accounts[1].email,password:testPassword}));
+    await db.query('DELETE FROM public.question_practice_sessions WHERE id=$1',[compatibilitySession]);
+    check('New frontend against an actual pre-v2 backend: missing RPC safely falls back, server grades and persists, reload restores, repeat is idempotent and foreign account is denied');
+  }
   // Prove the v2 forward package works without deploying v1, then roll back this rehearsal.
   const directV2Package=read('docs/question-bank/production/adaptation-v2/10_deploy.sql').replace('BEGIN;\n','').replace(/\nCOMMIT;\n$/, '\n');
   await db.query('BEGIN;'+directV2Package);
@@ -220,13 +255,6 @@ try {
     assert.equal(realRows.length,8);const afterReal=await start(student);assert.ok(afterReal.questions.every(q=>!realRows.some(r=>r.question_id===q.question_id)));
     check('Real workbook: all eight drafts / 32 options, canonical labels and formula text round-trip through actual local save RPC; never published or issued');
   }
-  vite=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(appPort),'--strictPort'],{cwd:root,env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});await wait(async()=> (await fetch(app)).ok);
-  browser=await chromium.launch({headless:true,executablePath:process.env.O2I_CHROME_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
-  context=await browser.newContext({viewport:{width:1280,height:960}});context.setDefaultTimeout(20000);
-  const remote=[];let startRequests=0;const safeResponses=[];
-  await context.route('**/*',async route=>{const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){remote.push(u.hostname);return route.abort();}if(u.pathname.endsWith('/start_question_practice'))startRequests++;return route.continue();});
-  page=await context.newPage();page.on('response',async res=>{if(res.url().endsWith('/start_question_practice')&&res.ok())safeResponses.push(await res.json());});
-  const login=async n=>{await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[n].email);await page.locator('input[name="password"]').first().fill(testPassword);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');};
   if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
   await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();await login(1);
   await page.evaluate(()=>localStorage.setItem('o2i-learning-prototype-v1',JSON.stringify({attempts:[{id:'FAKE_LOCALSTORAGE',correct:true,skillIds:[],misconceptionTags:[],overTarget:false}]})));

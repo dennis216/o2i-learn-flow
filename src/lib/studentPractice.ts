@@ -142,7 +142,14 @@ export async function readPractice(client: SupabaseClient<Database>, id: string)
   return readPracticeSession(data, id);
 }
 export async function submitPractice(client: SupabaseClient<Database>, sessionId: string, questionId: string, optionId: string, seconds: number, capture?: { trajectory: SelectionStep[] | null; complete: boolean }) {
-  const { data, error } = capture ? await client.rpc('submit_question_practice_v2', { _session_id: sessionId, _question_id: questionId, _option_id: optionId, _elapsed_seconds: seconds, _selection_trajectory: capture.trajectory as unknown as Json, _timing_complete: capture.complete }) : await client.rpc('submit_question_practice', { _session_id: sessionId, _question_id: questionId, _option_id: optionId, _elapsed_seconds: seconds });
+  const args = { _session_id: sessionId, _question_id: questionId, _option_id: optionId, _elapsed_seconds: seconds };
+  let { data, error } = capture
+    ? await client.rpc('submit_question_practice_v2', { ...args, _selection_trajectory: capture.trajectory as unknown as Json, _timing_complete: capture.complete })
+    : await client.rpc('submit_question_practice', args);
+  // Only a missing RPC proves it did not execute; never fall back after an uncertain write or permission error.
+  if (capture && error?.code === 'PGRST202' && error.message.includes('public.submit_question_practice_v2(')) {
+    ({ data, error } = await client.rpc('submit_question_practice', args));
+  }
   if (error) throw new Error(error.message);
   const s = readPracticeSession(data, sessionId);
   if (!s.questions.find(q => q.question_id === questionId)?.attempt) throw new Error('The answer save could not be verified. Check the saved result.');

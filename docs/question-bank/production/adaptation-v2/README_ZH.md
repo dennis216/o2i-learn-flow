@@ -17,6 +17,8 @@
 
 新增 `submit_question_practice_v2`（轨迹与计时）、`get_question_practice_analysis`（仅本人）、`get_question_practice_admin_statistics`（仅 Admin/Super Admin 聚合）。旧提交接口包装同一服务端实现，保留旧调用方式和重试语义。用时和轨迹属于设备报告，不是可信评分或掌握度证据。
 
+新前端仅在 PostgREST 明确返回 `PGRST202` 且缺失的正是 `submit_question_practice_v2` 时，使用旧服务端提交接口保存答案。断网、丢响应、权限拒绝和业务校验错误均不触发此回退。旧接口仍负责账号/版本绑定、判分和幂等保存；未保存的选择轨迹不伪装为完整计时。此兼容只恢复基础提交，不代表 v2 分析、统计和强化选题已经部署。
+
 数据库内部 `selection_summary` 保存 v2 冻结依据。RPC 将 v2 依据投影为新字段 `adaptation_summary`，旧字段 `selection_summary` 对 v2 会话返回 NULL；旧 v1 会话仍返回原 v1 摘要。这样旧前端不会因不认识规则版本而拒绝整个会话。新客户端优先读取新字段。历史会话不重抽、不回填轨迹和可靠计时。
 
 ## 发布顺序
@@ -24,7 +26,7 @@
 1. 重新只读执行 `00_preflight_readonly.sql`，要求 base/random matches、optional_v1_matches 为 true。`v2_recorded`、`telemetry_present` 均应 false；有任何部分存在时先核实，不重放。
 2. 本地运行 `npm run test:student-practice`、`npm run test:student-practice:integration`、TypeScript、相关 ESLint 和 build。隔离集成需本机 Docker、Chrome 和已有 Playwright；可通过 `O2I_PLAYWRIGHT_MODULE` 指定模块。
 3. 明确授权后执行一次 `10_deploy.sql` 完整事务，再独立执行 `20_verify_readonly.sql`，要求 `all_checks_pass=true`。检查覆盖实际函数体指纹、账本、权限和列，不能仅凭账本判断成功。包同时支持 random-only 与已经安装 v1 的数据库，不要求补跑 v1。
-4. 发布新前端。旧前端仍可提交；新前端需要本包的新 RPC，不能先于数据库上线。
+4. 发布新前端。完整 v2 功能需要先完成数据库部署与核验。缺接口时的旧版提交兼容只用于恢复基础作答，不代表分析、统计或强化选题已可用，不能替代步骤 3。
 5. 用两个普通学生账号和一个 Admin 账号验收：选择轨迹、暂停/刷新、下一组真实强化及回退说明、三档超时、历史和账号隔离、时间筛选、Unit 总数对账、Admin 版本统计、手机无溢出。记录实际迁移检查、前端产物和题池，不能用提交或构建成功冒充生产验收。
 6. 试点集中一个 Topic，先按类型×难度核对是否有足够不同题。观察强化槽位实际命中/回退、重复题与 RPC 错误，不记录题目答案到额外日志。
 
