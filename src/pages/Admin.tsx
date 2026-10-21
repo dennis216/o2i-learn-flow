@@ -1,3 +1,4 @@
+import { CourseContentManagement } from '@/components/admin/CourseContentManagement';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -851,9 +852,9 @@ const Admin = () => {
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
       <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
 
-      <Tabs defaultValue="videos" className="space-y-6">
+      <Tabs defaultValue="course-content" className="space-y-6">
         <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5 xl:grid-cols-10">
-          <TabsTrigger value="videos">Add Video</TabsTrigger>
+          <TabsTrigger value="course-content">Course Content</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
           <TabsTrigger value="practice">Practice</TabsTrigger>
           <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
@@ -873,7 +874,9 @@ const Admin = () => {
           )}
         </TabsList>
 
-        {/* Add Video Tab */}
+        <TabsContent value="course-content"><CourseContentManagement /></TabsContent>
+
+        {/* Legacy video metadata editor; student access is controlled by canonical publication. */}
         <TabsContent value="videos">
           <div className="grid gap-8 lg:grid-cols-2">
             <Card>
