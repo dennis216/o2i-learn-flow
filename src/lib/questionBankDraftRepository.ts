@@ -12,12 +12,12 @@ export interface SavedDraft {
 
 export class DraftSaveResultError extends Error {}
 
-/** The only write path for XLSX drafts. One RPC call is one database transaction. */
+/** Shared write path for manual and XLSX drafts. One RPC call is one database transaction. */
 export async function saveQuestionBankDrafts(
   client: SupabaseClient<Database>,
   plan: DraftSavePlan,
 ): Promise<string[]> {
-  if (!plan.canSave || plan.payload.length === 0) throw new Error("The workbook has not passed draft-save checks");
+  if (!plan.canSave || plan.payload.length === 0) throw new Error("The question data has not passed draft-save checks");
   const { data, error } = await client.rpc("save_question_bank_drafts", {
     _items: plan.payload as Json,
   });

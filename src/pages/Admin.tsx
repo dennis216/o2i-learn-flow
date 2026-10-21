@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Image, FolderOpen } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, FolderOpen } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
@@ -48,18 +48,6 @@ interface CourseVideo {
   courses?: { title: string };
 }
 
-interface PracticeProblem {
-  id: string;
-  title: string;
-  content: string;
-  solution: string | null;
-  video_id: string | null;
-  image_url: string | null;
-  unit_number: number | null;
-  lesson_number: string | null;
-  created_at: string;
-}
-
 interface Subject {
   id: string;
   name: string;
@@ -67,18 +55,6 @@ interface Subject {
   icon_url: string | null;
   order_index: number;
 }
-
-// Helper to extract YouTube video ID
-const getYouTubeVideoId = (url: string): string | null => {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
-  return match ? match[1] : null;
-};
-
-// Helper to get YouTube thumbnail URL
-const getYouTubeThumbnail = (videoUrl: string): string => {
-  const videoId = getYouTubeVideoId(videoUrl);
-  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "/placeholder.svg";
-};
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -89,13 +65,11 @@ const Admin = () => {
   const [submitting, setSubmitting] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<CourseVideo[]>([]);
-  const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamCanSave, setTeamCanSave] = useState(false);
   const [teamLoadFailed, setTeamLoadFailed] = useState(false);
   const [teamSaveNotice, setTeamSaveNotice] = useState('Loading Team schema…');
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [practiceSubjectFilter, setPracticeSubjectFilter] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -119,19 +93,6 @@ const Admin = () => {
     order_index: "0",
   });
 
-  // Practice problem form
-  const [practiceFormData, setPracticeFormData] = useState({
-    title: "",
-    content: "",
-    solution: "",
-    video_id: "",
-    image_url: "",
-    unit_number: "",
-    lesson_number: "",
-  });
-  const [practiceImageFile, setPracticeImageFile] = useState<File | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-
   // Team member form
   const [teamFormData, setTeamFormData] = useState({
     name: "",
@@ -146,11 +107,9 @@ const Admin = () => {
   // Edit states
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingVideo, setEditingVideo] = useState<CourseVideo | null>(null);
-  const [editingProblem, setEditingProblem] = useState<PracticeProblem | null>(null);
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editVideoDialogOpen, setEditVideoDialogOpen] = useState(false);
-  const [editProblemDialogOpen, setEditProblemDialogOpen] = useState(false);
   const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false);
 
   // JSON validation state
@@ -170,7 +129,6 @@ const Admin = () => {
     if (isAdmin) {
       fetchCourses();
       fetchVideos();
-      fetchPracticeProblems();
       fetchTeamMembers();
       fetchSubjects();
     }
@@ -296,21 +254,6 @@ const Admin = () => {
     }
   };
 
-  const fetchPracticeProblems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("practice_problems")
-        .select("id, title, content, solution, video_id, image_url, unit_number, lesson_number, created_at")
-        .order("unit_number", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setPracticeProblems(data || []);
-    } catch (error) {
-      console.error("Error fetching practice problems:", error);
-    }
-  };
-
   const fetchTeamMembers = async () => {
     try {
       const { members, canSave } = await loadTeamMembers(supabase);
@@ -365,18 +308,6 @@ const Admin = () => {
       fetchVideos();
     } catch (error: any) {
       console.error("Error deleting video:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const deletePracticeProblem = async (problemId: string) => {
-    try {
-      const { error } = await supabase.from("practice_problems").delete().eq("id", problemId);
-      if (error) throw error;
-      toast({ title: "Practice problem deleted successfully" });
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error deleting practice problem:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
@@ -484,36 +415,6 @@ const Admin = () => {
     }
   };
 
-  const updatePracticeProblem = async () => {
-    if (!editingProblem) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from("practice_problems")
-        .update({
-          title: editingProblem.title,
-          content: editingProblem.content,
-          solution: editingProblem.solution,
-          video_id: editingProblem.video_id,
-          image_url: editingProblem.image_url,
-          unit_number: editingProblem.unit_number,
-          lesson_number: editingProblem.lesson_number,
-        })
-        .eq("id", editingProblem.id);
-
-      if (error) throw error;
-      toast({ title: "Practice problem updated successfully" });
-      setEditProblemDialogOpen(false);
-      setEditingProblem(null);
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error updating practice problem:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const updateTeamMember = async () => {
     if (!editingTeamMember) return;
     if (!teamCanSave) { toast({ title: 'Team editing unavailable', description: teamSaveNotice, variant: 'destructive' }); return; }
@@ -549,24 +450,6 @@ const Admin = () => {
   };
 
   // ===== IMAGE UPLOAD =====
-  const uploadPracticeImage = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `practice/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('practice-images')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
-      return null;
-    }
-
-    const { data } = supabase.storage.from('practice-images').getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-
   const uploadTeamPhoto = async (file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -685,65 +568,6 @@ const Admin = () => {
     }
   };
 
-  const handlePracticeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setSubmitting(true);
-    setUploadingImage(true);
-
-    try {
-      let imageUrl = practiceFormData.image_url;
-
-      // Upload custom image if provided
-      if (practiceImageFile) {
-        const uploadedUrl = await uploadPracticeImage(practiceImageFile);
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl;
-        }
-      } else if (!imageUrl && practiceFormData.video_id) {
-        // Use YouTube thumbnail as default
-        const video = videos.find(v => v.id === practiceFormData.video_id);
-        if (video) {
-          imageUrl = getYouTubeThumbnail(video.video_url);
-        }
-      }
-
-      const { error } = await supabase.from("practice_problems").insert({
-        title: practiceFormData.title,
-        content: practiceFormData.content,
-        solution: practiceFormData.solution || null,
-        video_id: practiceFormData.video_id || null,
-        image_url: imageUrl || null,
-        unit_number: practiceFormData.unit_number ? parseInt(practiceFormData.unit_number) : null,
-        lesson_number: practiceFormData.lesson_number || null,
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Success", description: "Practice problem created!" });
-
-      setPracticeFormData({
-        title: "",
-        content: "",
-        solution: "",
-        video_id: "",
-        image_url: "",
-        unit_number: "",
-        lesson_number: "",
-      });
-      setPracticeImageFile(null);
-
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error creating practice problem:", error);
-      toast({ title: "Error", description: error.message || "Failed to create practice problem.", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-      setUploadingImage(false);
-    }
-  };
-
   const handleTeamSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -850,13 +674,12 @@ const Admin = () => {
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-      <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
+      <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, and content</p>
 
       <Tabs defaultValue="course-content" className="space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5 xl:grid-cols-10">
+        <TabsList className={`grid h-auto w-full grid-cols-2 sm:grid-cols-3 ${isSuperAdmin ? "xl:grid-cols-9" : "xl:grid-cols-8"}`}>
           <TabsTrigger value="course-content">Course Content</TabsTrigger>
           <TabsTrigger value="courses">Create Course</TabsTrigger>
-          <TabsTrigger value="practice">Practice</TabsTrigger>
           <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
           <TabsTrigger value="subjects" className="flex items-center gap-1">
             <FolderOpen className="h-4 w-4" />
@@ -1202,272 +1025,6 @@ const Admin = () => {
               </form>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Practice Problems Tab */}
-        <TabsContent value="practice">
-          <div className="grid gap-8 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Practice Problem</CardTitle>
-                <CardDescription>Create a new practice problem linked to a video</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePracticeSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_title">Title *</Label>
-                    <Input
-                      id="practice_title"
-                      value={practiceFormData.title}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, title: e.target.value })}
-                      placeholder="e.g., Limit at Infinity Problem"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_subject">Subject *</Label>
-                    <Select
-                      value={practiceSubjectFilter}
-                      onValueChange={(value) => {
-                        setPracticeSubjectFilter(value);
-                        // Reset video selection when subject changes
-                        setPracticeFormData({ ...practiceFormData, video_id: "" });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a subject first" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.length === 0 ? (
-                          <SelectItem value="none" disabled>No subjects available</SelectItem>
-                        ) : (
-                          <>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">High School</div>
-                            {subjects.filter(s => s.category === "High School").map((subject) => (
-                              <SelectItem key={subject.id} value={subject.name}>
-                                {subject.name}
-                              </SelectItem>
-                            ))}
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Contest</div>
-                            {subjects.filter(s => s.category === "Contest").map((subject) => (
-                              <SelectItem key={subject.id} value={subject.name}>
-                                {subject.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_video">Link to Video</Label>
-                    <Select
-                      value={practiceFormData.video_id}
-                      onValueChange={(value) => setPracticeFormData({ ...practiceFormData, video_id: value })}
-                      disabled={!practiceSubjectFilter}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={practiceSubjectFilter ? "Select a video (optional)" : "Select a subject first"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(() => {
-                          // Filter videos by selected subject via their course
-                          const filteredVideos = videos.filter(video => {
-                            const course = courses.find(c => c.id === video.course_id);
-                            return course && course.subject === practiceSubjectFilter;
-                          });
-                          
-                          if (filteredVideos.length === 0) {
-                            return <SelectItem value="none" disabled>No videos for this subject</SelectItem>;
-                          }
-                          
-                          return filteredVideos.map((video) => (
-                            <SelectItem key={video.id} value={video.id}>
-                              {video.title} {video.subtitle ? `(${video.subtitle})` : ""}
-                            </SelectItem>
-                          ));
-                        })()}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {practiceSubjectFilter 
-                        ? "If no image is uploaded, the video thumbnail will be used as default."
-                        : "Select a subject above to see available videos."}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="unit_number">Unit Number</Label>
-                      <Input
-                        id="unit_number"
-                        type="number"
-                        value={practiceFormData.unit_number}
-                        onChange={(e) => setPracticeFormData({ ...practiceFormData, unit_number: e.target.value })}
-                        placeholder="e.g., 2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lesson_number">Lesson Number</Label>
-                      <Input
-                        id="lesson_number"
-                        value={practiceFormData.lesson_number}
-                        onChange={(e) => setPracticeFormData({ ...practiceFormData, lesson_number: e.target.value })}
-                        placeholder="e.g., 2.1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_content">Problem Content (Markdown + LaTeX) *</Label>
-                    <Textarea
-                      id="practice_content"
-                      value={practiceFormData.content}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, content: e.target.value })}
-                      rows={4}
-                      placeholder="Find $$\lim_{x \to \infty} \frac{3x^2 + 2x}{x^2 - 1}$$"
-                      required
-                    />
-                  </div>
-
-                  {practiceFormData.content && (
-                    <div className="p-4 border rounded-lg bg-muted/30">
-                      <p className="text-xs text-muted-foreground mb-2">Preview:</p>
-                      <MarkdownWithMath content={practiceFormData.content} />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_solution">Solution (Markdown + LaTeX)</Label>
-                    <Textarea
-                      id="practice_solution"
-                      value={practiceFormData.solution}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, solution: e.target.value })}
-                      rows={4}
-                      placeholder="Step 1: Divide top and bottom by $$x^2$$..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Problem Diagram (Optional)</Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPracticeImageFile(e.target.files?.[0] || null)}
-                        className="flex-1"
-                      />
-                      {practiceImageFile && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPracticeImageFile(null)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {practiceImageFile && (
-                      <p className="text-xs text-green-600">
-                        <CheckCircle className="inline h-3 w-3 mr-1" />
-                        {practiceImageFile.name} selected
-                      </p>
-                    )}
-                    {!practiceImageFile && practiceFormData.video_id && (
-                      <p className="text-xs text-muted-foreground">
-                        <Image className="inline h-3 w-3 mr-1" />
-                        Will use video thumbnail as default
-                      </p>
-                    )}
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {uploadingImage ? "Uploading Image..." : "Creating..."}
-                      </>
-                    ) : (
-                      "Create Practice Problem"
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Existing Practice Problems</CardTitle>
-                <CardDescription>Manage your practice problems</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {practiceProblems.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No practice problems yet</p>
-                  ) : (
-                    practiceProblems.map((problem) => (
-                      <div
-                        key={problem.id}
-                        className="p-4 border rounded-lg space-y-2 hover:bg-accent/30 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{problem.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {problem.content.slice(0, 100)}...
-                            </p>
-                            {problem.image_url && (
-                              <img 
-                                src={problem.image_url} 
-                                alt="Problem thumbnail"
-                                className="w-16 h-12 object-cover rounded mt-2"
-                              />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingProblem(problem);
-                                setEditProblemDialogOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Practice Problem?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deletePracticeProblem(problem.id)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="question-bank">
@@ -2071,100 +1628,6 @@ const Admin = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditVideoDialogOpen(false)}>Cancel</Button>
             <Button onClick={updateVideo} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Practice Problem Dialog */}
-      <Dialog open={editProblemDialogOpen} onOpenChange={setEditProblemDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Practice Problem</DialogTitle>
-            <DialogDescription>Update problem content, solution, and image</DialogDescription>
-          </DialogHeader>
-          {editingProblem && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input
-                  value={editingProblem.title}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Link to Video</Label>
-                <Select
-                  value={editingProblem.video_id || ""}
-                  onValueChange={(value) => setEditingProblem({ ...editingProblem, video_id: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a video" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {videos.map((video) => (
-                      <SelectItem key={video.id} value={video.id}>
-                        {video.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Problem Content</Label>
-                <Textarea
-                  value={editingProblem.content}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, content: e.target.value })}
-                  rows={4}
-                />
-              </div>
-              {editingProblem.content && (
-                <div className="p-4 border rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground mb-2">Preview:</p>
-                  <MarkdownWithMath content={editingProblem.content} />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Solution</Label>
-                <Textarea
-                  value={editingProblem.solution || ""}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, solution: e.target.value })}
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Image URL</Label>
-                <Input
-                  value={editingProblem.image_url || ""}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, image_url: e.target.value })}
-                  placeholder="https://..."
-                />
-                {editingProblem.image_url && (
-                  <div className="flex items-center gap-4">
-                    <img 
-                      src={editingProblem.image_url} 
-                      alt="Preview" 
-                      className="w-24 h-16 object-cover rounded"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingProblem({ ...editingProblem, image_url: null })}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Remove
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditProblemDialogOpen(false)}>Cancel</Button>
-            <Button onClick={updatePracticeProblem} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Changes
             </Button>

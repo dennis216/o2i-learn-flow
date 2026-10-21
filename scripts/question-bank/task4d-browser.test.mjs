@@ -15,6 +15,7 @@ import { parseQuestionBankWorkbook, validateQuestionBankSheets } from '../../src
 import { buildQuestionBankDraftSavePlan } from '../../src/lib/questionBankDraftSave.ts';
 import { loadQuestionBankPage, loadQuestionBankVersionPreview } from '../../src/lib/questionBankDraftRepository.ts';
 import { loadPublicationPlan } from '../../src/lib/questionBankPublicationWorkflow.ts';
+import { verifyManualQuestionBrowser } from './manual-entry.acceptance.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 assert.equal(process.cwd(),root.replace(/\/$/,''),'Run only from the repository root');
@@ -194,6 +195,7 @@ try {
   page=await context.newPage();await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[0].email);await page.locator('input[name="password"]').first().fill(testPassword);
   await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');await openBank();assert.deepEqual(remoteRequests,[]);check('Real local .test admin login; browser uses loopback Supabase only');
   // Full lifecycle on synthetic content, not fictional confirmations about real source questions.
+  await verifyManualQuestionBrowser({page,context,api,db,state,selectFixture,synthetic,writeRequests,check,output});
   let before=await state();await selectFixture(synthetic);await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);check('Upload preview and Cancel cause zero question-bank writes');
   assert.equal(syntheticReport.questions[0].calculatorPolicy,'','Regression fixture must start with a blank calculator policy');
   for(const policy of ['calculator_allowed','calculator_required']){

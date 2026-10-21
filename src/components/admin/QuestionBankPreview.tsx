@@ -10,6 +10,7 @@ import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { buildQuestionBankDraftSavePlan, describeQuestionBankIssue, getPublicationReviewTasks, isPublicationReviewIssue } from "@/lib/questionBankDraftSave";
 import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts } from "@/lib/questionBankDraftRepository";
 import { QuestionBankLibrary } from "./QuestionBankLibrary";
+import { QuestionBankManualEntry } from "./QuestionBankManualEntry";
 import { QuestionBankMetadataFields } from "./QuestionBankMetadataFields";
 import type { QuestionBankReferences } from "@/lib/questionBankImportPlan";
 import { FIELD_LABELS, applyQuestionFieldEdit, getQuestionEditChanges, revertQuestionEdits, type EditableQuestionField } from "@/lib/questionBankPreviewEdits";
@@ -31,6 +32,8 @@ export function QuestionBankPreview() {
   const [saved, setSaved] = useState(false);
   const [fileError, setFileError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualMessage, setManualMessage] = useState("");
 
   const report = useMemo(() => workingSheets ? validateQuestionBankSheets(workingSheets, references ? {
     topicCodes: new Set(references.topics.map((topic) => topic.topic_code)),
@@ -160,7 +163,15 @@ export function QuestionBankPreview() {
   };
 
   return (
-    <div className="space-y-6 pb-40" aria-label="Question bank XLSX import">
+    <div className="space-y-6 pb-40" aria-label="Question bank">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">Create one question or import XLSX. Both save to the same question bank.</p>
+        <Button type="button" disabled={saving} onClick={() => { setManualMessage(""); setManualOpen(true); }}>New question</Button>
+      </div>
+      {manualMessage && <p role="status" className="text-sm text-green-700">{manualMessage}</p>}
+      {manualOpen && <QuestionBankManualEntry onClose={() => setManualOpen(false)} onChanged={message => {
+        setManualMessage(message); setLibraryRefresh(value => value + 1);
+      }} />}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />Import XLSX</CardTitle>
