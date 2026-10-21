@@ -1,0 +1,1 @@
+SELECT to_regclass('public.curriculum_topics') IS NOT NULL AND to_regclass('public.course_curriculum_units') IS NOT NULL AND to_regtype('public.question_course_scope') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL AS prerequisites_present, to_regclass('public.course_topic_content') IS NOT NULL AS content_already_present;

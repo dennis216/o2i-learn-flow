@@ -1,0 +1,12 @@
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+const dir=new URL('../docs/courses/production/',import.meta.url);mkdirSync(dir,{recursive:true});
+const versions=['20261027000000'];
+const names=['course_topic_content'];
+const md5=s=>createHash('md5').update(s).digest('hex');
+const sources=versions.map((v,i)=>readFileSync(new URL(`../supabase/migrations/${v}_${names[i]}.sql`,import.meta.url),'utf8'));
+const prerequisite="to_regclass('public.curriculum_topics') IS NOT NULL AND to_regclass('public.course_curriculum_units') IS NOT NULL AND to_regtype('public.question_course_scope') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL";
+writeFileSync(new URL('00_preflight_readonly.sql',dir),`SELECT ${prerequisite} AS prerequisites_present, to_regclass('public.course_topic_content') IS NOT NULL AS content_already_present;\n`);
+writeFileSync(new URL('10_deploy.sql',dir),`-- Forward migrations only. Run after readonly preflight, never database push.\nBEGIN;\nDO $release$ BEGIN\nLOCK TABLE supabase_migrations.schema_migrations IN SHARE ROW EXCLUSIVE MODE;\nIF NOT (${prerequisite}) THEN RAISE EXCEPTION 'Missing prerequisites; stop.'; END IF;\n${versions.map((v,i)=>`IF EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='${v}') THEN RAISE EXCEPTION 'Migration ${v} already recorded; stop.'; END IF;\nEXECUTE $course_sql$${sources[i]}$course_sql$;\nINSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('${v}','${names[i]}',ARRAY[$course_sql$${sources[i]}$course_sql$]);`).join('\n')}\nEND $release$;\nCOMMIT;\n`);
+writeFileSync(new URL('20_verify_readonly.sql',dir),`WITH checks(name,ok) AS (\n${versions.map((v,i)=>`SELECT '${v}',EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='${v}' AND name='${names[i]}' AND cardinality(statements)=1 AND md5(statements[1])='${md5(sources[i])}')`).join('\nUNION ALL\n')}\nUNION ALL SELECT 'content_rls',coalesce((SELECT relrowsecurity FROM pg_class WHERE oid=to_regclass('public.course_topic_content')),false)\nUNION ALL SELECT 'student_content_readonly',NOT has_table_privilege('authenticated','public.course_topic_content','INSERT,UPDATE,DELETE')\n) SELECT bool_and(ok) AS all_checks_pass,jsonb_agg(jsonb_build_object('name',name,'ok',ok)) AS checks FROM checks;\n`);
+console.log('Generated course forward deploy and readonly checks.');

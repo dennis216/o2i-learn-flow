@@ -309,6 +309,18 @@ export type Database = {
           },
         ]
       }
+      course_topic_content: {
+        Row: { course_id: string; topic_id: string; is_published: boolean; game_path: string | null; updated_at: string }
+        Insert: { course_id: string; topic_id: string; is_published?: boolean; game_path?: string | null; updated_at?: string }
+        Update: { is_published?: boolean; game_path?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      course_topic_videos: {
+        Row: { course_id: string; topic_id: string; video_id: string; order_index: number }
+        Insert: { course_id: string; topic_id: string; video_id: string; order_index: number }
+        Update: { order_index?: number }
+        Relationships: []
+      }
       course_videos: {
         Row: {
           course_id: string
@@ -389,6 +401,7 @@ export type Database = {
           id: string
           image_url: string | null
           instructor_id: string
+          practice_course_scope: "AB" | "BC" | "BOTH" | null
           is_published: boolean
           level: string
           price: number | null
@@ -403,6 +416,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id: string
+          practice_course_scope?: "AB" | "BC" | "BOTH" | null
           is_published?: boolean
           level: string
           price?: number | null
@@ -417,6 +431,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string
+          practice_course_scope?: "AB" | "BC" | "BOTH" | null
           is_published?: boolean
           level?: string
           price?: number | null
@@ -1891,6 +1906,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_course_outline: { Args: { _course_id: string }; Returns: Json }
+      get_course_topic: { Args: { _course_id: string; _topic_id: string }; Returns: Json }
+      save_course_topic: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path?: string | null }; Returns: undefined }
+
       list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
       list_question_practice_attempts: { Args: { _incorrect_only?: boolean }; Returns: Json }
       start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
