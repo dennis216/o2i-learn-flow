@@ -1,4 +1,5 @@
 import { CourseContentManagement } from '@/components/admin/CourseContentManagement';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -809,7 +810,7 @@ const Admin = () => {
                       className={`font-mono text-sm ${transcriptValid === false ? 'border-destructive' : ''}`}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Format: Array of objects with "s" (seconds) and "t" (text). Used by AI Tutor.
+                      Format: Array of objects with "s" (seconds) and "t" (text).
                     </p>
                   </div>
 
@@ -1041,7 +1042,7 @@ const Admin = () => {
           <Card>
             <CardHeader>
               <CardTitle>All Videos</CardTitle>
-              <CardDescription>Manage existing videos, edit transcripts, and test AI integration</CardDescription>
+              <CardDescription>Manage existing videos and edit transcripts</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-[700px] overflow-y-auto">
@@ -1095,14 +1096,14 @@ const Admin = () => {
                           <Pencil className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button
+                        {AI_TUTOR_ENABLED && <Button
                           variant="outline"
                           size="sm"
                           onClick={() => testAIForVideo(video)}
                         >
                           <Play className="h-4 w-4 mr-1" />
                           Test AI
-                        </Button>
+                        </Button>}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm" className="text-destructive">
@@ -1636,7 +1637,7 @@ const Admin = () => {
       </Dialog>
 
       {/* AI Test Dialog */}
-      <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
+      {AI_TUTOR_ENABLED && <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>AI Tutor Test: {aiPreviewVideo?.title}</DialogTitle>
@@ -1678,7 +1679,7 @@ const Admin = () => {
             )}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Edit Team Member Dialog */}
       <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>

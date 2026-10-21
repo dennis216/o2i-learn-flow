@@ -8,6 +8,7 @@ const StudyHub = lazy(() => import('./StudyHub').then(m => ({ default: m.StudyHu
 import { youtubeId as parseYoutubeId } from '@/lib/courseContent';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 
 interface YouTubePlayer {
   destroy: () => void;
@@ -217,7 +218,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         </div>
         
         {/* AI Tutor below - collapsible on mobile */}
-        {showMobileTutor ? (
+        {AI_TUTOR_ENABLED && (showMobileTutor ? (
           <div className="flex-1 border-t min-h-[300px]">
             <div className="flex items-center justify-between p-3 border-b bg-muted/50">
               <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -249,7 +250,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
             <MessageCircle className="h-4 w-4" />
             Open AI Tutor
           </Button>
-        )}
+        ))}
       </div>
     );
   }
@@ -257,8 +258,8 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   // Desktop layout with resizable panels (70/30 split)
   return (
     <div className="space-y-0">
-      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-        <ResizablePanel defaultSize={70} minSize={50}>
+      <ResizablePanelGroup direction="horizontal" className={AI_TUTOR_ENABLED ? 'min-h-[500px] rounded-lg border' : 'rounded-lg border'}>
+        <ResizablePanel defaultSize={AI_TUTOR_ENABLED ? 70 : 100} minSize={50}>
           <div className="p-4 h-full flex flex-col">
             {VideoPlayer}
             <div className="mt-4">
@@ -270,6 +271,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
           </div>
         </ResizablePanel>
         
+        {AI_TUTOR_ENABLED && <>
         <ResizableHandle withHandle />
         
         <ResizablePanel defaultSize={30} minSize={20}>
@@ -283,13 +285,14 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
             courseSubject={courseSubject}
           />
         </ResizablePanel>
+        </>}
       </ResizablePanelGroup>
 
       {/* Study Hub below the video player */}
       {showStudyHub && <Suspense fallback={<p>Loading study tools…</p>}><StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} /></Suspense>}
 
       {/* AI Tutor Drawer for mock test Ask AI */}
-      <AITutorDrawer
+      {AI_TUTOR_ENABLED && <AITutorDrawer
         open={drawerOpen}
         onOpenChange={(open) => {
           setDrawerOpen(open);
@@ -300,7 +303,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         videoTitle={video.title}
         videoSubject={courseSubject}
         initialPrompt={drawerPrompt}
-      />
+      />}
     </div>
   );
 }

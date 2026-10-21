@@ -11,6 +11,7 @@ import Index from '@/pages/Index';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
 import Quiz from '@/pages/Quiz';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 
 const Auth = lazy(() => import('@/pages/Auth'));
 const Profile = lazy(() => import('@/pages/Profile'));
@@ -59,7 +60,7 @@ export default function App() {
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/practice" element={<Practice />} />
                   <Route path="/practice/:videoId" element={<LegacyVideoRedirect />} />
-                  <Route path="/ai-tutor" element={<AITutor />} />
+                  <Route path="/ai-tutor" element={AI_TUTOR_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
                   <Route path="/playground" element={<Playground />} />
                   <Route path="/solution-requests" element={<SolutionRequests />} />
                   <Route path="/reset-password" element={<ResetPassword />} />

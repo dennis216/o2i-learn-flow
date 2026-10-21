@@ -6,6 +6,7 @@ import { NotesAndPDF } from './study-hub/NotesAndPDF';
 import { AISummary } from './study-hub/AISummary';
 import { ExamPrep } from './study-hub/ExamPrep';
 import { InteractiveLab } from './study-hub/InteractiveLab';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 
 interface StudyHubProps {
   video: CourseVideo;
@@ -25,7 +26,7 @@ export function StudyHub({ video, currentTime, courseSubject, onAskTutor }: Stud
           Study Hub
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
-          Enhance your learning with AI-powered study tools
+          Course notes and interactive study tools
         </p>
       </div>
 
@@ -38,7 +39,7 @@ export function StudyHub({ video, currentTime, courseSubject, onAskTutor }: Stud
             <FileText className="h-4 w-4 mr-2" />
             Notes & PDF
           </TabsTrigger>
-          <TabsTrigger
+          {AI_TUTOR_ENABLED && <><TabsTrigger
             value="summary"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
           >
@@ -52,6 +53,7 @@ export function StudyHub({ video, currentTime, courseSubject, onAskTutor }: Stud
             <ClipboardList className="h-4 w-4 mr-2" />
             Exam Prep
           </TabsTrigger>
+          </>}
           <TabsTrigger
             value="lab"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
@@ -65,13 +67,14 @@ export function StudyHub({ video, currentTime, courseSubject, onAskTutor }: Stud
           <NotesAndPDF video={video} currentTime={currentTime} />
         </TabsContent>
 
-        <TabsContent value="summary" className="p-4 mt-0">
+        {AI_TUTOR_ENABLED && <><TabsContent value="summary" className="p-4 mt-0">
           <AISummary video={video} />
         </TabsContent>
 
         <TabsContent value="exam" className="p-4 mt-0">
           <ExamPrep video={video} onAskTutor={onAskTutor} />
         </TabsContent>
+        </>}
 
         <TabsContent value="lab" className="p-4 mt-0">
           <InteractiveLab video={video} courseSubject={courseSubject} />

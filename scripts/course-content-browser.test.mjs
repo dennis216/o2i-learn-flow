@@ -17,7 +17,7 @@ try{
  browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
  const context=await browser.newContext({viewport:{width:1280,height:960}});
  const requests=[];
- await context.route('**/*',async route=>{
+ const routeFixture=async route=>{
    const u=new URL(route.request().url());requests.push(u.pathname);
    if(u.origin===api){
      let body=[];
@@ -39,7 +39,8 @@ try{
    }
    if(u.origin!==app)return route.abort();
    return route.continue();
- });
+ };
+ await context.route('**/*',routeFixture);
  const token=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')+'.'+Buffer.from(JSON.stringify({sub:uid,role:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url')+'.synthetic';
  await context.addInitScript(({token,uid})=>{if(window.top!==window)return;localStorage.setItem('sb-127-auth-token',JSON.stringify({access_token:token,refresh_token:'synthetic',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:uid,aud:'authenticated',role:'authenticated',email:'synthetic@example.test',app_metadata:{provider:'email'},user_metadata:{}}}));},{token,uid});
  page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>console.error('PAGE',e.message));page.on('console',m=>{if(m.type()==='error')console.error('CONSOLE',m.text());});
@@ -56,6 +57,7 @@ try{
  await page.screenshot({path:resolve(out,'admin.png'),fullPage:true});
  if(process.env.O2I_COURSE_GAME_BROWSER)assert.ok(saved._game_path.startsWith(`${course}/${topic}/`));
  if(process.env.O2I_COURSE_STUDENT_BROWSER){await (await import('./course-student-browser.acceptance.mjs')).verifyStudentCourse({page,context,app,api,course,topic,other,outline,content,requests,out});}
+ if(process.env.O2I_AI_TUTOR_BROWSER){await (await import('./ai-tutor-browser.acceptance.mjs')).verifyAiTutorHidden({browser,routeFixture,app,api,course,topic,uid,token,out});}
  console.log('PASS course admin browser: real form, invalid URL rejected without save, canonical Topic payload, publish/save acknowledgement');
 }catch(error){console.error(error);if(page){console.error('URL',page.url());console.error((await page.locator('body').innerText()).slice(0,1800));await page.screenshot({path:resolve(out,'failure.png')}).catch(()=>{});}process.exitCode=1;}
 finally{if(browser)await browser.close();vite.kill('SIGTERM');await new Promise(r=>vite.exitCode!==null?r():vite.once('exit',r));}
