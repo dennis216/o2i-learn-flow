@@ -1,3 +1,4 @@
+import { QuestionPracticeStatistics } from './QuestionPracticeStatistics';
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
@@ -93,7 +94,7 @@ export function QuestionBankLibrary({ refreshKey }: { refreshKey: number }) {
     <QuestionBankList kind="published" refreshKey={refreshKey + changed} onPreview={setSelected} onAction={onAction} onPublishAll={() => setAll(true)} />
     {selected && <Dialog open onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto"><DialogHeader>
       <DialogTitle className="break-all">{selected.externalId}</DialogTitle><DialogDescription>{statusLabel(selected)} · Version {selected.versionNumber} · Read-only administrator preview</DialogDescription>
-    </DialogHeader><QuestionBankVersionDetails key={selected.versionId} item={selected} /><Button type="button" variant="outline" onClick={() => setSelected(null)}>Close preview</Button></DialogContent></Dialog>}
+    </DialogHeader><QuestionBankVersionDetails key={selected.versionId} item={selected} /><QuestionPracticeStatistics key={"statistics:" + selected.id} questionId={selected.id} currentVersionId={selected.currentVersionId} previewVersionId={selected.versionId} /><Button type="button" variant="outline" onClick={() => setSelected(null)}>Close preview</Button></DialogContent></Dialog>}
     {operation && ["edit", "delete"].includes(operation.action) && <QuestionBankDraftEditor key={operation.item.versionId} item={operation.item}
       initialAction={operation.action === "delete" ? "delete" : undefined} onClose={() => setOperation(null)} onChanged={refresh} />}
     {(all || operation?.action === "publish") && <QuestionBankPublicationDialog single={all ? undefined : operation?.item} onClose={() => { setAll(false); setOperation(null); }} onChanged={refresh} onSuccess={setNotice} />}

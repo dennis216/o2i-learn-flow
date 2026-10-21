@@ -37,7 +37,7 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   const verify=async userId=>{
     await page.locator('dl[aria-label="Practice statistics"]').waitFor();
     const expected=await databaseStatistics(db,userId);
-    assert.deepEqual(await page.locator('dl dd').allTextContents(),[String(expected.sessionCount),String(expected.attemptCount),expected.attemptCount?`${(expected.correctCount/expected.attemptCount*100).toFixed(1)}%`:'—']);
+    assert.deepEqual(await page.locator('dl[aria-label="Practice statistics"] dd').allTextContents(),[String(expected.sessionCount),String(expected.attemptCount),expected.attemptCount?`${(expected.correctCount/expected.attemptCount*100).toFixed(1)}%`:'—']);
   };
   await page.goto(app+'/profile');await verify(a.user.id);await page.reload();await verify(a.user.id);
   for(const label of ['Courses Enrolled','Solutions Requested','Account Actions']) assert.equal(await page.getByText(label,{exact:true}).count(),0);
@@ -48,11 +48,11 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   const pattern='**/rest/v1/question_practice_attempts?*';
   await page.route(pattern,r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic count outage'})}));
   await page.reload();await page.getByRole('alert').filter({hasText:'Could not load your practice statistics'}).waitFor();
-  assert.equal(await page.locator('dl dd').count(),0);await page.unroute(pattern);
+  assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);await page.unroute(pattern);
   await page.getByRole('button',{name:'Retry',exact:true}).click();await verify(a.user.id);
   await page.route(pattern,r=>r.fulfill({status:200}));
   await page.reload();await page.getByRole('alert').filter({hasText:'Could not verify account practice statistics'}).waitFor();
-  assert.equal(await page.locator('dl dd').count(),0);await page.unroute(pattern);
+  assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);await page.unroute(pattern);
   check('Profile browser: database-matched counts, refresh, own account fields, hidden placeholders, outage/missing-count errors and retry');
 
   const authKey=await page.evaluate(()=>Object.keys(localStorage).find(k=>k.startsWith('sb-')&&k.endsWith('-auth-token')));assert.ok(authKey);
@@ -78,7 +78,7 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   await page.route(profilePattern,r=>new URL(r.request().url()).searchParams.get('user_id')===`eq.${a.user.id}`?held(r):r.continue());
   for(const match of [u=>u.includes('/question_practice_attempts?'),u=>u.endsWith('/is_super_admin'),u=>u.includes('/profiles?')]) pending.push(page.waitForRequest(r=>match(r.url())));
   await page.reload();await Promise.all(pending);await page.getByRole('status').filter({hasText:'Loading your practice statistics'}).waitFor();
-  assert.equal(await page.locator('dl dd').count(),0);
+  assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);
   const late=page.waitForResponse(r=>r.url().endsWith('/is_super_admin')&&r.request().postDataJSON()?._user_id===a.user.id);
   await switchAccount(b);await verify(b.user.id);
   assert.equal(await page.locator('#email').inputValue(),b.user.email);
@@ -98,10 +98,10 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   await page.setViewportSize({width:1280,height:960});
   await db.query('DELETE FROM public.question_practice_sessions WHERE id=$1',[emptySet.id]);
   await switchAccount(null);await page.getByText('You need to be logged in to view your profile.',{exact:true}).waitFor();
-  assert.equal(await page.locator('dl dd').count(),0);assert.equal(await page.locator('#email').count(),0);
+  assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);assert.equal(await page.locator('#email').count(),0);
   await switcher.close();await login(1);await page.goto(app+'/profile');await verify(a.user.id);
   await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.waitForURL(app+'/');
   await page.goto(app+'/profile');await page.getByText('You need to be logged in to view your profile.',{exact:true}).waitFor();
-  assert.equal(await page.locator('dl dd').count(),0);await login(1);
+  assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);await login(1);
   check('Profile browser: cross-tab A/B switch, late A counts/profile/super-admin responses ignored, zero-answer sets, mobile and both cross-tab/local logout');
 }

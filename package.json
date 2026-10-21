@@ -14,7 +14,7 @@
     "test:question-bank:browser": "node --experimental-strip-types scripts/question-bank/task4d-browser.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs",
+    "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs src/lib/practiceCapture.test.mjs src/lib/practiceAnalysis.test.mjs",
     "test:student-practice:integration": "node --experimental-strip-types scripts/student-practice.test.mjs"
   },
   "dependencies": {

@@ -1,3 +1,4 @@
+import { clearPracticeCaptures, initializePracticeCaptureTab } from '@/lib/practiceCapture';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AuthError, User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    try { window.name = initializePracticeCaptureTab(sessionStorage, window.name, crypto.randomUUID()); } catch { /* Capture will be marked incomplete. */ }
     let active = true;
     let revision = 0;
     let currentUserId: string | undefined;
@@ -55,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextUserId !== currentUserId || !nextUserId) {
+        try { clearPracticeCaptures(sessionStorage, currentUserId && nextUserId !== currentUserId ? undefined : nextUserId); } catch { /* Storage may be disabled. */ }
         setProfile(null);
         setIsAdmin(false);
         setIsSuperAdmin(false);

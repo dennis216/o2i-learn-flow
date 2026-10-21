@@ -8,6 +8,8 @@ import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { selectionRationale, parsePracticeRoute, startPractice, readPractice, submitPractice, type IssuedPracticeQuestion, type PracticeSession } from '@/lib/studentPractice';
+import { usePracticeCapture } from '@/hooks/usePracticeCapture';
+import { EXPECTED_SECONDS, PRACTICE_CAPTURE_PREFIX } from '@/lib/practiceCapture';
 import { cn } from '@/lib/utils';
 
 function SavedAnswer({ question }: { question: IssuedPracticeQuestion }) {
@@ -15,17 +17,24 @@ function SavedAnswer({ question }: { question: IssuedPracticeQuestion }) {
   const answer = question.options.find(o => o.id === question.attempt?.correct_option_id);
   return <section aria-label="Saved answer" className="mt-6 space-y-3 rounded border bg-muted/30 p-4">
     <p className="font-semibold">{question.attempt.is_correct ? 'Correct' : 'Incorrect'} · Saved to your account</p>
+    <p>Time: {question.attempt.elapsed_seconds === null ? 'Not recorded' : `${question.attempt.elapsed_seconds} seconds`} · Expected: {EXPECTED_SECONDS[question.difficulty]} seconds{!question.attempt.timing_complete && ' · Incomplete or legacy timing; excluded from speed analysis'}</p>
+    {question.attempt.selection_trajectory ? <div aria-label="Selection trajectory"><p>{Math.max(0, question.attempt.selection_trajectory.length - 1)} changes before Submit</p><ol className="list-decimal space-y-1 pl-5">{question.attempt.selection_trajectory.map((step, n) => <li key={n}>{step.elapsed_seconds}s · Option {question.options.find(o => o.id === step.option_id)?.key} · {step.option_id === question.attempt?.correct_option_id ? 'Correct' : 'Incorrect'}</li>)}</ol></div> : <p>Selection process not recorded.</p>}
+    <p>Suggested practice: Topic {question.topic.code} · {question.skill_descriptions?.join('; ') || question.skills.join(', ')}{question.representation_type ? ` · ${question.representation_type}` : ''}. <Link className="underline" to={`/quiz?topic=${question.topic.id}`}>Practice this Topic</Link></p>
     <p>Correct answer: {answer?.key}</p><MarkdownWithMath content={answer?.text ?? ''} strictMath />
     <h2 className="font-semibold">Solution</h2><MarkdownWithMath content={question.attempt.solution} strictMath className="overflow-x-auto" />
   </section>;
 }
 function AccountQuiz({ sessionId, topicId, questionId, onNextSet }: { sessionId: string; topicId?: string; questionId?: string; onNextSet: (topicId: string | null) => void }) {
   const [session, setSession] = useState<PracticeSession | null>(null);
-  const [index, setIndex] = useState(0), [selected, setSelected] = useState(''), [elapsed, setElapsed] = useState(0);
+  const { user } = useAuth();
+  const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(true), [error, setError] = useState(''), [saveError, setSaveError] = useState('');
   const [retry, setRetry] = useState(0), [finished, setFinished] = useState(false);
   const writing = useRef(false);
   const question = session?.questions[index];
+  const tracking = usePracticeCapture(user!.id, sessionId, question, busy || finished || !!saveError);
+  const selected = question?.attempt?.selected_option_id ?? tracking.capture.selected;
+  const elapsed = question?.attempt?.elapsed_seconds ?? Math.floor(tracking.capture.milliseconds / 1000);
   const rationale = selectionRationale(session?.selection_summary);
   useEffect(() => {
     let active = true; setBusy(true); setError('');
@@ -42,16 +51,12 @@ function AccountQuiz({ sessionId, topicId, questionId, onNextSet }: { sessionId:
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
   }, [sessionId, topicId, questionId, retry]);
-  useEffect(() => { setElapsed(question?.attempt?.elapsed_seconds ?? 0); setSelected(question?.attempt?.selected_option_id ?? ''); setSaveError(''); }, [question?.version_id, question?.attempt]);
-  useEffect(() => {
-    if (!question || question.attempt || busy || finished || saveError) return;
-    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') setElapsed(n => Math.min(n + 1, 86400)); }, 1000);
-    return () => window.clearInterval(timer);
-  }, [question, busy, finished, saveError]);
+  useEffect(() => { setSaveError(''); }, [question?.version_id, question?.attempt]);
   const save = async () => {
     if (!question || question.attempt || !selected || writing.current) return;
+    const frozen = tracking.freeze();
     writing.current = true; setBusy(true); setSaveError('');
-    try { setSession(await submitPractice(supabase, sessionId, question.question_id, selected, elapsed)); }
+    try { setSession(await submitPractice(supabase, sessionId, question.question_id, frozen.selected, Math.floor(frozen.milliseconds / 1000), { trajectory: frozen.trajectory, complete: frozen.complete })); }
     catch (reason) { setSaveError(`Save could not be confirmed. Check the saved answer or retry the same selection. ${reason instanceof Error ? reason.message : String(reason)}`); }
     finally { writing.current = false; setBusy(false); }
   };
@@ -69,18 +74,19 @@ function AccountQuiz({ sessionId, topicId, questionId, onNextSet }: { sessionId:
   if (!question) return null;
   return <>
     {rationale && <p aria-label="Selection rationale" className="mb-4 text-sm text-muted-foreground">{rationale}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Question {index + 1} of {session.questions.length}</h1><p className="flex items-center gap-2 text-sm"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · Device time</p></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Question {index + 1} of {session.questions.length}</h1><p className="flex items-center gap-2 text-sm"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · Active device time · Expected {EXPECTED_SECONDS[question.difficulty]}s</p>{!question.attempt && <Button variant="outline" disabled={busy || !!saveError || tracking.capture.frozen} onClick={tracking.pause}>{tracking.capture.paused ? 'Resume' : 'Pause'}</Button>}</div>
+    {!question.attempt && !tracking.capture.complete && <p className="text-sm text-muted-foreground">Timing or selection history is incomplete. This answer will not be used for speed analysis.</p>}
     <Progress className="my-5 h-2" value={session.questions.filter(q => q.attempt).length / session.questions.length * 100} />
     <Card><CardContent className="space-y-5 p-4 sm:p-7">
       <p aria-label="Saved question labels" className="break-words text-sm text-muted-foreground">{question.difficulty} · {question.calculator_policy?.replace(/_/g, ' ') ?? 'Calculator not specified'} · {question.course_scope} · Topic {question.topic.code}: {question.topic.title} · Skills {question.skills.join(', ')}</p>
       <div aria-label="Question content"><MarkdownWithMath content={question.stem} strictMath className="overflow-x-auto" /></div>
       {question.image_url && <img src={question.image_url} alt="Question figure" className="max-h-96 max-w-full object-contain" />}
-      <div className="space-y-3" aria-label="Answer options">{question.options.map(option => <button type="button" key={option.id} aria-label={`Option ${option.key}`} aria-pressed={selected === option.id} disabled={busy || !!question.attempt || !!saveError} onClick={() => setSelected(option.id)} className={cn('flex w-full gap-3 rounded border p-4 text-left', selected === option.id && 'border-primary bg-primary/10', question.attempt?.correct_option_id === option.id && 'border-green-600 bg-green-50')}><span className="font-semibold">{option.key}.</span><MarkdownWithMath content={option.text} strictMath className="min-w-0 overflow-x-auto" /></button>)}</div>
+      <div className="space-y-3" aria-label="Answer options">{question.options.map(option => <button type="button" key={option.id} aria-label={`Option ${option.key}`} aria-pressed={selected === option.id} disabled={busy || !tracking.ready || !!question.attempt || !!saveError || tracking.capture.frozen || tracking.capture.paused} onClick={() => tracking.select(option.id)} className={cn('flex w-full gap-3 rounded border p-4 text-left', selected === option.id && 'border-primary bg-primary/10', question.attempt?.correct_option_id === option.id && 'border-green-600 bg-green-50')}><span className="font-semibold">{option.key}.</span><MarkdownWithMath content={option.text} strictMath className="min-w-0 overflow-x-auto" /></button>)}</div>
       {saveError && <div role="alert" className="space-y-3"><p>{saveError}</p><Button variant="outline" disabled={busy} onClick={() => void checkSaved()}>Check saved answer</Button></div>}
       {busy && <p role="status">Checking the server…</p>}
       <SavedAnswer question={question} />
       {question.attempt ? <Button onClick={() => { if (index === session.questions.length - 1) setFinished(true); else setIndex(n => n + 1); }}>{index === session.questions.length - 1 ? 'Finish practice' : 'Next question'}<ArrowRight /></Button>
-        : <Button disabled={busy || !selected} onClick={() => void save()}>{saveError ? 'Retry submission' : 'Submit answer'}</Button>}
+        : <Button disabled={busy || !tracking.ready || !selected || tracking.capture.paused} onClick={() => void save()}>{saveError ? 'Retry submission' : 'Submit answer'}</Button>}
     </CardContent></Card>
   </>;
 }
@@ -89,7 +95,9 @@ export default function Quiz() {
   const [params, setParams] = useSearchParams();
   const scope = parsePracticeRoute(params);
   useEffect(() => {
-    if (user && !scope.error && !scope.sessionId) { const next = new URLSearchParams(params); next.set('session', crypto.randomUUID()); setParams(next, { replace: true }); }
+    if (user && !scope.error && !scope.sessionId) { const next = new URLSearchParams(params); const id = crypto.randomUUID();
+      try { sessionStorage.setItem(`${PRACTICE_CAPTURE_PREFIX}${user.id}:${id}:new`, 'true'); } catch { /* Capture will be marked incomplete. */ }
+      next.set('session', id); setParams(next, { replace: true }); }
   }, [user, scope.error, scope.sessionId, params, setParams]);
   return <div className="mx-auto min-h-[70vh] max-w-5xl px-4 py-8"><Button asChild variant="ghost" className="mb-6"><Link to={scope.questionId ? '/review' : '/practice'}><ArrowLeft />{scope.questionId ? 'Back to Review' : 'Back to Practice'}</Link></Button>
     {loading ? <p role="status">Checking your account…</p> : !user ? <div className="space-y-4"><p>Sign in to practice published questions and save your answers.</p><Button asChild><Link to="/auth">Sign in</Link></Button></div>

@@ -132,8 +132,8 @@ try {
   const precheck=async(s,action='publish')=>rpc(admin,'precheck_question_publication',{_question_id:s.question_id,_version_id:s.version_id,_action:action});
   const publish=async s=>{let p=await precheck(s);const r=await rpc(admin,'record_question_version_review',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint,_review:{confirmed:true}});assert.equal(r.precheck.eligible,true,JSON.stringify(r));p=r.precheck;return rpc(admin,'publish_question_version',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint});};
   let serial=0;
-  const fixture=async(topic='1.1',published=true,difficulty='easy')=>{
-    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty,course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
+  const fixture=async(topic='1.1',published=true,difficulty='easy',metadata={})=>{
+    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty,course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,...metadata,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
     if(published)await publish(s);return s;
   };
   const t1=topics.find(t=>t.topic_code==='1.1'),t2=topics.find(t=>t.topic_code==='1.2'),empty=topics.find(t=>t.topic_code==='1.3');
@@ -182,12 +182,27 @@ try {
   const retained=await submit(student,session,failureQ,failureQ.options.find(o=>o.key==='A').id);assert.equal(retained.questions[2].version_id,original.version_id);assert.equal(retained.questions[2].attempt.is_correct,true);
   const revisionSets=[await start(student,t1.id),await start(student,t1.id)];assert.equal(revisionSets.flatMap(s=>s.questions).find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
   await (await import('./practice-selection.acceptance.mjs')).verifyRandomSelection({db,fixture,topics,start,student,other,rpc,safe,check});
+  // Prove the v2 forward package works without deploying v1, then roll back this rehearsal.
+  const directV2Package=read('docs/question-bank/production/adaptation-v2/10_deploy.sql').replace('BEGIN;\n','').replace(/\nCOMMIT;\n$/, '\n');
+  await db.query('BEGIN;'+directV2Package);
+  assert.equal((await db.query(read('docs/question-bank/production/adaptation-v2/20_verify_readonly.sql'))).rows[0].adaptation_verification.all_checks_pass,true);
+  await db.query("SELECT set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:accounts[1].id,role:'authenticated'})]);
+  assert.equal((await db.query('SELECT public.start_question_practice($1,$2) AS session',[randomUUID(),t1.id])).rows[0].session.adaptation_summary.rule_version,'practice-adaptation-v2');
+  await db.query('ROLLBACK');
+  check('Adaptation v2: random-only database upgrades directly without replaying the optional v1 migration');
   await db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql'));
   assert.equal((await db.query(read('docs/question-bank/production/practice-selection/21_adaptive_verify.sql'))).rows[0].practice_selection_verification.all_checks_pass,true);
   await assert.rejects(db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
   await db.query("NOTIFY pgrst,'reload schema'");
   assert.equal((await rpc(student,'get_question_practice',{_session_id:session.id})).selection_summary,null);
   await (await import('./practice-selection.acceptance.mjs')).verifyTopicAdaptation({db,fixture,topics,start,student,other,rpc,submit,check,admin,precheck,publish});
+  await db.query(read('docs/question-bank/production/adaptation-v2/10_deploy.sql'));
+  const v2Verification=(await db.query(read('docs/question-bank/production/adaptation-v2/20_verify_readonly.sql'))).rows[0].adaptation_verification;
+  assert.equal(v2Verification.all_checks_pass,true,JSON.stringify(v2Verification));
+  await assert.rejects(db.query(read('docs/question-bank/production/adaptation-v2/10_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
+  await db.query("NOTIFY pgrst,'reload schema'");
+  await wait(async()=>!(await student.rpc('get_question_practice_analysis',{})).error);
+  const v2Fixture=await (await import('./adaptation-v2.acceptance.mjs')).verifyAdaptationV2({db,fixture,topics,start,student,other,visitor,admin,rpc,safe,check,precheck,publish});
   let realRows=[];
   if(process.env.O2I_ACCEPTANCE_XLSX){
     const b=readFileSync(process.env.O2I_ACCEPTANCE_XLSX),sheets=await parseQuestionBankWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
@@ -218,14 +233,14 @@ try {
   const browserSession=randomUUID();await page.goto(app+'/quiz?topic='+t2.id+'&session='+browserSession);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.getByLabel('Saved question labels').waitFor();assert.equal(await page.getByLabel('Saved answer',{exact:true}).count(),0);assert.equal(await page.getByText('Correct answer:',{exact:false}).count(),0);
   await wait(()=>safeResponses.length);safe(safeResponses.at(-1));assert.ok(await page.locator('.katex').count());await page.getByRole('img',{name:'Question figure',exact:true}).waitFor();assert.ok(await page.getByRole('img',{name:'Question figure',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0));await page.getByLabel('Selection rationale').filter({hasText:'Building your practice history'}).waitFor();await shot('01-safe-question');
   // The first failure is before the database request; do not display a saved result.
-  await page.route('**/rpc/submit_question_practice',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic server unavailable'})}));
+  await page.route('**/rpc/submit_question_practice_v2',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic server unavailable'})}));
   await page.getByRole('button',{name:'Option A',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('alert').filter({hasText:'Save could not be confirmed'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),0);
-  await shot('02-save-failure');await page.unroute('**/rpc/submit_question_practice');
+  await shot('02-save-failure');await page.unroute('**/rpc/submit_question_practice_v2');
   await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),1);await shot('03-saved-answer');
   await page.getByRole('button',{name:'Next question',exact:true}).click();await page.getByRole('heading',{name:'Question 2 of 2'}).waitFor();
   // A committed answer with a lost response is recovered by the read-only result RPC.
-  await page.route('**/rpc/submit_question_practice',async route=>{await route.fetch();await route.abort('failed');});await page.getByRole('button',{name:'Option B',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('button',{name:'Check saved answer',exact:true}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
-  await page.unroute('**/rpc/submit_question_practice');await page.getByRole('button',{name:'Check saved answer',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();await page.getByRole('button',{name:'Finish practice',exact:true}).click();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),2);
+  await page.route('**/rpc/submit_question_practice_v2',async route=>{await route.fetch();await route.abort('failed');});await page.getByRole('button',{name:'Option B',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('button',{name:'Check saved answer',exact:true}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
+  await page.unroute('**/rpc/submit_question_practice_v2');await page.getByRole('button',{name:'Check saved answer',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();await page.getByRole('button',{name:'Finish practice',exact:true}).click();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),2);
   await page.reload();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),2);
   await page.goto(app+'/practice');await page.getByRole('heading',{name:'Recent account answers'}).waitFor();await page.locator(`a[href="/quiz?session=${browserSession}"]`).first().waitFor();await shot('04-account-history');check('Browser real authenticated practice, safe network response, correct/wrong results, server failure/retry, lost response lookup and refresh/account history');
   await (await import('./review.acceptance.mjs')).verifyReviewBrowser({page,context,app,start,submit,rpc,student,topicId:t2.id,browserSession,check,shot});
@@ -245,6 +260,7 @@ try {
   await page.goto(app+'/practice');await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('link',{name:'Sign In / Sign Up',exact:true}).waitFor();await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();assert.equal(await page.locator(`a[href="/quiz?session=${browserSession}"]`).count(),0);
   await login(2);await page.goto(app+'/practice');await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();await page.goto(app+'/quiz?session='+browserSession);await page.getByRole('alert').filter({hasText:'not available to your account'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
   await page.goto(app+'/quiz?topic='+t2.id);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.setViewportSize({width:390,height:844});await shot('06-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(remote.every(host=>host==='storage.googleapis.com'),'Unexpected non-loopback backend request');report.blockedExternalHosts=[...new Set(remote)];check('Logout/account switch removes prior account data; another account cannot resume it; mobile layout and loopback-only network');
+  await (await import('./adaptation-v2-browser.acceptance.mjs')).verifyAdaptationV2Browser({page,app,db,login,student,topics,v2Fixture,check,shot,userId:accounts[1].id});
 } catch(error){if(page)await page.screenshot({path:resolve(output,'failure.png')}).catch(()=>{});report.error=redact(error.stack??error);console.error(report.error);process.exitCode=1;}
 finally {
   if(browser)await browser.close().catch(()=>{});if(vite&&vite.exitCode===null){vite.kill('SIGTERM');await new Promise(r=>vite.once('exit',r));}if(proxy){proxy.closeAllConnections();await new Promise(r=>proxy.close(r));}if(db)await db.end().catch(()=>{});

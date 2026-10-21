@@ -1,3 +1,4 @@
+import { PracticeAnalysisPanel } from '@/components/practice/PracticeAnalysisPanel';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,6 +152,7 @@ export default function Profile() {
           </Card>
 
           <LearningStatistics key={user.id} userId={user.id} />
+          <PracticeAnalysisPanel key={"analysis:" + user.id} />
         </div>
       </div>
     </div>
