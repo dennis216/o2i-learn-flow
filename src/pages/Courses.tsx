@@ -1,248 +1,39 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen } from 'lucide-react';
+import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { CourseDetailModal } from '@/components/courses/CourseDetailModal';
-import { CourseFilters, Category, Subject } from '@/components/courses/CourseFilters';
-import { Course, CourseCurriculumUnit, TranscriptEntry } from '@/components/courses/types';
+import { CourseFilters, type Category, type Subject } from '@/components/courses/CourseFilters';
+import { Button } from '@/components/ui/button';
+import type { Course } from '@/components/courses/types';
 import apCalculusThumbnail from '@/assets/ap-calculus-thumbnail.jpg';
 
-// Map course IDs to their thumbnail images
-const courseThumbnails: Record<string, string> = {
-  '93124428-92f4-48d2-a6dc-e5f9e010248b': apCalculusThumbnail,
-  'fccc7540-0c29-43be-8682-ae90ff2534cb': apCalculusThumbnail,
-};
-
-const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
-
 export default function Courses() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const location = useLocation();
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [autoSelectVideoId, setAutoSelectVideoId] = useState<string | null>(null);
-  const [resumeTime, setResumeTime] = useState<number | null>(null);
-  
-  // Filter state - default to first subject in High School
-  const [category, setCategory] = useState<Category>('High School');
-  const [subject, setSubject] = useState<Subject>('AP Calc');
-
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [retry, setRetry] = useState(0);
+  const [category, setCategory] = useState<Category>('High School'), [subject, setSubject] = useState<Subject>('AP Calc');
   useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        // Build query with category filter
-        let query = supabase
-          .from('courses')
-          .select(`
-            *,
-            course_videos (*)
-          `)
-          .eq('category', category)
-          .order('created_at', { ascending: false });
-
-        // Add subject filter if selected
-        if (subject) {
-          query = query.eq('subject', subject);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          console.error('Error fetching courses:', error);
-        } else {
-          const courseIds = data?.map((course) => course.id) || [];
-          let curriculumByCourse: Record<string, Course['course_curriculum_units']> = {};
-
-          if (courseIds.length > 0) {
-            const { data: curriculumData, error: curriculumError } = await supabase
-              .from('course_curriculum_units')
-              .select(`
-                course_id,
-                order_index,
-                curriculum_units (
-                  id,
-                  unit_number,
-                  title,
-                  is_bc_only,
-                  ab_exam_weight_min,
-                  ab_exam_weight_max,
-                  bc_exam_weight_min,
-                  bc_exam_weight_max,
-                  curriculum_topics (
-                    id,
-                    topic_code,
-                    title,
-                    big_idea,
-                    is_bc_only,
-                    order_index
-                  )
-                )
-              `)
-              .in('course_id', courseIds)
-              .order('order_index', { ascending: true });
-
-            if (curriculumError) {
-              console.error('Error fetching course curriculum:', curriculumError);
-            } else {
-              const typedMappings = (curriculumData || []) as unknown as Array<
-                CourseCurriculumUnit & { course_id: string }
-              >;
-              curriculumByCourse = typedMappings.reduce<Record<string, CourseCurriculumUnit[]>>((acc, mapping) => {
-                const unit = mapping.curriculum_units;
-                if (unit?.curriculum_topics) {
-                  unit.curriculum_topics.sort((a, b) => a.order_index - b.order_index);
-                }
-                if (!acc[mapping.course_id]) acc[mapping.course_id] = [];
-                acc[mapping.course_id].push(mapping);
-                return acc;
-              }, {});
-            }
-          }
-
-          // Transform the data to properly type transcripts
-          const transformedData = data?.map((course) => ({
-            ...course,
-            course_videos: course.course_videos?.map((video) => ({
-              ...video,
-              transcript: video.transcript as unknown as TranscriptEntry[] | null,
-            })),
-            course_curriculum_units: curriculumByCourse[course.id] || [],
-          })) as Course[];
-          setCourses(transformedData || []);
-
-          // Handle ?video=videoId parameter - auto-select the course containing this video
-          const videoId = searchParams.get('video');
-          if (videoId && transformedData) {
-            const courseWithVideo = transformedData.find(course => 
-              course.course_videos?.some(v => v.id === videoId)
-            );
-            if (courseWithVideo) {
-              setSelectedCourse(courseWithVideo);
-              setAutoSelectVideoId(videoId);
-              
-              // Check for resume time from navigation state
-              const navState = location.state as { resumeTime?: number } | null;
-              if (navState?.resumeTime) {
-                setResumeTime(navState.resumeTime);
-              }
-              
-              // Clear the URL parameter
-              setSearchParams({});
-              // Clear the navigation state
-              window.history.replaceState({}, document.title);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCourses();
-  }, [category, subject, searchParams, setSearchParams, location.state]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-12">
-            <Skeleton className="h-10 w-64 mx-auto mb-4" />
-            <Skeleton className="h-6 w-96 mx-auto" />
-          </div>
-          <div className="mb-8">
-            <Skeleton className="h-12 w-64 mx-auto mb-4" />
-            <div className="flex justify-center gap-2 flex-wrap">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-8 w-24 rounded-full" />
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="overflow-hidden">
-                <Skeleton className="h-48 w-full" />
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Math Courses</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Explore our comprehensive collection of mathematics courses designed to help you master every concept
-          </p>
-        </div>
-
-        {/* Dual-layer filters */}
-        <div className="mb-10">
-          <CourseFilters
-            category={category}
-            subject={subject}
-            onCategoryChange={setCategory}
-            onSubjectChange={setSubject}
-          />
-        </div>
-
-        {courses.length === 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">
-              No courses available for {subject || category}
-            </h3>
-            <p className="text-muted-foreground">
-              {subject 
-                ? `Try selecting a different subject or check back later for new ${subject} courses!`
-                : `Check back soon for exciting new ${category.toLowerCase()} math courses!`
-              }
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                thumbnail={courseThumbnails[course.id]}
-                onSelect={setSelectedCourse}
-              />
-            ))}
-          </div>
-        )}
-
-        {selectedCourse && (
-          <CourseDetailModal
-            course={selectedCourse}
-            onClose={() => {
-              setSelectedCourse(null);
-              setAutoSelectVideoId(null);
-              setResumeTime(null);
-            }}
-            supabaseUrl={SUPABASE_URL}
-            autoSelectVideoId={autoSelectVideoId}
-            resumeTime={resumeTime}
-          />
-        )}
-      </div>
-    </div>
-  );
+    let active = true; setLoading(true); setError(''); setCourses([]);
+    let query = supabase.from('courses').select('id,title,description,level,subject,category,price,image_url,is_published,practice_course_scope').eq('category', category).order('created_at', { ascending: false });
+    if (subject) query = query.eq('subject', subject);
+    void query.then(({ data, error }) => {
+      if (!active) return;
+      if (error) setError(error.message); else setCourses((data ?? []) as Course[]);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [category, subject, user?.id, retry]);
+  const selected = courses.find(c => c.id === params.get('course'));
+  const select = (course: Course) => setParams({ course: course.id });
+  return <div className="container mx-auto min-h-screen px-4 py-10">
+    <div className="mb-8 text-center"><h1 className="text-4xl font-bold">Math Courses</h1><p className="mt-3 text-muted-foreground">Explore mathematics by Unit and Topic.</p></div>
+    <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
+    {loading ? <p role="status" className="py-8">Loading courses…</p> : error ? <div role="alert" className="space-y-3 py-8"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div> : <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{courses.map(course => <CourseCard key={course.id} course={course} thumbnail={course.subject === 'AP Calc' ? apCalculusThumbnail : undefined} onSelect={select} />)}</div>}
+    {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">No published courses in this category.</p>}
+    {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={params.get('topic')} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onTopicChange={topicId => setParams({ course: selected.id, ...(topicId ? { topic: topicId } : {}) }, { replace: true })} onClose={() => setParams({})} />}
+  </div>;
 }

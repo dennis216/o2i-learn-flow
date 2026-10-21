@@ -6,7 +6,7 @@ Approved behavior: canonical Course → Unit → Topic, YouTube URL videos share
 |---|---|---|
 | 1 | Canonical associations, publication, RLS, read/save contracts | Passed: isolated DB permissions, URL tests, TypeScript |
 | 2 | Course content administration | Passed: browser form fixture, URL rejection, canonical publish payload; TypeScript |
-| 3 | Student outline and lazy loading | Pending |
+| 3 | Student outline and lazy loading | Passed: browser network assertions, unmount, deep-link refresh, phone/tablet layout; TypeScript |
 | 4 | Topic practice with course scope | Pending |
 | 5 | Single-file HTML game upload and isolation | Pending |
 | 6 | Prototype retirement and legacy links | Pending |

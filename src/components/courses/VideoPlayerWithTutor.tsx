@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { Maximize, MessageCircle, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
 import { AITutorDrawer } from './AITutorDrawer';
-import { StudyHub } from './StudyHub';
+const StudyHub = lazy(() => import('./StudyHub').then(m => ({ default: m.StudyHub })));
+import { youtubeId as parseYoutubeId } from '@/lib/courseContent';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -22,9 +23,10 @@ interface VideoPlayerWithTutorProps {
   courseSubject?: string;
   /** Initial time in seconds to seek to when video loads */
   initialTime?: number;
+  showStudyHub?: boolean;
 }
 
-export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime }: VideoPlayerWithTutorProps) {
+export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime, showStudyHub = true }: VideoPlayerWithTutorProps) {
   const [currentTime, setCurrentTime] = useState<number>(initialTime ?? 0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -41,17 +43,8 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
     setDrawerOpen(true);
   }, []);
 
-  const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
-
-  // Extract YouTube video ID
-  const getYouTubeId = (url: string): string => {
-    if (url.includes('youtu.be')) {
-      return url.split('youtu.be/')[1]?.split('?')[0] || '';
-    }
-    return url.split('v=')[1]?.split('&')[0] || '';
-  };
-
-  const youtubeId = isYouTube ? getYouTubeId(video.video_url) : '';
+  const youtubeId = parseYoutubeId(video.video_url) ?? '';
+  const isYouTube = !!youtubeId;
 
   // Load YouTube Iframe API
   useEffect(() => {
@@ -287,7 +280,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
       </ResizablePanelGroup>
 
       {/* Study Hub below the video player */}
-      <StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} />
+      {showStudyHub && <Suspense fallback={<p>Loading study tools…</p>}><StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} /></Suspense>}
 
       {/* AI Tutor Drawer for mock test Ask AI */}
       <AITutorDrawer
