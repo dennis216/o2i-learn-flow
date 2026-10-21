@@ -10,15 +10,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { selectionRationale, parsePracticeRoute, startPractice, readPractice, submitPractice, type IssuedPracticeQuestion, type PracticeSession } from '@/lib/studentPractice';
 import { usePracticeCapture } from '@/hooks/usePracticeCapture';
-import { EXPECTED_SECONDS, PRACTICE_CAPTURE_PREFIX } from '@/lib/practiceCapture';
+import { PRACTICE_CAPTURE_PREFIX } from '@/lib/practiceCapture';
 import { cn } from '@/lib/utils';
 
 function SavedAnswer({ question, courseId }: { question: IssuedPracticeQuestion; courseId?: string | null }) {
   if (!question.attempt) return null;
   const answer = question.options.find(o => o.id === question.attempt?.correct_option_id);
   return <section aria-label="Saved answer" className="mt-6 space-y-3 rounded border bg-muted/30 p-4">
-    <p className="font-semibold">{question.attempt.is_correct ? 'Correct' : 'Incorrect'} · Saved to your account</p>
-    <p>Time: {question.attempt.elapsed_seconds === null ? 'Not recorded' : `${question.attempt.elapsed_seconds} seconds`} · Expected: {EXPECTED_SECONDS[question.difficulty]} seconds{!question.attempt.timing_complete && ' · Incomplete or legacy timing; excluded from speed analysis'}</p>
+    <p className="font-semibold">{question.attempt.is_correct ? 'Correct' : 'Incorrect'}</p>
+    <p>Time: {question.attempt.elapsed_seconds === null ? 'Not recorded' : `${question.attempt.elapsed_seconds} seconds`}{!question.attempt.timing_complete && ' · Incomplete or legacy timing; excluded from speed analysis'}</p>
     {question.attempt.selection_trajectory ? <div aria-label="Selection trajectory"><p>{Math.max(0, question.attempt.selection_trajectory.length - 1)} changes before Submit</p><ol className="list-decimal space-y-1 pl-5">{question.attempt.selection_trajectory.map((step, n) => <li key={n}>{step.elapsed_seconds}s · Option {question.options.find(o => o.id === step.option_id)?.key} · {step.option_id === question.attempt?.correct_option_id ? 'Correct' : 'Incorrect'}</li>)}</ol></div> : <p>Selection process not recorded.</p>}
     <p>Suggested practice: Topic {question.topic.code} · {question.skill_descriptions?.join('; ') || question.skills.join(', ')}{question.representation_type ? ` · ${question.representation_type}` : ''}. <Link className="underline" to={"/quiz?" + new URLSearchParams({ topic: question.topic.id, ...(courseId ? { course: courseId } : {}) })}>Practice this Topic</Link></p>
     <p>Correct answer: {answer?.key}</p><MarkdownWithMath content={answer?.text ?? ''} strictMath />
@@ -72,11 +72,11 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, onCourseLoaded,
   if (error) return <div role="alert" className="space-y-4"><p>Could not load this practice session. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   if (!session) return <p role="status">Loading your published questions…</p>;
   if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">No published questions in this practice scope</h1><p>No sample questions have been substituted. Choose another published Topic in Practice.</p></div>;
-  if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct · Answers saved to your account</p><Button onClick={() => onNextSet(session.topic_id, session.course_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} courseId={session.course_id} /></CardContent></Card>)}</div>;
+  if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct</p><Button onClick={() => onNextSet(session.topic_id, session.course_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} courseId={session.course_id} /></CardContent></Card>)}</div>;
   if (!question) return null;
   return <>
     {rationale && <p aria-label="Selection rationale" className="mb-4 text-sm text-muted-foreground">{rationale}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Question {index + 1} of {session.questions.length}</h1><p className="flex items-center gap-2 text-sm"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · Active device time · Expected {EXPECTED_SECONDS[question.difficulty]}s</p>{!question.attempt && <Button variant="outline" disabled={busy || !!saveError || tracking.capture.frozen} onClick={tracking.pause}>{tracking.capture.paused ? 'Resume' : 'Pause'}</Button>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-xl font-semibold">Question {index + 1} of {session.questions.length}</h1><p className="flex items-center gap-2 text-sm"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · Active device time</p>{!question.attempt && <Button variant="outline" disabled={busy || !!saveError || tracking.capture.frozen} onClick={tracking.pause}>{tracking.capture.paused ? 'Resume' : 'Pause'}</Button>}</div>
     {!question.attempt && !tracking.capture.complete && <p className="text-sm text-muted-foreground">Timing or selection history is incomplete. This answer will not be used for speed analysis.</p>}
     <Progress className="my-5 h-2" value={session.questions.filter(q => q.attempt).length / session.questions.length * 100} />
     <Card><CardContent className="space-y-5 p-4 sm:p-7">
