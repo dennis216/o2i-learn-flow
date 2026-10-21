@@ -6,10 +6,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { loadCourseTopic } from '@/lib/courseContent';
 import { Button } from '@/components/ui/button';
 import type { Course } from './types';
+const CourseGame = lazy(() => import('./CourseGame'));
 const Player = lazy(() => import('./VideoPlayerWithTutor').then(m => ({ default: m.VideoPlayerWithTutor })));
 export default function TopicLesson({ course, topicId, supabaseUrl, resumeTime }: { course: Course; topicId: string; supabaseUrl: string; resumeTime?: number }) {
   const { user } = useAuth();
   const [videoIndex, setVideoIndex] = useState(0);
+  const [gameOpen, setGameOpen] = useState(false);
   const practice = useQuery({ queryKey: ['course-practice-counts', user?.id ?? 'visitor', course.id], queryFn: async () => { const { data, error } = await supabase.rpc('list_course_practice_topics', { _course_id: course.id }); if (error) throw new Error(error.message); return data as unknown as { id: string; question_count: number }[]; }, retry: false });
   const lesson = useQuery({ queryKey: ['course-topic', user?.id ?? 'visitor', course.id, topicId], queryFn: () => loadCourseTopic(supabase, course.id, topicId), retry: false });
   if (lesson.isPending) return <p role="status">Loading lesson content…</p>;
@@ -20,5 +22,6 @@ export default function TopicLesson({ course, topicId, supabaseUrl, resumeTime }
     {video && <Suspense fallback={<p role="status">Loading video player…</p>}><Player key={video.id} video={video} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={resumeTime} showStudyHub={false} /></Suspense>}
     {practice.isError && <p role="alert">Practice availability could not be checked. <button className="underline" onClick={() => void practice.refetch()}>Retry practice availability</button></p>}
     {practice.data?.some(t => t.id === topicId && t.question_count > 0) && <Button asChild><Link to={'/quiz?' + new URLSearchParams({ course: course.id, topic: topicId, source: 'course' })}>Go to Practice</Link></Button>}
+    {lesson.data.game_path && <section className="space-y-3"><Button variant="outline" onClick={() => setGameOpen(v => !v)}>{gameOpen ? 'Close game' : 'Start game'}</Button>{gameOpen && <Suspense fallback={<p role="status">Loading game…</p>}><CourseGame path={lesson.data.game_path} /></Suspense>}</section>}
   </div>;
 }

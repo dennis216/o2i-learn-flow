@@ -63,6 +63,7 @@ try {
  save(bc,t1,false,[video]);
  assert.equal(asUser(student,'SELECT count(*) FROM public.course_videos').trim().split('\n').at(-1),'0');
  console.log('PASS course database: canonical scope, cross-course FK, atomic save, publish validation, draft URL/mapping isolation, outline without assets, legacy write guards and unpublish');
+ if(process.env.O2I_COURSE_GAME_DB){await (await import('./course-game-db.acceptance.mjs')).verifyCourseGameStorage({sql,asUser,admin,student,bc,t1,save,video});}
  if(process.env.O2I_COURSE_DB_EXTRA){await (await import('./course-practice-db.acceptance.mjs')).verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,save,video});}
 } catch(error){console.error(error.stderr?.toString()||error);process.exitCode=1;}
 finally {if(created)docker(['rm','-f',name]);}

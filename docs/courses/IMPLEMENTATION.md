@@ -8,7 +8,7 @@ Approved behavior: canonical Course → Unit → Topic, YouTube URL videos share
 | 2 | Course content administration | Passed: browser form fixture, URL rejection, canonical publish payload; TypeScript |
 | 3 | Student outline and lazy loading | Passed: browser network assertions, unmount, deep-link refresh, phone/tablet layout; TypeScript |
 | 4 | Topic practice with course scope | Passed: real SQL selector/grading/isolation and browser course→quiz→course; requires adaptation-v2 prerequisite |
-| 5 | Single-file HTML game upload and isolation | Pending |
+| 5 | Single-file HTML game upload and isolation | Passed: storage RLS, file boundary tests, admin upload widget, interactive iframe isolation and deferred download |
 | 6 | Prototype retirement and legacy links | Pending |
 | 7 | Release package and real pilot acceptance | Pending |
 
