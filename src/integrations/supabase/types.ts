@@ -1906,6 +1906,7 @@ export type Database = {
       }
     }
     Functions: {
+      resolve_course_video: { Args: { _video_id: string }; Returns: Json }
       list_course_practice_topics: { Args: { _course_id: string }; Returns: Json }
       start_course_question_practice: { Args: { _session_id: string; _course_id: string; _topic_id: string }; Returns: Json }
 

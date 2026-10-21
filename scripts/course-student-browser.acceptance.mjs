@@ -23,5 +23,6 @@ export async function verifyStudentCourse({page,context,app,api,course,topic,oth
   await page.setViewportSize({width:1024,height:768});await page.screenshot({path:resolve(out,'student-tablet.png')});
   if(process.env.O2I_COURSE_GAME_BROWSER){await (await import('./course-game-browser.acceptance.mjs')).verifyCourseGame({page,context,api,course,topic,other,requests,out});}
   if(process.env.O2I_COURSE_PRACTICE_BROWSER){await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic,other});}
+  if(process.env.O2I_COURSE_LEGACY_BROWSER){await (await import('./course-legacy-browser.acceptance.mjs')).verifyLegacyCourseLinks({page,context,app,api,course,topic,other});}
   console.log('PASS course student browser: outline without video query, draft title only, detail/player fetched on expand, unload on collapse, refresh deep link, phone/tablet layout');
 }

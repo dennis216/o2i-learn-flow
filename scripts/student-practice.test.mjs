@@ -246,9 +246,9 @@ try {
   await (await import('./review.acceptance.mjs')).verifyReviewBrowser({page,context,app,start,submit,rpc,student,topicId:t2.id,browserSession,check,shot});
   await (await import('./profile.acceptance.mjs')).verifyProfileBrowser({page,context,app,db,start,student,other,login,topicId:t2.id,check,shot});
   const before=startRequests;await page.goto(app+'/quiz?subject=calculus&lesson=limits&source=lesson');await page.getByRole('heading',{name:'This practice scope is not connected'}).waitFor();assert.equal(startRequests,before);
-  await page.goto(app+'/learn/limits-foundations');await page.getByRole('button',{name:'Finish lesson and choose practice',exact:true}).click();await page.waitForURL(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(startRequests,before);
+  await page.goto(app+'/learn/limits-foundations');await page.waitForURL(app+'/courses');await page.getByRole('heading',{name:'Math Courses',exact:true}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/review');await page.getByRole('link',{name:'Choose published practice',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Choose published practice',exact:true}).getAttribute('href'),'/practice');
-  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'No published questions in this practice scope'}).waitFor();check('Legacy Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
+  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'No published questions in this practice scope'}).waitFor();check('Legacy Learn redirects to Courses, Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
   // Render the real saved draft projection only in a local browser fixture. This is not publication.
   for(const [i,row] of realRows.entries()){
     const id=randomUUID();await page.route('**/rpc/start_question_practice',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id,topic_id:row.topic.id,created_at:new Date().toISOString(),questions:[row]})}));

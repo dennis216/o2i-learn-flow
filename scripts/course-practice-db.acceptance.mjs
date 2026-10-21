@@ -42,5 +42,7 @@ export async function verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,
  assert.throws(()=>start(ab));assert.equal(start(ab,a.id).course_id,ab);
  assert.deepEqual(rpc(student,'list_course_practice_topics',`'${ab}'`),[]);
  assert.throws(()=>asUser(student,`SELECT public.start_question_practice_in_scope('${randomUUID()}','${t}','${ab}')`));
+ sql(read('20261030000000_course_legacy_links'));
+ const resolved=rpc(student,'resolve_course_video',`'${video.id}'`);assert.equal(resolved.course_id,bc);assert.equal(resolved.topic_id,t);
  console.log('PASS course practice database: AB/BC/BOTH scope and exact counts, unchanged global practice, safe snapshots, saved course scope, idempotent grading, account isolation and withdrawn-session recovery');
 }

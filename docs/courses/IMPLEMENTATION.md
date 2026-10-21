@@ -9,7 +9,7 @@ Approved behavior: canonical Course → Unit → Topic, YouTube URL videos share
 | 3 | Student outline and lazy loading | Passed: browser network assertions, unmount, deep-link refresh, phone/tablet layout; TypeScript |
 | 4 | Topic practice with course scope | Passed: real SQL selector/grading/isolation and browser course→quiz→course; requires adaptation-v2 prerequisite |
 | 5 | Single-file HTML game upload and isolation | Passed: storage RLS, file boundary tests, admin upload widget, interactive iframe isolation and deferred download |
-| 6 | Prototype retirement and legacy links | Pending |
+| 6 | Prototype retirement and legacy links | Passed: Learn/Lesson redirects, legacy video/practice mapping, TypeScript and scoped SQL/browser regression |
 | 7 | Release package and real pilot acceptance | Pending |
 
 No production migration, publication or real-content acceptance has occurred. Never replay the historical curriculum migration: it contains a course-video deletion. Use only the forward package in `production/`, after its readonly preflight.
