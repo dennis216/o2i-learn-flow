@@ -82,3 +82,14 @@ test('Selection summary is optional for old sessions and validates server counts
   for(const change of [{rule_version:'unknown'},{target_difficulty:'invalid'},{sample_count:11},{sample_count:1.5},{correct_count:1},{fallback_count:2},{fallback_count:-1},{target_difficulty:null,sample_count:1}])
     assert.throws(()=>readPracticeSession({...fixture(),selection_summary:{...summary,...change}},id),/summary could not be verified/);
 });
+test('Course routes validate UUID context and issue through the scoped RPC', async () => {
+  assert.ok(parsePracticeRoute(new URLSearchParams('course=wrong&topic='+id)).error);
+  assert.ok(parsePracticeRoute(new URLSearchParams('course='+id)).error);
+  assert.equal(parsePracticeRoute(new URLSearchParams('course='+id+'&topic='+qid)).courseId,id);
+  let call;
+  const session={...fixture(),course_id:id,topic_id:qid};
+  const client={rpc:async(name,args)=>{call={name,args};return {data:session,error:null};}};
+  assert.equal((await startPractice(client,id,qid,id)).course_id,id);
+  assert.equal(call.name,'start_course_question_practice');assert.equal(call.args._course_id,id);
+  await assert.rejects(startPractice(client,id,id,qid),/different course or Topic/);
+});

@@ -1906,6 +1906,9 @@ export type Database = {
       }
     }
     Functions: {
+      list_course_practice_topics: { Args: { _course_id: string }; Returns: Json }
+      start_course_question_practice: { Args: { _session_id: string; _course_id: string; _topic_id: string }; Returns: Json }
+
       get_course_outline: { Args: { _course_id: string }; Returns: Json }
       get_course_topic: { Args: { _course_id: string; _topic_id: string }; Returns: Json }
       save_course_topic: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path?: string | null }; Returns: undefined }

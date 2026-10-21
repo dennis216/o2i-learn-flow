@@ -27,6 +27,7 @@ try{
      else if(fn==='profiles')body={user_id:uid,full_name:'Synthetic admin'};
      else if(fn==='courses')body=[{id:course,title:'AP Calculus BC',practice_course_scope:'BC',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'}];
      else if(fn==='get_course_outline')body=outline;
+     else if(fn==='list_course_practice_topics')body=[{id:topic,question_count:1}];
      else if(fn==='get_course_topic')body=content;
      else if(fn==='save_course_topic'){
        saved=route.request().postDataJSON();

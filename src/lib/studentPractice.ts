@@ -45,7 +45,7 @@ export function selectionRationale(summary?: SelectionSummary | null): string | 
     : `${summary.correct_count}/${summary.sample_count} correct on your most recently answered distinct questions in this Topic. Target difficulty: ${summary.target_difficulty}.`;
   return basis + (summary.fallback_count ? ' Other difficulties are included to prioritize unseen questions or fill this set.' : '');
 }
-export interface PracticeSession { id: string; topic_id: string | null; created_at: string; selection_summary?: SelectionSummary | null; adaptation_summary?: AdaptationSummary | null; questions: IssuedPracticeQuestion[] }
+export interface PracticeSession { id: string; topic_id: string | null; course_id?: string | null; course_scope?: string | null; created_at: string; selection_summary?: SelectionSummary | null; adaptation_summary?: AdaptationSummary | null; questions: IssuedPracticeQuestion[] }
 export interface RecentPracticeAnswer {
   id: string; session_id: string; question_id: string; version_id: string; selected_option_id: string;
   is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string;
@@ -71,14 +71,15 @@ export async function loadPracticeStatistics(client: SupabaseClient<Database>, u
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Old lesson/skill IDs have no canonical mapping. Never drop an unsupported filter. */
-export function parsePracticeRoute(params: URLSearchParams) {
-  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question']);
+export function parsePracticeRoute(params: URLSearchParams): { error?: string; topicId?: string; sessionId?: string; questionId?: string; courseId?: string } {
+  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question', 'course']);
   if ([...params.keys()].some(key => !allowed.has(key)) || [...allowed].some(key => params.getAll(key).length > 1))
     return { error: 'This practice filter is not connected to the published question bank. Choose a published Topic in Practice.' };
   if (params.has('subject') && params.get('subject') !== 'calculus') return { error: 'This subject has no published practice connection.' };
-  for (const key of ['topic', 'session', 'question']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
+  for (const key of ['topic', 'session', 'question', 'course']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
   if (params.has('question') && !params.has('session')) return { error: 'A saved question requires its original practice session.' };
-  return { topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
+  if (params.has('course') && !params.has('topic') && !params.has('session')) return { error: 'Course practice requires a canonical Topic.' };
+  return { ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
 }
 export function readPracticeSession(value: unknown, expectedId: string): PracticeSession {
   const raw = value as PracticeSession;
@@ -128,10 +129,12 @@ export function readPracticeSession(value: unknown, expectedId: string): Practic
   }
   return s;
 }
-export async function startPractice(client: SupabaseClient<Database>, id: string, topicId?: string) {
-  const { data, error } = await client.rpc('start_question_practice', { _session_id: id, _topic_id: topicId ?? undefined });
+export async function startPractice(client: SupabaseClient<Database>, id: string, topicId?: string, courseId?: string) {
+  const { data, error } = courseId ? await client.rpc('start_course_question_practice', { _session_id: id, _topic_id: topicId!, _course_id: courseId }) : await client.rpc('start_question_practice', { _session_id: id, _topic_id: topicId ?? undefined });
   if (error) throw new Error(error.message);
-  return readPracticeSession(data, id);
+  const session = readPracticeSession(data, id);
+  if (courseId && (session.course_id !== courseId || session.topic_id !== topicId)) throw new Error('This session belongs to a different course or Topic.');
+  return session;
 }
 export async function readPractice(client: SupabaseClient<Database>, id: string) {
   const { data, error } = await client.rpc('get_question_practice', { _session_id: id });

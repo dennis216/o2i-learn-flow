@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,9 @@ export default function Auth() {
   const [passwordError, setPasswordError] = useState('');
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const requestedReturn = params.get('returnTo') ?? '/';
+  const returnTo = requestedReturn.startsWith('/quiz?') && !requestedReturn.includes('\\') ? requestedReturn : '/';
   const { toast } = useToast();
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -70,7 +73,7 @@ export default function Auth() {
           title: "Welcome back!",
           description: "You have been signed in successfully.",
         });
-        navigate('/');
+        navigate(returnTo);
       }
     } catch (error) {
       toast({

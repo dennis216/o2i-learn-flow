@@ -15,12 +15,13 @@ export async function verifyStudentCourse({page,context,app,api,course,topic,oth
   assert.equal(requests.filter(p=>p.endsWith('/get_course_topic')).length,1);
   assert.equal(await page.locator('iframe[title="Synthetic YouTube player"]').count(),1);
   assert.equal(await page.getByText('Notes & PDF',{exact:true}).count(),0);
-  await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();assert.equal(await page.getByTitle('Synthetic YouTube player').count(),0);
+  await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();await page.getByTitle('Synthetic YouTube player').waitFor({state:'detached'});assert.equal(await page.getByTitle('Synthetic YouTube player').count(),0);
   await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();await page.getByTitle('Synthetic YouTube player').waitFor();
   await page.reload();await page.getByTitle('Synthetic YouTube player').waitFor();
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(out,'student-mobile.png')});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.setViewportSize({width:1024,height:768});await page.screenshot({path:resolve(out,'student-tablet.png')});
   if(process.env.O2I_COURSE_GAME_BROWSER){await (await import('./course-game-browser.acceptance.mjs')).verifyCourseGame({page,context,api,course,topic,other,requests});}
+  if(process.env.O2I_COURSE_PRACTICE_BROWSER){await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic,other});}
   console.log('PASS course student browser: outline without video query, draft title only, detail/player fetched on expand, unload on collapse, refresh deep link, phone/tablet layout');
 }
