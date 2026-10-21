@@ -227,6 +227,7 @@ try {
   await context.route('**/*',async route=>{const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){remote.push(u.hostname);return route.abort();}if(u.pathname.endsWith('/start_question_practice'))startRequests++;return route.continue();});
   page=await context.newPage();page.on('response',async res=>{if(res.url().endsWith('/start_question_practice')&&res.ok())safeResponses.push(await res.json());});
   const login=async n=>{await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[n].email);await page.locator('input[name="password"]').first().fill(testPassword);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');};
+  if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
   await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();await login(1);
   await page.evaluate(()=>localStorage.setItem('o2i-learning-prototype-v1',JSON.stringify({attempts:[{id:'FAKE_LOCALSTORAGE',correct:true,skillIds:[],misconceptionTags:[],overTarget:false}]})));
   await page.goto(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(await page.getByText('FAKE_LOCALSTORAGE').count(),0);
@@ -261,6 +262,11 @@ try {
   await login(2);await page.goto(app+'/practice');await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();await page.goto(app+'/quiz?session='+browserSession);await page.getByRole('alert').filter({hasText:'not available to your account'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
   await page.goto(app+'/quiz?topic='+t2.id);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.setViewportSize({width:390,height:844});await shot('06-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(remote.every(host=>host==='storage.googleapis.com'),'Unexpected non-loopback backend request');report.blockedExternalHosts=[...new Set(remote)];check('Logout/account switch removes prior account data; another account cannot resume it; mobile layout and loopback-only network');
   await (await import('./adaptation-v2-browser.acceptance.mjs')).verifyAdaptationV2Browser({page,app,db,login,student,topics,v2Fixture,check,shot,userId:accounts[1].id});
+  }
+  if(process.env.O2I_COURSE_INTEGRATION){
+    docker(['exec',dbName,'psql','-U','supabase_admin','-d','postgres','-c','GRANT USAGE, CREATE ON SCHEMA storage TO postgres;']);
+    await (await import('./course-content-integration.acceptance.mjs')).verifyCourseContentIntegration({db,topics,admin,student,other,visitor,rpc,fixture,check,page,context,app,login,shot});
+  }
 } catch(error){if(page)await page.screenshot({path:resolve(output,'failure.png')}).catch(()=>{});report.error=redact(error.stack??error);console.error(report.error);process.exitCode=1;}
 finally {
   if(browser)await browser.close().catch(()=>{});if(vite&&vite.exitCode===null){vite.kill('SIGTERM');await new Promise(r=>vite.once('exit',r));}if(proxy){proxy.closeAllConnections();await new Promise(r=>proxy.close(r));}if(db)await db.end().catch(()=>{});

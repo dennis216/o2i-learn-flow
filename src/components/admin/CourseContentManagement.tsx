@@ -101,7 +101,7 @@ export function CourseContentManagement() {
             <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={!n} onClick={() => setVideos(list => { const copy = [...list]; [copy[n - 1], copy[n]] = [copy[n], copy[n - 1]]; return copy; })}>Move up</Button><Button type="button" variant="outline" onClick={() => setVideos(list => list.filter((_, i) => i !== n))}>Remove from this lesson</Button></div>
           </div>;
         })}
-        <div className="flex flex-wrap gap-3"><Button type="button" variant="outline" onClick={() => setVideos(list => [...list, { title: '', video_url: '' }])}>Add YouTube video</Button>
+        <div className="flex flex-wrap gap-3"><Button type="button" variant="outline" onClick={() => setVideos(list => [...list, { id: crypto.randomUUID(), title: '', video_url: '' }])}>Add YouTube video</Button>
           <select aria-label="Link existing course video" className="max-w-full rounded border bg-background p-2" value="" onChange={e => { const v = available.find(v => v.id === e.target.value); if (v) setVideos(list => [...list, v]); }}><option value="">Link existing course video</option>{available.filter(v => !videos.some(item => item.id === v.id)).map(v => <option key={v.id} value={v.id}>{v.title}</option>)}</select></div>
         <div className="space-y-2 rounded border p-3"><Label htmlFor="lesson-game">HTML game (optional)</Label><Input id="lesson-game" type="file" accept=".html,text/html" onChange={async e => {
           const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;

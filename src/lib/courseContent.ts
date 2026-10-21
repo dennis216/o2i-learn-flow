@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '../integrations/supabase/types.ts';
 import type { CourseVideo } from '../components/courses/types.ts';
 
-export interface CourseTopic { id: string; code: string; title: string; is_published: boolean }
-export interface CourseUnit { id: string; unit_number: number; title: string; topics: CourseTopic[] }
+export interface CourseTopic { id: string; code: string; title: string; is_published: boolean; big_idea?: string; is_bc_only?: boolean }
+export interface CourseUnit { id: string; unit_number: number; title: string; topics: CourseTopic[]; ab_exam_weight_min?: number | null; ab_exam_weight_max?: number | null; bc_exam_weight_min?: number | null; bc_exam_weight_max?: number | null }
 export interface TopicContent { course_id: string; topic_id: string; is_published: boolean; game_path: string | null; videos: CourseVideo[] }
 export interface EditableVideo { id?: string; title: string; video_url: string }
 export function youtubeId(value: string): string | null {
@@ -13,7 +13,7 @@ export function youtubeId(value: string): string | null {
     let id: string | null = null;
     if (url.hostname === 'youtu.be') id = url.pathname.slice(1);
     if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)) {
-      if (url.pathname === '/watch') id = url.searchParams.get('v');
+      if (url.pathname === '/watch') { if (url.searchParams.getAll('v').length !== 1) return null; id = url.searchParams.get('v'); }
       else id = url.pathname.match(/^\/(?:embed|shorts)\/([^/]+)$/)?.[1] ?? null;
     }
     return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
@@ -37,6 +37,6 @@ export async function loadCourseTopic(client: SupabaseClient<Database>, courseId
 }
 export async function saveCourseTopic(client: SupabaseClient<Database>, courseId: string, topicId: string, published: boolean, videos: EditableVideo[], gamePath: string | null) {
   if (videos.some(v => !v.title.trim() || !youtubeId(v.video_url))) throw new Error('Each video needs a title and valid HTTPS YouTube URL.');
-  const { error } = await client.rpc('save_course_topic', { _course_id: courseId, _topic_id: topicId, _is_published: published, _videos: videos as unknown as Json, _game_path: gamePath });
+  const { error } = await client.rpc('save_course_topic', { _course_id: courseId, _topic_id: topicId, _is_published: published, _videos: videos.map(v => ({ ...v, video_url: 'https://www.youtube.com/watch?v=' + youtubeId(v.video_url) })) as unknown as Json, _game_path: gamePath });
   if (error) throw new Error(error.message);
 }

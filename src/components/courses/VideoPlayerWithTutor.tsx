@@ -9,9 +9,14 @@ import { youtubeId as parseYoutubeId } from '@/lib/courseContent';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+interface YouTubePlayer {
+  destroy: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  getCurrentTime: () => number;
+}
 declare global {
   interface Window {
-    YT: any;
+    YT: { Player: new (container: HTMLElement, options: { videoId: string; playerVars: { enablejsapi: number; origin: string }; events: { onReady: () => void } }) => YouTubePlayer };
     onYouTubeIframeAPIReady: () => void;
   }
 }
@@ -33,7 +38,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPrompt, setDrawerPrompt] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YouTubePlayer | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMobile = useIsMobile();
@@ -49,6 +54,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   // Load YouTube Iframe API
   useEffect(() => {
     if (!isYouTube) return;
+    setPlayerReady(false);
 
     // Load the YouTube API script if not already loaded
     if (!window.YT) {
@@ -102,7 +108,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         playerRef.current.destroy();
       }
     };
-  }, [isYouTube, youtubeId]);
+  }, [isYouTube, youtubeId, isMobile]);
 
   // Seek to initial time when player is ready
   useEffect(() => {

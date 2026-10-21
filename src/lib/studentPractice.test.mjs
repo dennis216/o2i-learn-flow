@@ -85,6 +85,7 @@ test('Selection summary is optional for old sessions and validates server counts
 test('Course routes validate UUID context and issue through the scoped RPC', async () => {
   assert.ok(parsePracticeRoute(new URLSearchParams('course=wrong&topic='+id)).error);
   assert.ok(parsePracticeRoute(new URLSearchParams('course='+id)).error);
+  assert.ok(parsePracticeRoute(new URLSearchParams('course='+id+'&session='+qid)).error);
   assert.equal(parsePracticeRoute(new URLSearchParams('course='+id+'&topic='+qid)).courseId,id);
   let call;
   const session={...fixture(),course_id:id,topic_id:qid};

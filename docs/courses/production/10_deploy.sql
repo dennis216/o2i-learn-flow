@@ -1,9 +1,10 @@
--- Forward migrations only. Run after readonly preflight, never database push.
+-- Atomic forward release. No seeds, question publication, old migrations or database push.
 BEGIN;
 DO $release$ BEGIN
 LOCK TABLE supabase_migrations.schema_migrations IN SHARE ROW EXCLUSIVE MODE;
-IF NOT (to_regclass('public.curriculum_topics') IS NOT NULL AND to_regclass('public.course_curriculum_units') IS NOT NULL AND to_regtype('public.question_course_scope') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL) THEN RAISE EXCEPTION 'Missing prerequisites; stop.'; END IF;
-IF EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261027000000') THEN RAISE EXCEPTION 'Migration 20261027000000 already recorded; stop.'; END IF;
+IF NOT (to_regclass('public.curriculum_topics') IS NOT NULL AND to_regclass('public.course_curriculum_units') IS NOT NULL AND to_regtype('public.question_course_scope') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL AND EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261026000000' AND name='question_practice_adaptation_v2' AND cardinality(statements)=1 AND md5(statements[1])='354934137b8be264f4b1b2cf58d36b2e') AND (coalesce((SELECT md5(prosrc)='86b03f6166861027f963df9712895e75' FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_expected_seconds(public.question_difficulty)')),false) AND coalesce((SELECT md5(prosrc)='89c8704956cbf6a85fafb47063e1f9af' FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_target(bigint,bigint)')),false) AND coalesce((SELECT md5(prosrc)='a18312b9fe60c31fbdde267d9241e6ae' FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_signals()')),false) AND coalesce((SELECT md5(prosrc)='1162f028c31bdeab0a9fdd0e77b48089' FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_snapshot(uuid)')),false) AND coalesce((SELECT md5(prosrc)='d4088db3fa9026ae6dd0017bc05e6295' FROM pg_proc WHERE oid=to_regprocedure('public.submit_question_practice_v2(uuid,uuid,uuid,integer,jsonb,boolean)')),false) AND coalesce((SELECT md5(prosrc)='3c38ab52a179bc0485a2026f5675b620' FROM pg_proc WHERE oid=to_regprocedure('public.start_question_practice(uuid,uuid)')),false))) THEN RAISE EXCEPTION 'Missing or mismatched prerequisite; stop and inspect adaptation-v2.'; END IF;
+IF NOT (NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261027000000') AND NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261028000000') AND NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261029000000') AND NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261030000000')) THEN RAISE EXCEPTION 'Course migration already recorded; do not rerun.'; END IF;
+IF to_regclass('public.course_topic_content') IS NOT NULL OR to_regprocedure('public.question_practice_snapshot_questions(uuid)') IS NOT NULL OR EXISTS(SELECT 1 FROM storage.buckets WHERE id='course-games') THEN RAISE EXCEPTION 'Unrecorded course objects; investigate partial deployment.'; END IF;
 EXECUTE $course_sql$-- Forward-only: canonical curriculum stays intact; existing videos are never deleted.
 ALTER TABLE public.courses ADD COLUMN practice_course_scope public.question_course_scope;
 UPDATE public.courses SET practice_course_scope=CASE id
@@ -35,17 +36,17 @@ CREATE INDEX course_topic_videos_video_idx ON public.course_topic_videos(video_i
 
 CREATE FUNCTION public.course_youtube_id(_url text) RETURNS text
 LANGUAGE sql IMMUTABLE SET search_path=public,extensions AS $$
- SELECT coalesce(
+ SELECT CASE WHEN (SELECT count(*) FROM regexp_matches(_url,'[?&]v=','g'))>1 THEN NULL ELSE coalesce(
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})(?:[&#].*)?$'),
    substring(_url FROM '^https://youtu\.be/([A-Za-z0-9_-]{11})(?:[?&#].*)?$'),
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/(?:shorts|embed)/([A-Za-z0-9_-]{11})(?:[?&#].*)?$')
- );
+ ) END;
 $$;
 CREATE FUNCTION public.course_topic_in_scope(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
  SELECT EXISTS(SELECT 1 FROM public.courses c JOIN public.course_curriculum_units m ON m.course_id=c.id
    JOIN public.curriculum_topics t ON t.unit_id=m.unit_id WHERE c.id=_course_id AND t.id=_topic_id
-   AND (c.practice_course_scope IS DISTINCT FROM 'AB' OR NOT t.is_bc_only));
+   AND (c.practice_course_scope IS NULL OR c.practice_course_scope='BC' OR NOT t.is_bc_only));
 $$;
 CREATE FUNCTION public.course_topic_visible(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
@@ -93,8 +94,8 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.courses WHERE id=_course_id AND (is_published OR public.has_role(auth.uid(),'admin'))) THEN
    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Course is not available.';
  END IF;
- RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'topics',
-   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,
+ RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'ab_exam_weight_min',u.ab_exam_weight_min,'ab_exam_weight_max',u.ab_exam_weight_max,'bc_exam_weight_min',u.bc_exam_weight_min,'bc_exam_weight_max',u.bc_exam_weight_max,'topics',
+   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,'big_idea',t.big_idea,'is_bc_only',t.is_bc_only,
      'is_published',coalesce(l.is_published,false)) ORDER BY t.order_index)
      FROM public.curriculum_topics t LEFT JOIN public.course_topic_content l ON l.course_id=_course_id AND l.topic_id=t.id
      WHERE t.unit_id=u.id AND public.course_topic_in_scope(_course_id,t.id)),'[]'::jsonb)) ORDER BY m.order_index)
@@ -192,17 +193,17 @@ CREATE INDEX course_topic_videos_video_idx ON public.course_topic_videos(video_i
 
 CREATE FUNCTION public.course_youtube_id(_url text) RETURNS text
 LANGUAGE sql IMMUTABLE SET search_path=public,extensions AS $$
- SELECT coalesce(
+ SELECT CASE WHEN (SELECT count(*) FROM regexp_matches(_url,'[?&]v=','g'))>1 THEN NULL ELSE coalesce(
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})(?:[&#].*)?$'),
    substring(_url FROM '^https://youtu\.be/([A-Za-z0-9_-]{11})(?:[?&#].*)?$'),
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/(?:shorts|embed)/([A-Za-z0-9_-]{11})(?:[?&#].*)?$')
- );
+ ) END;
 $$;
 CREATE FUNCTION public.course_topic_in_scope(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
  SELECT EXISTS(SELECT 1 FROM public.courses c JOIN public.course_curriculum_units m ON m.course_id=c.id
    JOIN public.curriculum_topics t ON t.unit_id=m.unit_id WHERE c.id=_course_id AND t.id=_topic_id
-   AND (c.practice_course_scope IS DISTINCT FROM 'AB' OR NOT t.is_bc_only));
+   AND (c.practice_course_scope IS NULL OR c.practice_course_scope='BC' OR NOT t.is_bc_only));
 $$;
 CREATE FUNCTION public.course_topic_visible(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
@@ -250,8 +251,8 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.courses WHERE id=_course_id AND (is_published OR public.has_role(auth.uid(),'admin'))) THEN
    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Course is not available.';
  END IF;
- RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'topics',
-   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,
+ RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'ab_exam_weight_min',u.ab_exam_weight_min,'ab_exam_weight_max',u.ab_exam_weight_max,'bc_exam_weight_min',u.bc_exam_weight_min,'bc_exam_weight_max',u.bc_exam_weight_max,'topics',
+   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,'big_idea',t.big_idea,'is_bc_only',t.is_bc_only,
      'is_published',coalesce(l.is_published,false)) ORDER BY t.order_index)
      FROM public.curriculum_topics t LEFT JOIN public.course_topic_content l ON l.course_id=_course_id AND l.topic_id=t.id
      WHERE t.unit_id=u.id AND public.course_topic_in_scope(_course_id,t.id)),'[]'::jsonb)) ORDER BY m.order_index)
@@ -316,6 +317,318 @@ CREATE TRIGGER guard_course_video BEFORE UPDATE OR DELETE ON public.course_video
 REVOKE ALL ON FUNCTION public.validate_course_topic_content(),public.guard_published_course_video(),public.save_course_topic(uuid,uuid,boolean,jsonb,text),public.get_course_outline(uuid),public.get_course_topic(uuid,uuid),public.course_topic_in_scope(uuid,uuid),public.course_topic_visible(uuid,uuid),public.course_youtube_id(text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.course_topic_in_scope(uuid,uuid),public.course_topic_visible(uuid,uuid),public.course_youtube_id(text),public.get_course_outline(uuid),public.get_course_topic(uuid,uuid) TO anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.save_course_topic(uuid,uuid,boolean,jsonb,text) TO authenticated;
+NOTIFY pgrst,'reload schema';
+$course_sql$]);
+EXECUTE $course_sql$-- Requires the deployed adaptation-v2 engine; the existing two-argument RPC stays compatible.
+ALTER TABLE public.question_practice_sessions
+ ADD COLUMN course_id uuid REFERENCES public.courses(id) ON DELETE RESTRICT,
+ ADD COLUMN course_scope public.question_course_scope,
+ ADD CONSTRAINT practice_course_context CHECK((course_id IS NULL)=(course_scope IS NULL));
+ALTER FUNCTION public.question_practice_snapshot(uuid) RENAME TO question_practice_snapshot_questions;
+CREATE FUNCTION public.question_practice_snapshot(_session_id uuid) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+DECLARE result jsonb:=public.question_practice_snapshot_questions(_session_id);
+BEGIN
+ RETURN result || (SELECT jsonb_build_object('course_id',course_id,'course_scope',course_scope) FROM public.question_practice_sessions WHERE id=_session_id);
+END;
+$$;
+
+CREATE FUNCTION public.list_course_practice_topics(_course_id uuid) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+ SELECT coalesce(jsonb_agg(to_jsonb(counts)),'[]'::jsonb) FROM (
+   SELECT t.id,count(*)::integer AS question_count FROM public.questions q
+   JOIN public.question_versions v ON v.id=q.current_version_id AND v.question_id=q.id
+   JOIN public.curriculum_topics t ON t.id=v.primary_topic_id JOIN public.courses c ON c.id=_course_id
+   WHERE c.practice_course_scope IS NOT NULL AND public.course_topic_visible(c.id,t.id)
+     AND q.status='approved' AND v.status='approved' AND v.question_type='mcq_single'
+     AND (c.practice_course_scope='BC' OR v.course_scope IN ('AB','BOTH'))
+   GROUP BY t.id ORDER BY t.id
+ ) counts;
+$$;
+CREATE FUNCTION public.start_question_practice_in_scope(_session_id uuid,_topic_id uuid DEFAULT NULL,_course_id uuid DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+DECLARE uid uuid:=public.question_practice_require_user(); s public.question_practice_sessions%ROWTYPE; inserted integer;
+  slot integer; candidate record; reasons jsonb:='[]'; fallback_count integer:=0; error_count integer:=0; slow_count integer:=0;
+BEGIN
+  IF _session_id IS NULL THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Provide a practice session ID.'; END IF;
+  IF _topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.curriculum_topics WHERE id=_topic_id) THEN
+    RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Choose an existing canonical Topic.';
+  END IF;
+  PERFORM 1 FROM public.courses WHERE id=_course_id FOR SHARE;
+  PERFORM 1 FROM public.course_topic_content WHERE course_id=_course_id AND topic_id=_topic_id FOR SHARE;
+  IF _course_id IS NOT NULL AND (NOT public.course_topic_visible(_course_id,_topic_id)
+    OR NOT EXISTS(SELECT 1 FROM public.courses WHERE id=_course_id AND practice_course_scope IS NOT NULL)) THEN
+    -- A previously issued session remains readable even after the lesson is withdrawn.
+    IF NOT EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND user_id=uid AND course_id=_course_id AND topic_id=_topic_id) THEN
+      RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Published course lesson is not available for practice.';
+    END IF;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('question-practice:'||uid::text,0));
+  INSERT INTO public.question_practice_sessions(id,user_id,topic_id,created_at,course_id,course_scope) VALUES(_session_id,uid,_topic_id,clock_timestamp(),_course_id,(SELECT practice_course_scope FROM public.courses WHERE id=_course_id)) ON CONFLICT(id) DO NOTHING;
+  GET DIAGNOSTICS inserted=ROW_COUNT;
+  SELECT * INTO s FROM public.question_practice_sessions WHERE id=_session_id FOR UPDATE;
+  IF s.user_id IS DISTINCT FROM uid THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Practice session is not available to your account.'; END IF;
+  IF _topic_id IS NOT NULL AND s.topic_id IS DISTINCT FROM _topic_id THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='This session belongs to a different Topic.'; END IF;
+  IF s.course_id IS DISTINCT FROM _course_id THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='This session belongs to a different course scope.'; END IF;
+  IF inserted=1 THEN
+    FOR slot IN 1..5 LOOP
+      WITH signals AS MATERIALIZED (SELECT * FROM public.question_practice_signals()), pool AS (
+        SELECT q.id,v.id AS version_id,v.difficulty,v.primary_topic_id,v.representation_type,t.topic_code,
+          history.last_sent,coalesce(target.difficulty,'medium') AS target_difficulty,
+          signal.skill_code,signal.skill_description,coalesce(signal.n,0) AS signal_count,signal.last_signal,
+          slot<=2 AND history.last_sent IS NULL AND signal.n>0 AS reinforced
+        FROM public.questions q JOIN public.question_versions v ON v.id=q.current_version_id AND v.question_id=q.id
+        JOIN public.curriculum_topics t ON t.id=v.primary_topic_id
+        LEFT JOIN LATERAL(SELECT max(h.created_at) AS last_sent FROM public.question_practice_sessions h
+          JOIN public.question_practice_items i ON i.session_id=h.id WHERE h.user_id=uid AND i.question_id=q.id) history ON true
+        LEFT JOIN LATERAL(SELECT public.question_practice_target(g.sample_count,g.correct_count) AS difficulty
+          FROM signals g WHERE g.topic_id=v.primary_topic_id LIMIT 1) target ON true
+        LEFT JOIN LATERAL(
+          SELECT g.skill_code,g.skill_description,count(*) AS n,max(g.submitted_at) AS last_signal
+          FROM signals g WHERE slot<=2 AND g.topic_id=v.primary_topic_id AND g.representation_type=v.representation_type::text
+            AND CASE slot WHEN 1 THEN NOT g.is_correct ELSE g.is_slow END
+            AND EXISTS(SELECT 1 FROM public.question_practice_skills ps WHERE ps.question_version_id=v.id AND ps.practice_skill_id=g.skill_id)
+          GROUP BY g.skill_code,g.skill_description ORDER BY count(*) DESC,max(g.submitted_at) DESC,g.skill_code LIMIT 1
+        ) signal ON true
+        WHERE q.status='approved' AND v.status='approved' AND v.question_type='mcq_single'
+          AND (s.topic_id IS NULL OR v.primary_topic_id=s.topic_id)
+          AND (s.course_id IS NULL OR s.course_scope='BC' OR v.course_scope IN ('AB','BOTH'))
+          AND NOT EXISTS(SELECT 1 FROM public.question_practice_items i WHERE i.session_id=s.id AND i.question_id=q.id)
+      )
+      SELECT * INTO candidate FROM pool ORDER BY coalesce(reinforced,false) DESC,
+        CASE WHEN reinforced THEN signal_count ELSE 0 END DESC,
+        CASE WHEN reinforced THEN last_signal END DESC NULLS LAST,
+        (last_sent IS NOT NULL),
+        abs(array_position(ARRAY['easy','medium','hard'],difficulty::text)-array_position(ARRAY['easy','medium','hard'],target_difficulty)),
+        array_position(ARRAY['easy','medium','hard'],difficulty::text),last_sent ASC NULLS FIRST,random() LIMIT 1;
+      IF NOT FOUND THEN EXIT; END IF;
+      -- Coordinate immutable issuance with concurrent publication/withdrawal just as the original selector does.
+      PERFORM 1 FROM public.questions q WHERE q.id=candidate.id AND q.status='approved' AND q.current_version_id=candidate.version_id FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='40001',MESSAGE='Published questions changed; retry this practice set.'; END IF;
+      INSERT INTO public.question_practice_items(session_id,question_id,version_id,position) VALUES(s.id,candidate.id,candidate.version_id,slot);
+      IF candidate.difficulty::text<>candidate.target_difficulty THEN fallback_count:=fallback_count+1; END IF;
+      IF candidate.reinforced AND slot=1 THEN error_count:=1; END IF;
+      IF candidate.reinforced AND slot=2 THEN slow_count:=1; END IF;
+      reasons:=reasons||jsonb_build_array(jsonb_build_object('question_id',candidate.id,
+        'kind',CASE WHEN candidate.reinforced THEN CASE slot WHEN 1 THEN 'error' ELSE 'slow' END ELSE 'regular' END,
+        'topic_code',candidate.topic_code,'representation_type',candidate.representation_type,
+        'skill_code',CASE WHEN candidate.reinforced THEN candidate.skill_code END,
+        'skill_description',CASE WHEN candidate.reinforced THEN candidate.skill_description END,
+        'signal_count',CASE WHEN candidate.reinforced THEN candidate.signal_count ELSE 0 END,
+        'target_difficulty',candidate.target_difficulty));
+    END LOOP;
+    UPDATE public.question_practice_sessions SET selection_summary=jsonb_build_object('rule_version','practice-adaptation-v2',
+      'error_count',error_count,'slow_count',slow_count,'fallback_count',fallback_count,'items',reasons) WHERE id=s.id;
+  END IF;
+  RETURN public.question_practice_snapshot(s.id);
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.start_question_practice(_session_id uuid,_topic_id uuid DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND user_id=public.question_practice_require_user() AND course_id IS NOT NULL) THEN
+   IF _topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND topic_id=_topic_id) THEN RAISE EXCEPTION 'This session belongs to a different Topic.'; END IF;
+   RETURN public.question_practice_snapshot(_session_id);
+ END IF;
+ RETURN public.start_question_practice_in_scope(_session_id,_topic_id,NULL);
+END;
+$$;
+CREATE FUNCTION public.start_course_question_practice(_session_id uuid,_course_id uuid,_topic_id uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+BEGIN
+ IF _course_id IS NULL OR _topic_id IS NULL THEN RAISE EXCEPTION 'Choose a course and Topic.'; END IF;
+ RETURN public.start_question_practice_in_scope(_session_id,_topic_id,_course_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.question_practice_snapshot_questions(uuid),public.question_practice_snapshot(uuid),public.start_question_practice_in_scope(uuid,uuid,uuid),public.start_course_question_practice(uuid,uuid,uuid),public.list_course_practice_topics(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.start_course_question_practice(uuid,uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_course_practice_topics(uuid) TO anon,authenticated;
+NOTIFY pgrst,'reload schema';
+$course_sql$;
+INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261028000000','course_topic_practice',ARRAY[$course_sql$-- Requires the deployed adaptation-v2 engine; the existing two-argument RPC stays compatible.
+ALTER TABLE public.question_practice_sessions
+ ADD COLUMN course_id uuid REFERENCES public.courses(id) ON DELETE RESTRICT,
+ ADD COLUMN course_scope public.question_course_scope,
+ ADD CONSTRAINT practice_course_context CHECK((course_id IS NULL)=(course_scope IS NULL));
+ALTER FUNCTION public.question_practice_snapshot(uuid) RENAME TO question_practice_snapshot_questions;
+CREATE FUNCTION public.question_practice_snapshot(_session_id uuid) RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+DECLARE result jsonb:=public.question_practice_snapshot_questions(_session_id);
+BEGIN
+ RETURN result || (SELECT jsonb_build_object('course_id',course_id,'course_scope',course_scope) FROM public.question_practice_sessions WHERE id=_session_id);
+END;
+$$;
+
+CREATE FUNCTION public.list_course_practice_topics(_course_id uuid) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+ SELECT coalesce(jsonb_agg(to_jsonb(counts)),'[]'::jsonb) FROM (
+   SELECT t.id,count(*)::integer AS question_count FROM public.questions q
+   JOIN public.question_versions v ON v.id=q.current_version_id AND v.question_id=q.id
+   JOIN public.curriculum_topics t ON t.id=v.primary_topic_id JOIN public.courses c ON c.id=_course_id
+   WHERE c.practice_course_scope IS NOT NULL AND public.course_topic_visible(c.id,t.id)
+     AND q.status='approved' AND v.status='approved' AND v.question_type='mcq_single'
+     AND (c.practice_course_scope='BC' OR v.course_scope IN ('AB','BOTH'))
+   GROUP BY t.id ORDER BY t.id
+ ) counts;
+$$;
+CREATE FUNCTION public.start_question_practice_in_scope(_session_id uuid,_topic_id uuid DEFAULT NULL,_course_id uuid DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+DECLARE uid uuid:=public.question_practice_require_user(); s public.question_practice_sessions%ROWTYPE; inserted integer;
+  slot integer; candidate record; reasons jsonb:='[]'; fallback_count integer:=0; error_count integer:=0; slow_count integer:=0;
+BEGIN
+  IF _session_id IS NULL THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Provide a practice session ID.'; END IF;
+  IF _topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.curriculum_topics WHERE id=_topic_id) THEN
+    RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='Choose an existing canonical Topic.';
+  END IF;
+  PERFORM 1 FROM public.courses WHERE id=_course_id FOR SHARE;
+  PERFORM 1 FROM public.course_topic_content WHERE course_id=_course_id AND topic_id=_topic_id FOR SHARE;
+  IF _course_id IS NOT NULL AND (NOT public.course_topic_visible(_course_id,_topic_id)
+    OR NOT EXISTS(SELECT 1 FROM public.courses WHERE id=_course_id AND practice_course_scope IS NOT NULL)) THEN
+    -- A previously issued session remains readable even after the lesson is withdrawn.
+    IF NOT EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND user_id=uid AND course_id=_course_id AND topic_id=_topic_id) THEN
+      RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Published course lesson is not available for practice.';
+    END IF;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('question-practice:'||uid::text,0));
+  INSERT INTO public.question_practice_sessions(id,user_id,topic_id,created_at,course_id,course_scope) VALUES(_session_id,uid,_topic_id,clock_timestamp(),_course_id,(SELECT practice_course_scope FROM public.courses WHERE id=_course_id)) ON CONFLICT(id) DO NOTHING;
+  GET DIAGNOSTICS inserted=ROW_COUNT;
+  SELECT * INTO s FROM public.question_practice_sessions WHERE id=_session_id FOR UPDATE;
+  IF s.user_id IS DISTINCT FROM uid THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Practice session is not available to your account.'; END IF;
+  IF _topic_id IS NOT NULL AND s.topic_id IS DISTINCT FROM _topic_id THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='This session belongs to a different Topic.'; END IF;
+  IF s.course_id IS DISTINCT FROM _course_id THEN RAISE EXCEPTION USING ERRCODE='22023',MESSAGE='This session belongs to a different course scope.'; END IF;
+  IF inserted=1 THEN
+    FOR slot IN 1..5 LOOP
+      WITH signals AS MATERIALIZED (SELECT * FROM public.question_practice_signals()), pool AS (
+        SELECT q.id,v.id AS version_id,v.difficulty,v.primary_topic_id,v.representation_type,t.topic_code,
+          history.last_sent,coalesce(target.difficulty,'medium') AS target_difficulty,
+          signal.skill_code,signal.skill_description,coalesce(signal.n,0) AS signal_count,signal.last_signal,
+          slot<=2 AND history.last_sent IS NULL AND signal.n>0 AS reinforced
+        FROM public.questions q JOIN public.question_versions v ON v.id=q.current_version_id AND v.question_id=q.id
+        JOIN public.curriculum_topics t ON t.id=v.primary_topic_id
+        LEFT JOIN LATERAL(SELECT max(h.created_at) AS last_sent FROM public.question_practice_sessions h
+          JOIN public.question_practice_items i ON i.session_id=h.id WHERE h.user_id=uid AND i.question_id=q.id) history ON true
+        LEFT JOIN LATERAL(SELECT public.question_practice_target(g.sample_count,g.correct_count) AS difficulty
+          FROM signals g WHERE g.topic_id=v.primary_topic_id LIMIT 1) target ON true
+        LEFT JOIN LATERAL(
+          SELECT g.skill_code,g.skill_description,count(*) AS n,max(g.submitted_at) AS last_signal
+          FROM signals g WHERE slot<=2 AND g.topic_id=v.primary_topic_id AND g.representation_type=v.representation_type::text
+            AND CASE slot WHEN 1 THEN NOT g.is_correct ELSE g.is_slow END
+            AND EXISTS(SELECT 1 FROM public.question_practice_skills ps WHERE ps.question_version_id=v.id AND ps.practice_skill_id=g.skill_id)
+          GROUP BY g.skill_code,g.skill_description ORDER BY count(*) DESC,max(g.submitted_at) DESC,g.skill_code LIMIT 1
+        ) signal ON true
+        WHERE q.status='approved' AND v.status='approved' AND v.question_type='mcq_single'
+          AND (s.topic_id IS NULL OR v.primary_topic_id=s.topic_id)
+          AND (s.course_id IS NULL OR s.course_scope='BC' OR v.course_scope IN ('AB','BOTH'))
+          AND NOT EXISTS(SELECT 1 FROM public.question_practice_items i WHERE i.session_id=s.id AND i.question_id=q.id)
+      )
+      SELECT * INTO candidate FROM pool ORDER BY coalesce(reinforced,false) DESC,
+        CASE WHEN reinforced THEN signal_count ELSE 0 END DESC,
+        CASE WHEN reinforced THEN last_signal END DESC NULLS LAST,
+        (last_sent IS NOT NULL),
+        abs(array_position(ARRAY['easy','medium','hard'],difficulty::text)-array_position(ARRAY['easy','medium','hard'],target_difficulty)),
+        array_position(ARRAY['easy','medium','hard'],difficulty::text),last_sent ASC NULLS FIRST,random() LIMIT 1;
+      IF NOT FOUND THEN EXIT; END IF;
+      -- Coordinate immutable issuance with concurrent publication/withdrawal just as the original selector does.
+      PERFORM 1 FROM public.questions q WHERE q.id=candidate.id AND q.status='approved' AND q.current_version_id=candidate.version_id FOR SHARE;
+      IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='40001',MESSAGE='Published questions changed; retry this practice set.'; END IF;
+      INSERT INTO public.question_practice_items(session_id,question_id,version_id,position) VALUES(s.id,candidate.id,candidate.version_id,slot);
+      IF candidate.difficulty::text<>candidate.target_difficulty THEN fallback_count:=fallback_count+1; END IF;
+      IF candidate.reinforced AND slot=1 THEN error_count:=1; END IF;
+      IF candidate.reinforced AND slot=2 THEN slow_count:=1; END IF;
+      reasons:=reasons||jsonb_build_array(jsonb_build_object('question_id',candidate.id,
+        'kind',CASE WHEN candidate.reinforced THEN CASE slot WHEN 1 THEN 'error' ELSE 'slow' END ELSE 'regular' END,
+        'topic_code',candidate.topic_code,'representation_type',candidate.representation_type,
+        'skill_code',CASE WHEN candidate.reinforced THEN candidate.skill_code END,
+        'skill_description',CASE WHEN candidate.reinforced THEN candidate.skill_description END,
+        'signal_count',CASE WHEN candidate.reinforced THEN candidate.signal_count ELSE 0 END,
+        'target_difficulty',candidate.target_difficulty));
+    END LOOP;
+    UPDATE public.question_practice_sessions SET selection_summary=jsonb_build_object('rule_version','practice-adaptation-v2',
+      'error_count',error_count,'slow_count',slow_count,'fallback_count',fallback_count,'items',reasons) WHERE id=s.id;
+  END IF;
+  RETURN public.question_practice_snapshot(s.id);
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION public.start_question_practice(_session_id uuid,_topic_id uuid DEFAULT NULL) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+BEGIN
+ IF EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND user_id=public.question_practice_require_user() AND course_id IS NOT NULL) THEN
+   IF _topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM public.question_practice_sessions WHERE id=_session_id AND topic_id=_topic_id) THEN RAISE EXCEPTION 'This session belongs to a different Topic.'; END IF;
+   RETURN public.question_practice_snapshot(_session_id);
+ END IF;
+ RETURN public.start_question_practice_in_scope(_session_id,_topic_id,NULL);
+END;
+$$;
+CREATE FUNCTION public.start_course_question_practice(_session_id uuid,_course_id uuid,_topic_id uuid) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
+BEGIN
+ IF _course_id IS NULL OR _topic_id IS NULL THEN RAISE EXCEPTION 'Choose a course and Topic.'; END IF;
+ RETURN public.start_question_practice_in_scope(_session_id,_topic_id,_course_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.question_practice_snapshot_questions(uuid),public.question_practice_snapshot(uuid),public.start_question_practice_in_scope(uuid,uuid,uuid),public.start_course_question_practice(uuid,uuid,uuid),public.list_course_practice_topics(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.start_course_question_practice(uuid,uuid,uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_course_practice_topics(uuid) TO anon,authenticated;
+NOTIFY pgrst,'reload schema';
+$course_sql$]);
+EXECUTE $course_sql$-- Games are private objects: publication, not possession of a URL, controls download.
+INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+ VALUES('course-games','course-games',false,5242880,ARRAY['text/html'])
+ ON CONFLICT(id) DO UPDATE SET public=false,file_size_limit=EXCLUDED.file_size_limit,allowed_mime_types=EXCLUDED.allowed_mime_types;
+CREATE POLICY course_game_read ON storage.objects FOR SELECT TO anon,authenticated
+ USING(bucket_id='course-games' AND (public.has_role(auth.uid(),'admin') OR EXISTS(
+   SELECT 1 FROM public.course_topic_content l WHERE l.game_path=name AND public.course_topic_visible(l.course_id,l.topic_id))));
+CREATE POLICY course_game_upload ON storage.objects FOR INSERT TO authenticated
+ WITH CHECK(bucket_id='course-games' AND public.has_role(auth.uid(),'admin')
+   AND name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.html$');
+CREATE POLICY course_game_remove_unused ON storage.objects FOR DELETE TO authenticated
+ USING(bucket_id='course-games' AND public.has_role(auth.uid(),'admin')
+   AND NOT EXISTS(SELECT 1 FROM public.course_topic_content WHERE game_path=name));
+-- No UPDATE policy: replacements get a new immutable path.
+NOTIFY pgrst,'reload schema';
+$course_sql$;
+INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261029000000','course_html_games',ARRAY[$course_sql$-- Games are private objects: publication, not possession of a URL, controls download.
+INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+ VALUES('course-games','course-games',false,5242880,ARRAY['text/html'])
+ ON CONFLICT(id) DO UPDATE SET public=false,file_size_limit=EXCLUDED.file_size_limit,allowed_mime_types=EXCLUDED.allowed_mime_types;
+CREATE POLICY course_game_read ON storage.objects FOR SELECT TO anon,authenticated
+ USING(bucket_id='course-games' AND (public.has_role(auth.uid(),'admin') OR EXISTS(
+   SELECT 1 FROM public.course_topic_content l WHERE l.game_path=name AND public.course_topic_visible(l.course_id,l.topic_id))));
+CREATE POLICY course_game_upload ON storage.objects FOR INSERT TO authenticated
+ WITH CHECK(bucket_id='course-games' AND public.has_role(auth.uid(),'admin')
+   AND name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}\.html$');
+CREATE POLICY course_game_remove_unused ON storage.objects FOR DELETE TO authenticated
+ USING(bucket_id='course-games' AND public.has_role(auth.uid(),'admin')
+   AND NOT EXISTS(SELECT 1 FROM public.course_topic_content WHERE game_path=name));
+-- No UPDATE policy: replacements get a new immutable path.
+NOTIFY pgrst,'reload schema';
+$course_sql$]);
+EXECUTE $course_sql$CREATE FUNCTION public.resolve_course_video(_video_id uuid) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+ SELECT jsonb_build_object('course_id',m.course_id,'topic_id',m.topic_id)
+ FROM public.course_topic_videos m JOIN public.curriculum_topics t ON t.id=m.topic_id
+ JOIN public.course_curriculum_units u ON u.course_id=m.course_id AND u.unit_id=t.unit_id
+ WHERE m.video_id=_video_id AND public.course_topic_visible(m.course_id,m.topic_id)
+ ORDER BY u.order_index,t.order_index,m.order_index LIMIT 1;
+$$;
+REVOKE ALL ON FUNCTION public.resolve_course_video(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.resolve_course_video(uuid) TO anon,authenticated;
+NOTIFY pgrst,'reload schema';
+$course_sql$;
+INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261030000000','course_legacy_links',ARRAY[$course_sql$CREATE FUNCTION public.resolve_course_video(_video_id uuid) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
+ SELECT jsonb_build_object('course_id',m.course_id,'topic_id',m.topic_id)
+ FROM public.course_topic_videos m JOIN public.curriculum_topics t ON t.id=m.topic_id
+ JOIN public.course_curriculum_units u ON u.course_id=m.course_id AND u.unit_id=t.unit_id
+ WHERE m.video_id=_video_id AND public.course_topic_visible(m.course_id,m.topic_id)
+ ORDER BY u.order_index,t.order_index,m.order_index LIMIT 1;
+$$;
+REVOKE ALL ON FUNCTION public.resolve_course_video(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.resolve_course_video(uuid) TO anon,authenticated;
 NOTIFY pgrst,'reload schema';
 $course_sql$]);
 END $release$;

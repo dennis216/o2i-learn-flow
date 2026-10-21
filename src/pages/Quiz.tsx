@@ -52,7 +52,7 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, onCourseLoaded,
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); })
       .finally(() => { if (active) setBusy(false); });
     return () => { active = false; };
-  }, [sessionId, topicId, questionId, courseId, retry]);
+  }, [sessionId, topicId, questionId, courseId, onCourseLoaded, retry]);
   useEffect(() => { setSaveError(''); }, [question?.version_id, question?.attempt]);
   const save = async () => {
     if (!question || question.attempt || !selected || writing.current) return;

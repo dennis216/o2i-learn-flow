@@ -78,7 +78,7 @@ export function parsePracticeRoute(params: URLSearchParams): { error?: string; t
   if (params.has('subject') && params.get('subject') !== 'calculus') return { error: 'This subject has no published practice connection.' };
   for (const key of ['topic', 'session', 'question', 'course']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
   if (params.has('question') && !params.has('session')) return { error: 'A saved question requires its original practice session.' };
-  if (params.has('course') && !params.has('topic') && !params.has('session')) return { error: 'Course practice requires a canonical Topic.' };
+  if (params.has('course') && !params.has('topic')) return { error: 'Course practice requires a canonical Topic.' };
   return { ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
 }
 export function readPracticeSession(value: unknown, expectedId: string): PracticeSession {

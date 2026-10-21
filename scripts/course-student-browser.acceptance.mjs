@@ -10,6 +10,7 @@ export async function verifyStudentCourse({page,context,app,api,course,topic,oth
   assert.equal(requests.filter(p=>p.endsWith('/iframe_api')).length,0);
   assert.equal(requests.filter(p=>p.endsWith('/course_videos')).length,0);
   assert.equal(await page.getByRole('button',{name:/1.2.*Synthetic Draft/}).count(),0);
+  for(const title of ['Synthetic Topic','Synthetic Draft']){const style=await page.getByText(title,{exact:true}).evaluate(el=>({size:getComputedStyle(el).fontSize,weight:getComputedStyle(el).fontWeight,color:getComputedStyle(el).color}));assert.equal(style.size,'14px');assert.equal(style.weight,'500');assert.notEqual(style.color,'rgb(100, 116, 139)');}
   await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();
   await page.getByTitle('Synthetic YouTube player').waitFor();
   assert.equal(requests.filter(p=>p.endsWith('/get_course_topic')).length,1);
@@ -18,9 +19,9 @@ export async function verifyStudentCourse({page,context,app,api,course,topic,oth
   await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();await page.getByTitle('Synthetic YouTube player').waitFor({state:'detached'});assert.equal(await page.getByTitle('Synthetic YouTube player').count(),0);
   await page.getByRole('button',{name:/1.1.*Synthetic Topic/}).click();await page.getByTitle('Synthetic YouTube player').waitFor();
   await page.reload();await page.getByTitle('Synthetic YouTube player').waitFor();
-  await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(out,'student-mobile.png')});
+  await page.setViewportSize({width:390,height:844});await page.getByTitle('Synthetic YouTube player').waitFor();await page.screenshot({path:resolve(out,'student-mobile.png')});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-  await page.setViewportSize({width:1024,height:768});await page.screenshot({path:resolve(out,'student-tablet.png')});
+  await page.setViewportSize({width:1024,height:768});await page.getByTitle('Synthetic YouTube player').waitFor();await page.screenshot({path:resolve(out,'student-tablet.png')});
   if(process.env.O2I_COURSE_GAME_BROWSER){await (await import('./course-game-browser.acceptance.mjs')).verifyCourseGame({page,context,api,course,topic,other,requests,out});}
   if(process.env.O2I_COURSE_PRACTICE_BROWSER){await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic,other});}
   if(process.env.O2I_COURSE_LEGACY_BROWSER){await (await import('./course-legacy-browser.acceptance.mjs')).verifyLegacyCourseLinks({page,context,app,api,course,topic,other});}

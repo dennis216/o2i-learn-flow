@@ -16,7 +16,7 @@ try {
  for(let n=0;;n++){try{docker(['exec',name,'pg_isready','-U','supabase_admin']);break;}catch{if(n>100)throw new Error('Local PostgreSQL did not start');await new Promise(r=>setTimeout(r,150));}}
  for(let n=0;;n++){try{if(sql("SELECT count(*) FROM pg_roles WHERE rolname IN ('anon','authenticated')").trim()==='2')break;}catch{}if(n>120)throw new Error('Local roles not initialized');await new Promise(r=>setTimeout(r,250));}
  const taxonomy=read('supabase/migrations/20260920010000_ap_calculus_ced_framework.sql');
- sql(`DO $disable$ DECLARE r record; BEGIN FOR r IN SELECT evtname FROM pg_event_trigger LOOP EXECUTE format('ALTER EVENT TRIGGER %I DISABLE',r.evtname); END LOOP; END $disable$;
+ const bootstrap=`DO $disable$ DECLARE r record; BEGIN FOR r IN SELECT evtname FROM pg_event_trigger LOOP EXECUTE format('ALTER EVENT TRIGGER %I DISABLE',r.evtname); END LOOP; END $disable$;
  CREATE SCHEMA IF NOT EXISTS extensions; CREATE SCHEMA IF NOT EXISTS auth; CREATE SCHEMA IF NOT EXISTS storage;
  CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
  CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;
@@ -39,11 +39,13 @@ try {
  INSERT INTO public.curriculum_topics(unit_id,topic_code,title,big_idea,order_index,is_bc_only) SELECT id,'1.'||n,'Synthetic Topic '||n,'LIM',n,n=3 FROM public.curriculum_units CROSS JOIN generate_series(1,3) n;
  INSERT INTO public.courses VALUES('${ab}','Synthetic AB',true),('${bc}','Synthetic BC',true);
  INSERT INTO public.course_curriculum_units SELECT c.id,u.id,1 FROM public.courses c CROSS JOIN public.curriculum_units u;
- ${read('supabase/migrations/20261027000000_course_topic_content.sql')}`);
+ ${read('supabase/migrations/20261027000000_course_topic_content.sql')}`;
+ sql(bootstrap);
  const tids=sql('SELECT id FROM public.curriculum_topics ORDER BY order_index').trim().split('\n'),[t1,t2,t3]=tids;
  const save=(course,topic,published,videos,id=admin)=>asUser(id,`SELECT public.save_course_topic('${course}','${topic}',${published},'${JSON.stringify(videos)}',NULL)`);
  const vid='00000000-0000-4000-8000-000000000010',video={id:vid,title:'Synthetic video',video_url:'https://youtu.be/abcdefghijk'};
  save(bc,t1,false,[video]);
+ assert.equal(sql("SELECT public.course_youtube_id('https://www.youtube.com/watch?v=abcdefghijk&v=12345678901') IS NULL").trim(),'t');
  expectFailure(()=>asUser(student,`SELECT public.get_course_topic('${bc}','${t1}')`));
  assert.equal(asUser(student,'SELECT count(*) FROM public.course_videos').trim().split('\n').at(-1),'0');
  expectFailure(()=>save(bc,t1,true,[video],student));
@@ -65,5 +67,6 @@ try {
  console.log('PASS course database: canonical scope, cross-course FK, atomic save, publish validation, draft URL/mapping isolation, outline without assets, legacy write guards and unpublish');
  if(process.env.O2I_COURSE_GAME_DB){await (await import('./course-game-db.acceptance.mjs')).verifyCourseGameStorage({sql,asUser,admin,student,bc,t1,save,video});}
  if(process.env.O2I_COURSE_DB_EXTRA){await (await import('./course-practice-db.acceptance.mjs')).verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,save,video});}
+ if(process.env.O2I_COURSE_RELEASE_DB){await (await import('./course-release-db.acceptance.mjs')).verifyCourseRelease({sql,bootstrap,admin,student});}
 } catch(error){console.error(error.stderr?.toString()||error);process.exitCode=1;}
 finally {if(created)docker(['rm','-f',name]);}

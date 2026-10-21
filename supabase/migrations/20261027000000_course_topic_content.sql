@@ -29,17 +29,17 @@ CREATE INDEX course_topic_videos_video_idx ON public.course_topic_videos(video_i
 
 CREATE FUNCTION public.course_youtube_id(_url text) RETURNS text
 LANGUAGE sql IMMUTABLE SET search_path=public,extensions AS $$
- SELECT coalesce(
+ SELECT CASE WHEN (SELECT count(*) FROM regexp_matches(_url,'[?&]v=','g'))>1 THEN NULL ELSE coalesce(
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{11})(?:[&#].*)?$'),
    substring(_url FROM '^https://youtu\.be/([A-Za-z0-9_-]{11})(?:[?&#].*)?$'),
    substring(_url FROM '^https://(?:www\.|m\.)?youtube\.com/(?:shorts|embed)/([A-Za-z0-9_-]{11})(?:[?&#].*)?$')
- );
+ ) END;
 $$;
 CREATE FUNCTION public.course_topic_in_scope(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
  SELECT EXISTS(SELECT 1 FROM public.courses c JOIN public.course_curriculum_units m ON m.course_id=c.id
    JOIN public.curriculum_topics t ON t.unit_id=m.unit_id WHERE c.id=_course_id AND t.id=_topic_id
-   AND (c.practice_course_scope IS DISTINCT FROM 'AB' OR NOT t.is_bc_only));
+   AND (c.practice_course_scope IS NULL OR c.practice_course_scope='BC' OR NOT t.is_bc_only));
 $$;
 CREATE FUNCTION public.course_topic_visible(_course_id uuid,_topic_id uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
@@ -87,8 +87,8 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.courses WHERE id=_course_id AND (is_published OR public.has_role(auth.uid(),'admin'))) THEN
    RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='Course is not available.';
  END IF;
- RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'topics',
-   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,
+ RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id',u.id,'unit_number',u.unit_number,'title',u.title,'ab_exam_weight_min',u.ab_exam_weight_min,'ab_exam_weight_max',u.ab_exam_weight_max,'bc_exam_weight_min',u.bc_exam_weight_min,'bc_exam_weight_max',u.bc_exam_weight_max,'topics',
+   coalesce((SELECT jsonb_agg(jsonb_build_object('id',t.id,'code',t.topic_code,'title',t.title,'big_idea',t.big_idea,'is_bc_only',t.is_bc_only,
      'is_published',coalesce(l.is_published,false)) ORDER BY t.order_index)
      FROM public.curriculum_topics t LEFT JOIN public.course_topic_content l ON l.course_id=_course_id AND l.topic_id=t.id
      WHERE t.unit_id=u.id AND public.course_topic_in_scope(_course_id,t.id)),'[]'::jsonb)) ORDER BY m.order_index)

@@ -3,17 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 export async function verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,save,video}) {
  const read=n=>readFileSync(new URL('../supabase/migrations/'+n+'.sql',import.meta.url),'utf8');
- sql(`CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);
- INSERT INTO auth.users(id) VALUES('${admin}'),('${student}');
- CREATE TYPE public.question_difficulty AS ENUM('easy','medium','hard');
- CREATE TABLE public.questions(id uuid PRIMARY KEY,current_version_id uuid,status text);
- CREATE TABLE public.question_versions(id uuid PRIMARY KEY,question_id uuid REFERENCES public.questions(id),primary_topic_id uuid,stem text,solution text,image_url text,requires_figure boolean DEFAULT false,difficulty public.question_difficulty,calculator_policy text,course_scope public.question_course_scope,representation_type text,status text,question_type text,UNIQUE(id,question_id));
- CREATE TABLE public.question_options(id uuid PRIMARY KEY,question_version_id uuid REFERENCES public.question_versions(id),option_key text,option_text text,order_index integer,is_correct boolean);
- CREATE TABLE public.question_practice_skills(question_version_id uuid,practice_skill_id uuid);
- CREATE FUNCTION public.is_super_admin(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
- ${read('20261021000000_question_bank_student_practice')}
- ${read('20261026000000_question_practice_adaptation_v2')}
- ${read('20261028000000_course_topic_practice')}`);
+ setupCoursePractice(sql,admin,student,true);
  const t=tids[0];save(bc,t,true,[video]);save(ab,t,true,[{...video,id:randomUUID()}]);
  for(const scope of ['AB','BC','BOTH']){
    const q=randomUUID(),v=randomUUID();
@@ -45,4 +35,19 @@ export async function verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,
  sql(read('20261030000000_course_legacy_links'));
  const resolved=rpc(student,'resolve_course_video',`'${video.id}'`);assert.equal(resolved.course_id,bc);assert.equal(resolved.topic_id,t);
  console.log('PASS course practice database: AB/BC/BOTH scope and exact counts, unchanged global practice, safe snapshots, saved course scope, idempotent grading, account isolation and withdrawn-session recovery');
+}
+
+export function setupCoursePractice(sql,admin,student,includeCourse) {
+ const read=n=>readFileSync(new URL('../supabase/migrations/'+n+'.sql',import.meta.url),'utf8');
+ sql(`CREATE TABLE IF NOT EXISTS auth.users(id uuid PRIMARY KEY);
+ INSERT INTO auth.users(id) VALUES('${admin}'),('${student}');
+ CREATE TYPE public.question_difficulty AS ENUM('easy','medium','hard');
+ CREATE TABLE public.questions(id uuid PRIMARY KEY,current_version_id uuid,status text);
+ CREATE TABLE public.question_versions(id uuid PRIMARY KEY,question_id uuid REFERENCES public.questions(id),primary_topic_id uuid,stem text,solution text,image_url text,requires_figure boolean DEFAULT false,difficulty public.question_difficulty,calculator_policy text,course_scope public.question_course_scope,representation_type text,status text,question_type text,UNIQUE(id,question_id));
+ CREATE TABLE public.question_options(id uuid PRIMARY KEY,question_version_id uuid REFERENCES public.question_versions(id),option_key text,option_text text,order_index integer,is_correct boolean);
+ CREATE TABLE public.question_practice_skills(question_version_id uuid,practice_skill_id uuid);
+ CREATE FUNCTION public.is_super_admin(uuid) RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
+ ${read('20261021000000_question_bank_student_practice')}
+ ${read('20261026000000_question_practice_adaptation_v2')}
+ ${includeCourse ? read('20261028000000_course_topic_practice') : ''}`);
 }
