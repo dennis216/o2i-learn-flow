@@ -10,10 +10,10 @@ Approved behavior: canonical Course → Unit → Topic, YouTube URL videos share
 | 4 | Topic practice with course scope | Passed: real SQL selector/grading/isolation and browser course→quiz→course; requires adaptation-v2 prerequisite |
 | 5 | Single-file HTML game upload and isolation | Passed: storage RLS, file boundary tests, admin upload widget, interactive iframe isolation and deferred download |
 | 6 | Prototype retirement and legacy links | Passed: Learn/Lesson redirects, legacy video/practice mapping, TypeScript and scoped SQL/browser regression |
-| 7 | Release package and real pilot acceptance | Technical package and local acceptance passed; real pilot and production pending team assets |
+| 7 | Release package and real pilot acceptance | Technical package, local acceptance and production directory repair passed; real teaching pilot pending team assets |
 
-No production migration, publication or real-content acceptance has occurred. Never replay the historical curriculum migration: it contains a course-video deletion. Use only the forward package in `production/`, after its readonly preflight.
+Production schema was deployed and the public course list/outline verified on 2026-10-21; see `PRODUCTION_ACCEPTANCE.md`. No lesson publication or real-content acceptance has occurred. Never replay the historical curriculum migration: it contains a course-video deletion. Use only the forward package in `production/`, after its readonly preflight.
 
 Local checks: `node --experimental-strip-types --test src/lib/courseContent.test.mjs`, `node scripts/course-content-db.test.mjs` (isolated Docker container, automatically removed), and `npx tsc -p tsconfig.app.json --noEmit`.
 
-Final evidence: see `VALIDATION.md` and `screenshots/README.md`. The user confirmed real materials are not ready. No production deployment or sample publication is claimed.
+Final evidence: see `VALIDATION.md` and `screenshots/README.md`. The user confirmed real materials are not ready. Production directory acceptance is recorded separately; no sample publication is claimed.

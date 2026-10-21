@@ -1,4 +1,13 @@
-# 本地使用效果截图
+# 使用效果截图
+
+## 真实生产页面 — 2026-10-21
+
+- [恢复后的课程列表](production-courses.jpg)：真实 `o2iinstitute.org`，AB/BC 两张卡片正常加载。
+- [BC Framework](production-bc-framework.jpg)：真实生产目录、规范 Topic 标题及标签，课程内容仍为 Draft。
+
+仅证明此次列表/目录故障已修复，不证明真实视频、游戏或课程练习链路已发布。
+
+## 先前的本地技术验收
 
 不是线上样板。正式 YouTube URL 和 HTML 尚未提供。
 
