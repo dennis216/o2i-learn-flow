@@ -14,3 +14,11 @@ test('Save sends a canonical URL and refuses invalid videos before any write',as
   assert.equal(call.args._videos[0].video_url,'https://www.youtube.com/watch?v=abcdefghijk');
   call=undefined;await assert.rejects(saveCourseTopic(client,'course','topic',false,[{title:'Video',video_url:'https://evil.org'}],null));assert.equal(call,undefined);
 });
+
+test('Revision-aware editing requires deployed metadata and passes server conflicts back to the editor',async()=>{
+  let called=false;
+  const missing={course_id:'course',topic_id:'topic',videos:[],is_published:false,game_path:null};
+  const client={rpc:async(name,args)=>{called=true;assert.equal(name,'save_course_lesson');assert.equal(args._expected_revision,7);assert.equal(args._expected_lesson_id,'lesson');return {error:{message:'Lesson changed. Reload before saving.'}};}};
+  await assert.rejects(saveCourseTopic(client,'course','topic',false,[],null,missing),/migration is required/);assert.equal(called,false);
+  await assert.rejects(saveCourseTopic(client,'course','topic',false,[],null,{...missing,lesson_id:'lesson',revision:7,linked_courses:[]}),/Lesson changed/);assert.equal(called,true);
+});

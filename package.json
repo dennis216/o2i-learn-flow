@@ -18,7 +18,7 @@
     "test:student-practice:integration": "node --experimental-strip-types scripts/student-practice.test.mjs",
     "test:courses": "node --experimental-strip-types --test src/lib/courseContent.test.mjs src/lib/courseGame.test.mjs",
     "test:ai-tutor:browser": "O2I_AI_TUTOR_BROWSER=1 node scripts/course-content-browser.test.mjs",
-    "test:courses:db": "O2I_COURSE_GAME_DB=1 O2I_COURSE_DB_EXTRA=1 O2I_COURSE_RELEASE_DB=1 node scripts/course-content-db.test.mjs",
+    "test:courses:db": "O2I_COURSE_SHARED_DB=1 O2I_COURSE_GAME_DB=1 O2I_COURSE_DB_EXTRA=1 O2I_COURSE_RELEASE_DB=1 node scripts/course-content-db.test.mjs",
     "test:courses:browser": "O2I_COURSE_STUDENT_BROWSER=1 O2I_COURSE_GAME_BROWSER=1 O2I_COURSE_PRACTICE_BROWSER=1 O2I_COURSE_LEGACY_BROWSER=1 node scripts/course-content-browser.test.mjs"
   },
   "dependencies": {

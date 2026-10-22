@@ -1906,6 +1906,10 @@ export type Database = {
       }
     }
     Functions: {
+      list_saved_course_lessons: { Args: Record<PropertyKey, never>; Returns: Json }
+      save_course_lesson: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path: string | null; _expected_revision: number; _expected_lesson_id: string | null }; Returns: undefined }
+      share_course_lesson: { Args: { _course_id: string; _topic_id: string; _other_course_id: string; _use_other: boolean; _expected_lesson_id: string | null; _expected_revision: number; _expected_other_lesson_id: string | null; _expected_other_revision: number }; Returns: undefined }
+      restore_course_lesson: { Args: { _course_id: string; _topic_id: string; _source_lesson_id: string; _source_revision: number; _expected_lesson_id: string | null; _expected_revision: number }; Returns: undefined }
       resolve_course_video: { Args: { _video_id: string }; Returns: Json }
       list_course_practice_topics: { Args: { _course_id: string }; Returns: Json }
       start_course_question_practice: { Args: { _session_id: string; _course_id: string; _topic_id: string }; Returns: Json }
