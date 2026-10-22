@@ -1,5 +1,7 @@
 # 课程内容维护与发布
 
+Current follow-up: [course management and shared lesson delivery](improvements/STATUS.md). The original acceptance below is historical; live checks confirmed published AB 1.1 content. The shared-lesson migration is now deployed and the incorrect AB scope has been repaired; the new frontend and real-account acceptance remain separately tracked.
+
 ## 当前交付边界
 
 已实现 Course → Unit → Topic 的真实内容维护、YouTube URL、正式题库练习、单文件 HTML 游戏、Draft/Published、按课懒加载和旧入口跳转。讲义、游戏成绩、视频文件上传不在第一版。

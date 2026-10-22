@@ -19,11 +19,11 @@ export default function TopicLesson({ course, topicId, supabaseUrl, resumeTime, 
   const video = lesson.data.videos.find(v => v.id === selectedVideoId) ?? lesson.data.videos[0];
   return <div className="space-y-4 pb-4">
     {lesson.data.videos.length > 1 && <div className="flex flex-wrap gap-2">{lesson.data.videos.map((v, n) => <Button key={v.id} variant={video?.id === v.id ? 'default' : 'outline'} onClick={() => setSelectedVideoId(v.id)}>{v.title}</Button>)}</div>}
-    {video && <Suspense fallback={<p role="status">Loading video player…</p>}><Player key={video.id} video={video} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={video.id === initialVideoId ? resumeTime : undefined} showStudyHub={false} /></Suspense>}
     {practice.isPending && <p role="status">Checking practice availability…</p>}
     {practice.isSuccess && !practice.data.some(t => t.id === topicId && t.question_count > 0) && <p className="rounded border bg-muted/30 p-3 text-sm">Practice for this topic is being prepared. Stay tuned.</p>}
     {practice.isError && <p role="alert">Practice availability could not be checked. <button className="underline" onClick={() => void practice.refetch()}>Retry practice availability</button></p>}
     {practice.data?.some(t => t.id === topicId && t.question_count > 0) && <Button asChild><Link to={'/quiz?' + new URLSearchParams({ course: course.id, topic: topicId, source: 'course' })}>Start practice</Link></Button>}
+    {video && <Suspense fallback={<p role="status">Loading video player…</p>}><Player key={video.id} video={video} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={video.id === initialVideoId ? resumeTime : undefined} showStudyHub={false} /></Suspense>}
     {lesson.data.game_path && <section className="space-y-3"><Button variant="outline" onClick={() => setGameOpen(v => !v)}>{gameOpen ? 'Close game' : 'Start game'}</Button>{gameOpen && <Suspense fallback={<p role="status">Loading game…</p>}><CourseGame path={lesson.data.game_path} /></Suspense>}</section>}
   </div>;
 }

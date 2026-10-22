@@ -1,5 +1,7 @@
 # Course content delivery
 
+Current follow-up: [course management and shared lesson delivery](improvements/STATUS.md). The original acceptance below is historical; live checks confirmed published AB 1.1 content. The shared-lesson migration is now deployed and the incorrect AB scope has been repaired; the new frontend and real-account acceptance remain separately tracked.
+
 Approved behavior: canonical Course → Unit → Topic, YouTube URL videos shared across Topics within a course, one self-contained HTML game per Topic, notes deferred. Draft Topic titles stay in the outline with no expandable content. Published saves take effect immediately. First real pilot: AP Calculus BC Unit 1, 2–3 Topics supplied and reviewed by the content team.
 
 | Task | Deliverable | Status |
