@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,23 +6,52 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { loadCourseOutline, loadCourseTopic, saveCourseTopic, youtubeId, type CourseUnit, type EditableVideo } from '@/lib/courseContent';
+import { loadCourseOutline, loadCourseTopic, saveCourseTopic, youtubeId, listSavedCourseLessons, shareCourseLesson, restoreCourseLesson, type SavedCourseLesson, type TopicContent, type CourseUnit, type EditableVideo } from '@/lib/courseContent';
 
 import { validateGameFile } from '@/lib/courseGame';
 const CourseGame = lazy(() => import('@/components/courses/CourseGame'));
 type ManagedCourse = { id: string; title: string; practice_course_scope: 'AB' | 'BC' | 'BOTH' | null };
-type Mapping = { video_id: string; topic_id: string };
-export function CourseContentManagement() {
+export function CourseContentManagement({ initialCourseId = '', initialTopicId = '', onSaved, onDirtyChange, onBusyChange }: { initialCourseId?: string; initialTopicId?: string; onSaved?: () => void; onDirtyChange?: (dirty: boolean) => void; onBusyChange?: (busy: boolean) => void }) {
+  const pendingTopic = useRef(initialTopicId);
   const [courses, setCourses] = useState<ManagedCourse[]>([]);
-  const [courseId, setCourseId] = useState(''), [topicId, setTopicId] = useState('');
+  const [courseId, setCourseId] = useState(initialCourseId), [topicId, setTopicId] = useState('');
   const [units, setUnits] = useState<CourseUnit[]>([]);
   const [videos, setVideos] = useState<EditableVideo[]>([]), [available, setAvailable] = useState<EditableVideo[]>([]);
-  const [mappings, setMappings] = useState<Mapping[]>([]);
+  const [content, setContent] = useState<TopicContent | null>(null);
+  const [sharingWith, setSharingWith] = useState<TopicContent | null>(null);
+  const [useOther, setUseOther] = useState(false);
+  const [sharingPreview, setSharingPreview] = useState<string | null>(null);
   const [published, setPublished] = useState(false), [gamePath, setGamePath] = useState<string | null>(null);
   const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
   const [busy, setBusy] = useState(false), [loading, setLoading] = useState(false), [ready, setReady] = useState(false);
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [preview, setPreview] = useState(false);
-  const [refresh, setRefresh] = useState(0);
+  const [savedSnapshot, setSavedSnapshot] = useState('');
+  const [savedLessons, setSavedLessons] = useState<SavedCourseLesson[]>([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const snapshot = JSON.stringify({ videos, published, gamePath });
+  const dirty = ready && snapshot !== savedSnapshot;
+  useEffect(() => { onDirtyChange?.(dirty); return () => onDirtyChange?.(false); }, [dirty, busy, onDirtyChange]);
+  useEffect(() => { const guard = (e: BeforeUnloadEvent) => { if (dirty || busy) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [dirty, busy]);
+  useEffect(() => { const guard = (e: MouseEvent) => { const link = (e.target as Element).closest?.('a[href]'); if ((dirty || busy) && link && link.getAttribute('target') !== '_blank' && link.getAttribute('href') !== window.location.pathname + window.location.search && (busy || !window.confirm('Discard unsaved lesson changes?'))) { e.preventDefault(); e.stopPropagation(); } }; document.addEventListener('click', guard, true); return () => document.removeEventListener('click', guard, true); }, [dirty, busy]);
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const originalIndex = window.history.state?.idx;
+    let restoring = false;
+    const guard = (e: PopStateEvent) => {
+      if (restoring) { restoring = false; e.stopImmediatePropagation(); return; }
+      const nextIndex = window.history.state?.idx;
+      if (typeof originalIndex !== 'number' || typeof nextIndex !== 'number' || originalIndex === nextIndex) return;
+      if (busy || !window.confirm('Discard unsaved lesson changes?')) { e.stopImmediatePropagation(); restoring = true; window.history.go(originalIndex - nextIndex); }
+    };
+    window.addEventListener('popstate', guard, true);
+    return () => window.removeEventListener('popstate', guard, true);
+  }, [dirty, busy]);
+  const canLeave = () => !busy && (!dirty || window.confirm('Discard unsaved lesson changes?'));
+  useEffect(() => { onBusyChange?.(busy); return () => onBusyChange?.(false); }, [busy, onBusyChange]);
+  const reloadSaved = async () => { setSavedLessons(await listSavedCourseLessons(supabase)); };
+  const applyContent = (c: TopicContent) => { const list = c.videos.map(({ id, title, video_url }) => ({ id, title, video_url })); setContent(c); setVideos(list); setPublished(c.is_published); setGamePath(c.game_path); setSavedSnapshot(JSON.stringify({ videos: list, published: c.is_published, gamePath: c.game_path })); };
+  const reloadCurrent = async () => { applyContent(await loadCourseTopic(supabase, courseId, topicId)); await reloadSaved(); onSaved?.(); };
+  useEffect(() => { void reloadSaved().catch(e => setError(e.message)); }, []);
   const course = courses.find(c => c.id === courseId);
   const topic = units.flatMap(u => u.topics).find(t => t.id === topicId);
   useEffect(() => {
@@ -34,28 +63,27 @@ export function CourseContentManagement() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    let active = true; setUnits([]); setTopicId(''); setAvailable([]); setMappings([]); setReady(false); setError('');
+    let active = true; setUnits([]); setTopicId(''); setAvailable([]); setReady(false); setError('');
     if (!courseId) return;
     setLoading(true);
     void Promise.all([
       loadCourseOutline(supabase, courseId),
       supabase.from('course_videos').select('id,title,video_url').eq('course_id', courseId).order('title'),
-      supabase.from('course_topic_videos').select('video_id,topic_id').eq('course_id', courseId),
-    ]).then(([outline, list, links]) => {
+    ]).then(([outline, list]) => {
       if (!active) return;
-      if (list.error || links.error) throw new Error(list.error?.message ?? links.error?.message);
-      setUnits(outline); setAvailable(list.data ?? []); setMappings(links.data ?? []);
+      if (list.error) throw new Error(list.error.message);
+      setUnits(outline); setAvailable(list.data ?? []); setTopicId(pendingTopic.current); pendingTopic.current = '';
     }).catch(e => { if (active) setError(String(e.message ?? e)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [courseId, refresh]);
+  }, [courseId, initialCourseId, initialTopicId]);
   useEffect(() => {
-    let active = true; setReady(false); setVideos([]); setPublished(false); setGamePath(null); setError(''); setNotice(''); setUploadedPaths([]);
+    let active = true; setReady(false); setContent(null); setVideos([]); setPublished(false); setGamePath(null); setError(''); setNotice(''); setUploadedPaths([]);
     if (!courseId || !topicId) return;
     setLoading(true);
     void loadCourseTopic(supabase, courseId, topicId).then(content => {
       if (!active) return;
-      setVideos(content.videos.map(({ id, title, video_url }) => ({ id, title, video_url })));
-      setPublished(content.is_published); setGamePath(content.game_path); setReady(true);
+      applyContent(content); setReady(true);
+      void supabase.from('course_videos').select('id,title,video_url').eq('course_id', content.owner_course_id ?? courseId).order('title').then(({data, error}) => { if (!active) return; if (error) setError(error.message); else setAvailable(data ?? []); });
     }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [courseId, topicId]);
@@ -64,36 +92,48 @@ export function CourseContentManagement() {
     if (!ready) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      await saveCourseTopic(supabase, courseId, topicId, published, videos, gamePath);
-      const content = await loadCourseTopic(supabase, courseId, topicId);
-      setVideos(content.videos.map(({ id, title, video_url }) => ({ id, title, video_url })));
-      const list = await supabase.from('course_videos').select('id,title,video_url').eq('course_id', courseId).order('title');
+      await saveCourseTopic(supabase, courseId, topicId, published, videos, gamePath, content ?? undefined);
+      const savedContent = await loadCourseTopic(supabase, courseId, topicId);
+      applyContent(savedContent);
+      const list = await supabase.from('course_videos').select('id,title,video_url').eq('course_id', savedContent.owner_course_id ?? courseId).order('title');
       if (list.error) throw list.error;
       setAvailable(list.data ?? []);
-      const links = await supabase.from('course_topic_videos').select('video_id,topic_id').eq('course_id', courseId);
-      if (links.error) throw links.error;
-      setMappings(links.data ?? []);
       setUploadedPaths([]);
-      setNotice(content.is_published ? 'Saved. Published changes are visible immediately.' : 'Draft saved. Students see only the Topic title.');
+      setSavedSnapshot(JSON.stringify({ videos: savedContent.videos.map(({ id, title, video_url }) => ({ id, title, video_url })), published: savedContent.is_published, gamePath: savedContent.game_path }));
+      await reloadSaved(); onSaved?.();
+      setNotice(savedContent.is_published ? 'Saved. Published changes are visible immediately.' : 'Draft saved. Students see only the Topic title.');
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
   return <Card><CardHeader><CardTitle>Course Content</CardTitle><p className="text-sm text-muted-foreground">Select a canonical Topic, maintain its videos, and publish when ready. Published edits take effect on Save.</p></CardHeader>
     <CardContent className="space-y-5">
-      {error && <p role="alert" className="text-destructive">{error}</p>}
-      {notice && <p role="status">{notice}</p>}
-      <div className="space-y-2"><Label htmlFor="content-course">Course</Label><select id="content-course" className="w-full rounded border bg-background p-2" disabled={busy} value={courseId} onChange={e => { setCourseId(e.target.value); setTopicId(''); }}><option value="">Choose a course</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
-      {course && <div className="space-y-2"><Label htmlFor="content-scope">AP practice scope</Label><select id="content-scope" className="rounded border bg-background p-2" disabled={busy || loading} value={course.practice_course_scope ?? ''} onChange={async e => {
-        const value = e.target.value as 'AB' | 'BC' | 'BOTH'; setBusy(true); setError('');
-        try { const result = await supabase.from('courses').update({ practice_course_scope: value }).eq('id', courseId); if (result.error) throw result.error; setCourses(list => list.map(c => c.id === courseId ? { ...c, practice_course_scope: value } : c)); setRefresh(n => n + 1); }
-        catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
-      }}><option value="" disabled>Choose for AP Calculus</option><option value="AB">AB</option><option value="BC">BC (AB + BC content)</option><option value="BOTH">Shared AB material</option></select></div>}
-      {courseId && <div className="space-y-2"><Label htmlFor="content-topic">Unit / Topic</Label><select id="content-topic" className="w-full rounded border bg-background p-2" disabled={busy || loading} value={topicId} onChange={e => setTopicId(e.target.value)}><option value="">Choose a Topic</option>{units.map(u => <optgroup key={u.id} label={`Unit ${u.unit_number}: ${u.title}`}>{u.topics.map(t => <option key={t.id} value={t.id}>{t.code} · {t.title}</option>)}</optgroup>)}</select></div>}
+      {error && <div role="alert" className="space-y-2 text-destructive"><p>{error}</p>{ready && <Button variant="outline" disabled={busy} onClick={async () => { if (!canLeave()) return; setBusy(true); try { await reloadCurrent(); setError(''); setNotice('Reloaded saved lesson.'); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Reload saved lesson</Button>}</div>}
+
+      <div className="space-y-2"><Label htmlFor="content-course">Course</Label><select id="content-course" className="w-full rounded border bg-background p-2" disabled={busy || !!initialCourseId} value={courseId} onChange={e => { if (canLeave()) { setCourseId(e.target.value); setTopicId(''); } }}><option value="">Choose a course</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>
+      {course && <p className="text-sm text-muted-foreground">Course practice scope: {course.practice_course_scope ?? 'Not configured'}. This does not share lesson content.</p>}
+      {!initialCourseId && <section aria-label="Saved course content" className="space-y-2 rounded border p-3"><h3 className="font-semibold">Saved content</h3><select aria-label="Saved content status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="rounded border bg-background p-2"><option value="all">All statuses</option><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Unlinked content</option></select><div className="flex flex-wrap gap-2">{savedLessons.filter(l => (!courseId || l.courses.some(c => c.id === courseId) || l.owner_course_id === courseId && l.archived) && (statusFilter === 'all' || statusFilter === 'archived' ? statusFilter === 'all' || l.archived : !l.archived && l.is_published === (statusFilter === 'published'))).map(l => <Button key={l.lesson_id} variant="outline" disabled={busy} onClick={async () => {
+        if (!canLeave()) return;
+        const target = l.archived ? courseId || l.owner_course_id : l.courses.find(c => c.id === courseId)?.id ?? l.courses[0].id;
+        if (l.archived) {
+          if (!window.confirm('Restore this saved content as an unpublished draft? Any current lesson is kept in Saved content.')) return;
+          setBusy(true); setError('');
+          try { const existing = await loadCourseTopic(supabase, target, l.topic_id); await restoreCourseLesson(supabase, existing, l); await reloadSaved(); if (target === courseId && l.topic_id === topicId) await reloadCurrent(); }
+          catch (e) { setError(e instanceof Error ? e.message : String(e)); return; } finally { setBusy(false); }
+        }
+        if (target === courseId) setTopicId(l.topic_id); else { pendingTopic.current = l.topic_id; setCourseId(target); }
+      }}>{l.courses.map(c => c.title).join(' / ') || l.owner_course_title} · {l.topic_code} · {l.archived ? 'Restore draft' : l.is_published ? 'Published' : 'Draft'}</Button>)}</div>{!savedLessons.length && <p>No saved lessons yet.</p>}</section>}
+      {courseId && <div className="space-y-2"><Label htmlFor="content-topic">Unit / Topic</Label><select id="content-topic" className="w-full rounded border bg-background p-2" disabled={busy || loading || !!initialTopicId} value={topicId} onChange={e => { if (canLeave()) setTopicId(e.target.value); }}><option value="">Choose a Topic</option>{units.map(u => <optgroup key={u.id} label={`Unit ${u.unit_number}: ${u.title}`}>{u.topics.map(t => <option key={t.id} value={t.id}>{t.code} · {t.title} · {savedLessons.some(l => l.courses.some(c => c.id === courseId) && l.topic_id === t.id) ? savedLessons.find(l => l.courses.some(c => c.id === courseId) && l.topic_id === t.id)?.is_published ? 'Published' : 'Draft' : 'No content'}</option>)}</optgroup>)}</select></div>}
       {loading && <p role="status">Loading course content…</p>}
+      {ready && content && <section aria-label="Content availability" className="space-y-2 rounded border p-3"><h3 className="font-semibold">Content availability</h3><p>{(content.linked_courses?.length ?? 0) > 1 ? 'Shared with AB and BC. Editing, publishing or withdrawing affects both courses.' : `Only ${course?.title}`}</p>
+        {(content.linked_courses?.length ?? 0) > 1 ? <Button variant="outline" disabled={busy || dirty} onClick={async () => { if (!window.confirm('Create an independent unpublished draft for this course? The other course keeps its current lesson.')) return; setBusy(true); setError(''); try { await restoreCourseLesson(supabase, content, { lesson_id: content.lesson_id!, revision: content.revision! }); await reloadCurrent(); setNotice('Independent draft created. Preview and publish when ready.'); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Make independent draft</Button> : !topic?.is_bc_only && content.lesson_id && courses.filter(c => c.id !== courseId && ((course?.practice_course_scope === 'AB' && c.practice_course_scope === 'BC') || (course?.practice_course_scope === 'BC' && c.practice_course_scope === 'AB'))).map(c => <Button key={c.id} variant="outline" disabled={busy || dirty} onClick={async () => { setBusy(true); setError(''); try { const other = await loadCourseTopic(supabase, c.id, topicId); setUseOther(false); setSharingWith(other); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Share with {c.title}</Button>)}
+        {dirty && <p className="text-sm">Save your edits before changing content availability.</p>}
+      </section>}
+      <Dialog open={!!sharingWith} onOpenChange={open => { if (!open && !busy) setSharingWith(null); }}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Share AB and BC content</DialogTitle></DialogHeader>{error && <p role="alert" className="text-destructive">{error}</p>}<p>Both courses will use one lesson, including its publication status. Future edits, publishing and withdrawal affect both.</p>{sharingWith && <><div className="rounded border p-3"><p className="font-semibold">Current course · {content?.is_published ? 'Published' : 'Draft'}</p>{content?.videos.map(v => <p key={v.id}>{v.title} · <a className="underline" href={v.video_url} target="_blank" rel="noreferrer">View video</a></p>)}<p>Game: {content?.game_path ? 'Attached' : 'None'}</p>{content?.game_path && <Button variant="outline" onClick={() => setSharingPreview(content.game_path)}>Preview current game</Button>}</div><div className="rounded border p-3"><p className="font-semibold">{courses.find(c => c.id === sharingWith.course_id)?.title} · {sharingWith.lesson_id ? sharingWith.is_published ? 'Published' : 'Draft' : 'No content'}</p>{sharingWith.videos.map(v => <p key={v.id}>{v.title} · <a className="underline" href={v.video_url} target="_blank" rel="noreferrer">View video</a></p>)}<p>Game: {sharingWith.game_path ? 'Attached' : 'None'}</p>{sharingWith.game_path && <Button variant="outline" onClick={() => setSharingPreview(sharingWith.game_path)}>Preview other game</Button>}</div>{sharingWith.lesson_id && <><p>These are different saved lessons. The unselected lesson stays recoverable in Saved content.</p><Label htmlFor="sharing-source">Content to keep in both courses</Label><select id="sharing-source" disabled={busy} value={useOther ? 'other' : 'current'} onChange={e => setUseOther(e.target.value === 'other')} className="rounded border bg-background p-2"><option value="current">Use current course content</option><option value="other">Use other course content</option></select></>}<Button disabled={busy} onClick={async () => { if (!content) return; setBusy(true); setError(''); try { await shareCourseLesson(supabase, content, sharingWith, useOther); setSharingWith(null); await reloadCurrent(); setNotice('Saved. AB and BC now share this lesson and its publication status.'); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>{busy ? 'Sharing…' : 'Confirm shared content'}</Button></>}</DialogContent></Dialog>
+      <Dialog open={!!sharingPreview} onOpenChange={open => { if (!open) setSharingPreview(null); }}><DialogContent className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none overflow-y-auto rounded-none sm:rounded-none"><DialogHeader><DialogTitle>Saved game preview</DialogTitle></DialogHeader>{sharingPreview && <Suspense fallback={<p>Loading saved game…</p>}><CourseGame path={sharingPreview} /></Suspense>}</DialogContent></Dialog>
       {ready && <fieldset disabled={busy} className="space-y-4">
         <h3 className="font-semibold">{topic?.code} · {topic?.title}</h3>
         {videos.map((v, n) => {
-          const shared = mappings.filter(m => m.video_id === v.id && m.topic_id !== topicId).map(m => units.flatMap(u => u.topics).find(t => t.id === m.topic_id)?.code ?? m.topic_id);
+          const shared = content?.shared_video_topics?.filter(m => m.video_id === v.id).map(m => m.topic_code) ?? [];
           return <div key={v.id ?? `new-${n}`} className="space-y-2 rounded border p-3">
             <Label htmlFor={`video-title-${n}`}>Video {n + 1} title</Label><Input id={`video-title-${n}`} maxLength={200} value={v.title} onChange={e => updateVideo(n, { title: e.target.value })} />
             <Label htmlFor={`video-url-${n}`}>YouTube URL</Label><Input id={`video-url-${n}`} type="url" value={v.video_url} onChange={e => updateVideo(n, { video_url: e.target.value })} />
@@ -106,7 +146,7 @@ export function CourseContentManagement() {
         <div className="space-y-2 rounded border p-3"><Label htmlFor="lesson-game">HTML game (optional)</Label><Input id="lesson-game" type="file" accept=".html,text/html" onChange={async e => {
           const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
           setBusy(true); setError('');
-          const path = `${courseId}/${topicId}/${crypto.randomUUID()}.html`;
+          const path = `${content?.owner_course_id ?? courseId}/${topicId}/${crypto.randomUUID()}.html`;
           try {
             validateGameFile(file);
             const result = await supabase.storage.from('course-games').upload(path, file, { contentType: 'text/html', upsert: false });
@@ -122,8 +162,8 @@ export function CourseContentManagement() {
         </div>
         <div className="flex items-center gap-2"><Checkbox id="content-published" checked={published} onCheckedChange={v => setPublished(v === true)} /><Label htmlFor="content-published">Published (unchecked = Draft)</Label></div>
         <p className="text-sm text-muted-foreground">Practice links are derived from this Topic. Notes are outside this release.</p>
-        <div className="flex gap-2"><Button type="button" variant="outline" onClick={() => setPreview(true)}>Preview lesson</Button><Button type="button" onClick={() => void save()}>{busy ? 'Saving…' : 'Save lesson'}</Button></div>
+        <div className="sticky bottom-0 space-y-2 border-t bg-background py-3">{notice && <p role="status" className="rounded border border-green-600 bg-green-50 p-3 font-semibold text-green-900">{course?.title} · {topic?.code} · {notice}</p>}{dirty && <p className="text-sm text-amber-700">Unsaved changes</p>}<div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setPreview(true)}>Preview lesson</Button><Button type="button" onClick={() => void save()}>{busy ? 'Saving…' : published ? 'Save and publish changes' : savedLessons.some(l => l.courses.some(c => c.id === courseId) && l.topic_id === topicId && l.is_published) ? 'Save and withdraw lesson' : 'Save draft'}</Button></div></div>
       </fieldset>}
-      <Dialog open={preview} onOpenChange={setPreview}><DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto"><DialogHeader><DialogTitle>Preview: {topic?.code} · {topic?.title}</DialogTitle></DialogHeader><p className="text-sm">Unsaved preview · {published ? 'Published on Save' : 'Draft'}</p>{videos.map((v, n) => <div key={n} className="space-y-2"><h3>{v.title}</h3>{youtubeId(v.video_url) ? <iframe className="aspect-video w-full" src={`https://www.youtube.com/embed/${youtubeId(v.video_url)}`} title={`Preview ${v.title}`} allowFullScreen /> : <p>Enter a valid YouTube URL.</p>}</div>)}{gamePath && <Suspense fallback={<p>Loading game preview…</p>}><CourseGame path={gamePath} /></Suspense>}</DialogContent></Dialog>
+      <Dialog open={preview} onOpenChange={setPreview}><DialogContent className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none overflow-y-auto rounded-none sm:rounded-none"><DialogHeader><DialogTitle>Preview: {topic?.code} · {topic?.title}</DialogTitle></DialogHeader><p className="text-sm">Unsaved preview · {published ? 'Published on Save' : 'Draft'}</p>{videos.map((v, n) => <div key={n} className="space-y-2"><h3>{v.title}</h3>{youtubeId(v.video_url) ? <iframe className="aspect-video w-full" src={`https://www.youtube.com/embed/${youtubeId(v.video_url)}`} title={`Preview ${v.title}`} allowFullScreen /> : <p>Enter a valid YouTube URL.</p>}</div>)}{gamePath && <Suspense fallback={<p>Loading game preview…</p>}><CourseGame path={gamePath} /></Suspense>}</DialogContent></Dialog>
     </CardContent></Card>;
 }

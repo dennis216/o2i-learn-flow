@@ -18,6 +18,9 @@ export async function verifyCourseGame({page,context,api,course,topic,requests,o
   await frame.getByRole('button',{name:'Play test game'}).click();
   assert.equal(await frame.locator('#result').textContent(),'Game interaction works');
   assert.equal(downloads,1);
+  await page.getByRole('button',{name:'Expand game',exact:true}).click();assert.equal(await frame.locator('#result').textContent(),'Game interaction works');assert.equal(downloads,1);
+  const expanded=await page.getByTitle('Lesson game').boundingBox();assert.ok(expanded.width>1000 && expanded.height>650);await page.screenshot({path:resolve(out,'student-game-expanded.png')});
+  await page.getByRole('button',{name:'Exit expanded game',exact:true}).click();assert.equal(await frame.locator('#result').textContent(),'Game interaction works');assert.equal(downloads,1);
   assert.equal(await page.getByTitle('Lesson game').getAttribute('sandbox'),'allow-scripts');
   assert.equal(await page.evaluate(()=>document.body.dataset.gameEscaped),undefined);
   assert.equal(await frame.locator('body').getAttribute('data-parent-blocked'),'yes');

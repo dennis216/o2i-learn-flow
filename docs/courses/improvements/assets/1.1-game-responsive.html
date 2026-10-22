@@ -1,0 +1,1311 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CALC QUEST 练习场</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: arcade cabinet — header strip, stage strip, game screen + side console (table / limit button), achievements shelf. Single dark pixel look. */
+@font-face { font-family: 'FusionPixel'; src: url(data:font/woff;base64,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) format('woff'); font-display: block; }
+:root {
+  color-scheme: dark;
+  --bg: #0B1226; --panel: #111D35; --panel2: #1D2B53; --edge: #FFF1E8; --shade: #000000;
+  --muted: #83769C; --text: #FFF1E8; --dim: #5F574F;
+  --yellow: #FFEC27; --green: #00E436; --red: #FF004D; --coral: #FF6E59; --blue: #29ADFF; --orange: #FFA300; --teal: #125359;
+  --px: 'FusionPixel', 'PingFang SC', 'Microsoft YaHei', monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--text); }
+body { font-family: var(--px); font-size: 12px; line-height: 1.5; -webkit-font-smoothing: none; font-smooth: never; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+.pix { background: var(--panel); box-shadow: 0 -3px 0 0 var(--shade), 0 3px 0 0 var(--shade), -3px 0 0 0 var(--shade), 3px 0 0 0 var(--shade), inset 0 0 0 3px var(--edge), 6px 6px 0 3px var(--shade); }
+button { font-family: var(--px); font-size: 12px; color: var(--text); cursor: pointer; border: 0; background: var(--panel2); padding: 9px 12px; box-shadow: inset 0 0 0 3px var(--muted), 3px 3px 0 0 var(--shade); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+button:hover:not(:disabled) { box-shadow: inset 0 0 0 3px var(--yellow), 3px 3px 0 0 var(--shade); }
+button:active:not(:disabled), button.down { transform: translate(3px, 3px); box-shadow: inset 0 0 0 3px var(--yellow); }
+button:disabled { color: var(--dim); cursor: not-allowed; box-shadow: inset 0 0 0 3px var(--dim); }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+h1, h2, h3 { margin: 0; font-weight: normal; text-wrap: balance; }
+
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; }
+header .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+header h1 { font-size: 24px; color: var(--yellow); letter-spacing: 1px; }
+header .sub { color: var(--muted); }
+header .spacer { flex: 1; }
+#logo { width: 72px; height: 24px; image-rendering: pixelated; }
+
+.stages { display: flex; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 640px) { .stages { flex-wrap: nowrap; overflow-x: auto; padding: 0 9px 12px 0; } .chip { flex: none; } }
+.chip { display: grid; gap: 2px; text-align: left; min-width: 128px; }
+.chip b { font-weight: normal; color: var(--yellow); }
+.chip .st { color: var(--muted); }
+.chip.on { background: var(--teal); box-shadow: inset 0 0 0 3px var(--yellow), 3px 3px 0 0 var(--shade); }
+.chip.done .st { color: var(--green); }
+
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.screen { padding: 9px; display: grid; gap: 12px; min-width: 0; }
+.stagewrap { position: relative; }
+canvas#c { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; background: #000; }
+.owl { display: flex; gap: 12px; align-items: flex-start; padding: 12px; background: var(--panel2); box-shadow: inset 0 0 0 3px var(--muted); }
+.owl canvas { width: 48px; height: 54px; image-rendering: pixelated; flex: none; }
+.owl .who { color: var(--yellow); }
+.owl p { margin: 0; font-size: 24px; line-height: 1.4; min-width: 0; }
+@media (max-width: 640px) { .owl p { font-size: 12px; } }
+
+.pads { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pad { display: grid; gap: 6px; padding: 9px; background: var(--panel2); box-shadow: inset 0 0 0 3px var(--muted); }
+.pad .lab { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pad .lab span:last-child { color: var(--muted); }
+.pad .btns { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 6px; }
+.pad button { font-size: 24px; padding: 6px 0; }
+.pad button.rec { font-size: 12px; }
+.pad.red .lab span:first-child { color: var(--coral); }
+.pad.grn .lab span:first-child { color: var(--green); }
+
+.side { padding: 15px; display: grid; gap: 14px; min-width: 0; }
+.side h2 { font-size: 24px; color: var(--yellow); }
+.side .goal { color: var(--text); }
+.fn { color: var(--muted); }
+.tbl { background: #000; box-shadow: inset 0 0 0 3px var(--muted); padding: 9px 6px; }
+.tbl table { width: 100%; border-collapse: collapse; font-size: 24px; font-variant-numeric: tabular-nums; }
+.tbl th { color: var(--muted); font-weight: normal; padding: 0 6px 6px; border-bottom: 3px solid var(--muted); }
+.tbl td { text-align: center; padding: 2px 6px; }
+.tbl td:first-child, .tbl th:first-child { border-right: 3px solid var(--muted); }
+.tbl tr.L td { color: var(--yellow); }
+.tbl tr.R td { color: var(--green); }
+.tbl tr.sep td { padding: 0; height: 6px; border-right: 0; }
+.tbl tr.empty td { color: var(--dim); font-size: 12px; padding: 10px 6px; border-right: 0; }
+.tbl tr.lit td { background: var(--panel2); }
+.tbl tr.new td { animation: pop .3s steps(3); }
+.tbl tr.jump td { animation: jump .45s steps(4); }
+@keyframes pop { 0% { color: var(--edge); transform: scale(1.3); } 100% { transform: scale(1); } }
+@keyframes jump { 0% { transform: translateY(0); } 40% { transform: translateY(-9px); color: var(--edge); } 70% { transform: translateY(-3px); } 100% { transform: translateY(0); } }
+.count { display: flex; justify-content: space-between; gap: 8px; }
+.count .l { color: var(--yellow); } .count .r { color: var(--green); }
+#see { font-size: 24px; padding: 12px; background: var(--red); box-shadow: inset 0 0 0 3px var(--edge), 3px 3px 0 0 var(--shade); }
+#see:disabled { background: var(--panel2); }
+.row2 { display: flex; gap: 12px; flex-wrap: wrap; }
+.keys { color: var(--muted); }
+.keys kbd { font-family: var(--px); color: var(--text); background: var(--panel2); padding: 0 6px; box-shadow: inset 0 -3px 0 var(--shade); }
+
+#card { position: absolute; left: 50%; bottom: 5%; transform: translateX(-50%); width: min(92%, 460px); padding: 18px; display: grid; gap: 10px; text-align: center; animation: drop .35s steps(4); }
+#card .lim { font-size: 24px; color: var(--yellow); }
+#card .lw { display: inline-grid; justify-items: center; line-height: 1; vertical-align: middle; margin-right: 6px; }
+#card .lw small { font-size: 12px; }
+#card .note { color: var(--text); }
+#card .ach { color: var(--green); }
+#card.dne .lim { color: var(--coral); }
+#card .row2 { justify-content: center; }
+@keyframes drop { 0% { transform: translate(-50%, -30px); opacity: 0; } 100% { transform: translate(-50%, 0); opacity: 1; } }
+@media (max-width: 640px) { #card { position: static; transform: none; width: auto; margin-top: 12px; padding: 12px; gap: 6px; animation: none; } }
+
+.shelf { padding: 15px; display: grid; gap: 12px; }
+.shelf .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.shelf h2 { font-size: 24px; color: var(--yellow); }
+.achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.a { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 10px; padding: 10px; background: var(--panel2); box-shadow: inset 0 0 0 3px var(--dim); }
+.a canvas { width: 42px; height: 42px; image-rendering: pixelated; }
+.a .n { color: var(--dim); font-size: 12px; }
+.a .t { color: var(--dim); }
+.a .d { color: var(--dim); }
+.a.got { box-shadow: inset 0 0 0 3px var(--yellow); }
+.a.got .t { color: var(--yellow); } .a.got .d { color: var(--text); } .a.got .n { color: var(--green); }
+.a.soon { opacity: .75; }
+
+#toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); z-index: 20; padding: 12px 16px; display: grid; gap: 2px; min-width: 220px; max-width: calc(100vw - 32px); }
+#toast .k { color: var(--green); } #toast .t { font-size: 24px; color: var(--yellow); }
+#toast.show { animation: slide .4s steps(4); }
+@keyframes slide { 0% { transform: translateX(120%); } 100% { transform: translateX(0); } }
+footer { color: var(--muted); text-align: center; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="pix">
+    <div class="brand"><canvas id="logo" width="72" height="24" aria-label="o2i"></canvas><div><h1>CALC QUEST 练习场</h1><div class="sub">o2i 出品 · WORLD 1 极限与连续 · 跟着视频关卡亲手玩一遍</div></div></div>
+    <div class="spacer"></div>
+    <button id="mute" type="button" aria-pressed="false">音效：开</button>
+  </header>
+
+  <nav class="stages" id="stages" aria-label="关卡"></nav>
+
+  <div class="main">
+    <section class="screen pix" aria-label="游戏画面">
+      <div class="stagewrap">
+        <canvas id="c" width="640" height="360" tabindex="0" aria-label="游戏画面：两个小人从左右两边逼近函数图像上的一个点"></canvas>
+        <div id="card" class="pix" hidden></div>
+      </div>
+      <div class="owl"><canvas id="owl" width="16" height="18"></canvas><div><div class="who">猫头鹰博士</div><p id="hint">红帽用 A / D 移动，绿帽用 ← / → 移动。走到一个位置，按 W 或 ↑ 记录高度。</p></div></div>
+      <div class="pads">
+        <div class="pad red"><div class="lab"><span>红帽 · 从左边逼近</span><span>A / D 走 · W 记录</span></div>
+          <div class="btns"><button type="button" data-k="lL" aria-label="红帽向左">◀</button><button type="button" class="rec" data-r="0">记录</button><button type="button" data-k="lR" aria-label="红帽向右">▶</button></div></div>
+        <div class="pad grn"><div class="lab"><span>绿帽 · 从右边逼近</span><span>← / → 走 · ↑ 记录</span></div>
+          <div class="btns"><button type="button" data-k="rL" aria-label="绿帽向左">◀</button><button type="button" class="rec" data-r="1">记录</button><button type="button" data-k="rR" aria-label="绿帽向右">▶</button></div></div>
+      </div>
+    </section>
+
+    <aside class="side pix" aria-label="记录表">
+      <div><h2 id="stTitle">1-1 A · 洞</h2><div class="fn" id="stFn">f(x) = (x² - 4) / (x - 2)</div></div>
+      <div class="goal" id="stGoal"></div>
+      <div class="tbl"><table><thead><tr><th>x</th><th>f(x)</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="count"><span class="l" id="cntL">左 0 / 3</span><span class="r" id="cntR">右 0 / 3</span></div>
+      <button id="see" type="button" disabled>看极限 SEE LIMIT</button>
+      <div class="row2"><button id="reset" type="button">重来这一关</button><button id="undo" type="button">撤销上一个记录</button></div>
+      <div class="keys"><kbd>Enter</kbd> 看极限 · 每边至少记录 3 个点</div>
+    </aside>
+  </div>
+
+  <section class="shelf pix" aria-label="成就">
+    <div class="hd"><h2>成就</h2><span id="achCount" class="sub"></span></div>
+    <div class="achs" id="achs"></div>
+  </section>
+  <footer>CALC QUEST · AP 微积分像素冒险 · o2i 从 0 到无穷</footer>
+</div>
+<div id="toast" class="pix" hidden role="status" aria-live="polite"></div>
+
+<script>
+// CALC QUEST — deterministic pixel-art explainer engine.
+// Every frame is a pure function of time t (seconds). Composite canvas 960x540 (upscaled x2 later),
+// game layer 320x180 drawn at x3 nearest-neighbour. UI text uses the Fusion Pixel 12px font at
+// integer multiples (12/24/36/48) and is alpha-thresholded so it stays hard-edged.
+
+
+const W = 640, H = 360, GW = 320, GH = 180, SC = 2, FPS = 30;
+
+// PICO-8 palette + "secret" palette (32 colours)
+const P = {
+  black: '#000000', navy: '#1D2B53', plum: '#7E2553', dgreen: '#008751', brown: '#AB5236',
+  dgray: '#5F574F', lgray: '#C2C3C7', white: '#FFF1E8', red: '#FF004D', orange: '#FFA300',
+  yellow: '#FFEC27', green: '#00E436', blue: '#29ADFF', lav: '#83769C', pink: '#FF77A8',
+  peach: '#FFCCAA', dbrown: '#291814', ink: '#111D35', dplum: '#422136', teal: '#125359',
+  rust: '#742F29', dpurple: '#49333B', tan: '#A28879', lyellow: '#F3EF7D', crimson: '#BE1250',
+  dorange: '#FF6C24', lime: '#A8E72E', mgreen: '#00B543', dblue: '#065AB5', mauve: '#754665',
+  coral: '#FF6E59', lpeach: '#FF9D81',
+};
+
+// ------------------------------------------------------------------ deterministic helpers
+function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = (n + (n << 3)) | 0; n ^= n >>> 4; n = Math.imul(n, 0x27d4eb2d); n ^= n >>> 15; return (n >>> 0) / 4294967296; }
+function rnd(i, j = 0) { return hash(i * 7919 + j * 104729 + 13); }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, u) => a + (b - a) * u;
+const smooth = u => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
+const easeOut = u => { u = clamp(u, 0, 1); return 1 - (1 - u) * (1 - u) * (1 - u); };
+const easeOutBack = u => { u = clamp(u, 0, 1); const c = 1.70158; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
+// stepped time: quantise to the sprite frame rate (pixel-art "steps()" timing)
+const stepT = (t, fps = 12) => Math.floor(t * fps + 1e-6) / fps;
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
+
+// piecewise keyframes [[t, v], ...] with easing per segment
+function kf(t, keys, ease = smooth) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i];
+      const e = keys[i][2] || ease;
+      return lerp(v0, v1, e((t - t0) / (t1 - t0)));
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+
+// ------------------------------------------------------------------ canvases
+let X, G, cnv, gcnv;
+function initCanvas() {
+  cnv = document.getElementById('c');
+  cnv.width = W; cnv.height = H;
+  X = cnv.getContext('2d', { willReadFrequently: false });
+  X.imageSmoothingEnabled = false;
+  gcnv = document.createElement('canvas');
+  gcnv.width = GW; gcnv.height = GH;
+  G = gcnv.getContext('2d');
+  G.imageSmoothingEnabled = false;
+}
+function blitGame() { X.imageSmoothingEnabled = false; X.drawImage(gcnv, 0, 0, GW * SC, GH * SC); }
+
+function px(c, x, y, col) { c.fillStyle = col; c.fillRect(x | 0, y | 0, 1, 1); }
+function rect(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+
+// ------------------------------------------------------------------ pixel text
+const FONT = 'FusionPixel';
+const _tcache = new Map();
+let _mctx;
+function measure(str, size) {
+  if (!_mctx) _mctx = document.createElement('canvas').getContext('2d');
+  _mctx.font = `${size}px ${FONT}`;
+  return _mctx.measureText(str).width;
+}
+// returns a canvas with the thresholded glyph run (colour col)
+function textBitmap(str, size, col) {
+  const key = str + '\u0001' + size + col;
+  let b = _tcache.get(key);
+  if (b) return b;
+  const w = Math.ceil(measure(str, size)) + 2, h = Math.ceil(size * 1.25) + 2;
+  const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = h;
+  const g = c.getContext('2d');
+  g.font = `${size}px ${FONT}`; g.textBaseline = 'top'; g.fillStyle = col;
+  g.fillText(str, 0, 0);
+  const id = g.getImageData(0, 0, c.width, c.height);
+  const d = id.data;
+  const r = parseInt(col.slice(1, 3), 16), gg = parseInt(col.slice(3, 5), 16), bb = parseInt(col.slice(5, 7), 16);
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] >= 110) { d[i] = r; d[i + 1] = gg; d[i + 2] = bb; d[i + 3] = 255; } else d[i + 3] = 0;
+  }
+  g.putImageData(id, 0, 0);
+  b = { c, w: measure(str, size), h };
+  _tcache.set(key, b);
+  return b;
+}
+// rich text: segments separated by colour tags  [y]..[/] [b]..[/] [r]..[/] [g]..[/] [m]..[/]
+const TAGC = { y: P.yellow, b: P.blue, r: P.coral, g: P.green, m: P.lgray, o: P.orange, p: P.pink };
+function parseRich(s, base) {
+  const out = []; const re = /\[(\w)\]([\s\S]*?)\[\/\]/g; let i = 0, m;
+  while ((m = re.exec(s))) {
+    if (m.index > i) out.push({ s: s.slice(i, m.index), c: base });
+    out.push({ s: m[2], c: TAGC[m[1]] || base });
+    i = re.lastIndex;
+  }
+  if (i < s.length) out.push({ s: s.slice(i), c: base });
+  return out;
+}
+const plainLen = s => [...s.replace(/\[\w\]|\[\/\]/g, '')].length;
+function richWidth(s, size) { return parseRich(s, P.white).reduce((a, seg) => a + measure(seg.s, size), 0); }
+
+// draw text. opts: size, col, align ('left'|'center'|'right'), shadow colour, outline colour, reveal (chars)
+function text(ctx, s, x, y, o = {}) {
+  const size = o.size || 24, base = o.col || P.white;
+  const segs = parseRich(String(s), base);
+  const total = segs.reduce((a, g) => a + measure(g.s, size), 0);
+  let cx = Math.round(o.align === 'center' ? x - total / 2 : o.align === 'right' ? x - total : x);
+  y = Math.round(y);
+  let left = o.reveal === undefined ? 1e9 : o.reveal;
+  const u = Math.max(1, Math.round(size / 12)); // font pixel unit
+  for (const seg of segs) {
+    if (left <= 0) break;
+    const chars = [...seg.s];
+    const shown = chars.slice(0, Math.max(0, Math.floor(left))).join('');
+    left -= chars.length;
+    const full = textBitmap(seg.s, size, seg.c);
+    const wShown = shown.length === seg.s.length ? full.c.width : Math.ceil(measure(shown, size));
+    if (wShown > 0) {
+      if (o.outline) {
+        const ob = textBitmap(seg.s, size, o.outline);
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]])
+          ctx.drawImage(ob.c, 0, 0, wShown, ob.h, cx + dx * u, y + dy * u, wShown, ob.h);
+      }
+      if (o.shadow) {
+        const sb = textBitmap(seg.s, size, o.shadow);
+        ctx.drawImage(sb.c, 0, 0, wShown, sb.h, cx + u, y + u, wShown, sb.h);
+      }
+      ctx.drawImage(full.c, 0, 0, wShown, full.h, cx, y, wShown, full.h);
+    }
+    cx += full.w;
+  }
+  return total;
+}
+// wrap rich text into lines of max width. Prefers a balanced break right after punctuation;
+// never splits latin words / numbers, never starts a line with closing punctuation.
+function wrapRich(s, size, maxW) {
+  const out = [];
+  for (const para of s.split('\n')) {
+    const chars = [];
+    for (const seg of parseRich(para, null)) {
+      const k = seg.c ? Object.keys(TAGC).find(kk => TAGC[kk] === seg.c) : null;
+      for (const ch of seg.s) chars.push({ ch, k, w: measure(ch, size) });
+    }
+    const build = (a, b) => {
+      let str = '', cur = undefined;
+      for (let i = a; i < b; i++) {
+        const c = chars[i];
+        if (c.k !== cur) { if (cur) str += '[/]'; if (c.k) str += `[${c.k}]`; cur = c.k; }
+        str += c.ch;
+      }
+      if (cur) str += '[/]';
+      return str.replace(/^\s+/, '');
+    };
+    const width = (a, b) => { let w = 0; for (let i = a; i < b; i++) w += chars[i].w; return w; };
+    const okBreak = i => {
+      if (i <= 0 || i >= chars.length) return false;
+      const p = chars[i - 1].ch, n = chars[i].ch;
+      if (/[，。！？、：；）」』】…”’,.!?:;)]/.test(n)) return false;
+      if (/[A-Za-z0-9.(（“‘]/.test(p) && /[A-Za-z0-9.]/.test(n)) return false;
+      if (/[（“‘(]/.test(p)) return false;
+      if (p === '—' && n === '—') return false;
+      return true;
+    };
+    let start = 0;
+    while (start < chars.length) {
+      if (width(start, chars.length) <= maxW) { out.push(build(start, chars.length)); break; }
+      const rest = width(start, chars.length);
+      let best = -1, bestScore = 1e9;
+      for (let i = start + 1; i < chars.length; i++) {
+        const w1 = width(start, i); if (w1 > maxW) break;
+        if (!okBreak(i)) continue;
+        const punct = /[，。！？、：；）”—]/.test(chars[i - 1].ch);
+        const w2 = rest - w1;
+        const score = (w2 <= maxW ? Math.abs(w1 - w2) * 0.5 : 2000) + (punct ? 0 : 260) - (w2 > maxW ? w1 : 0);
+        if (score < bestScore) { bestScore = score; best = i; }
+      }
+      if (best < 0) best = start + 1;
+      out.push(build(start, best));
+      start = best;
+      while (start < chars.length && chars[start].ch === ' ') start++;
+    }
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ math images
+const MATH = {};
+async function loadMath(dir, meta) {
+  await Promise.all(Object.keys(meta).map(id => new Promise((res, rej) => {
+    const im = new Image(); im.onload = () => { MATH[id] = im; res(); }; im.onerror = rej; im.src = `${dir}/${id}.png`;
+  })));
+}
+function math(ctx, id, x, y, o = {}) {
+  const im = MATH[id]; if (!im) throw new Error('missing math ' + id);
+  let dx = o.align === 'center' ? x - im.width / 2 : o.align === 'right' ? x - im.width : x;
+  let dy = o.valign === 'middle' ? y - im.height / 2 : y;
+  const frac = o.reveal === undefined ? 1 : clamp(o.reveal, 0, 1);
+  const w = Math.round(im.width * frac);
+  if (w <= 0) return;
+  if (o.shadow !== false) {
+    // hard 2px drop shadow: draw silhouette
+    ctx.save(); ctx.globalCompositeOperation = 'source-over';
+    ctx.filter = 'brightness(0)';
+    ctx.drawImage(im, 0, 0, w, im.height, Math.round(dx) + 2, Math.round(dy) + 2, w, im.height);
+    ctx.restore();
+  }
+  ctx.drawImage(im, 0, 0, w, im.height, Math.round(dx), Math.round(dy), w, im.height);
+  return im;
+}
+const mathW = id => MATH[id].width, mathH = id => MATH[id].height;
+
+// ------------------------------------------------------------------ UI chrome (3px = 1 game pixel)
+function panel(ctx, x, y, w, h, o = {}) {
+  x = Math.round(x / 3) * 3; y = Math.round(y / 3) * 3; w = Math.round(w / 3) * 3; h = Math.round(h / 3) * 3;
+  const b = o.border || P.white, f = o.fill || P.ink, sh = o.shadow === undefined ? P.black : o.shadow;
+  if (sh) { rect(ctx, x + 6, y + 6, w, h, sh); }
+  rect(ctx, x + 3, y, w - 6, h, P.black); rect(ctx, x, y + 3, w, h - 6, P.black);
+  rect(ctx, x + 3, y + 3, w - 6, h - 6, b);
+  rect(ctx, x + 6, y + 6, w - 12, h - 12, f);
+  if (o.inner) { rect(ctx, x + 9, y + 9, w - 18, 3, o.inner); }
+}
+// stepped pop-in: returns 0..1 in 4 discrete steps over 0.33 s
+function popStep(u, dur = 0.33) { if (u <= 0) return 0; return Math.min(1, Math.ceil(clamp(u / dur, 0, 1) * 4) / 4); }
+function card(ctx, cx, cy, w, h, u, o = {}) {
+  // u = time since appear (s); draws a panel that unrolls vertically in 4 steps; returns visible flag
+  const k = popStep(u);
+  if (k <= 0) return false;
+  const hh = Math.max(12, h * k);
+  panel(ctx, cx - w / 2, cy - hh / 2, w, hh, o);
+  return k >= 1;
+}
+
+// ------------------------------------------------------------------ sprites
+function sprite(ctx, rows, map, x, y, o = {}) {
+  const flip = o.flip, s = o.scale || 1;
+  const w = rows[0].length;
+  for (let j = 0; j < rows.length; j++) {
+    const r = rows[j];
+    for (let i = 0; i < w; i++) {
+      const ch = r[i]; if (ch === '.' || ch === ' ') continue;
+      const col = (o.recolor && o.recolor[ch]) || map[ch]; if (!col) continue;
+      const ii = flip ? w - 1 - i : i;
+      ctx.fillStyle = col; ctx.fillRect(Math.round(x) + ii * s, Math.round(y) + j * s, s, s);
+    }
+  }
+}
+
+const HERO_MAP = { r: P.red, R: P.crimson, h: P.rust, s: P.peach, S: P.lpeach, k: P.black, b: P.blue, B: P.dblue, n: P.navy, o: P.dplum, w: P.white, y: P.yellow };
+const HERO_TOP = [
+  '....rrrrr...',
+  '...rrrrrrr..',
+  '..rrrrwrrrr.',
+  '..RRRRRRRRRR',
+  '..hhssssks..',
+  '..hsssssks..',
+  '..hhsSssss..',
+  '...ssssss...',
+  '....bbbb....',
+];
+// arms + legs per run frame (rows 9..15), 6-frame cycle, facing right
+const HERO_RUN = [
+  ['...bbbbbs...', '..sbbBbb....', '....bbbb....', '....nnnn....', '...nn..nn...', '..nn....nn..', '..oo....oo..'],
+  ['...bbbbb....', '..sbbBbbs...', '....bbbb....', '....nnnn....', '....nn.nn...', '...nn...nn..', '...oo...oo..'],
+  ['...sbbbb....', '...bbBbb....', '....bbbbs...', '....nnnn....', '.....nnn....', '.....nn.....', '.....ooo....'],
+  ['..sbbbbb....', '...bbBbbs...', '....bbbb....', '....nnnn....', '...nn..nn...', '..nn....nn..', '..oo....oo..'],
+  ['...bbbbbs...', '...bbBbb....', '...sbbbb....', '....nnnn....', '...nn.nn....', '..nn...nn...', '..oo...oo...'],
+  ['...bbbbb....', '...bbBbb....', '...sbbbbs...', '....nnnn....', '....nnn.....', '.....nn.....', '....ooo.....'],
+];
+const HERO_IDLE = [
+  ['...bbbbb....', '..sbbBbbs...', '....bbbb....', '....nnnn....', '....n..n....', '....n..n....', '...oo..oo...'],
+  ['...bbbbb....', '..sbbBbbs...', '....bbbb....', '....nnnn....', '....n..n....', '....n..n....', '...oo..oo...'],
+];
+const HERO_JUMP = ['..sbbbbbs...', '...bbBbb....', '....bbbb....', '....nnnn....', '...nn..nn...', '...n....nn..', '..oo.....o..'];
+// draws hero with feet centre at (x, y) in game px. state: 'run'|'idle'|'jump'; t for animation
+function hero(ctx, x, y, state, t, o = {}) {
+  let legs, bob = 0;
+  if (state === 'run') { const f = Math.floor(stepT(t, 12) * 12) % 6; legs = HERO_RUN[f]; bob = (f % 3 === 2) ? -1 : 0; }
+  else if (state === 'jump') legs = HERO_JUMP;
+  else { const f = Math.floor(stepT(t, 3) * 3) % 2; legs = HERO_IDLE[f]; bob = f; }
+  const all = HERO_TOP.concat(legs);
+  sprite(ctx, all, HERO_MAP, Math.round(x) - 6, Math.round(y) - all.length + bob, { flip: o.flip, recolor: o.recolor });
+}
+
+// Owl professor portrait 16x18
+const OWL = [
+  '...kkkkkkkkkk...',
+  '..kyyyyyyyyyyk..',
+  '.kkkkkkkkkkkkkk.',
+  '...k.kttttk.k...',
+  '..ktkttttttktk..',
+  '.kttttttttttttk.',
+  '.ktwwwkttkwwwtk.',
+  'ktwwkwwkkwwkwwtk',
+  'ktwwkwwkkwwkwwtk',
+  'kttwwwtyytwwwttk',
+  'ktttttttyytttttk',
+  'kttccccttccccttk',
+  'kttcTccccccTcttk',
+  'ktttccccccccttt.',
+  '.kttcTccccTcttk.',
+  '.kttttttttttttk.',
+  '..kkooookkookk..',
+  '................',
+];
+const OWL_MAP = { k: P.black, y: P.yellow, t: P.tan, w: P.white, c: P.peach, T: P.tan, o: P.orange };
+function owl(ctx, x, y, t, scale = 3, talking = false) {
+  let rows = OWL;
+  const blink = Math.floor(t * 4) % 17 === 0;
+  if (blink) rows = OWL.map((r, i) => (i === 7 || i === 8) ? (i === 7 ? 'kttttttkkttttttk' : 'ktkkkkkkkkkkkktk') : r);
+  const bob = talking ? (Math.floor(stepT(t, 6) * 6) % 2) : 0;
+  sprite(ctx, rows, OWL_MAP, x, y + bob * scale, { scale });
+}
+
+const COIN = [['.kkk.', 'kyyok', 'kywok', 'kyyok', '.kkk.'], ['..k..', '.kyk.', '.kwk.', '.kyk.', '..k..'], ['.kkk.', 'koyyk', 'kowyk', 'koyyk', '.kkk.']];
+const COIN_MAP = { k: P.black, y: P.yellow, o: P.orange, w: P.white };
+function coin(ctx, x, y, t) { const f = ((Math.floor(stepT(t, 8) * 8) % 4) + 4) % 4; sprite(ctx, COIN[[0, 1, 2, 1][f]], COIN_MAP, x - 2, y - 2); }
+function sparkle(ctx, x, y, u, col = P.white) {
+  // 4-frame star burst, u in seconds since spawn
+  const f = Math.floor(u * 12); if (f < 0 || f > 5) return;
+  const r = [1, 2, 3, 3, 2, 1][f];
+  ctx.fillStyle = col;
+  ctx.fillRect(x, y - r, 1, 2 * r + 1); ctx.fillRect(x - r, y, 2 * r + 1, 1);
+  if (f >= 2 && f <= 4) { ctx.fillRect(x - r + 1, y - r + 1, 1, 1); ctx.fillRect(x + r - 1, y - r + 1, 1, 1); ctx.fillRect(x - r + 1, y + r - 1, 1, 1); ctx.fillRect(x + r - 1, y + r - 1, 1, 1); }
+}
+const RING = ['..www..', '.wkkkw.', 'wkkkkkw', 'wkkkkkw', 'wkkkkkw', '.wkkkw.', '..www..'];
+const DOT = ['..www..', '.wyyyw.', 'wyyyyyw', 'wyyyyyw', 'wyyyyyw', '.wyyyw.', '..www..'];
+function openDot(ctx, x, y, col = P.white, hole = P.ink) { sprite(ctx, RING, { w: col, k: hole }, x - 3, y - 3); }
+function solidDot(ctx, x, y, col = P.yellow, rim = P.white) { sprite(ctx, DOT, { w: rim, y: col }, x - 3, y - 3); }
+const CHECK = ['........gg', '.......ggk', '......ggk.', 'gg...ggk..', 'kgg.ggk...', '.kgggk....', '..kgk.....', '...k......'];
+const CROSS = ['rr....rr', 'krr..rrk', '.krrrrk.', '..krrk..', '..rrrr..', '.rrkkrr.', 'rrk..krr', 'kk....kk'];
+const BRICK = ['oooooooo', 'ooooooko', 'kkkkkkkk', 'ookooooo', 'ookooooo', 'kkkkkkkk', 'oooooko.', 'kkkkkkkk'];
+const CHEST_C = [
+  '..kkkkkkkkkkkk..',
+  '.kooooooooooook.',
+  'kooooooooooooook',
+  'kbbbbbbbbbbbbbbk',
+  'kkkkkkkyykkkkkkk',
+  'koooooowyoooooook'.slice(0, 16),
+  'koooooookoooooook'.slice(0, 16),
+  'kooooooooooooook',
+  'kbbbbbbbbbbbbbbk',
+  'kkkkkkkkkkkkkkkk',
+];
+const CHEST_O = [
+  '..kkkkkkkkkkkk..',
+  '.kbbbbbbbbbbbbk.',
+  'kbyyyyyyyyyyyybk',
+  'kkkkkkkkkkkkkkkk',
+  '................',
+  'kyyyyyyyyyyyyyyk',
+  'koooooookoooooook'.slice(0, 16),
+  'kooooooooooooook',
+  'kbbbbbbbbbbbbbbk',
+  'kkkkkkkkkkkkkkkk',
+];
+const CHEST_MAP = { k: P.black, o: P.brown, b: P.rust, y: P.yellow };
+
+// ------------------------------------------------------------------ backgrounds
+const SKIES = {
+  day: [P.dblue, P.blue, P.lgray],
+  night: [P.ink, P.navy, P.dpurple],
+  analysis: [P.ink, P.ink, P.navy],
+  sunset: [P.plum, P.dorange, P.orange],
+  boss: [P.ink, P.dpurple, P.plum],
+};
+function sky(ctx, name, yTop = 0, yBot = GH) {
+  const c = SKIES[name];
+  for (let y = yTop; y < yBot; y++) {
+    const v = (y - yTop) / (yBot - yTop) * 2; // 0..2 over three colours
+    const i = Math.min(1, Math.floor(v)), f = v - i;
+    for (let x = 0; x < GW; x++) {
+      ctx.fillStyle = f > bayer(x, y) ? c[i + 1] : c[i];
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+function stars(ctx, t, n = 40, yMax = 120) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.floor(rnd(i, 1) * GW), y = Math.floor(rnd(i, 2) * yMax);
+    const tw = Math.floor(stepT(t, 4) * 4 + rnd(i, 3) * 8) % 8;
+    if (tw === 0) continue;
+    px(ctx, x, y, tw === 4 ? P.white : rnd(i, 4) > 0.5 ? P.lav : P.lgray);
+  }
+}
+// silhouette layer: f(x) heights with seeded bumps, scrolled by off (whole px)
+function ridge(ctx, off, base, amp, freq, col, seed, colTop) {
+  for (let x = 0; x < GW; x++) {
+    const wx = x + Math.floor(off);
+    const h = base - amp * (0.55 * Math.sin(wx * freq + seed) + 0.3 * Math.sin(wx * freq * 2.3 + seed * 3) + 0.15 * Math.sin(wx * freq * 5.1 + seed * 7));
+    const y0 = Math.round(h);
+    ctx.fillStyle = col; ctx.fillRect(x, y0, 1, GH - y0);
+    if (colTop) { ctx.fillStyle = colTop; ctx.fillRect(x, y0, 1, 1); }
+  }
+}
+function trees(ctx, off, base, col, colD, seed) {
+  for (let k = -2; k < 30; k++) {
+    const wx = k * 14 + Math.floor(rnd(k + Math.floor(off / 14), seed) * 6);
+    const x = wx - (Math.floor(off) % 14) ;
+    const hgt = 10 + Math.floor(rnd(k + Math.floor(off / 14), seed + 1) * 8);
+    for (let j = 0; j < hgt; j++) {
+      const w = Math.max(1, Math.floor((j / hgt) * 5));
+      ctx.fillStyle = j % 3 === 0 ? colD : col;
+      ctx.fillRect(x - w, base - hgt + j, 2 * w + 1, 1);
+    }
+  }
+}
+function clouds(ctx, off, y, col, colS, seed, n = 4) {
+  for (let k = 0; k < n; k++) {
+    const span = GW + 80;
+    const x = ((Math.floor(rnd(k, seed) * span) - Math.floor(off * (0.6 + 0.4 * rnd(k, seed + 1)))) % span + span) % span - 40;
+    const yy = y + Math.floor(rnd(k, seed + 2) * 30);
+    const w = 18 + Math.floor(rnd(k, seed + 3) * 20);
+    ctx.fillStyle = colS; ctx.fillRect(x + 2, yy + 3, w, 4);
+    ctx.fillStyle = col; ctx.fillRect(x, yy + 2, w, 4); ctx.fillRect(x + 4, yy, w - 10, 3); ctx.fillRect(x + 8, yy - 2, w / 3, 2);
+  }
+}
+function landscape(ctx, name, scroll, t) {
+  sky(ctx, name);
+  if (name === 'night' || name === 'analysis' || name === 'boss') stars(ctx, t, name === 'analysis' ? 30 : 50);
+  if (name === 'day') clouds(ctx, scroll * 0.15 + t * 3, 18, P.white, P.lgray, 3, 5);
+  if (name === 'sunset') { // sun
+    ctx.fillStyle = P.yellow; for (let j = -10; j <= 10; j++) { const w = Math.floor(Math.sqrt(100 - j * j)); ctx.fillRect(220 - w, 92 + j, 2 * w + 1, 1); }
+    clouds(ctx, scroll * 0.15 + t * 3, 30, P.pink, P.plum, 5, 4);
+  }
+  const far = { day: [P.lav, P.lgray], night: [P.navy, P.lav], analysis: [P.navy, null], sunset: [P.mauve, P.pink], boss: [P.dpurple, P.mauve] }[name];
+  const mid = { day: [P.dgreen, P.teal], night: [P.teal, P.ink], analysis: [P.ink, P.ink], sunset: [P.dplum, P.dpurple], boss: [P.ink, P.black] }[name];
+  ridge(ctx, scroll * 0.25, 112, 26, 0.035, far[0], 1.3, far[1]);
+  if (name !== 'analysis') { ridge(ctx, scroll * 0.5, 132, 12, 0.06, mid[0], 4.1, mid[1]); trees(ctx, scroll * 0.5, 134, mid[0], mid[1], 9); }
+}
+// scrolling ground tiles (near layer)
+function groundTiles(ctx, scroll, y0) {
+  for (let x = 0; x < GW; x++) {
+    const wx = x + Math.floor(scroll);
+    for (let y = y0; y < GH; y++) {
+      let col;
+      if (y === y0) col = P.green; else if (y === y0 + 1) col = (wx % 6 < 3) ? P.green : P.mgreen; else if (y < y0 + 4) col = P.dgreen;
+      else { const d = (y - y0 - 4) / 30; col = d * 0.8 + 0.1 > bayer(wx, y) ? P.rust : P.brown; if (((wx >> 3) + (y >> 3)) % 5 === 0 && (wx & 7) === 3 && (y & 7) === 4) col = P.tan; }
+      ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
+// ------------------------------------------------------------------ plot (graph-as-terrain)
+class Plot {
+  // rect in game px: [L, T, R, B]; view: centre (cx, cy), half ranges (hx, hy)
+  constructor(rectG, cx, cy, hx, hy) { this.r = rectG; this.cx = cx; this.cy = cy; this.hx = hx; this.hy = hy; this.z = 1; this.zx = cx; this.zy = cy; }
+  setZoom(z, ax, ay) { this.z = z; this.zx = ax; this.zy = ay; return this; }
+  get sx() { return (this.r[2] - this.r[0]) / (2 * this.hx) * this.z; }
+  get sy() { return (this.r[3] - this.r[1]) / (2 * this.hy) * this.z; }
+  // data -> game px (float)
+  fx(x) { const base = this.r[0] + (this.zx - (this.cx - this.hx)) * (this.r[2] - this.r[0]) / (2 * this.hx); return base + (x - this.zx) * this.sx; }
+  fy(y) { const base = this.r[3] - (this.zy - (this.cy - this.hy)) * (this.r[3] - this.r[1]) / (2 * this.hy); return base - (y - this.zy) * this.sy; }
+  gx(x) { return Math.round(this.fx(x)); }
+  gy(y) { return Math.round(this.fy(y)); }
+  ix(X) { const base = this.r[0] + (this.zx - (this.cx - this.hx)) * (this.r[2] - this.r[0]) / (2 * this.hx); return this.zx + (X - base) / this.sx; }
+  iy(Y) { const base = this.r[3] - (this.zy - (this.cy - this.hy)) * (this.r[3] - this.r[1]) / (2 * this.hy); return this.zy - (Y - base) / this.sy; }
+}
+// grid + axes in game layer
+function plotGrid(ctx, pl, o = {}) {
+  const [L, T, R, B] = pl.r;
+  const step = o.step || tickStep(pl);
+  const col = o.col || P.navy;
+  const x0 = pl.ix(L), x1 = pl.ix(R);
+  for (let k = Math.ceil(x0 / step); k * step <= x1; k++) {
+    const X = pl.gx(k * step); for (let y = T; y < B; y += 2) px(ctx, X, y, col);
+  }
+  const ystep = o.ystep || step;
+  const y0 = pl.iy(B), y1 = pl.iy(T);
+  for (let k = Math.ceil(y0 / ystep); k * ystep <= y1; k++) {
+    const Y = pl.gy(k * ystep); if (Y < T || Y > B) continue; for (let x = L; x < R; x += 2) px(ctx, x, Y, col);
+  }
+  // axes
+  const ax = pl.gy(0), ay = pl.gx(0);
+  if (ax >= T && ax <= B) rect(ctx, L, ax, R - L, 1, o.axis || P.lgray);
+  if (ay >= L && ay <= R) rect(ctx, ay, T, 1, B - T, o.axis || P.lgray);
+}
+function tickStep(pl) { const lev = Math.pow(10, Math.floor(Math.log10(pl.z + 1e-9) + 1e-9)); return 1 / lev; }
+function fmtTick(v, step) { const d = Math.max(0, Math.ceil(-Math.log10(step) - 1e-9)); return (Math.abs(v) < step / 2 ? 0 : v).toFixed(d); }
+// tick labels on composite layer (960 grid)
+function plotLabels(ctx, pl, o = {}) {
+  const [L, T, R, B] = pl.r;
+  const step = o.step || tickStep(pl), ystep = o.ystep || step;
+  const x0 = pl.ix(L + 2), x1 = pl.ix(R - 2);
+  const yAxisRow = clamp(pl.gy(0), T, B);
+  const ly = (o.xLabelY !== undefined ? o.xLabelY : yAxisRow) * SC + 6;
+  for (let k = Math.ceil(x0 / step); k * step <= x1; k++) {
+    if (o.skipX && o.skipX(k * step)) continue;
+    const v = k * step;
+    const X = pl.fx(v) * SC;
+    text(ctx, fmtTick(v, step), X, ly, { size: 12, col: o.col || P.lgray, align: 'center', outline: P.black });
+  }
+  const atL = pl.gx(0) <= L + 4;
+  const lx = atL ? L * SC + 4 : clamp(pl.gx(0), L, R) * SC - 8;
+  const y0 = pl.iy(B - 2), y1 = pl.iy(T + 2);
+  for (let k = Math.ceil(y0 / ystep); k * ystep <= y1; k++) {
+    const v = k * ystep; if (Math.abs(v) < 1e-9 && !o.zeroY) continue;
+    if (o.skipY && o.skipY(v)) continue;
+    text(ctx, fmtTick(v, ystep), lx, pl.fy(v) * SC - 8, { size: 12, col: o.col || P.lgray, align: atL ? 'left' : 'right', outline: P.black });
+  }
+}
+// terrain: fills from f(x) down to bottom of screen. pieces: [{f, a, b, incA, incB}] ; gaps: x values to cut
+function terrain(ctx, pl, pieces, o = {}) {
+  const [L, , R] = pl.r;
+  const yB = o.bottom || GH;
+  for (let X = L; X < R; X++) {
+    const x = pl.ix(X + 0.5);
+    let piece = null;
+    for (const p of pieces) if (x >= p.a && x < p.b) { piece = p; break; }
+    if (!piece) continue;
+    if (o.gaps && o.gaps.some(g => Math.abs(pl.fx(g) - (X + 0.5)) < 2.5)) continue;
+    const y = piece.f(x);
+    if (!isFinite(y)) continue;
+    let top = Math.round(pl.fy(y));
+    if (top >= yB) continue;
+    const t0 = Math.max(top, -5);
+    for (let Y = Math.max(0, t0); Y < yB; Y++) {
+      const d = Y - top;
+      let col;
+      if (d === 0) col = o.grass || P.green;
+      else if (d === 1) col = ((X >> 1) & 1) ? (o.grass || P.green) : (o.grass2 || P.mgreen);
+      else if (d < 4) col = o.grass3 || P.dgreen;
+      else { const dd = clamp((d - 4) / 26, 0, 1); col = dd * 0.85 + 0.08 > bayer(X, Y) ? (o.dirt2 || P.rust) : (o.dirt || P.brown); if (((X >> 3) + (Y >> 3)) % 5 === 0 && (X & 7) === 3 && (Y & 7) === 4) col = P.tan; }
+      ctx.fillStyle = col; ctx.fillRect(X, Y, 1, 1);
+    }
+  }
+}
+// dashed horizontal guide at data y between game x a..b
+function hguide(ctx, pl, y, xa, xb, col) { const Y = pl.gy(y); for (let X = Math.min(xa, xb); X <= Math.max(xa, xb); X++) if ((X >> 1) % 2 === 0) px(ctx, X, Y, col); }
+function vguide(ctx, pl, x, ya, yb, col) { const X = pl.gx(x); for (let Y = Math.min(ya, yb); Y <= Math.max(ya, yb); Y++) if ((Y >> 1) % 2 === 0) px(ctx, X, Y, col); }
+
+
+// ------------------------------------------------------------------ o2i brand: 0 -> ∞
+// lemniscate of Bernoulli (half-width a); m morphs from a "0" (m=0) to "∞" (m=1)
+function o2iPt(s, a, m = 1) {
+  const d = 1 + Math.sin(s) * Math.sin(s);
+  const lx = a * Math.cos(s) / d, ly = a * Math.sin(s) * Math.cos(s) / d;
+  const ox = a * 0.30 * Math.cos(s), oy = -a * 0.40 * Math.sin(s);
+  return [lerp(ox, lx, m), lerp(oy, ly, m)];
+}
+// rasterise the 0/∞ glyph with square blocks of size b on ctx (centre cx, cy)
+function o2iGlyph(ctx, cx, cy, a, m, o = {}) {
+  const b = o.block || 1, th = o.thick || 2, n = Math.max(200, Math.round(a * 8));
+  const pts = [];
+  for (let i = 0; i < n; i++) { const [x, y] = o2iPt(i / n * Math.PI * 2, a, m); pts.push([Math.round(cx / b + x / b), Math.round(cy / b + y / b)]); }
+  const put = (col, dx, dy) => { ctx.fillStyle = col; for (const [x, y] of pts) ctx.fillRect((x + dx) * b, (y + dy) * b, th * b, th * b); };
+  if (o.shadow) put(o.shadow, 1, 1);
+  put(o.col || P.yellow, 0, 0);
+  if (o.spark !== undefined) {   // a bright spark running round the loop forever
+    for (let k = 0; k < 4; k++) {
+      const i = Math.floor(((o.spark - k * 0.012) % 1 + 1) % 1 * n);
+      const [x, y] = pts[i];
+      ctx.fillStyle = k === 0 ? P.white : k === 1 ? P.lyellow : P.orange;
+      ctx.fillRect(x * b - (k === 0 ? b : 0), y * b - (k === 0 ? b : 0), (th + (k === 0 ? 2 : 0)) * b, (th + (k === 0 ? 2 : 0)) * b);
+    }
+  }
+}
+// ∞-shaped iris wipe: cover in [tc-d, tc] (the ∞ hole shrinks to nothing), uncover in [tc, tc+d]
+function infinityIris(ctx, t, tc, d = 0.5, mode = 'both') {
+  let p;
+  const p0 = mode === 'open' ? 0.39 : 0;        // 'open' starts from logo size (a ~ 150)
+  if (t < tc) { if (mode === 'open') return; p = 1 - (t - (tc - d)) / d; }
+  else { p = p0 + (1 - p0) * (t - tc) / d; }
+  if (p >= 1) return;
+  p = Math.floor(clamp(p, 0, 1) * 12) / 12;           // stepped, 12 fps feel
+  const a = 1000 * p * p, B = 6, cx = W / 2, cy = H / 2;
+  const inside = (x, y, aa) => { const r2 = x * x + y * y; return aa > 0 && r2 * r2 <= aa * aa * (x * x - y * y); };
+  for (let by = 0; by < H; by += B) for (let bx = 0; bx < W; bx += B) {
+    const x = bx + B / 2 - cx, y = by + B / 2 - cy;
+    if (inside(x, y, a)) continue;
+    ctx.fillStyle = inside(x, y, a * 1.06 + 12) ? P.yellow : (inside(x, y, a * 1.12 + 24) ? P.orange : P.black);
+    ctx.fillRect(bx, by, B, B);
+  }
+}
+// small HUD badge: ∞ + "o2i"
+function o2iBadge(ctx, x, y) {
+  o2iGlyph(ctx, x + 24, y + 6, 24, 1, { block: 3, thick: 1, col: P.yellow });
+  text(ctx, 'o2i', x + 54, y, { size: 12, col: P.white });
+}
+
+
+</script>
+<script>
+'use strict';
+// ------------------------------------------------------------------ data
+const ACH = [
+  { id: 'hole', lv: '1-1 A', name: '逼近者', desc: '左右两边都逼近同一个高度 4：极限存在。' },
+  { id: 'brick', lv: '1-1 B', name: '火眼金睛', desc: 'f(2) = 1 只是一块砖，极限依然是 4。' },
+  { id: 'cliff', lv: '1-1 C', name: '悬崖侦探', desc: '左极限 1，右极限 3，不相等：极限不存在。' },
+  { id: 'micro', lv: '1-1', name: '千分之一', desc: '在 ×1000 的镜头下记录一个点。' },
+  { id: 'void', lv: '1-1 A', name: '坠入虚空', desc: '走进 x = 2 的洞掉了下去：这一点不存在，只能逼近，不能到达。' },
+  { id: 'brickfall', lv: '1-1 B', name: '砖块的秘密', desc: '掉进洞里才看见 f(2) = 1：它和路要去的高度 4 不是一回事。' },
+  { id: 'cliffdrop', lv: '1-1 C', name: '一落千丈', desc: '从悬崖右边掉到左边的路上：高度从 3 一下变成 1。' },
+  { id: 'fog', lv: '1-2', name: '迷雾探灯', desc: '即将开放：用表格估计极限。', soon: true },
+  { id: 'algebra', lv: '1-3', name: '化简大师', desc: '即将开放：破解 0/0。', soon: true },
+  { id: 'squeeze', lv: '1-4', name: '夹逼战术', desc: '即将开放：夹逼定理。', soon: true },
+  { id: 'cont', lv: '1-5', name: '连续通行证', desc: '即将开放：连续与间断。', soon: true },
+  { id: 'inf', lv: '1-6', name: '无穷远征', desc: '即将开放：无穷极限与渐近线。', soon: true },
+  { id: 'ivt', lv: '1-7', name: '介值守护者', desc: '即将开放：介值定理。', soon: true },
+];
+const STAGES = [
+  { id: '1-1a', code: '1-1 A', name: '洞', fn: 'f(x) = (x² - 4) / (x - 2)', a: 2, L: 4, R: 4, fa: null, gap: true,
+    fl: x => x + 2, fr: x => x + 2, view: { cx: 2, cy: 4, hx: 3, hy: 4 }, mode: 'xy', start: [0.4, 3.6], ach: 'hole',
+    goal: 'x = 2 处是个洞，那里没有路。两个小人从左右逼近它，每边至少记录 3 个高度。走过头会掉下去！',
+    hint: '红帽用 A / D 走，绿帽用 ← / → 走，W / ↑ 记录高度。两人都站进洞口两边的黄色标记，镜头就会放大。' },
+  { id: '1-1b', code: '1-1 B', name: '砖块陷阱', fn: 'f(x) = (x² - 4) / (x - 2)，另规定 f(2) = 1', a: 2, L: 4, R: 4, fa: 1, gap: true,
+    fl: x => x + 2, fr: x => x + 2, view: { cx: 2, cy: 4, hx: 3, hy: 4 }, mode: 'xy', start: [0.4, 3.6], ach: 'brick',
+    goal: 'x = 2 还是个洞，但听说有人在洞里放了一块砖，规定了 f(2)。先掉下去找到它，再从两边测出极限。',
+    hint: '站在路上看不见那块砖。故意走进洞里，掉下去看看它在哪。' },
+  { id: '1-1c', code: '1-1 C', name: '悬崖', fn: 'f(x) = x - 2（x < 3）；f(x) = x（x ≥ 3）', a: 3, L: 1, R: 3, fa: 3, gap: false,
+    fl: x => x - 2, fr: x => x, view: { cx: 3, cy: 2, hx: 3, hy: 4.5 }, mode: 'x', start: [1.0, 5.0], ach: 'cliff',
+    goal: '路在 x = 3 处断成悬崖。分别记录两边的高度，看看极限还存在吗。',
+    hint: '左边的路比右边低。红帽会撞上悬崖的墙；绿帽往左走过头，会掉到下面那条路上。镜头只横向放大。' },
+];
+const RECT = [14, 14, 306, 160];
+const MINPX = 5, SPEED = 70, MAXREC = 6, NEED = 3, ZMAX = 1000;
+
+// ------------------------------------------------------------------ progress (per player): db when signed in, else this browser
+const Store = {
+  data: { ach: {}, unlocked: ['1-1a'] }, ref: null,
+  load() { try { const s = JSON.parse(localStorage.getItem('cq-progress') || 'null'); if (s && s.ach) this.data = s; } catch (e) {} },
+  async connect() {
+    try {
+      if (!window.claude || !window.claude.use) return;
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if (!db || !user) return;
+      const id = await user.id(); if (!id) return;
+      this.ref = db.doc('data/users/' + id + '/progress');
+      const snap = await this.ref.get();
+      if (snap.exists) {
+        const d = snap.data() || {};
+        this.data.ach = Object.assign({}, d.ach || {}, this.data.ach);
+        this.data.unlocked = [...new Set([...(d.unlocked || []), ...this.data.unlocked])];
+        if (JSON.stringify(d.ach || {}) !== JSON.stringify(this.data.ach)) this.save();
+      } else if (Object.keys(this.data.ach).length) this.save();
+      renderStages(); renderAch();
+    } catch (e) { /* stay on local progress */ }
+  },
+  save() {
+    try { localStorage.setItem('cq-progress', JSON.stringify(this.data)); } catch (e) {}
+    if (this.ref) this.ref.set({ ach: this.data.ach, unlocked: this.data.unlocked }).catch(() => {});
+  },
+};
+
+// ------------------------------------------------------------------ sound (tiny chiptune synth)
+const Snd = {
+  ctx: null, on: true,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  tone(f, d, o = {}) {
+    if (!this.on || !this.ctx) return;
+    const c = this.ctx, t = c.currentTime + (o.at || 0), g = c.createGain(), osc = c.createOscillator();
+    osc.type = o.type || 'square'; osc.frequency.setValueAtTime(f, t);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t + d);
+    g.gain.setValueAtTime(o.vol || 0.05, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+    osc.connect(g).connect(c.destination); osc.start(t); osc.stop(t + d + 0.02);
+  },
+  rec() { this.tone(988, 0.06); this.tone(1319, 0.22, { at: 0.06 }); },
+  step() { this.tone(220, 0.03, { vol: 0.02, type: 'triangle' }); },
+  bump() { this.tone(130, 0.12, { type: 'triangle', vol: 0.12 }); },
+  zoom() { this.tone(220, 0.6, { to: 1400, vol: 0.04 }); },
+  warn() { this.tone(1760, 0.05, { vol: 0.03 }); this.tone(1760, 0.05, { at: 0.09, vol: 0.03 }); },
+  fall() { this.tone(900, 1.0, { to: 90, vol: 0.06 }); },
+  land() { this.tone(110, 0.25, { to: 50, type: 'triangle', vol: 0.3 }); this.tone(90, 0.08, { vol: 0.05 }); },
+  jump() { this.tone(330, 0.18, { to: 880, vol: 0.05 }); },
+  poof() { this.tone(1200, 0.12, { to: 400, vol: 0.04 }); },
+  lit(i) { this.tone(660 * Math.pow(1.122, i), 0.12, { vol: 0.05 }); },
+  chest() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.25, { at: i * 0.08, vol: 0.06 })); this.tone(131, 0.6, { type: 'triangle', vol: 0.2, at: 0.3 }); },
+  locked() { this.tone(165, 0.15, { vol: 0.07 }); this.tone(131, 0.3, { at: 0.16, vol: 0.07 }); },
+  ach() { [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.18, { at: 0.5 + i * 0.09, vol: 0.05 })); },
+  nope() { this.tone(110, 0.08, { vol: 0.05 }); },
+};
+
+// ------------------------------------------------------------------ state
+let S = null, T = 0;
+const keys = { lL: false, lR: false, rL: false, rR: false };
+const $ = id => document.getElementById(id);
+const RCAP = { r: P.green, R: P.dgreen };
+
+function setStage(id) {
+  const st = STAGES.find(s => s.id === id);
+  S = {
+    st, phase: 'play', z: 1, zAnim: null, flash: null, parts: [], floats: [], lit: new Set(),
+    cam: { dy: 0 }, cine: null, trauma: 0, brickSeen: false, warnT: -9,
+    heroes: [{ side: -1, x: st.start[0], face: 1, moving: false, recs: [] }, { side: 1, x: st.start[1], face: -1, moving: false, recs: [] }],
+  };
+  $('stTitle').textContent = st.code + ' · ' + st.name;
+  $('stFn').textContent = st.fn;
+  $('stGoal').textContent = st.goal;
+  $('card').hidden = true;
+  say(st.hint);
+  renderRows(); renderStages();
+}
+function say(s) { $('hint').textContent = s; }
+
+// ------------------------------------------------------------------ geometry
+function plotFor(z) {
+  const st = S.st, v = st.view;
+  if (st.mode === 'xy') return new Plot(RECT, st.a, st.L + (S.cam ? S.cam.dy : 0), v.hx / z, v.hy / z);
+  return new Plot(RECT, st.a, v.cy, v.hx / z, v.hy);
+}
+const stepFor = h => Math.pow(10, Math.floor(Math.log10(h / 1.5) + 1e-9));
+function zoomNow() {
+  const za = S.zAnim; if (!za) return S.z;
+  const u = clamp(stepT(T - za.t0, 12) / za.dur, 0, 1);
+  return za.from * Math.pow(za.to / za.from, smooth(u));
+}
+function decFor(z) { return Math.round(Math.log10(z)) + 1; }
+const fmt = (v, d) => (Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v).toFixed(d);
+
+// ------------------------------------------------------------------ actions
+function record(i) {
+  if (!S || S.phase !== 'play' || S.zAnim || S.cine) return;
+  Snd.init();
+  const h = S.heroes[i], st = S.st, d = decFor(S.z), step = Math.pow(10, -d);
+  let xr = h.side < 0 ? Math.floor(h.x / step + 1e-9) * step : Math.ceil(h.x / step - 1e-9) * step;
+  if (Math.abs(xr - st.a) < step / 2) xr = st.a + h.side * step;
+  const xs = fmt(xr, d);
+  if (h.recs.some(r => r.xs === xs)) { say('这个点已经记过了，换个位置再记。'); Snd.nope(); return; }
+  if (h.recs.length >= MAXREC) { say('这一边已经记满 6 个点了。可以按“看极限”，或者撤销一个记录。'); Snd.nope(); return; }
+  const fv = h.side < 0 ? st.fl(xr) : st.fr(xr);
+  h.recs.push({ x: +xs, xs, fs: fmt(fv, d), d: Math.abs(xr - st.a), new: true, at: performance.now() });
+  if (S.z >= ZMAX) unlock('micro');
+  Snd.rec();
+  const pl = plotFor(zoomNow());
+  S.floats.push({ x: pl.fx(h.x) * SC, y: (pl.fy(h.side < 0 ? st.fl(h.x) : st.fr(h.x)) - 22) * SC, s: `(${xs}, ${fmt(fv, d)})`, col: i ? P.green : P.yellow, t0: T });
+  for (let k = 0; k < 6; k++) S.parts.push({ kind: 'spark', x: pl.fx(h.x) + (k - 2.5) * 3, y: pl.fy(h.side < 0 ? st.fl(h.x) : st.fr(h.x)) - 8 - (k % 2) * 4, t0: T + k * 0.04, col: i ? P.green : P.yellow });
+  const nL = S.heroes[0].recs.length, nR = S.heroes[1].recs.length;
+  if (nL >= NEED && nR >= NEED) say('两边都记够了！按“看极限”，看看两个小人最后会走向哪个高度。');
+  else say(`记下了 (${xs}, ${fmt(fv, d)})。${i ? '绿帽' : '红帽'}再往洞口靠近一点试试，越近越好。`);
+  renderRows();
+}
+function seeLimit() {
+  if (!S || S.phase !== 'play' || S.cine || $('see').disabled) return;
+  Snd.init();
+  const st = S.st;
+  const side = h => { const recs = [...h.recs].sort((p, q) => q.d - p.d); return { recs, d0: Math.max(recs[0].d, 0.05) }; };
+  S.see = { t0: T, L: side(S.heroes[0]), R: side(S.heroes[1]), done: false };
+  S.heroes[0].x = st.a - S.see.L.d0; S.heroes[1].x = st.a + S.see.R.d0;
+  S.lit = new Set();
+  S.phase = 'seeing'; S.zAnim = null;
+  say('两个小人沿着记录过的点一路跑向中间：每经过一个点，表格里那一行就会亮起来。');
+  renderRows();
+}
+
+// ------------------------------------------------------------------ update
+function update(dt) {
+  const st = S.st;
+  if (S.phase === 'play' && S.cine) updateCine(dt);
+  else if (S.phase === 'play') {
+    if (S.zAnim && T - S.zAnim.t0 >= S.zAnim.dur) { S.z = S.zAnim.to; S.zAnim = null; }
+    const pl = plotFor(zoomNow());
+    const v0 = pl.ix(RECT[0] + 6), v1 = pl.ix(RECT[2] - 6);
+    for (let i = 0; i < 2; i++) {
+      const h = S.heroes[i];
+      const mv = S.zAnim ? 0 : ((keys[i ? 'rR' : 'lR'] ? 1 : 0) - (keys[i ? 'rL' : 'lL'] ? 1 : 0));
+      const before = h.x;
+      if (mv) { h.x += mv * SPEED * dt / pl.sx; h.face = mv; }
+      if (h.side < 0) h.x = Math.max(h.x, Math.max(v0, st.a - st.view.hx * 1.15));
+      else h.x = Math.min(h.x, Math.min(v1, st.a + st.view.hx * 1.15));
+      // the cliff wall stops the left hero (the road on the right is higher)
+      if (!st.gap && h.side < 0) {
+        const wall = st.a - 4 / pl.sx;
+        const hit = h.x >= wall && mv > 0;
+        if (h.x > wall) h.x = wall;
+        if (hit && !h.blocked) { Snd.bump(); h.bubbleT = T; say('红帽撞上了悬崖的墙：右边的路比这里高，上不去。'); }
+        h.blocked = hit;
+      }
+      h.moving = Math.abs(h.x - before) > 1e-12;
+      const dpx = (h.x - st.a) * pl.sx * h.side;          // distance to the point, on the hero's own side (px)
+      const falls = st.gap ? dpx < 2.5 : (h.side > 0 && dpx < 0);
+      if (falls) { startFall(i, pl); break; }
+      const teeter = st.gap ? dpx < 7 : (h.side > 0 && dpx < 5);
+      if (teeter && !h.teeter) {
+        Snd.warn(); h.bubbleT = T;
+        if (T - S.warnT > 3) { say('站不稳了！再往前一步就会掉下去。'); S.warnT = T; }
+      }
+      h.teeter = teeter;
+    }
+    // auto zoom when both heroes stand inside the yellow markers
+    if (!S.cine && !S.zAnim && S.z < ZMAX && S.heroes.every(h => (h.x - st.a) * pl.sx * h.side <= 22)) {
+      S.zAnim = { from: S.z, to: S.z * 10, t0: T, dur: 0.7 };
+      S.flash = { s: `ZOOM ×${S.z * 10}`, t0: T };
+      Snd.zoom();
+      say(`镜头放大 ${S.z * 10} 倍！洞口在 x 方向变窄了，小人又能往前挪。现在记录的 x 会多一位小数。`);
+    }
+  } else if (S.phase === 'seeing') {
+    const s = S.see, run = 4.4, u = clamp((T - s.t0 - 0.6) / run, 0, 1), ue = smooth(u);
+    const dEnd = MINPX / plotFor(ZMAX).sx;
+    const dL = s.L.d0 * Math.pow(dEnd / s.L.d0, ue), dR = s.R.d0 * Math.pow(dEnd / s.R.d0, ue);
+    S.heroes[0].x = st.a - dL; S.heroes[1].x = st.a + dR;
+    S.heroes.forEach(h => { h.moving = u > 0 && u < 1; h.face = -h.side; });
+    S.zLive = clamp(st.view.hx * 0.42 / Math.max(dL, dR), 1, ZMAX);
+    [[s.L, dL, 'L'], [s.R, dR, 'R']].forEach(([side, d, k]) => side.recs.forEach(r => {
+      if (d <= r.d * (1 + 1e-9) && !S.lit.has(r)) { S.lit.add(r); Snd.lit(S.lit.size); jumpRow(r, k); const pl = plotFor(S.zLive); S.parts.push({ kind: 'spark', x: pl.fx(r.x), y: pl.fy(k === 'L' ? st.fl(r.x) : st.fr(r.x)) - 6, t0: T, col: k === 'L' ? P.yellow : P.green }); }
+    }));
+    if (u >= 1 && !s.outT) s.outT = T + 0.5;
+    if (s.outT && T >= s.outT && !s.zo) s.zo = { from: S.zLive, t0: T };
+    if (s.zo) {
+      const v = clamp(stepT(T - s.zo.t0, 12) / 0.9, 0, 1);
+      S.zLive = s.zo.from * Math.pow(1 / s.zo.from, smooth(v));
+      if (v >= 1) { S.phase = 'result'; S.res = { t0: T }; S.z = 1; S.heroes[0].x = st.a - 0.3; S.heroes[1].x = st.a + 0.3; S.heroes.forEach(h => { h.moving = false; h.face = -h.side; }); showResultSoon(); }
+    }
+  } else if (S.phase === 'result') {
+    const r = S.res, ok = st.L === st.R;
+    if (!r.opened && T - r.t0 > 1.0) {
+      r.opened = true;
+      if (ok) { Snd.chest(); burst(); } else Snd.locked();
+    }
+  }
+  S.parts = S.parts.filter(p => T - p.t0 < (p.kind === 'coin' ? 2.2 : 0.9));
+  S.floats = S.floats.filter(f => T - f.t0 < (f.life || 1.4));
+  S.trauma = Math.max(0, S.trauma - 1.5 * dt);
+}
+// ------------------------------------------------------------------ falling (a short cinematic)
+const GRAV = 9, HITSTOP = 0.12;
+function startFall(i, pl) {
+  const st = S.st, h = S.heroes[i];
+  const x = st.gap ? st.a + h.side * 0.4 / pl.sx : st.a - 3 / pl.sx;
+  const kind = !st.gap ? 'cliff' : st.fa !== null ? 'brick' : 'void';
+  S.cine = { i, kind, t0: T, z0: S.z, x, y0: h.side < 0 ? st.fl(st.a) : st.fr(st.a), y: 0, stage: 'fall' };
+  S.cine.y = S.cine.y0;
+  S.heroes.forEach(o => { o.moving = false; });
+  for (const k in keys) keys[k] = false;
+  Snd.fall();
+}
+function ledgeX(side, z) { const st = S.st; return st.a + side * 11 / plotFor(z).sx; }
+function zoomOutAt(c, z0) { return z0 * Math.pow(1 / z0, smooth(clamp((c - HITSTOP) / 0.8, 0, 1))); }
+function updateCine(dt) {
+  const st = S.st, cn = S.cine, h = S.heroes[cn.i], c = T - cn.t0;
+  const follow = (target) => { S.cam.dy += (target - S.cam.dy) * (1 - Math.exp(-8 * dt)); };
+  if (cn.stage === 'fall') {
+    cn.zc = zoomOutAt(c, cn.z0);
+    if (c > HITSTOP) cn.y = cn.y0 - 0.5 * GRAV * (c - HITSTOP) * (c - HITSTOP);
+    const pl = plotFor(cn.zc);
+    let landY = null;
+    if (cn.kind === 'brick') landY = pl.iy(pl.gy(st.fa) - 13);
+    if (cn.kind === 'cliff') landY = st.fl(cn.x);
+    if (landY !== null && cn.y <= landY) {
+      cn.y = landY; cn.stage = 'landed'; cn.tl = T;
+      S.trauma = Math.min(1, S.trauma + (cn.kind === 'brick' ? 0.7 : 0.5));
+      Snd.land();
+      const X0 = pl.fx(cn.x), Y0 = pl.fy(cn.y);
+      for (let k = 0; k < 8; k++) S.parts.push({ kind: 'dust', x: X0, y: Y0, vx: (k - 3.5) * 9, t0: T });
+      if (cn.kind === 'brick') {
+        S.brickSeen = true; unlock('brickfall');
+        S.floats.push({ x: X0 * SC + 40, y: Y0 * SC - 30, s: 'f(2) = 1', col: P.coral, t0: T, big: true, life: 3 });
+        say('你落在了 f(2) = 1 这块砖上！可两边的路，明明是朝着高度 4 去的。f(2) 是这一点的值，不是路要去的地方。');
+      } else {
+        unlock('cliffdrop');
+        say('绿帽掉到了左边的路上：高度从 3 一下变成 1。路在这里“跳”了一下，这叫跳跃间断。');
+      }
+    }
+    if (cn.kind === 'void') {
+      follow(clamp(cn.y - st.L + 1.5, -7, 0));
+      if (c > 1.4 && !cn.msg) {
+        cn.msg = true; unlock('void');
+        S.flash = { s: '只能逼近，不能到达', t0: T, life: 2.2 };
+        say('掉下去了！x = 2 这一点根本没有路：小人可以无限逼近它，却永远站不上去。这就是极限。');
+      }
+      if (c > 2.9) { cn.stage = 'return'; cn.tr = T; cn.fromZ = cn.zc; h.x = ledgeX(h.side, cn.z0); Snd.poof(); S.parts.push({ kind: 'spark', x: 0, y: 0, follow: cn.i, t0: T + 0.75, col: P.white }); }
+    } else if (cn.kind === 'brick') follow(clamp(cn.y - st.L + 1.5, st.fa - st.L + 1.5, 0));
+  } else if (cn.stage === 'landed') {
+    cn.zc = 1;
+    if (cn.kind === 'brick') follow(st.fa - st.L + 1.5);
+    if (T - cn.tl > 2.0) { cn.stage = 'jump'; cn.tj = T; cn.jx0 = cn.x; cn.jy0 = cn.y; cn.jx1 = st.a + h.side * 0.35; cn.jy1 = h.side < 0 ? st.fl(cn.jx1) : st.fr(cn.jx1); Snd.jump(); }
+  } else if (cn.stage === 'jump') {
+    const u = clamp((T - cn.tj) / 0.65, 0, 1);
+    cn.x = lerp(cn.jx0, cn.jx1, u);
+    cn.y = lerp(cn.jy0, cn.jy1, u) + 4 * 1.6 * u * (1 - u) + (cn.jy1 > cn.jy0 ? 0 : 0);
+    follow(0);
+    if (u >= 1) { cn.stage = 'return'; cn.tr = T; cn.fromZ = 1; h.x = ledgeX(h.side, cn.z0); h.face = -h.side; }
+  }
+  if (cn.stage === 'return') {
+    follow(0);
+    const v = clamp(stepT(T - cn.tr, 12) / 0.7, 0, 1);
+    cn.zc = cn.fromZ * Math.pow(cn.z0 / cn.fromZ, smooth(v));
+    if (v >= 1) { S.cam.dy = 0; S.z = cn.z0; S.cine = null; h.teeter = false; }
+  }
+}
+function heroPose(i) {
+  // world position + pose of hero i (handles the falling cinematic)
+  const st = S.st, h = S.heroes[i], cn = S.cine;
+  if (cn && cn.i === i && cn.stage !== 'return') {
+    const pose = cn.stage === 'landed' ? (T - cn.tl < 0.15 ? 'squash' : 'idle') : 'jump';
+    return { x: cn.x, y: cn.y, pose };
+  }
+  return { x: h.x, y: i ? st.fr(h.x) : st.fl(h.x), pose: h.moving ? 'run' : 'idle' };
+}
+function burst() {
+  const pl = plotFor(1), st = S.st;
+  const cx = pl.gx(st.a), cy = pl.gy(Math.max(st.L, st.R)) - 34;
+  for (let i = 0; i < 16; i++) S.parts.push({ kind: 'coin', x0: cx, y0: cy, vx: (Math.random() - 0.5) * 120, vy: -80 - Math.random() * 70, t0: T });
+}
+function showResultSoon() {
+  const st = S.st, ok = st.L === st.R, a = st.a;
+  setTimeout(() => {
+    if (!S || S.st !== st || S.phase !== 'result') return;
+    const c = $('card');
+    const idx = STAGES.indexOf(st), next = STAGES[idx + 1];
+    const achObj = ACH.find(x => x.id === st.ach);
+    let lim, note;
+    if (ok) {
+      lim = `<span class="lw">lim<small>x→${a}</small></span> f(x) = ${st.L}`;
+      note = st.fa === null ? `左边的高度趋近 ${st.L}，右边也趋近 ${st.R}：两边去同一个高度，极限存在。`
+        : `两边仍然趋近 ${st.L}。f(${a}) = ${st.fa} 只是这一点的函数值，极限不看这一点。`;
+    } else {
+      lim = `<span class="lw">lim<small>x→${a}</small></span> f(x) 不存在（DNE）`;
+      note = `左极限 = ${st.L}，右极限 = ${st.R}。两边去的不是同一个高度，宝箱打不开：双侧极限不存在。`;
+    }
+    c.className = 'pix' + (ok ? '' : ' dne');
+    c.innerHTML = `<div class="lim">${lim}</div><div class="note">${note}</div><div class="ach">★ 成就达成：${achObj.name}</div>
+      <div class="row2"><button type="button" id="again">再玩一次</button>${next ? `<button type="button" id="nextSt">下一关：${next.code} ${next.name} ▶</button>` : ''}</div>`;
+    c.hidden = false;
+    $('again').onclick = () => setStage(st.id);
+    if (next) $('nextSt').onclick = () => setStage(next.id);
+    if (next && !Store.data.unlocked.includes(next.id)) { Store.data.unlocked.push(next.id); Store.save(); }
+    unlock(st.ach);
+    say(ok ? `极限揭晓：lim x→${a} f(x) = ${st.L}。` : '极限揭晓：左右不相等，极限不存在。');
+    renderStages();
+  }, 1500);
+}
+function unlock(id) {
+  if (Store.data.ach[id]) return;
+  Store.data.ach[id] = Date.now(); Store.save();
+  const a = ACH.find(x => x.id === id);
+  const t = $('toast');
+  t.innerHTML = `<span class="k">成就达成 · ${a.lv}</span><span class="t">★ ${a.name}</span><span>${a.desc}</span>`;
+  t.hidden = false; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  clearTimeout(unlock.tm); unlock.tm = setTimeout(() => { t.hidden = true; }, 4200);
+  Snd.ach();
+  renderAch();
+}
+
+// ------------------------------------------------------------------ draw
+const FLAGS = ['kk..', 'kcck', 'kcc.', 'k...', 'k...', 'k...'];
+function draw() {
+  const st = S.st, z = S.phase === 'play' ? (S.cine ? (S.cine.zc || S.cine.z0) : zoomNow()) : (S.zLive || 1);
+  const pl = plotFor(z);
+  X.setTransform(1, 0, 0, 1, 0, 0);
+  sky(G, 'analysis'); stars(G, T, 34, 120);
+  const step = stepFor(pl.hx), ystep = st.mode === 'xy' ? stepFor(pl.hy) : 1;
+  plotGrid(G, pl, { step, ystep });
+  const res = S.phase === 'result';
+  if (res) { hguide(G, pl, st.L, RECT[0], pl.gx(st.a) - 4, P.yellow); hguide(G, pl, st.R, pl.gx(st.a) + 4, RECT[2], P.green); }
+  const pieces = st.gap ? [{ f: st.fl, a: -50, b: st.a }, { f: st.fr, a: st.a, b: 50 }] : [{ f: st.fl, a: -50, b: st.a }, { f: st.fr, a: st.a, b: 50 }];
+  terrain(G, pl, pieces, { gaps: st.gap ? [st.a] : [] });
+  // marks at the point
+  const glow = (S.phase !== 'play') && Math.floor(stepT(T, 4) * 4) % 2 === 0;
+  openDot(G, pl.gx(st.a), pl.gy(st.L), glow ? P.yellow : P.white, P.ink);
+  if (st.R !== st.L) solidDot(G, pl.gx(st.a), pl.gy(st.R), P.green, P.white);
+  if (st.fa !== null && st.gap && (S.brickSeen || S.phase !== 'play')) { const Y = pl.gy(st.fa); if (Y > 0 && Y < GH) { sprite(G, BRICK, { o: P.orange, k: P.rust }, pl.gx(st.a) - 4, Y - 13); solidDot(G, pl.gx(st.a), Y, P.coral, P.white); } }
+  // yellow markers: both heroes inside them -> the camera zooms in
+  if (S.phase === 'play' && !S.cine && S.z < ZMAX) {
+    for (const sd of [-1, 1]) {
+      const X0 = pl.gx(st.a) + sd * 22, Y0 = pl.gy(sd < 0 ? st.fl(st.a - sd * 0) : st.fr(st.a));
+      const on = Math.floor(stepT(T, 3) * 3) % 2 === 0;
+      rect(G, X0, Y0 + 3, 1, 5, on ? P.yellow : P.orange); rect(G, X0 - sd * 1, Y0 + 4, 1, 3, on ? P.yellow : P.orange); rect(G, X0 - sd * 2, Y0 + 5, 1, 1, on ? P.yellow : P.orange);
+    }
+  }
+  // record flags / lanterns
+  S.heroes.forEach((h, i) => h.recs.forEach(r => {
+    const X0 = pl.gx(r.x), Y0 = pl.gy(i ? st.fr(r.x) : st.fl(r.x));
+    if (X0 < RECT[0] || X0 > RECT[2]) return;
+    const lit = S.lit.has(r);
+    if (S.phase === 'play' || !lit) sprite(G, FLAGS, { k: P.lgray, c: i ? P.green : P.yellow }, X0, Y0 - 6);
+    else lantern(G, X0, Y0, T);
+  }));
+  // heroes
+  S.heroes.forEach((h, i) => {
+    const ps = heroPose(i);
+    const X0 = pl.fx(ps.x), Y0 = pl.fy(ps.y);
+    if (X0 < -10 || X0 > GW + 10 || Y0 > GH + 20) return;
+    const wob = (!S.cine && h.teeter) ? (Math.floor(stepT(T, 8) * 8) % 2 ? 1 : -1) : 0;
+    const pose = ps.pose === 'squash' ? 'idle' : ps.pose;
+    hero(G, X0 + wob, Y0 + 1 + (ps.pose === 'squash' ? 1 : 0), pose, T, { flip: h.face < 0, recolor: i ? RCAP : null });
+    if (h.bubbleT && T - h.bubbleT < 1.4 && !(S.cine && S.cine.i === i)) bubbleG(X0, Y0, '!', h.bubbleT);
+  });
+  // chest
+  if (res) drawChest(pl);
+  // particles
+  for (const p of S.parts) {
+    if (p.kind === 'spark' && p.follow !== undefined) { const ps = heroPose(p.follow); sparkle(G, Math.round(pl.fx(ps.x)), Math.round(pl.fy(ps.y)) - 8, T - p.t0, p.col); }
+    else if (p.kind === 'spark') sparkle(G, Math.round(p.x), Math.round(p.y), T - p.t0, p.col);
+    else if (p.kind === 'dust') { const u = stepT(T - p.t0, 12); if (u < 0.5) rect(G, Math.round(p.x + p.vx * u), Math.round(p.y - 2 - 8 * u + 10 * u * u), 2, 2, u < 0.25 ? P.lgray : P.dgray); }
+    else { const u = stepT(T - p.t0, 12); coin(G, Math.round(p.x0 + p.vx * u), Math.round(p.y0 + p.vy * u + 90 * u * u), T + 9 + p.vx / 40); }
+  }
+  const tr = S.trauma * S.trauma;
+  const ox = Math.round(3 * tr * Math.sin(T * 47)), oy = Math.round(2 * tr * Math.sin(T * 61));
+  X.fillStyle = P.black; X.fillRect(0, 0, W, H);
+  X.imageSmoothingEnabled = false; X.drawImage(gcnv, ox * SC, oy * SC, GW * SC, GH * SC);
+  // labels + overlays (composite 640x360)
+  plotLabels(X, pl, { step, ystep, xLabelY: RECT[3] });
+  if (z > 1.5) { panel(X, 222, 18, 126, 30, { border: P.orange, fill: P.ink, shadow: null }); text(X, `ZOOM ×${Math.round(z)}`, 285, 27, { size: 12, col: P.orange, align: 'center' }); }
+  if (S.flash && T - S.flash.t0 < (S.flash.life || 1.2) && (S.flash.life || Math.floor((T - S.flash.t0) * 6) % 2 === 0)) text(X, S.flash.s, W / 2, 150, { size: 24, col: P.orange, align: 'center', outline: P.black });
+  for (const f of S.floats) { const u = T - f.t0; text(X, f.s, Math.round(f.x), Math.round(f.y - (f.big ? 0 : Math.floor(u * 6) * 3)), { size: f.big ? 24 : 12, col: f.col, align: 'center', outline: P.black }); }
+  // live readout
+  if (S.phase === 'play' && !S.cine) {
+    const d = decFor(S.z);
+    S.heroes.forEach((h, i) => {
+      const fv = i ? st.fr(h.x) : st.fl(h.x);
+      text(X, `x = ${fmt(h.x, d)}`, i ? W - 18 : 18, 20, { size: 12, col: i ? P.green : P.yellow, align: i ? 'right' : 'left', outline: P.black });
+      text(X, `f = ${fmt(fv, d)}`, i ? W - 18 : 18, 36, { size: 12, col: i ? P.green : P.yellow, align: i ? 'right' : 'left', outline: P.black });
+    });
+  }
+}
+function lantern(ctx, x, y, t) {
+  const f = Math.floor(stepT(t, 6) * 6) % 2;
+  rect(ctx, x - 1, y - 6, 3, 1, P.black); rect(ctx, x - 1, y - 5, 3, 3, f ? P.yellow : P.lyellow); rect(ctx, x, y - 2, 1, 2, P.dgray);
+}
+function bubbleG(x, y, ch, t0) {
+  const bx = Math.round(x) - 5, by = Math.round(y) - 31 + (T - t0 < 0.25 ? -2 : 0);
+  rect(G, bx, by, 11, 11, P.black); rect(G, bx + 1, by + 1, 9, 9, P.white); rect(G, bx + 4, by + 11, 3, 1, P.black);
+  G.fillStyle = P.red; G.fillRect(bx + 5, by + 2, 1, 5); G.fillRect(bx + 5, by + 8, 1, 1);
+}
+function drawChest(pl) {
+  const st = S.st, r = S.res, u = T - r.t0, ok = st.L === st.R;
+  const cx = pl.gx(st.a), top = pl.gy(Math.max(st.L, st.R)) - 46;
+  const drop = Math.min(1, stepT(u, 12) / 0.35);
+  let y = Math.round(lerp(-24, top, drop * drop));
+  let x = cx - 16;
+  if (u > 0.35 && u < 1.0) x += (Math.floor(u * 16) % 2) * 2 - 1;
+  if (!ok && u > 1.0 && u < 1.6) x += (Math.floor(u * 20) % 2) * 2 - 1;
+  const open = ok && u > 1.0;
+  if (open) { const k = Math.floor(stepT(u, 8) * 8) % 2; for (let i = 0; i < 8; i++) { const ang = i / 8 * Math.PI * 2; const rr = 18 + k * 3; rect(G, Math.round(cx + Math.cos(ang) * rr), Math.round(top + 8 + Math.sin(ang) * rr * 0.6), 2, 2, i % 2 ? P.yellow : P.white); } }
+  sprite(G, open ? CHEST_O : CHEST_C, CHEST_MAP, x, y, { scale: 2 });
+  if (!ok && u > 1.0) { sprite(G, CROSS, { r: P.coral, k: P.black }, cx - 4, y - 12); }
+}
+
+// ------------------------------------------------------------------ DOM: rows / stages / achievements
+function rowsFor(h) { return [...h.recs].sort((p, q) => q.d - p.d); }
+function renderRows() {
+  const tb = $('rows'); tb.innerHTML = '';
+  const L = rowsFor(S.heroes[0]), R = rowsFor(S.heroes[1]);
+  const mk = (r, k) => { const tr = document.createElement('tr'); tr.className = k + (S.lit.has(r) ? ' lit' : '') + (r.new ? ' new' : ''); tr.innerHTML = `<td>${r.xs}</td><td>${r.fs}</td>`; r.tr = tr; r.new = false; tb.appendChild(tr); };
+  if (!L.length && !R.length) { tb.innerHTML = '<tr class="empty"><td colspan="2">还没有记录。走到一个位置，按 W（红帽）或 ↑（绿帽）。</td></tr>'; }
+  L.forEach(r => mk(r, 'L'));
+  if (L.length && R.length) { const s = document.createElement('tr'); s.className = 'sep'; s.innerHTML = '<td colspan="2"></td>'; tb.appendChild(s); }
+  R.forEach(r => mk(r, 'R'));
+  $('cntL').textContent = `左 ${L.length} / ${NEED}`; $('cntR').textContent = `右 ${R.length} / ${NEED}`;
+  $('see').disabled = !(S.phase === 'play' && L.length >= NEED && R.length >= NEED);
+  $('undo').disabled = S.phase !== 'play' || !(L.length || R.length);
+}
+function jumpRow(r) { if (!r.tr) return; r.tr.classList.add('lit'); r.tr.classList.remove('jump'); void r.tr.offsetWidth; r.tr.classList.add('jump'); }
+function renderStages() {
+  const nav = $('stages'); nav.innerHTML = '';
+  STAGES.forEach(st => {
+    const b = document.createElement('button'); b.type = 'button';
+    const open = Store.data.unlocked.includes(st.id) || st.id === '1-1a', done = !!Store.data.ach[st.ach];
+    b.className = 'chip' + (S && S.st === st ? ' on' : '') + (done ? ' done' : '');
+    b.disabled = !open;
+    b.innerHTML = `<b>${st.code}</b><span>${st.name}</span><span class="st">${done ? '★ 已通关' : open ? '可挑战' : '通关上一关解锁'}</span>`;
+    b.onclick = () => setStage(st.id);
+    nav.appendChild(b);
+  });
+  [['1-2', '迷雾表格'], ['1-3', '0/0 怎么破'], ['1-4', '夹逼'], ['1-5', '连续性'], ['1-6', '无穷'], ['1-7', '介值定理']].forEach(([c, n]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.disabled = true;
+    b.innerHTML = `<b>${c}</b><span>${n}</span><span class="st">随视频开放</span>`; nav.appendChild(b);
+  });
+}
+const BADGE = ['..kkkkk..', '.kyyyyyk.', 'kyywwyyyk', 'kywyyyyyk', 'kyyyyyyyk', 'kyyyyyyyk', '.kyyyyyk.', '..kyyyk..', '...kkk...'];
+function renderAch() {
+  const box = $('achs'); box.innerHTML = '';
+  let got = 0, avail = 0;
+  ACH.forEach(a => {
+    const has = !!Store.data.ach[a.id]; if (has) got++; if (!a.soon) avail++;
+    const d = document.createElement('div'); d.className = 'a' + (has ? ' got' : '') + (a.soon ? ' soon' : '');
+    const cv = document.createElement('canvas'); cv.width = 9; cv.height = 9;
+    sprite(cv.getContext('2d'), BADGE, has ? { k: P.black, y: P.yellow, w: P.white } : { k: P.black, y: P.dgray, w: P.lav }, 0, 0);
+    const tx = document.createElement('div');
+    tx.innerHTML = `<div class="n">${a.lv} · ${has ? '已达成' : a.soon ? '即将开放' : '未解锁'}</div><div class="t">${has || !a.soon ? a.name : a.name}</div><div class="d">${a.desc}</div>`;
+    d.append(cv, tx); box.appendChild(d);
+  });
+  $('achCount').textContent = `已达成 ${got} / ${avail}（共 ${ACH.length} 个，更多随视频开放）`;
+}
+
+// ------------------------------------------------------------------ input
+const KEYMAP = { KeyA: 'lL', KeyD: 'lR', ArrowLeft: 'rL', ArrowRight: 'rR' };
+addEventListener('keydown', e => {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; Snd.init(); e.preventDefault(); }
+  else if (e.code === 'KeyW' && !e.repeat) { record(0); e.preventDefault(); }
+  else if (e.code === 'ArrowUp' && !e.repeat) { record(1); e.preventDefault(); }
+  else if (e.code === 'Enter' && !e.repeat && document.activeElement && document.activeElement.tagName !== 'BUTTON') { seeLimit(); e.preventDefault(); }
+  else if (e.code === 'ArrowDown' || e.code === 'KeyS') e.preventDefault();
+});
+addEventListener('keyup', e => { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+document.querySelectorAll('[data-k]').forEach(b => {
+  const k = b.dataset.k;
+  const on = e => { e.preventDefault(); keys[k] = true; b.classList.add('down'); Snd.init(); try { b.setPointerCapture(e.pointerId); } catch (err) {} };
+  const off = () => { keys[k] = false; b.classList.remove('down'); };
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+document.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => record(+b.dataset.r)));
+$('see').onclick = seeLimit;
+$('reset').onclick = () => setStage(S.st.id);
+$('undo').onclick = () => {
+  if (!S || S.phase !== 'play') return;
+  let best = null;
+  S.heroes.forEach(h => h.recs.forEach(r => { if (!best || r.at > best.r.at) best = { h, r }; }));
+  if (best) { best.h.recs = best.h.recs.filter(r => r !== best.r); renderRows(); say('撤销了上一个记录。'); }
+};
+$('mute').onclick = () => { Snd.on = !Snd.on; $('mute').textContent = '音效：' + (Snd.on ? '开' : '关'); $('mute').setAttribute('aria-pressed', String(!Snd.on)); };
+
+// ------------------------------------------------------------------ boot
+(async () => {
+  try { await document.fonts.load('12px FusionPixel'); await document.fonts.load('24px FusionPixel'); } catch (e) {}
+  initCanvas();
+  const lg = $('logo').getContext('2d'); lg.imageSmoothingEnabled = false;
+  o2iGlyph(lg, 24, 12, 21, 1, { block: 1, thick: 2, col: P.yellow, shadow: P.plum });
+  text(lg, 'o2i', 50, 4, { size: 12, col: P.white });
+  sprite($('owl').getContext('2d'), OWL, OWL_MAP, 0, 0);
+  Store.load();
+  setStage('1-1a');
+  renderAch();
+  Store.connect();
+  let last = performance.now();
+  const loop = now => { const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; T += dt; try { update(dt); draw(); } catch (e) { console.error(e); } requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+})();
+</script>
+
+
+<style id="o2i-compact-landscape">
+/* Compact landscape layout: preserve game logic and scroll secondary panels. */
+@media (min-width: 700px) and (max-height: 1000px) {
+ .wrap { height: 100dvh; padding: 10px 14px; gap: 10px; grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+ header { padding: 6px 10px; } header h1 { font-size: 20px; }
+ .stages { flex-wrap: nowrap; overflow-x: auto; padding: 3px 3px 9px; gap: 9px; }
+ .chip { flex: 0 0 112px; min-width: 112px; padding: 6px; }
+ .main { min-height: 0; grid-template-columns: minmax(0, 1fr) 260px; gap: 14px; }
+ .screen { min-height: 0; height: 100%; gap: 8px; grid-template-rows: minmax(0, 1fr) auto auto; }
+ .stagewrap { min-height: 0; display: flex; align-items: center; justify-content: center; }
+ canvas#c { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+ .owl { padding: 6px; gap: 8px; } .owl p { font-size: 16px; } .owl canvas { width: 32px; height: 36px; }
+ .pads { gap: 8px; } .pad { padding: 6px; gap: 4px; } .pad button { min-height: 44px; font-size: 18px; padding: 4px 0; }
+ .side { min-height: 0; height: 100%; overflow-y: auto; padding: 10px; gap: 8px; } .side h2, .tbl table { font-size: 18px; }
+ .shelf { max-height: 88px; overflow-y: auto; padding: 8px; } footer { font-size: 10px; }
+}
+</style>
+</body></html>

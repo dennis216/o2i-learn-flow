@@ -10,7 +10,7 @@ export async function verifyCoursePracticeBrowser({page,context,app,api,course,t
    const args=r.request().postDataJSON();session.questions[0].attempt={id:other,selected_option_id:args._option_id,is_correct:true,submitted_at:new Date().toISOString(),elapsed_seconds:args._elapsed_seconds,correct_option_id:topic,solution:'Synthetic explanation',timing_complete:args._timing_complete,selection_trajectory:args._selection_trajectory};
    return r.fulfill({contentType:'application/json',body:JSON.stringify(session)});
  });
- await page.getByRole('link',{name:'Go to Practice',exact:true}).click();await page.getByRole('heading',{name:'Question 1 of 1'}).waitFor();
+ await page.getByRole('link',{name:'Start practice',exact:true}).click();await page.getByRole('heading',{name:'Question 1 of 1'}).waitFor();
  assert.equal(new URL(page.url()).searchParams.get('course'),course);
  assert.equal(await page.getByText(/expected|saved to your account/i).count(),0);
  await page.getByRole('button',{name:'Option A',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();

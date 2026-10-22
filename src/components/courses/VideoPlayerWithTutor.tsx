@@ -175,10 +175,9 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   const VideoPlayer = (
     <div className="relative group">
       {isYouTube ? (
-        <div 
-          ref={playerContainerRef}
-          className="w-full aspect-video rounded-lg"
-        />
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full">
+          <div ref={playerContainerRef} />
+        </div>
       ) : (
         <>
           <video

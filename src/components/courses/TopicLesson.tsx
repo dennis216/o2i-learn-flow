@@ -12,7 +12,7 @@ export default function TopicLesson({ course, topicId, supabaseUrl, resumeTime, 
   const { user } = useAuth();
   const [selectedVideoId, setSelectedVideoId] = useState(initialVideoId);
   const [gameOpen, setGameOpen] = useState(false);
-  const practice = useQuery({ queryKey: ['course-practice-counts', user?.id ?? 'visitor', course.id], queryFn: async () => { const { data, error } = await supabase.rpc('list_course_practice_topics', { _course_id: course.id }); if (error) throw new Error(error.message); return data as unknown as { id: string; question_count: number }[]; }, retry: false });
+  const practice = useQuery({ queryKey: ['course-practice-counts', user?.id ?? 'visitor', course.id], queryFn: async () => { const { data, error } = await supabase.rpc('list_course_practice_topics', { _course_id: course.id }); if (error) throw new Error(error.message); if (!Array.isArray(data) || data.some(t => !t || typeof t !== 'object' || Array.isArray(t) || typeof t.id !== 'string' || typeof t.question_count !== 'number' || !Number.isInteger(t.question_count) || t.question_count < 0)) throw new Error('Invalid practice availability response.'); return data as unknown as { id: string; question_count: number }[]; }, retry: false });
   const lesson = useQuery({ queryKey: ['course-topic', user?.id ?? 'visitor', course.id, topicId], queryFn: () => loadCourseTopic(supabase, course.id, topicId), retry: false });
   if (lesson.isPending) return <p role="status">Loading lesson content…</p>;
   if (lesson.isError) return <div role="alert" className="space-y-2 py-3"><p>{lesson.error.message}</p><Button onClick={() => void lesson.refetch()}>Retry lesson</Button></div>;
@@ -20,8 +20,10 @@ export default function TopicLesson({ course, topicId, supabaseUrl, resumeTime, 
   return <div className="space-y-4 pb-4">
     {lesson.data.videos.length > 1 && <div className="flex flex-wrap gap-2">{lesson.data.videos.map((v, n) => <Button key={v.id} variant={video?.id === v.id ? 'default' : 'outline'} onClick={() => setSelectedVideoId(v.id)}>{v.title}</Button>)}</div>}
     {video && <Suspense fallback={<p role="status">Loading video player…</p>}><Player key={video.id} video={video} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={video.id === initialVideoId ? resumeTime : undefined} showStudyHub={false} /></Suspense>}
+    {practice.isPending && <p role="status">Checking practice availability…</p>}
+    {practice.isSuccess && !practice.data.some(t => t.id === topicId && t.question_count > 0) && <p className="rounded border bg-muted/30 p-3 text-sm">Practice for this topic is being prepared. Stay tuned.</p>}
     {practice.isError && <p role="alert">Practice availability could not be checked. <button className="underline" onClick={() => void practice.refetch()}>Retry practice availability</button></p>}
-    {practice.data?.some(t => t.id === topicId && t.question_count > 0) && <Button asChild><Link to={'/quiz?' + new URLSearchParams({ course: course.id, topic: topicId, source: 'course' })}>Go to Practice</Link></Button>}
+    {practice.data?.some(t => t.id === topicId && t.question_count > 0) && <Button asChild><Link to={'/quiz?' + new URLSearchParams({ course: course.id, topic: topicId, source: 'course' })}>Start practice</Link></Button>}
     {lesson.data.game_path && <section className="space-y-3"><Button variant="outline" onClick={() => setGameOpen(v => !v)}>{gameOpen ? 'Close game' : 'Start game'}</Button>{gameOpen && <Suspense fallback={<p role="status">Loading game…</p>}><CourseGame path={lesson.data.game_path} /></Suspense>}</section>}
   </div>;
 }

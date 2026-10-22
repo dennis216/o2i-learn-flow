@@ -71,7 +71,7 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, onCourseLoaded,
   };
   if (error) return <div role="alert" className="space-y-4"><p>Could not load this practice session. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   if (!session) return <p role="status">Loading your published questions…</p>;
-  if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">No published questions in this practice scope</h1><p>No sample questions have been substituted. Choose another published Topic in Practice.</p></div>;
+  if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">Practice for this topic is being prepared. Stay tuned.</h1>{courseId && <Link className="underline" to={courseLocation(courseId, topicId)}>Back to Course</Link>}</div>;
   if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct</p><Button onClick={() => onNextSet(session.topic_id, session.course_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} courseId={session.course_id} /></CardContent></Card>)}</div>;
   if (!question) return null;
   return <>
