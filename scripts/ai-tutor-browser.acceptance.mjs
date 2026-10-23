@@ -1,11 +1,13 @@
 // Synthetic UI fixtures only: no real accounts, AI calls, or database writes.
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,topic,uid,token,out}) {
   // Exercise the retained Study Hub as well as the currently routed lesson player.
-  writeFileSync(resolve(out,'tutor-fixture.mjs'), `
+  mkdirSync(out,{recursive:true});
+  const fixtureName=`tutor-fixture-${process.pid}.mjs`,fixturePath=resolve('src',fixtureName);
+  writeFileSync(fixturePath, `
     import { createElement } from 'react';
     import { createRoot } from 'react-dom/client';
     import { VideoPlayerWithTutor } from '/src/components/courses/VideoPlayerWithTutor.tsx';
@@ -20,6 +22,7 @@ export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,t
     }));
   `);
   const forbidden = /AI Tutor|Explain Current Scene|Ask more details|Ask AI about Notes|AI Summary|AI-powered study tools|Test AI|Generate Mock Test/i;
+  try {
   for (const role of ['visitor','student','instructor','admin','super_admin']) {
     const context = await browser.newContext({viewport:{width:1440,height:1000}});
     const aiRequests = [], errors = [];
@@ -84,7 +87,7 @@ export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,t
       }
       await page.setViewportSize({width:1440,height:1000});
       await page.goto(app+'/courses');
-      await page.evaluate(()=>import('/node_modules/.cache/course-browser/tutor-fixture.mjs'));
+      await page.evaluate(name=>import(`/src/${name}`),fixtureName);
       const fixture=page.locator('#retained-study-tools');
       await fixture.getByRole('tab',{name:'Notes & PDF',exact:true}).waitFor();
       assert.deepEqual(await fixture.getByRole('tab').allTextContents(),['Notes & PDF','Interactive Lab']);
@@ -100,4 +103,5 @@ export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,t
       await context.close();
     }
   }
+  } finally { unlinkSync(fixturePath); }
 }
