@@ -4,7 +4,7 @@ import type { CourseVideo } from '../components/courses/types.ts';
 
 export interface CourseTopic { id: string; code: string; title: string; is_published: boolean; big_idea?: string; is_bc_only?: boolean }
 export interface CourseUnit { id: string; unit_number: number; title: string; topics: CourseTopic[]; ab_exam_weight_min?: number | null; ab_exam_weight_max?: number | null; bc_exam_weight_min?: number | null; bc_exam_weight_max?: number | null }
-export interface TopicContent { course_id: string; topic_id: string; is_published: boolean; game_path: string | null; videos: CourseVideo[]; lesson_id?: string | null; revision?: number; owner_course_id?: string; linked_courses?: { id: string; title: string }[]; shared_video_topics?: { video_id: string; topic_code: string }[] }
+export interface TopicContent { entry_id?: string; course_id: string; topic_id: string; is_published: boolean; game_path: string | null; videos: CourseVideo[]; lesson_id?: string | null; revision?: number; owner_course_id?: string; linked_courses?: { id: string; title: string }[]; shared_video_topics?: { video_id: string; topic_code: string }[] }
 export interface EditableVideo { id?: string; title: string; video_url: string }
 export function youtubeId(value: string): string | null {
   try {

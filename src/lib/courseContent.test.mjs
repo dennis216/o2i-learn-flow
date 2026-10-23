@@ -22,3 +22,13 @@ test('Revision-aware editing requires deployed metadata and passes server confli
   await assert.rejects(saveCourseTopic(client,'course','topic',false,[],null,missing),/migration is required/);assert.equal(called,false);
   await assert.rejects(saveCourseTopic(client,'course','topic',false,[],null,{...missing,lesson_id:'lesson',revision:7,linked_courses:[]}),/Lesson changed/);assert.equal(called,true);
 });
+
+test('Custom outline boundary validates response and keeps stable lesson links',async()=>{
+  const {loadCustomOutline,loadOutlineEntry,editOutline,entryLocation}=await import('./courseOutline.ts');
+  const client={rpc:async(name,args)=>({error:null,data:name==='get_course_outline_v2'?{revision:3,units:[{topics:[{entry_id:'entry',cb_topics:[{id:'topic'}]}]}]}:name==='get_course_outline_entry'?{course_id:args._course_id,entry_id:args._entry_id,videos:[]}:args})};
+  assert.equal((await loadCustomOutline(client,'course')).revision,3);
+  assert.equal((await loadOutlineEntry(client,'course','entry')).entry_id,'entry');
+  assert.equal((await editOutline(client,'course',3,'save',{title:'Limits'}))._expected_revision,3);
+  assert.equal(entryLocation('course','entry','topic'),'/courses?course=course&lesson=entry&topic=topic');
+  await assert.rejects(loadCustomOutline({rpc:async()=>({data:{revision:0,units:[{topics:[{}]}]},error:null})},'course'),/verify course outline/);
+});
