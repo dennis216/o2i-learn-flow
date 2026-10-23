@@ -13,7 +13,7 @@ const expectFailure=fn=>assert.throws(fn);
 let created=false;
 try {
  docker(['run','--pull','never','-d','--name',name,'--network','none','--tmpfs','/var/lib/postgresql/data:rw','-e','POSTGRES_HOST_AUTH_METHOD=trust','public.ecr.aws/supabase/postgres:17.11.0.002']);created=true;
- for(let n=0;;n++){try{docker(['exec',name,'pg_isready','-U','supabase_admin']);break;}catch{if(n>100)throw new Error('Local PostgreSQL did not start');await new Promise(r=>setTimeout(r,150));}}
+ for(let n=0;;n++){try{docker(['exec',name,'pg_isready','-h','127.0.0.1','-U','supabase_admin']);break;}catch{if(n>100)throw new Error('Local PostgreSQL did not start');await new Promise(r=>setTimeout(r,150));}}
  for(let n=0;;n++){try{if(sql("SELECT count(*) FROM pg_roles WHERE rolname IN ('anon','authenticated')").trim()==='2')break;}catch{}if(n>120)throw new Error('Local roles not initialized');await new Promise(r=>setTimeout(r,250));}
  const taxonomy=read('supabase/migrations/20260920010000_ap_calculus_ced_framework.sql');
  const bootstrap=`DO $disable$ DECLARE r record; BEGIN FOR r IN SELECT evtname FROM pg_event_trigger LOOP EXECUTE format('ALTER EVENT TRIGGER %I DISABLE',r.evtname); END LOOP; END $disable$;
@@ -71,5 +71,6 @@ try {
  if(process.env.O2I_COURSE_SHARED_DB){await (await import('./course-shared-db.acceptance.mjs')).verifySharedLessons({sql,asUser,admin,student,ab,bc,tids});}
  if(process.env.O2I_COURSE_OUTLINE_DB){await (await import('./course-outline-db.acceptance.mjs')).verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids});}
  if(process.env.O2I_COURSE_CREATION_DB){(await import('./course-creation-db.acceptance.mjs')).verifyManagedCreation({sql,asUser,admin,student});}
+ if(process.env.O2I_COURSE_VIDEO_LIBRARY_DB){(await import('./course-video-library-db.acceptance.mjs')).verifyCourseVideoLibrary({sql,asUser,admin,student,ab});}
 } catch(error){console.error(error.stderr?.toString()||error);process.exitCode=1;}
 finally {if(created)docker(['rm','-f',name]);}

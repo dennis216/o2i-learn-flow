@@ -46,7 +46,7 @@ try{
        else if(a._action==='reorder'){entries=p.entry_ids.map(id=>entries.find(e=>e.id===id));body=null;}
        else if(a._action==='split'||a._action==='remove'){const e=entries.find(e=>e.id===p.entry_id);archivedEntries.push({entry_id:e.id,title:e.title,topic_ids:e.cb_topics.map(t=>t.id)});entries=entries.filter(x=>x.id!==e.id);for(const t of e.cb_topics)if(!entries.some(e=>e.cb_topics.some(c=>c.id===t.id)))entries.push({...t,entry_id:t.id,is_published:false,cb_topics:[t]});body=null;}
      }
-     else if(fn==='save_course_outline_content'){const a=route.request().postDataJSON();content={...content,lesson_id:content.lesson_id??other,revision:content.revision+1,entry_id:a._entry_id,is_published:a._is_published,videos:a._videos.map((v,n)=>({...v,course_id:course,order_index:n})),game_path:a._game_path,linked_courses:[{id:course,title:'AP Calculus BC'}]};const e=entries.find(e=>e.id===a._entry_id);if(e){e.is_published=a._is_published;e.content_id=content.lesson_id;}body=null;}
+     else if(fn==='save_course_outline_content'){const a=route.request().postDataJSON();content={...content,lesson_id:content.lesson_id??other,revision:content.revision+1,entry_id:a._entry_id,is_published:a._is_published,videos:a._videos.map((v,n)=>({...v,id:v.id??crypto.randomUUID(),course_id:course,order_index:n})),game_path:a._game_path,linked_courses:[{id:course,title:'AP Calculus BC'}]};const e=entries.find(e=>e.id===a._entry_id);if(e){e.is_published=a._is_published;e.content_id=content.lesson_id;}body=null;}
 
      else if(fn==='create_managed_course'){const args=route.request().postDataJSON();assert.equal(args._scope,'AB');assert.equal(args._details.title,'Synthetic new course');createdCourse=true;body=ab;}
      else if(fn==='subjects')body=[{id:other,name:'AP Calc',category:'High School',order_index:0}];
@@ -60,6 +60,8 @@ try{
      }
      else if(fn==='share_course_lesson'){ const args=route.request().postDataJSON();assert.equal(args._expected_lesson_id,content.lesson_id);assert.equal(args._expected_revision,content.revision);assert.equal(args._expected_other_revision,otherContent.revision);content={...content,revision:content.revision+1,linked_courses:[{id:course,title:'AP Calculus BC'},{id:ab,title:'AP Calculus AB'}]};otherContent={...content,course_id:ab};body=null; }
      else if(fn==='restore_course_lesson'){content={...content,lesson_id:uid,revision:1,is_published:false,linked_courses:[{id:course,title:'AP Calculus BC'}]};outline[0].topics[0].is_published=false;body=null;}
+     else if(fn==='list_course_video_library'){body=content.videos.map(v=>({...v,metadata_revision:v.metadata_revision??1,reference_count:1,courses:{title:'AP Calculus BC'},usage:[{course_id:ab,course_title:'AP Calculus AB',entry_id:topic,lesson_title:'Combined limits',archived:false},{course_id:course,course_title:'AP Calculus BC',entry_id:other,lesson_title:'Shared limits',archived:false}]}));}
+     else if(fn==='save_course_video_metadata'){const a=route.request().postDataJSON();assert.equal(a._expected_revision,1);assert.equal(a._details.transcript[0].t,'Updated transcript');content.videos=content.videos.map(v=>v.id===a._video_id?{...v,...a._details,metadata_revision:2}:v);body=null;}
      else if(fn==='course_videos')body=content.videos;
      else if(fn==='course_topic_content')body=content.videos.length ? [{course_id:course,topic_id:topic,is_published:content.is_published}] : [];
      return route.fulfill({status:200,headers:{'access-control-allow-origin':app,'access-control-allow-headers':'*','access-control-allow-methods':'*'},contentType:'application/json',body:JSON.stringify(body)});
@@ -111,6 +113,19 @@ try{
    await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).click();
    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Split into Topic rows',exact:true}).click();await page.getByRole('heading',{name:'Edit lesson',exact:true}).waitFor({state:'detached'});assert.equal(entries.length,2);
    console.log('PASS task3: clickable outline, merged title/Topic mapping, chosen content preview, draft save, dirty-close cancellation, split restores Topic rows');
+   if(stage>=4){
+     await page.getByRole('button',{name:'Manage videos',exact:true}).click();await page.getByRole('heading',{name:'Course videos',exact:true}).waitFor();
+     await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('heading',{name:'Edit Video',exact:true}).waitFor();
+     await page.getByText('Editing this video affects these saved lessons:',{exact:true}).waitFor();
+     await page.getByLabel('Transcript (JSON)',{exact:true}).fill('[invalid');await page.getByRole('button',{name:'Save Changes',exact:true}).click();await page.getByText('Fix the transcript JSON before saving.',{exact:true}).waitFor();
+     await page.getByLabel('Transcript (JSON)',{exact:true}).fill('[{"s":0,"t":"Updated transcript"}]');await page.getByLabel('Subtitle/Unit',{exact:true}).fill('Combined Topic coverage');
+     await page.screenshot({path:resolve(out,'task4-video-metadata.png'),fullPage:true});
+     await page.getByRole('button',{name:'Save Changes',exact:true}).click();await page.getByRole('heading',{name:'Edit Video',exact:true}).waitFor({state:'detached'});
+     await page.getByText('Combined Topic coverage',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Delete Combined limits video',exact:true}).isDisabled(),true);
+     await page.getByLabel('Show videos',{exact:true}).selectOption('all');await page.getByLabel('Search videos',{exact:true}).fill('Combined');await page.screenshot({path:resolve(out,'task4-video-library.png'),fullPage:true});
+     console.log('PASS task4: nested video library, shared impact, raw invalid transcript retained and blocked, metadata round trip, referenced deletion disabled, filters/search');
+   }
+
  }
 
 }catch(error){console.error(error);if(page){console.error((await page.locator('body').innerText()).slice(0,2200));await page.screenshot({path:resolve(out,'custom-failure.png'),fullPage:true}).catch(()=>{});}process.exitCode=1;}

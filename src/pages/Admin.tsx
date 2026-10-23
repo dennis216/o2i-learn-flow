@@ -2,7 +2,7 @@ import { outlineRpc } from '@/lib/courseOutline';
 import { CourseOutlineManagement } from '@/components/admin/CourseOutlineManagement';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +48,9 @@ interface CourseVideo {
   notes_url: string | null;
   order_index: number;
   courses?: { title: string };
+  metadata_revision?: number;
+  reference_count?: number;
+  usage?: { course_id: string; course_title: string; entry_id: string; lesson_title: string; archived: boolean }[];
 }
 
 interface Subject {
@@ -70,6 +73,10 @@ const Admin = () => {
   const [contentDirty, setContentDirty] = useState(false);
   const [contentBusy, setContentBusy] = useState(false);
   const [courseTemplate, setCourseTemplate] = useState('');
+  const [videoFilter, setVideoFilter] = useState('course');
+  const [videoSearch, setVideoSearch] = useState('');
+  const [videoLibraryError, setVideoLibraryError] = useState('');
+  const videoLoad = useRef(0);
   const canLeaveContent = () => !contentBusy && (!contentDirty || window.confirm('Discard unsaved lesson changes?'));
   const openCourseContent = (id: string) => { if (canLeaveContent()) { setManagedCourseId(id); setAdminTab('course-content'); } };
   const [courses, setCourses] = useState<Course[]>([]);
@@ -119,6 +126,12 @@ const Admin = () => {
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editVideoDialogOpen, setEditVideoDialogOpen] = useState(false);
+  const [videoTranscriptDraft, setVideoTranscriptDraft] = useState('');
+  const [videoEditSnapshot, setVideoEditSnapshot] = useState('');
+  const videoDirty = editVideoDialogOpen && JSON.stringify({ video: editingVideo, transcript: videoTranscriptDraft }) !== videoEditSnapshot;
+  const closeVideoEditor = () => { if (!submitting && (!videoDirty || window.confirm('Discard unsaved video changes?'))) setEditVideoDialogOpen(false); };
+  const openVideoEditor = (video: CourseVideo) => { const transcript = video.transcript ? JSON.stringify(video.transcript, null, 2) : ''; setEditingVideo(video); setVideoTranscriptDraft(transcript); setVideoEditSnapshot(JSON.stringify({ video, transcript })); setEditVideoDialogOpen(true); };
+  useEffect(() => { const guard = (e: BeforeUnloadEvent) => { if (videoDirty) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [videoDirty]);
   const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false);
 
   // JSON validation state
@@ -137,11 +150,12 @@ const Admin = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchCourses();
-      fetchVideos();
       fetchTeamMembers();
       fetchSubjects();
     }
   }, [isAdmin]);
+
+  useEffect(() => { if (isAdmin) void fetchVideos(); }, [isAdmin, managedCourseId, videoFilter]);
 
   // Helper: sanitize transcript JSON to {s, t} format
   const sanitizeTranscript = (rawJson: string): any[] | null => {
@@ -250,17 +264,12 @@ const Admin = () => {
   };
 
   const fetchVideos = async () => {
+    const request = ++videoLoad.current;
     try {
-      const { data, error } = await supabase
-        .from("course_videos")
-        .select("id, course_id, title, subtitle, video_url, transcript, exam_tips, notes_url, order_index, courses(title)")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      setVideos(data || []);
-    } catch (error) {
-      console.error("Error fetching videos:", error);
-    }
+      const data = await outlineRpc(supabase, 'list_course_video_library', { _course_id: managedCourseId || null, _filter: videoFilter });
+      if (!Array.isArray(data)) throw new Error('Could not verify the video library.');
+      if (request === videoLoad.current) { setVideos(data); setVideoLibraryError(''); }
+    } catch (error) { if (request === videoLoad.current) { setVideos([]); setVideoLibraryError(error instanceof Error ? error.message : String(error)); } }
   };
 
   const fetchTeamMembers = async () => {
@@ -398,20 +407,14 @@ const Admin = () => {
     if (!editingVideo) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("course_videos")
-        .update({
-          title: editingVideo.title,
-          subtitle: editingVideo.subtitle,
-          video_url: editingVideo.video_url,
-          transcript: editingVideo.transcript,
-          exam_tips: editingVideo.exam_tips,
-          notes_url: editingVideo.notes_url,
-          order_index: editingVideo.order_index,
-        })
-        .eq("id", editingVideo.id);
+      let transcript = null;
+      if (videoTranscriptDraft.trim()) {
+        transcript = sanitizeTranscript(videoTranscriptDraft);
+        if (!transcript) throw new Error('Fix the transcript JSON before saving.');
+      }
+      await outlineRpc(supabase, 'save_course_video_metadata', { _video_id: editingVideo.id, _expected_revision: editingVideo.metadata_revision,
+        _details: { ...editingVideo, transcript } });
 
-      if (error) throw error;
       toast({ title: "Video updated successfully" });
       setEditVideoDialogOpen(false);
       setEditingVideo(null);
@@ -698,10 +701,10 @@ const Admin = () => {
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Back to Courses</Button>
             <span className="font-semibold">{courses.find(c => c.id === managedCourseId)?.title}</span>
-            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage'); }}>Manage videos</Button>
-            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('videos'); }}>Add video metadata</Button>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) { setVideoFilter('course'); setAdminTab('manage'); } }}>Manage videos</Button>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) { setVideoFormData(v => ({ ...v, course_id: managedCourseId })); setAdminTab('videos'); } }}>Add video metadata</Button>
           </div>
-          {managedCourseId && <CourseOutlineManagement key={managedCourseId} courseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} />}
+          {managedCourseId && <CourseOutlineManagement key={managedCourseId} courseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} onSaved={() => { void fetchVideos(); }} />}
         </TabsContent>
 
         {/* Legacy video metadata editor; student access is controlled by canonical publication. */}
@@ -1050,15 +1053,17 @@ const Admin = () => {
           <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <Card>
             <CardHeader>
-              <CardTitle>All Videos</CardTitle>
-              <CardDescription>Manage existing videos and edit transcripts</CardDescription>
+              <CardTitle>Course videos</CardTitle>
+              <CardDescription>Manage videos used by this course, including transcript, subtitle, exam tips and PDF links.</CardDescription>
+              <div className="flex flex-wrap gap-3"><Label htmlFor="video-library-filter">Show videos</Label><select id="video-library-filter" className="rounded border bg-background p-2" value={videoFilter} onChange={e => setVideoFilter(e.target.value)}><option value="course">This course</option><option value="all">All courses</option><option value="unlinked">Not linked to saved lessons</option></select><Input aria-label="Search videos" placeholder="Search videos" value={videoSearch} onChange={e => setVideoSearch(e.target.value)} /></div>
+              {videoLibraryError && <p role="alert" className="text-destructive">{videoLibraryError}</p>}
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-[700px] overflow-y-auto">
                 {videos.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No videos yet</p>
                 ) : (
-                  videos.map((video) => (
+                  videos.filter(v => (v.title + ' ' + (v.subtitle ?? '')).toLowerCase().includes(videoSearch.toLowerCase())).map((video) => (
                     <div
                       key={video.id}
                       className="p-4 border rounded-lg flex items-center justify-between hover:bg-accent/30 transition-colors"
@@ -1098,8 +1103,7 @@ const Admin = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setEditingVideo(video);
-                            setEditVideoDialogOpen(true);
+                            openVideoEditor(video);
                           }}
                         >
                           <Pencil className="h-4 w-4 mr-1" />
@@ -1115,7 +1119,7 @@ const Admin = () => {
                         </Button>}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-destructive">
+                            <Button variant="outline" size="sm" className="text-destructive" disabled={(video.reference_count ?? 0) > 0} aria-label={`Delete ${video.title}`} title={(video.reference_count ?? 0) > 0 ? 'Referenced by saved lessons; remove associations first' : 'Delete unused video'}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -1123,7 +1127,7 @@ const Admin = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Video?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete this video and all associated practice problems.
+                                This permanently deletes an unused video. Videos referenced by any saved lesson cannot be deleted. Canonical question-bank data is not affected.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1556,25 +1560,26 @@ const Admin = () => {
       </Dialog>
 
       {/* Edit Video Dialog */}
-      <Dialog open={editVideoDialogOpen} onOpenChange={setEditVideoDialogOpen}>
+      <Dialog open={editVideoDialogOpen} onOpenChange={open => { if (!open) closeVideoEditor(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Video</DialogTitle>
             <DialogDescription>Update video details, transcript, and PDF links</DialogDescription>
+            {!!editingVideo?.usage?.length && <div className="rounded border border-amber-400 p-3 text-sm"><p className="font-semibold">Editing this video affects these saved lessons:</p>{editingVideo.usage.map(u => <p key={u.entry_id}>{u.course_title} · {u.lesson_title}{u.archived ? ' · recoverable' : ''}</p>)}</div>}
           </DialogHeader>
           {editingVideo && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input
+                  <Label htmlFor="metadata-title">Title</Label>
+                  <Input id="metadata-title"
                     value={editingVideo.title}
                     onChange={(e) => setEditingVideo({ ...editingVideo, title: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Subtitle/Unit</Label>
-                  <Input
+                  <Label htmlFor="metadata-subtitle">Subtitle/Unit</Label>
+                  <Input id="metadata-subtitle"
                     value={editingVideo.subtitle || ""}
                     onChange={(e) => setEditingVideo({ ...editingVideo, subtitle: e.target.value })}
                   />
@@ -1582,15 +1587,15 @@ const Admin = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Video URL</Label>
-                  <Input
+                  <Label htmlFor="metadata-url">Video URL</Label>
+                  <Input id="metadata-url"
                     value={editingVideo.video_url}
                     onChange={(e) => setEditingVideo({ ...editingVideo, video_url: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Order Index</Label>
-                  <Input
+                  <Label htmlFor="metadata-order">Order Index</Label>
+                  <Input id="metadata-order"
                     type="number"
                     value={editingVideo.order_index}
                     onChange={(e) => setEditingVideo({ ...editingVideo, order_index: parseInt(e.target.value) || 0 })}
@@ -1598,32 +1603,25 @@ const Admin = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Notes/PDF URL</Label>
-                <Input
+                <Label htmlFor="metadata-pdf">Notes/PDF URL</Label>
+                <Input id="metadata-pdf"
                   value={editingVideo.notes_url || ""}
                   onChange={(e) => setEditingVideo({ ...editingVideo, notes_url: e.target.value })}
                   placeholder="https://example.com/notes.pdf"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Transcript (JSON)</Label>
-                <Textarea
-                  value={editingVideo.transcript ? JSON.stringify(editingVideo.transcript, null, 2) : ""}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setEditingVideo({ ...editingVideo, transcript: parsed });
-                    } catch {
-                      // Keep the raw string temporarily
-                    }
-                  }}
+                <Label htmlFor="metadata-transcript">Transcript (JSON)</Label>
+                <Textarea id="metadata-transcript"
+                  value={videoTranscriptDraft}
+                  onChange={e => setVideoTranscriptDraft(e.target.value)}
                   rows={6}
                   className="font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Exam Tips (Markdown + LaTeX)</Label>
-                <Textarea
+                <Label htmlFor="metadata-tips">Exam Tips (Markdown + LaTeX)</Label>
+                <Textarea id="metadata-tips"
                   value={editingVideo.exam_tips || ""}
                   onChange={(e) => setEditingVideo({ ...editingVideo, exam_tips: e.target.value })}
                   rows={4}
@@ -1638,7 +1636,7 @@ const Admin = () => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditVideoDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={closeVideoEditor}>Cancel</Button>
             <Button onClick={updateVideo} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Changes

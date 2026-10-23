@@ -51,3 +51,15 @@ Task 7 需要另行确认远程推送和生产部署；本轮实施授权不包�
 - 新内容保存后锁定旧 Topic 编辑入口，避免旧客户端覆盖新内容引用。
 - 本地浏览器通过：合并预览、自定义标题/两 Topic 一行、内容草稿保存、关闭取消保留编辑、拆分补回 Topic；类型检查及本 Task 修改组件 lint 通过。
 - 截图：[合并预览](screenshots/task3-merge-preview.png)、[合并后大纲](screenshots/task3-outline.png)，本地模拟数据。
+
+## Task 4 视频管理
+
+- 完整视频管理收进 Course Content，保留 subtitle、transcript、exam tips、PDF 与新增元数据入口。
+- 列表支持本课程使用/拥有、全部课程、未被保存课节引用三种范围，并可搜索。
+- 显示共享影响范围；仍被任一保存内容引用的视频禁止删除，服务端同样约束。
+- 元数据保存增加 revision 冲突检查；视频任何字段变化同步推进引用内容的 revision。
+- transcript 编辑保留原始文本，非法 JSON 不会被静默丢弃，保存前及服务端各自验证。
+- 本地浏览器通过：迁移后的入口、共享影响、无效 JSON 保留并阻止保存、元数据读回、删除保护、筛选搜索。
+- 截图：[视频库](screenshots/task4-video-library.png)、[视频元数据编辑](screenshots/task4-video-metadata.png)，本地模拟数据。
+- 测试基础设施修正：Supabase PostgreSQL 镜像初始化期间临时 Unix socket 就绪不代表最终实例就绪；等待 TCP 连接后再执行测试，避免初始化重启的偶发断连。
+- 隔离数据库回归通过，新增视频库权限、输入边界、元数据版本冲突、内容版本失效及引用保护检查通过；类型检查通过。
