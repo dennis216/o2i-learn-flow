@@ -71,15 +71,16 @@ export async function loadPracticeStatistics(client: SupabaseClient<Database>, u
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Old lesson/skill IDs have no canonical mapping. Never drop an unsupported filter. */
-export function parsePracticeRoute(params: URLSearchParams): { error?: string; topicId?: string; sessionId?: string; questionId?: string; courseId?: string } {
-  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question', 'course']);
+export function parsePracticeRoute(params: URLSearchParams): { error?: string; topicId?: string; sessionId?: string; questionId?: string; courseId?: string; entryId?: string } {
+  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question', 'course', 'lesson']);
   if ([...params.keys()].some(key => !allowed.has(key)) || [...allowed].some(key => params.getAll(key).length > 1))
     return { error: 'This practice filter is not connected to the published question bank. Choose a published Topic in Practice.' };
   if (params.has('subject') && params.get('subject') !== 'calculus') return { error: 'This subject has no published practice connection.' };
-  for (const key of ['topic', 'session', 'question', 'course']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
+  for (const key of ['topic', 'session', 'question', 'course', 'lesson']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
   if (params.has('question') && !params.has('session')) return { error: 'A saved question requires its original practice session.' };
+  if (params.has('lesson') && (!params.has('course') || !params.has('topic'))) return { error: 'A lesson return link requires a course and canonical Topic.' };
   if (params.has('course') && !params.has('topic')) return { error: 'Course practice requires a canonical Topic.' };
-  return { ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
+  return { ...(params.has('lesson') ? { entryId: params.get('lesson')! } : {}), ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
 }
 export function readPracticeSession(value: unknown, expectedId: string): PracticeSession {
   const raw = value as PracticeSession;

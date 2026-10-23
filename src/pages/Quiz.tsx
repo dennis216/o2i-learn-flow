@@ -1,3 +1,4 @@
+import { entryLocation, loadCustomOutline } from '@/lib/courseOutline';
 import { courseLocation } from '@/lib/courseContent';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -25,7 +26,7 @@ function SavedAnswer({ question, courseId }: { question: IssuedPracticeQuestion;
     <h2 className="font-semibold">Solution</h2><MarkdownWithMath content={question.attempt.solution} strictMath className="overflow-x-auto" />
   </section>;
 }
-function AccountQuiz({ sessionId, topicId, questionId, courseId, onCourseLoaded, onNextSet }: { sessionId: string; topicId?: string; questionId?: string; courseId?: string; onCourseLoaded: (path: string | null) => void; onNextSet: (topicId: string | null, courseId?: string | null) => void }) {
+function AccountQuiz({ sessionId, topicId, questionId, courseId, returnTo, onCourseLoaded, onNextSet }: { sessionId: string; topicId?: string; questionId?: string; courseId?: string; returnTo?: string | null; onCourseLoaded: (path: string | null) => void; onNextSet: (topicId: string | null, courseId?: string | null) => void }) {
   const [session, setSession] = useState<PracticeSession | null>(null);
   const { user } = useAuth();
   const [index, setIndex] = useState(0);
@@ -71,7 +72,7 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, onCourseLoaded,
   };
   if (error) return <div role="alert" className="space-y-4"><p>Could not load this practice session. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   if (!session) return <p role="status">Loading your published questions…</p>;
-  if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">Practice for this topic is being prepared. Stay tuned.</h1>{courseId && <Link className="underline" to={courseLocation(courseId, topicId)}>Back to Course</Link>}</div>;
+  if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">Practice for this topic is being prepared. Stay tuned.</h1>{courseId && <Link className="underline" to={returnTo ?? courseLocation(courseId, topicId)}>Back to Course</Link>}</div>;
   if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct</p><Button onClick={() => onNextSet(session.topic_id, session.course_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} courseId={session.course_id} /></CardContent></Card>)}</div>;
   if (!question) return null;
   return <>
@@ -98,7 +99,20 @@ export default function Quiz() {
   const scope = parsePracticeRoute(params);
   const [savedCourse, setSavedCourse] = useState<string | null>(null);
   useEffect(() => { setSavedCourse(null); }, [user?.id, scope.sessionId, scope.courseId]);
-  const backToCourse = scope.courseId ? courseLocation(scope.courseId, scope.topicId) : savedCourse;
+  const sourceEntryId = scope.entryId;
+  const [returnContext, setReturnContext] = useState<{ courseId: string; topicId: string; entryId: string } | null>(null);
+  useEffect(() => {
+    let active = true; setReturnContext(null);
+    if (scope.courseId && scope.topicId && sourceEntryId) {
+      const courseId = scope.courseId, topicId = scope.topicId;
+      void loadCustomOutline(supabase, courseId).then(data => {
+        if (active && data.units.some(u => u.topics.some(e => e.id === sourceEntryId && e.is_published && e.cb_topics.some(t => t.id === topicId)))) setReturnContext({ courseId, topicId, entryId: sourceEntryId });
+      }).catch(() => { /* The canonical course/Topic link remains available. */ });
+    }
+    return () => { active = false; };
+  }, [scope.courseId, scope.topicId, sourceEntryId, user?.id]);
+  const returnEntryId = returnContext && returnContext.courseId === scope.courseId && returnContext.topicId === scope.topicId ? returnContext.entryId : undefined;
+  const backToCourse = scope.courseId ? (returnEntryId ? entryLocation(scope.courseId, returnEntryId) : courseLocation(scope.courseId, scope.topicId)) : savedCourse;
   useEffect(() => {
     if (user && !scope.error && !scope.sessionId) { const next = new URLSearchParams(params); const id = crypto.randomUUID();
       try { sessionStorage.setItem(`${PRACTICE_CAPTURE_PREFIX}${user.id}:${id}:new`, 'true'); } catch { /* Capture will be marked incomplete. */ }
@@ -107,7 +121,7 @@ export default function Quiz() {
   return <div className="mx-auto min-h-[70vh] max-w-5xl px-4 py-8"><Button asChild variant="ghost" className="mb-6"><Link to={backToCourse ?? (scope.questionId ? '/review' : '/practice')}><ArrowLeft />{backToCourse ? 'Back to Course' : scope.questionId ? 'Back to Review' : 'Back to Practice'}</Link></Button>
     {loading ? <p role="status">Checking your account…</p> : !user ? <div className="space-y-4"><p>Sign in to practice published questions and save your answers.</p><Button asChild><Link to={"/auth?returnTo=" + encodeURIComponent("/quiz?" + params.toString())}>Sign in</Link></Button></div>
       : scope.error ? <div role="alert" className="space-y-3"><h1 className="text-2xl font-semibold">This practice scope is not connected</h1><p>{scope.error}</p></div>
-        : scope.sessionId ? <AccountQuiz key={user.id + ':' + scope.sessionId + ':' + (scope.questionId ?? '')} sessionId={scope.sessionId} topicId={scope.topicId} questionId={scope.questionId} courseId={scope.courseId} onCourseLoaded={setSavedCourse} onNextSet={(topicId, courseId) => setParams({ subject: 'calculus', source: 'next', ...(courseId ? { course: courseId } : {}), ...(topicId ? { topic: topicId } : {}) })} />
+        : scope.sessionId ? <AccountQuiz key={user.id + ':' + scope.sessionId + ':' + (scope.questionId ?? '')} sessionId={scope.sessionId} topicId={scope.topicId} questionId={scope.questionId} courseId={scope.courseId} returnTo={backToCourse} onCourseLoaded={setSavedCourse} onNextSet={(topicId, courseId) => setParams({ subject: 'calculus', source: 'next', ...(courseId ? { course: courseId } : {}), ...(topicId ? { topic: topicId } : {}), ...(returnEntryId ? { lesson: returnEntryId } : {}) })} />
           : <p role="status">Opening your practice session…</p>}
   </div>;
 }

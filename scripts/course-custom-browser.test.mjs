@@ -37,6 +37,8 @@ try{
      else if(fn==='courses'){ const all=[{id:course,title:'AP Calculus BC',practice_course_scope:'BC',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'},{id:ab,title:'AP Calculus AB',practice_course_scope:'AB',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'}];body=u.searchParams.get('id') ? all.filter(c=>'eq.'+c.id===u.searchParams.get('id')) : all; }
      else if(fn==='get_course_outline')body=outline;
      else if(fn==='get_course_outline_v2')body=customOutline();
+     else if(fn==='resolve_course_entry'){const a=route.request().postDataJSON();body=entries.find(e=>e.is_published&&(!a._topic_id||e.cb_topics.some(t=>t.id===a._topic_id)))?.id??null;}
+     else if(fn==='resolve_course_video')body={course_id:course,entry_id:entries.find(e=>e.is_published)?.id,topic_id:topic};
      else if(fn==='list_course_outline_archive')body=archivedEntries;
      else if(fn==='get_course_outline_entry'){const a=route.request().postDataJSON();body={...content,course_id:a._course_id,entry_id:a._entry_id};}
      else if(fn==='edit_course_outline'){
@@ -124,6 +126,26 @@ try{
      await page.getByText('Combined Topic coverage',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Delete Combined limits video',exact:true}).isDisabled(),true);
      await page.getByLabel('Show videos',{exact:true}).selectOption('all');await page.getByLabel('Search videos',{exact:true}).fill('Combined');await page.screenshot({path:resolve(out,'task4-video-library.png'),fullPage:true});
      console.log('PASS task4: nested video library, shared impact, raw invalid transcript retained and blocked, metadata round trip, referenced deletion disabled, filters/search');
+     if(stage>=5){
+       const mergedId='44444444-4444-4444-8444-444444444444',draftId='55555555-5555-4555-8555-555555555555';
+       entries=[{id:mergedId,entry_id:mergedId,code:'1.1 · 1.2',title:'Limits: graphs and tables',is_published:true,content_id:content.lesson_id,cb_topics:outline[0].topics.map(t=>({id:t.id,code:t.code,title:t.title}))},{id:draftId,entry_id:draftId,code:'1.3',title:'Unprepared Topic',is_published:false,cb_topics:[{id:draftId,code:'1.3',title:'Unprepared Topic'}]}];content.is_published=true;
+       await context.route('https://www.youtube.com/iframe_api',r=>r.fulfill({contentType:'application/javascript',body:`window.YT={Player:class { constructor(el,config){ this.el=document.createElement('iframe');this.el.title='Synthetic YouTube player';this.el.src='https://www.youtube.com/embed/'+config.videoId;el.replaceWith(this.el);setTimeout(()=>config.events.onReady(),0); }getCurrentTime(){return 0}destroy(){this.el.remove()} }};window.onYouTubeIframeAPIReady?.();`}));
+       await context.route('https://www.youtube.com/embed/**',r=>r.fulfill({contentType:'text/html',body:'Synthetic player fixture'}));
+       await context.route(api+'/rest/v1/rpc/has_role',r=>r.fulfill({contentType:'application/json',body:'false'}));requests.length=0;
+       await page.goto(app+'/courses?course='+course);await page.getByRole('heading',{name:'Unit 1: Synthetic Unit'}).waitFor();assert.equal(requests.filter(p=>p.endsWith('/get_course_outline_entry')).length,0);
+       await page.getByText('Unprepared Topic',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:/Unprepared Topic/}).count(),0);
+       await page.getByRole('button',{name:'1.1 · 1.2 · Limits: graphs and tables',exact:true}).click();await page.getByTitle('Synthetic YouTube player').waitFor();
+       assert.equal(await page.getByText('Limits: graphs and tables',{exact:true}).count(),1);await page.getByText('CB 1.2: Practice for this topic is being prepared. Stay tuned.',{exact:true}).waitFor();
+       await page.screenshot({path:resolve(out,'task5-student-desktop.png'),fullPage:true});
+       await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(out,'task5-student-mobile.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.setViewportSize({width:1280,height:960});
+       await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic,other,entryId:mergedId,practiceName:'Practice CB 1.1'});
+       await context.route(api+'/rest/v1/rpc/list_course_practice_topics',r=>r.fulfill({contentType:'application/json',body:JSON.stringify([{id:topic,question_count:1},{id:other,question_count:1}])}));await page.reload();await page.getByRole('link',{name:'Practice CB 1.2',exact:true}).waitFor();
+       await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic:other,other:topic,entryId:mergedId,practiceName:'Practice CB 1.2'});
+       await page.goto(app+'/courses?course='+course+'&topic='+other);await page.getByTitle('Synthetic YouTube player').waitFor();assert.equal(new URL(page.url()).searchParams.get('lesson'),mergedId);
+       await page.goto(app+'/courses?course='+course+'&video='+content.videos[0].id);await page.getByTitle('Synthetic YouTube player').waitFor();assert.equal(new URL(page.url()).searchParams.get('lesson'),mergedId);
+       console.log('PASS task5: original Unit layout, merged title once, CB labels, uncovered Topic retained, lazy player, mobile width, both canonical Topic practice submits return to original lesson, old Topic/video links');
+     }
+
    }
 
  }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { outlineRpc } from '@/lib/courseOutline';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +13,7 @@ import apCalculusThumbnail from '@/assets/ap-calculus-thumbnail.jpg';
 export default function Courses() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
+  const requestedEntryId = params.get('lesson');
   const requestedCourseId = params.get('course'), requestedTopicId = params.get('topic'), requestedVideoId = params.get('video');
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -33,15 +35,16 @@ export default function Courses() {
   useEffect(() => {
     let active = true;
     const videoId = requestedVideoId;
-    if (!videoId || (requestedCourseId && requestedTopicId)) return;
+    if (!videoId || (requestedCourseId && requestedEntryId)) return;
     if (!/^[0-9a-f-]{36}$/i.test(videoId)) { setParams({}, { replace: true }); return; }
-    void supabase.rpc('resolve_course_video', { _video_id: videoId }).then(({ data, error }) => {
+    void Promise.resolve(requestedCourseId ? outlineRpc(supabase, 'resolve_course_entry', { _course_id: requestedCourseId, _topic_id: requestedTopicId, _video_id: videoId }).then(entry => ({ data: entry ? { course_id: requestedCourseId, entry_id: entry } : null, error: null })) : supabase.rpc('resolve_course_video', { _video_id: videoId })).then(({ data, error }) => {
       if (!active) return;
-      const mapping = data as { course_id?: string; topic_id?: string } | null;
-      setParams(!error && mapping?.course_id && mapping.topic_id ? { course: mapping.course_id, topic: mapping.topic_id, video: videoId } : {}, { replace: true });
-    });
+      const mapping = data as { course_id?: string; topic_id?: string; entry_id?: string } | null;
+      setParams(!error && mapping?.course_id && mapping.entry_id ? { course: mapping.course_id, lesson: mapping.entry_id, video: videoId } : {}, { replace: true });
+    }).catch(() => { if (active) setError('Could not resolve this course video. Retry the course.'); });
     return () => { active = false; };
-  }, [requestedVideoId, requestedCourseId, requestedTopicId, setParams]);
+  }, [requestedVideoId, requestedCourseId, requestedTopicId, requestedEntryId, setParams]);
+  const changeEntry = useCallback((entryId: string | null) => { if (requestedCourseId) setParams({ course: requestedCourseId, ...(entryId ? { lesson: entryId } : {}), ...(entryId && requestedVideoId ? { video: requestedVideoId } : {}) }, { replace: true }); }, [requestedCourseId, requestedVideoId, setParams]);
   const selected = courses.find(c => c.id === requestedCourseId);
   const select = (course: Course) => setParams({ course: course.id });
   return <div className="container mx-auto min-h-screen px-4 py-10">
@@ -49,6 +52,6 @@ export default function Courses() {
     <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
     {loading ? <p role="status" className="py-8">Loading courses…</p> : error ? <div role="alert" className="space-y-3 py-8"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div> : <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{courses.map(course => <CourseCard key={course.id} course={course} thumbnail={course.subject === 'AP Calc' ? apCalculusThumbnail : undefined} onSelect={select} />)}</div>}
     {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">No published courses in this category.</p>}
-    {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={requestedTopicId} initialVideoId={requestedVideoId ?? undefined} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onTopicChange={topicId => setParams({ course: selected.id, ...(topicId ? { topic: topicId } : {}) }, { replace: true })} onClose={() => setParams({})} />}
+    {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={requestedTopicId} entryId={requestedEntryId} initialVideoId={requestedVideoId ?? undefined} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onEntryChange={changeEntry} onClose={() => setParams({})} />}
   </div>;
 }

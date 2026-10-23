@@ -142,3 +142,9 @@ test('Course routes validate UUID context and issue through the scoped RPC', asy
   assert.equal(call.name,'start_course_question_practice');assert.equal(call.args._course_id,id);
   await assert.rejects(startPractice(client,id,id,qid),/different course or Topic/);
 });
+
+
+test('Lesson identity is navigation context only and requires a canonical course/Topic scope',()=>{
+  const scope=parsePracticeRoute(new URLSearchParams(`course=${id}&topic=${qid}&lesson=${id}`));assert.equal(scope.entryId,id);assert.equal(scope.topicId,qid);
+  for(const query of [`lesson=${id}`,`topic=${qid}&lesson=${id}`,`course=${id}&topic=${qid}&lesson=bad`,`course=${id}&topic=${qid}&lesson=${id}&lesson=${qid}`]) assert.ok(parsePracticeRoute(new URLSearchParams(query)).error,query);
+});

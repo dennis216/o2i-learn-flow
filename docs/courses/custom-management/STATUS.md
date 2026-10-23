@@ -63,3 +63,12 @@ Task 7 需要另行确认远程推送和生产部署；本轮实施授权不包�
 - 截图：[视频库](screenshots/task4-video-library.png)、[视频元数据编辑](screenshots/task4-video-metadata.png)，本地模拟数据。
 - 测试基础设施修正：Supabase PostgreSQL 镜像初始化期间临时 Unix socket 就绪不代表最终实例就绪；等待 TCP 连接后再执行测试，避免初始化重启的偶发断连。
 - 隔离数据库回归通过，新增视频库权限、输入边界、元数据版本冲突、内容版本失效及引用保护检查通过；类型检查通过。
+
+## Task 5 学生端大纲与练习往返
+
+- 保持 Course → Unit 折叠大纲和原有视觉结构；课节显示自定义标题，合并后的 CB Topics 作为一行标签，未准备的 Topic 仍占位。
+- 展开课节后按原有方式加载视频与游戏；一节课覆盖多个 Topic 时，练习按钮仍分别进入各自规范 Topic 的题库。
+- 练习路由仅接受同时带有课程和规范 Topic 的有效课节 ID；返回课程时核对课节仍属于该课程及 Topic，失效时退回规范 Topic 链接。
+- 旧 Topic 和视频入口继续解析到已发布课节；管理员可在学生大纲中直接打开同一个课节编辑器。
+- 本地浏览器通过：桌面及手机大纲、合并课单行、未准备 Topic、视频延迟加载、两种 Topic 各自提交及返回、旧链接；类型检查、相关文件 lint、学生 Practice 测试 21/21 通过。
+- 截图：[学生端桌面](screenshots/task5-student-desktop.png)、[学生端手机](screenshots/task5-student-mobile.png)，均使用本地模拟课程及视频。
