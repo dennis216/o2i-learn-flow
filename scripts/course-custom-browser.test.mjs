@@ -11,6 +11,10 @@ const ab='93124428-92f4-48d2-a6dc-e5f9e010248b';
 let content={course_id:course,topic_id:topic,is_published:false,game_path:null,videos:[],lesson_id:null,revision:0,owner_course_id:course,linked_courses:[]},saved;
 let otherContent={...content,course_id:ab,owner_course_id:ab};
 const savedRows=()=>content.lesson_id ? [{lesson_id:content.lesson_id,topic_id:topic,topic_code:'1.1',topic_title:'Synthetic Topic',is_published:content.is_published,revision:content.revision,owner_course_id:course,owner_course_title:'AP Calculus BC',archived:false,courses:content.linked_courses}] : [];
+let outlineRevision=0;
+let entries=outline[0].topics.map(t=>({...t,entry_id:t.id,content_id:null,cb_topics:[{id:t.id,code:t.code,title:t.title}]}));
+let archivedEntries=[];
+const customOutline=()=>({revision:outlineRevision,units:[{...outline[0],topics:entries}]});
 const anon=['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',Buffer.from(JSON.stringify({role:'anon'})).toString('base64url'),'synthetic'].join('.');
 let browser, page;
 let createdCourse=false;
@@ -32,6 +36,18 @@ try{
      else if(fn==='profiles')body={user_id:uid,full_name:'Synthetic admin'};
      else if(fn==='courses'){ const all=[{id:course,title:'AP Calculus BC',practice_course_scope:'BC',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'},{id:ab,title:'AP Calculus AB',practice_course_scope:'AB',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'}];body=u.searchParams.get('id') ? all.filter(c=>'eq.'+c.id===u.searchParams.get('id')) : all; }
      else if(fn==='get_course_outline')body=outline;
+     else if(fn==='get_course_outline_v2')body=customOutline();
+     else if(fn==='list_course_outline_archive')body=archivedEntries;
+     else if(fn==='get_course_outline_entry'){const a=route.request().postDataJSON();body={...content,course_id:a._course_id,entry_id:a._entry_id};}
+     else if(fn==='edit_course_outline'){
+       const a=route.request().postDataJSON(),p=a._payload;assert.equal(a._expected_revision,outlineRevision);outlineRevision++;
+       if(a._action==='save'){if(p.entry_id){const e=entries.find(e=>e.id===p.entry_id);e.title=p.title;e.cb_topics=outline[0].topics.filter(t=>p.topic_ids.includes(t.id)).map(t=>({id:t.id,code:t.code,title:t.title}));body=e.id;}else{const id=crypto.randomUUID();entries.push({id,entry_id:id,title:p.title,code:'1.1',is_published:false,cb_topics:[{id:topic,code:'1.1',title:'Synthetic Topic'}]});body=id;}}
+       else if(a._action==='merge'){const chosen=entries.filter(e=>p.entry_ids.includes(e.id));archivedEntries.push(...chosen.map(e=>({entry_id:e.id,title:e.title,topic_ids:e.cb_topics.map(t=>t.id)})));const id=crypto.randomUUID();entries=entries.filter(e=>!p.entry_ids.includes(e.id));entries.push({id,entry_id:id,title:p.title,code:'1.1 · 1.2',is_published:false,cb_topics:chosen.flatMap(e=>e.cb_topics)});body=id;}
+       else if(a._action==='reorder'){entries=p.entry_ids.map(id=>entries.find(e=>e.id===id));body=null;}
+       else if(a._action==='split'||a._action==='remove'){const e=entries.find(e=>e.id===p.entry_id);archivedEntries.push({entry_id:e.id,title:e.title,topic_ids:e.cb_topics.map(t=>t.id)});entries=entries.filter(x=>x.id!==e.id);for(const t of e.cb_topics)if(!entries.some(e=>e.cb_topics.some(c=>c.id===t.id)))entries.push({...t,entry_id:t.id,is_published:false,cb_topics:[t]});body=null;}
+     }
+     else if(fn==='save_course_outline_content'){const a=route.request().postDataJSON();content={...content,lesson_id:content.lesson_id??other,revision:content.revision+1,entry_id:a._entry_id,is_published:a._is_published,videos:a._videos.map((v,n)=>({...v,course_id:course,order_index:n})),game_path:a._game_path,linked_courses:[{id:course,title:'AP Calculus BC'}]};const e=entries.find(e=>e.id===a._entry_id);if(e){e.is_published=a._is_published;e.content_id=content.lesson_id;}body=null;}
+
      else if(fn==='create_managed_course'){const args=route.request().postDataJSON();assert.equal(args._scope,'AB');assert.equal(args._details.title,'Synthetic new course');createdCourse=true;body=ab;}
      else if(fn==='subjects')body=[{id:other,name:'AP Calc',category:'High School',order_index:0}];
      else if(fn==='list_course_practice_topics')body=[{id:topic,question_count:1}];
@@ -74,5 +90,28 @@ try{
  await page.getByRole('button',{name:'Create Course',exact:true}).click();
  await page.getByRole('heading',{name:'Course Content',exact:true}).waitFor();assert.equal(createdCourse,true);
  console.log('PASS task2: Courses entry, nested creation/subjects/videos, course context, creation routes directly to outline');
+ if(stage>=3){
+   assert.equal(await page.getByLabel('Unit / Topic',{exact:true}).count(),0);
+   await page.getByRole('checkbox',{name:'Select Synthetic Topic',exact:true}).check();await page.getByRole('checkbox',{name:'Select Synthetic Draft',exact:true}).check();
+   await page.getByRole('button',{name:'Merge selected lessons',exact:true}).click();
+   await page.getByLabel('Lesson title shown to students',{exact:true}).fill('Limits: graphs and tables');
+   await page.getByText('Selected content preview', {exact:false}).waitFor();
+   await page.screenshot({path:resolve(out,'task3-merge-preview.png'),fullPage:true});
+   page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Confirm merge',exact:true}).click();
+   await page.getByRole('heading',{name:'Edit lesson',exact:true}).waitFor();
+   assert.equal(entries.length,1);assert.equal(entries[0].cb_topics.length,2);
+   await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
+   await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).waitFor();
+   await page.screenshot({path:resolve(out,'task3-outline.png'),fullPage:true});
+   await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).click();
+   await page.getByRole('button',{name:'Add YouTube video',exact:true}).click();await page.getByLabel('Video 1 title').fill('Combined limits video');await page.getByLabel('YouTube URL',{exact:true}).fill('https://youtu.be/abcdefghijk');
+   await page.getByRole('button',{name:'Save draft',exact:true}).click();await page.getByRole('status').filter({hasText:'Draft saved'}).waitFor();
+   await page.getByLabel('Lesson title shown to students',{exact:true}).fill('Unsaved title');page.once('dialog',d=>d.dismiss());await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();assert.equal(await page.getByLabel('Lesson title shown to students',{exact:true}).inputValue(),'Unsaved title');
+   page.once('dialog',d=>d.accept());await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
+   await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).click();
+   page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Split into Topic rows',exact:true}).click();await page.getByRole('heading',{name:'Edit lesson',exact:true}).waitFor({state:'detached'});assert.equal(entries.length,2);
+   console.log('PASS task3: clickable outline, merged title/Topic mapping, chosen content preview, draft save, dirty-close cancellation, split restores Topic rows');
+ }
+
 }catch(error){console.error(error);if(page){console.error((await page.locator('body').innerText()).slice(0,2200));await page.screenshot({path:resolve(out,'custom-failure.png'),fullPage:true}).catch(()=>{});}process.exitCode=1;}
 finally{if(browser)await browser.close();vite.kill('SIGTERM');await new Promise(r=>vite.exitCode!==null?r():vite.once('exit',r));}

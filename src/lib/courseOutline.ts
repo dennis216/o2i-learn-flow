@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '../integrations/supabase/types.ts';
-import type { CourseUnit, EditableVideo, TopicContent } from './courseContent.ts';
+import { youtubeId, type CourseUnit, type EditableVideo, type TopicContent } from './courseContent.ts';
 
 export interface CanonicalTopic { id: string; code: string; title: string; is_bc_only?: boolean }
 export interface OutlineEntry extends CanonicalTopic { entry_id: string; is_published: boolean; content_id?: string | null; cb_topics: CanonicalTopic[] }
@@ -29,7 +29,9 @@ export async function editOutline(client: SupabaseClient<Database>, courseId: st
 }
 export async function saveOutlineContent(client: SupabaseClient<Database>, current: TopicContent, published: boolean, videos: EditableVideo[], gamePath: string | null) {
   if (!current.entry_id || !Number.isSafeInteger(current.revision)) throw new Error('Reload this lesson before saving.');
-  await outlineRpc(client, 'save_course_outline_content', { _entry_id: current.entry_id, _is_published: published, _videos: videos, _game_path: gamePath, _expected_revision: current.revision, _expected_lesson_id: current.lesson_id ?? null });
+  if (videos.some(v => !v.title.trim() || !youtubeId(v.video_url))) throw new Error('Each video needs a title and valid HTTPS YouTube URL.');
+  const canonicalVideos = videos.map(v => ({ ...v, video_url: 'https://www.youtube.com/watch?v=' + youtubeId(v.video_url) }));
+  await outlineRpc(client, 'save_course_outline_content', { _entry_id: current.entry_id, _is_published: published, _videos: canonicalVideos, _game_path: gamePath, _expected_revision: current.revision, _expected_lesson_id: current.lesson_id ?? null });
 }
 export function entryLocation(courseId: string, entryId?: string, topicId?: string) {
   return '/courses?' + new URLSearchParams({ course: courseId, ...(entryId ? { lesson: entryId } : {}), ...(topicId ? { topic: topicId } : {}) });

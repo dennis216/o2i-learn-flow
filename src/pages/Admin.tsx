@@ -1,5 +1,5 @@
 import { outlineRpc } from '@/lib/courseOutline';
-import { CourseContentManagement } from '@/components/admin/CourseContentManagement';
+import { CourseOutlineManagement } from '@/components/admin/CourseOutlineManagement';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
 import { useState, useEffect } from "react";
@@ -682,7 +682,7 @@ const Admin = () => {
 
       <Tabs value={adminTab} onValueChange={value => { if (canLeaveContent()) setAdminTab(value); }} className="space-y-6">
         <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
-          <TabsTrigger value="manage-courses">Courses</TabsTrigger>
+          <TabsTrigger value={['courses', 'course-content', 'subjects', 'manage', 'videos'].includes(adminTab) ? adminTab : 'manage-courses'} onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Courses</TabsTrigger>
           <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
           <TabsTrigger value="playground">Playground</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
@@ -701,7 +701,7 @@ const Admin = () => {
             <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage'); }}>Manage videos</Button>
             <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('videos'); }}>Add video metadata</Button>
           </div>
-          {managedCourseId && <CourseContentManagement key={managedCourseId} initialCourseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} />}
+          {managedCourseId && <CourseOutlineManagement key={managedCourseId} courseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} />}
         </TabsContent>
 
         {/* Legacy video metadata editor; student access is controlled by canonical publication. */}

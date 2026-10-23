@@ -4,6 +4,7 @@ export async function verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids})
  const source=readFileSync(new URL('../supabase/migrations/20261101000000_course_custom_outline.sql',import.meta.url),'utf8');
  const before=sql('SELECT count(*) FROM public.course_videos').trim();
  sql(source);
+ sql(readFileSync(new URL('../supabase/migrations/20261101020000_course_outline_editor_guard.sql',import.meta.url),'utf8'));
  const arg=v=>v===null?'NULL':typeof v==='number'||typeof v==='boolean'?String(v):`'${String(v).replaceAll("'","''")}'`;
  const call=(uid,fn,...a)=>asUser(uid,`SELECT public.${fn}(${a.map(arg).join(',')})`).trim().split('\n').at(-1);
  const get=(c=ab)=>JSON.parse(call(admin,'get_course_outline_v2',c));
