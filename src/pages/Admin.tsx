@@ -1225,7 +1225,7 @@ const Admin = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Course?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete this course. Videos associated with it will remain but will be unlinked.
+                                Deletion is permanent and may be blocked when this course has an outline or saved content. Unpublish the course to hide it while keeping its lessons and videos.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

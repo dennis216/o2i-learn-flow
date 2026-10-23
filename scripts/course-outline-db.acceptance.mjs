@@ -1,10 +1,19 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 export async function verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids}) {
- const source=readFileSync(new URL('../supabase/migrations/20261101000000_course_custom_outline.sql',import.meta.url),'utf8');
+ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
  const before=sql('SELECT count(*) FROM public.course_videos').trim();
- sql(source);
- sql(readFileSync(new URL('../supabase/migrations/20261101020000_course_outline_editor_guard.sql',import.meta.url),'utf8'));
+ sql(`ALTER TABLE public.courses ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ ALTER TABLE public.courses ADD COLUMN description text,ADD COLUMN level text,ADD COLUMN subject text,ADD COLUMN category text,ADD COLUMN price numeric,ADD COLUMN instructor_id uuid;
+ ALTER TABLE public.course_videos ADD COLUMN subtitle text,ADD COLUMN exam_tips text,ADD COLUMN notes_url text;
+ CREATE TABLE public.subjects(name text,category text);INSERT INTO public.subjects VALUES('AP Calc','High School');
+ UPDATE public.curriculum_frameworks SET code='AP-CALCULUS-2026';`);
+ const preflight=sql(read('docs/courses/custom-management/production/00_preflight_readonly.sql'));
+ assert.ok(preflight.startsWith('t|t'),preflight);
+ sql(read('docs/courses/custom-management/production/10_deploy.sql'));
+ const verify=sql(read('docs/courses/custom-management/production/20_verify_readonly.sql'));
+ assert.ok(verify.startsWith('t|'),verify);
+ assert.throws(()=>sql(read('docs/courses/custom-management/production/10_deploy.sql')));
  const arg=v=>v===null?'NULL':typeof v==='number'||typeof v==='boolean'?String(v):`'${String(v).replaceAll("'","''")}'`;
  const call=(uid,fn,...a)=>asUser(uid,`SELECT public.${fn}(${a.map(arg).join(',')})`).trim().split('\n').at(-1);
  const get=(c=ab)=>JSON.parse(call(admin,'get_course_outline_v2',c));
@@ -38,5 +47,6 @@ export async function verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids})
  assert.throws(()=>asUser(student,'DELETE FROM public.course_outline_topics'));
  const report={checks:['lossless backfill','administrator writes only','canonical course scope','one lesson many Topics','one Topic many lessons','optimistic revision conflicts','complete Unit reorder','atomic content save and publication','draft metadata isolation','legacy editor write guard','legacy Topic resolution','referenced video deletion guard','AB/BC outline independence','remove restores uncovered Topics'],result:'PASS',production:false};
  mkdirSync('node_modules/.cache/course-outline',{recursive:true});writeFileSync('node_modules/.cache/course-outline/task1-report.json',JSON.stringify(report,null,2));
+ console.log('PASS custom release package: exact prerequisite, atomic four-migration deployment, 26 checks, repeat refusal');
  console.log('PASS custom outline database:',report.checks.join(', '));
 }

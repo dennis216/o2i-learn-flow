@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 export function verifyCourseVideoLibrary({sql,asUser,admin,student,ab}) {
- sql('ALTER TABLE public.course_videos ADD COLUMN subtitle text,ADD COLUMN exam_tips text,ADD COLUMN notes_url text');
- sql(readFileSync(new URL('../supabase/migrations/20261101030000_course_video_library.sql',import.meta.url),'utf8'));
  const invoke=(uid,fn,args)=>asUser(uid,`SELECT public.${fn}(${args})`).trim().split('\n').at(-1);
  assert.throws(()=>invoke(student,'list_course_video_library',`'${ab}','all'`));
  const list=JSON.parse(invoke(admin,'list_course_video_library',`'${ab}','all'`));assert.ok(list.length>0);

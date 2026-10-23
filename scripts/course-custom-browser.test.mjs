@@ -18,9 +18,10 @@ const customOutline=()=>({revision:outlineRevision,units:[{...outline[0],topics:
 const anon=['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',Buffer.from(JSON.stringify({role:'anon'})).toString('base64url'),'synthetic'].join('.');
 let browser, page;
 let createdCourse=false;
-const stage=Number(process.env.O2I_OUTLINE_STAGE ?? 2);
+const stage=Number(process.env.O2I_OUTLINE_STAGE ?? 6);
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5194','--strictPort'],{env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});
 const out=resolve('docs/courses/custom-management/screenshots');mkdirSync(out,{recursive:true});
+const capture=(task,name,options)=>stage===task ? page.screenshot({path:resolve(out,name),...options}) : Promise.resolve();
 try{
  for(let n=0;;n++){try{if((await fetch(app)).ok)break;}catch{}if(n>150)throw new Error('Vite startup timeout');await new Promise(r=>setTimeout(r,200));}
  browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
@@ -80,7 +81,7 @@ try{
  assert.equal(await page.getByRole('tab',{name:'Create Course',exact:true}).count(),0);
  assert.equal(await page.getByRole('tab',{name:'Subjects',exact:true}).count(),0);
  assert.equal(await page.getByRole('tab',{name:'Manage Videos',exact:true}).count(),0);
- await page.screenshot({path:resolve(out,'task2-courses.png'),fullPage:true});
+ await capture(2,'task2-courses.png',{fullPage:true});
  await page.getByRole('button',{name:'Manage content',exact:true}).first().click();
  await page.getByRole('heading',{name:'Course Content',exact:true}).waitFor();
  if(stage===2){assert.equal(await page.getByLabel('Course',{exact:true}).inputValue(),course);}
@@ -90,7 +91,7 @@ try{
  await page.getByText('Select subject',{exact:true}).click();await page.getByRole('option',{name:'AP Calc',exact:true}).click();
  await page.getByText('Select level',{exact:true}).click();await page.getByRole('option',{name:'Advanced',exact:true}).click();
  await page.getByLabel('Curriculum template',{exact:true}).selectOption('AB');
- await page.screenshot({path:resolve(out,'task2-create-course.png'),fullPage:true});
+ await capture(2,'task2-create-course.png',{fullPage:true});
  await page.getByRole('button',{name:'Create Course',exact:true}).click();
  await page.getByRole('heading',{name:'Course Content',exact:true}).waitFor();assert.equal(createdCourse,true);
  console.log('PASS task2: Courses entry, nested creation/subjects/videos, course context, creation routes directly to outline');
@@ -100,13 +101,13 @@ try{
    await page.getByRole('button',{name:'Merge selected lessons',exact:true}).click();
    await page.getByLabel('Lesson title shown to students',{exact:true}).fill('Limits: graphs and tables');
    await page.getByText('Selected content preview', {exact:false}).waitFor();
-   await page.screenshot({path:resolve(out,'task3-merge-preview.png'),fullPage:true});
+   await capture(3,'task3-merge-preview.png',{fullPage:true});
    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Confirm merge',exact:true}).click();
    await page.getByRole('heading',{name:'Edit lesson',exact:true}).waitFor();
    assert.equal(entries.length,1);assert.equal(entries[0].cb_topics.length,2);
    await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
    await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).waitFor();
-   await page.screenshot({path:resolve(out,'task3-outline.png'),fullPage:true});
+   await capture(3,'task3-outline.png',{fullPage:true});
    await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).click();
    await page.getByRole('button',{name:'Add YouTube video',exact:true}).click();await page.getByLabel('Video 1 title').fill('Combined limits video');await page.getByLabel('YouTube URL',{exact:true}).fill('https://youtu.be/abcdefghijk');
    await page.getByRole('button',{name:'Save draft',exact:true}).click();await page.getByRole('status').filter({hasText:'Draft saved'}).waitFor();
@@ -121,10 +122,10 @@ try{
      await page.getByText('Editing this video affects these saved lessons:',{exact:true}).waitFor();
      await page.getByLabel('Transcript (JSON)',{exact:true}).fill('[invalid');await page.getByRole('button',{name:'Save Changes',exact:true}).click();await page.getByText('Fix the transcript JSON before saving.',{exact:true}).waitFor();
      await page.getByLabel('Transcript (JSON)',{exact:true}).fill('[{"s":0,"t":"Updated transcript"}]');await page.getByLabel('Subtitle/Unit',{exact:true}).fill('Combined Topic coverage');
-     await page.screenshot({path:resolve(out,'task4-video-metadata.png'),fullPage:true});
+     await capture(4,'task4-video-metadata.png',{fullPage:true});
      await page.getByRole('button',{name:'Save Changes',exact:true}).click();await page.getByRole('heading',{name:'Edit Video',exact:true}).waitFor({state:'detached'});
      await page.getByText('Combined Topic coverage',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Delete Combined limits video',exact:true}).isDisabled(),true);
-     await page.getByLabel('Show videos',{exact:true}).selectOption('all');await page.getByLabel('Search videos',{exact:true}).fill('Combined');await page.screenshot({path:resolve(out,'task4-video-library.png'),fullPage:true});
+     await page.getByLabel('Show videos',{exact:true}).selectOption('all');await page.getByLabel('Search videos',{exact:true}).fill('Combined');await capture(4,'task4-video-library.png',{fullPage:true});
      console.log('PASS task4: nested video library, shared impact, raw invalid transcript retained and blocked, metadata round trip, referenced deletion disabled, filters/search');
      if(stage>=5){
        const mergedId='44444444-4444-4444-8444-444444444444',draftId='55555555-5555-4555-8555-555555555555';
@@ -136,14 +137,27 @@ try{
        await page.getByText('Unprepared Topic',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:/Unprepared Topic/}).count(),0);
        await page.getByRole('button',{name:'1.1 · 1.2 · Limits: graphs and tables',exact:true}).click();await page.getByTitle('Synthetic YouTube player').waitFor();
        assert.equal(await page.getByText('Limits: graphs and tables',{exact:true}).count(),1);await page.getByText('CB 1.2: Practice for this topic is being prepared. Stay tuned.',{exact:true}).waitFor();
-       await page.screenshot({path:resolve(out,'task5-student-desktop.png'),fullPage:true});
-       await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(out,'task5-student-mobile.png'),fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.setViewportSize({width:1280,height:960});
+       await capture(5,'task5-student-desktop.png',{fullPage:true});
+       await page.setViewportSize({width:390,height:844});await capture(5,'task5-student-mobile.png',{fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.setViewportSize({width:1280,height:960});
        await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic,other,entryId:mergedId,practiceName:'Practice CB 1.1'});
        await context.route(api+'/rest/v1/rpc/list_course_practice_topics',r=>r.fulfill({contentType:'application/json',body:JSON.stringify([{id:topic,question_count:1},{id:other,question_count:1}])}));await page.reload();await page.getByRole('link',{name:'Practice CB 1.2',exact:true}).waitFor();
        await (await import('./course-practice-browser.acceptance.mjs')).verifyCoursePracticeBrowser({page,context,app,api,course,topic:other,other:topic,entryId:mergedId,practiceName:'Practice CB 1.2'});
        await page.goto(app+'/courses?course='+course+'&topic='+other);await page.getByTitle('Synthetic YouTube player').waitFor();assert.equal(new URL(page.url()).searchParams.get('lesson'),mergedId);
        await page.goto(app+'/courses?course='+course+'&video='+content.videos[0].id);await page.getByTitle('Synthetic YouTube player').waitFor();assert.equal(new URL(page.url()).searchParams.get('lesson'),mergedId);
        console.log('PASS task5: original Unit layout, merged title once, CB labels, uncovered Topic retained, lazy player, mobile width, both canonical Topic practice submits return to original lesson, old Topic/video links');
+       if(stage>=6){
+         await page.goto(app+'/courses?video='+content.videos[0].id+'&autoplay=true');await page.getByTitle('Synthetic YouTube player').waitFor();
+         assert.equal(new URL(page.url()).searchParams.get('lesson'),mergedId);
+         assert.equal(new URL(page.url()).searchParams.has('autoplay'),false);
+         await page.goto(app+'/learn');await page.waitForURL(app+'/courses');
+         content.game_path=`${course}/${topic}/synthetic-game.html`;
+         await page.goto(app+'/courses?course='+course+'&lesson='+mergedId);await page.getByTitle('Synthetic YouTube player').waitFor();
+         await page.screenshot({path:resolve(out,'task6-regression.png'),clip:{x:0,y:0,width:1280,height:355}});
+         await (await import('./course-game-browser.acceptance.mjs')).verifyCourseGame({page,context,api,course,topic,requests,out:resolve('node_modules/.cache/course-browser')});
+         content.game_path=null;
+         console.log('PASS task6: global old video/Learn links and sandboxed game interaction');
+         if(process.env.O2I_AI_TUTOR_BROWSER)await (await import('./ai-tutor-browser.acceptance.mjs')).verifyAiTutorHidden({browser,routeFixture,app,api,course,topic,uid,token,out:resolve('node_modules/.cache/course-browser')});
+       }
      }
 
    }

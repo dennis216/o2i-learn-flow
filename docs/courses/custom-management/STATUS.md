@@ -72,3 +72,12 @@ Task 7 需要另行确认远程推送和生产部署；本轮实施授权不包�
 - 旧 Topic 和视频入口继续解析到已发布课节；管理员可在学生大纲中直接打开同一个课节编辑器。
 - 本地浏览器通过：桌面及手机大纲、合并课单行、未准备 Topic、视频延迟加载、两种 Topic 各自提交及返回、旧链接；类型检查、相关文件 lint、学生 Practice 测试 21/21 通过。
 - 截图：[学生端桌面](screenshots/task5-student-desktop.png)、[学生端手机](screenshots/task5-student-mobile.png)，均使用本地模拟课程及视频。
+
+## Task 6 回归与交付包
+
+- `test:courses:browser` 已切到新课程大纲流程，覆盖后台入口、合并/拆分、视频管理、学生桌面/手机、两种 CB Topic 的练习往返、旧链接和 HTML 游戏隔离；旧下拉框测试不再作为现行入口。
+- AI Tutor 隐藏测试改走 Courses → Course Content → Manage videos；访客、学生、教师、管理员和超级管理员的桌面/手机回归通过。
+- 生成 [受控生产发布包](production/README.md)：精确校验前置共享课节迁移及函数，四个新迁移在同一事务执行，后置 26 项只读校验并对比课程/课节/绑定/视频数量。
+- 隔离 PostgreSQL 实际执行该包通过；重复部署被拒绝。旧课程/游戏/练习/共享内容、新大纲、建课及视频库数据库回归通过。
+- `npm run build`、`npx tsc -p tsconfig.app.json --noEmit`、`npm run test:courses` 与本 Task 相关文件 lint 通过；删除课程确认文案已改为说明关联内容可能阻止删除，建议取消发布。
+- [Task 6 截图](screenshots/task6-regression.png)：本地模拟数据，显示合并课两种独立 Topic 练习；不是线上账号验收。

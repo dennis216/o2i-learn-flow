@@ -76,8 +76,9 @@ export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,t
       if(role==='admin'||role==='super_admin') {
         await page.setViewportSize({width:1440,height:1000});
         await page.goto(app+'/admin');
-        await page.getByRole('tab',{name:'Manage Videos',exact:true}).click();
-        await page.getByRole('heading',{name:'All Videos',exact:true}).waitFor();
+        await page.getByRole('button',{name:'Manage content',exact:true}).first().click();
+        await page.getByRole('button',{name:'Manage videos',exact:true}).click();
+        await page.getByRole('heading',{name:'Course videos',exact:true}).waitFor();
         await page.getByRole('button',{name:'Edit',exact:true}).first().waitFor();
         assert.doesNotMatch(await page.locator('body').innerText(),forbidden,role+' admin video management');
       }
