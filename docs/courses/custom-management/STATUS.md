@@ -31,3 +31,13 @@ Task 7 需要另行确认远程推送和生产部署；本轮实施授权不包�
 - `O2I_COURSE_OUTLINE_DB=1 npm run test:courses:db`：通过，含原课程/游戏/练习/共享回归及 14 类新大纲检查。
 - `npx tsc -p tsconfig.app.json --noEmit`：通过；`npm run test:courses`：7/7。
 - [Task 1 截图](screenshots/task1-database.png)：真实隔离数据库测试报告，不是产品界面或生产验收。
+
+## Task 2 统一 Courses 入口
+
+- Courses 成为后台默认入口；Create Course、Subjects、Manage Videos 改为课程管理内入口，原视频元数据编辑仍可访问。
+- 点击课程名或 Manage content，直接带入课程上下文；已编辑内容离开前确认。
+- 新建课程通过管理 RPC 原子创建，AB/BC 模板初始化大纲及练习范围；普通课程明确保留无模板状态。
+- 本地浏览器：课程入口、一级 tab 收敛、创建模板参数及创建后直达内容通过。
+- 类型检查通过；Admin 既有 lint 问题仍保留，按规则计数与基线比较，不扩大为无关清理。
+- 截图：[课程列表](screenshots/task2-courses.png)、[创建课程](screenshots/task2-create-course.png)，均为本地模拟数据。
+- 隔离数据库创建测试通过：权限、学科存在性、价格边界、模板限制、完整大纲及默认草稿；首次夹具缺少真实表 UUID 默认值已修正，重跑通过。

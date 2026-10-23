@@ -1,3 +1,4 @@
+import { outlineRpc } from '@/lib/courseOutline';
 import { CourseContentManagement } from '@/components/admin/CourseContentManagement';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, FolderOpen } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
@@ -64,6 +65,13 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [adminTab, setAdminTab] = useState('manage-courses');
+  const [managedCourseId, setManagedCourseId] = useState('');
+  const [contentDirty, setContentDirty] = useState(false);
+  const [contentBusy, setContentBusy] = useState(false);
+  const [courseTemplate, setCourseTemplate] = useState('');
+  const canLeaveContent = () => !contentBusy && (!contentDirty || window.confirm('Discard unsaved lesson changes?'));
+  const openCourseContent = (id: string) => { if (canLeaveContent()) { setManagedCourseId(id); setAdminTab('course-content'); } };
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<CourseVideo[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -476,18 +484,11 @@ const Admin = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("courses").insert({
-        title: formData.title,
-        description: formData.description,
-        level: formData.level,
-        subject: formData.subject,
-        category: formData.category,
-        price: parseFloat(formData.price),
-        instructor_id: user.id,
-        is_published: formData.is_published,
+      const createdId = await outlineRpc(supabase, 'create_managed_course', {
+        _details: { ...formData, price: Number(formData.price) },
+        _scope: courseTemplate || null,
       });
-
-      if (error) throw error;
+      if (typeof createdId !== 'string') throw new Error('Could not verify the created course. Reload Courses before retrying.');
 
       toast({ title: "Success", description: "Course created successfully!" });
 
@@ -501,10 +502,12 @@ const Admin = () => {
         is_published: false,
       });
 
-      fetchCourses();
+      setCourseTemplate('');
+      await fetchCourses();
+      openCourseContent(createdId);
     } catch (error) {
       console.error("Error creating course:", error);
-      toast({ title: "Error", description: "Failed to create course.", variant: "destructive" });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to create course.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -677,19 +680,12 @@ const Admin = () => {
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
       <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, and content</p>
 
-      <Tabs defaultValue="course-content" className="space-y-6">
-        <TabsList className={`grid h-auto w-full grid-cols-2 sm:grid-cols-3 ${isSuperAdmin ? "xl:grid-cols-9" : "xl:grid-cols-8"}`}>
-          <TabsTrigger value="course-content">Course Content</TabsTrigger>
-          <TabsTrigger value="courses">Create Course</TabsTrigger>
+      <Tabs value={adminTab} onValueChange={value => { if (canLeaveContent()) setAdminTab(value); }} className="space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+          <TabsTrigger value="manage-courses">Courses</TabsTrigger>
           <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
-          <TabsTrigger value="subjects" className="flex items-center gap-1">
-            <FolderOpen className="h-4 w-4" />
-            Subjects
-          </TabsTrigger>
           <TabsTrigger value="playground">Playground</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="manage">Manage Videos</TabsTrigger>
-          <TabsTrigger value="manage-courses">Courses</TabsTrigger>
           {isSuperAdmin && (
             <TabsTrigger value="users" className="flex items-center gap-1">
               <UserCog className="h-4 w-4" />
@@ -698,10 +694,19 @@ const Admin = () => {
           )}
         </TabsList>
 
-        <TabsContent value="course-content"><CourseContentManagement /></TabsContent>
+        <TabsContent value="course-content">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Back to Courses</Button>
+            <span className="font-semibold">{courses.find(c => c.id === managedCourseId)?.title}</span>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage'); }}>Manage videos</Button>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('videos'); }}>Add video metadata</Button>
+          </div>
+          {managedCourseId && <CourseContentManagement key={managedCourseId} initialCourseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} />}
+        </TabsContent>
 
         {/* Legacy video metadata editor; student access is controlled by canonical publication. */}
         <TabsContent value="videos">
+          <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <div className="grid gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -904,6 +909,7 @@ const Admin = () => {
             <CardHeader>
               <CardTitle>Create New Course</CardTitle>
               <CardDescription>Add a new course to the platform</CardDescription>
+              <Button variant="outline" onClick={() => setAdminTab('manage-courses')}>Back to Courses</Button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -966,6 +972,7 @@ const Admin = () => {
                   </div>
                 </div>
 
+                <div className="space-y-2"><Label htmlFor="course-template">Curriculum template</Label><select id="course-template" className="w-full rounded border bg-background p-2" value={courseTemplate} onChange={e => setCourseTemplate(e.target.value)} required={formData.subject === 'AP Calc'}><option value="">No template</option><option value="AB">AP Calculus AB</option><option value="BC">AP Calculus BC</option></select><p className="text-sm text-muted-foreground">AB / BC initializes its complete outline and practice scope. Other courses start without an outline.</p></div>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <Label htmlFor="course-published">Publish course</Label>
@@ -1034,11 +1041,13 @@ const Admin = () => {
 
         {/* Subjects Management Tab */}
         <TabsContent value="subjects">
+          <Button className="mb-4" variant="outline" onClick={() => { void fetchSubjects(); setAdminTab('manage-courses'); }}>Back to Courses</Button>
           <SubjectManagement />
         </TabsContent>
 
         {/* Manage Videos Tab */}
         <TabsContent value="manage">
+          <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <Card>
             <CardHeader>
               <CardTitle>All Videos</CardTitle>
@@ -1139,7 +1148,8 @@ const Admin = () => {
           <Card>
             <CardHeader>
               <CardTitle>All Courses</CardTitle>
-              <CardDescription>Edit or delete existing courses</CardDescription>
+              <CardDescription>Select a course to manage its outline and content.</CardDescription>
+              <div className="flex flex-wrap gap-2"><Button onClick={() => setAdminTab('courses')}>Create Course</Button><Button variant="outline" onClick={() => setAdminTab('subjects')}>Manage subjects</Button></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-[700px] overflow-y-auto">
@@ -1152,7 +1162,7 @@ const Admin = () => {
                       className="p-4 border rounded-lg flex items-start justify-between hover:bg-accent/30 transition-colors"
                     >
                       <div className="space-y-2 flex-1">
-                        <h3 className="font-semibold">{course.title}</h3>
+                        <Button variant="link" className="h-auto p-0 text-base font-semibold" onClick={() => openCourseContent(course.id)}>{course.title}</Button>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {course.description}
                         </p>
@@ -1178,7 +1188,8 @@ const Admin = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex flex-wrap items-center gap-2 ml-4">
+                        <Button size="sm" onClick={() => openCourseContent(course.id)}>Manage content</Button>
                         <div className="flex items-center gap-2 mr-2">
                           <Switch
                             checked={course.is_published}

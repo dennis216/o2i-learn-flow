@@ -70,5 +70,6 @@ try {
  if(process.env.O2I_COURSE_RELEASE_DB){await (await import('./course-release-db.acceptance.mjs')).verifyCourseRelease({sql,bootstrap,admin,student});}
  if(process.env.O2I_COURSE_SHARED_DB){await (await import('./course-shared-db.acceptance.mjs')).verifySharedLessons({sql,asUser,admin,student,ab,bc,tids});}
  if(process.env.O2I_COURSE_OUTLINE_DB){await (await import('./course-outline-db.acceptance.mjs')).verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids});}
+ if(process.env.O2I_COURSE_CREATION_DB){(await import('./course-creation-db.acceptance.mjs')).verifyManagedCreation({sql,asUser,admin,student});}
 } catch(error){console.error(error.stderr?.toString()||error);process.exitCode=1;}
 finally {if(created)docker(['rm','-f',name]);}
