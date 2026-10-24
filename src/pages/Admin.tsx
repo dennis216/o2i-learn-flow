@@ -64,7 +64,7 @@ interface Subject {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin, isAdmin, adminAccess, accessLoading, loading: authLoading } = useAuth();
+  const { user, isSuperAdmin, isAdmin, adminAccess, accessLoading, accessError, retryAdminAccess, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const loading = authLoading || accessLoading;
   const [submitting, setSubmitting] = useState(false);
@@ -146,9 +146,10 @@ const Admin = () => {
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate('/auth'); return; }
+    if (accessError) return;
     if (!isAdmin) { navigate('/'); return; }
     if (!canAccessAdminTab(adminAccess, adminTab)) setAdminTab(defaultAdminTab(adminAccess));
-  }, [loading, user, isAdmin, adminAccess, adminTab, navigate]);
+  }, [loading, user, isAdmin, adminAccess, adminTab, accessError, navigate]);
 
   useEffect(() => {
     if (loading) return;
@@ -636,6 +637,10 @@ const Admin = () => {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (accessError) {
+    return <div className="container mx-auto max-w-xl py-12" role="alert"><h1 className="text-2xl font-semibold">Account permissions unavailable</h1><p className="my-4">{accessError}</p><Button onClick={retryAdminAccess}>Retry</Button></div>;
   }
 
   if (!isAdmin) {

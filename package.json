@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "test:admin-access": "node --experimental-strip-types --test src/lib/adminAccess.test.mjs src/lib/adminAccessRepository.test.mjs scripts/admin-access/deletion-handler.test.mjs",
+    "test:admin-access:compatibility": "node scripts/admin-access/compatibility-browser.test.mjs",
+    "check:admin-release": "node scripts/admin-access/check-production.mjs",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",

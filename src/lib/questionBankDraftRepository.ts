@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../integrations/supabase/types.ts";
 import type { DraftSavePlan } from "./questionBankDraftSave.ts";
+import { hasAdminModule } from './adminAccessRepository.ts';
 
 export interface SavedDraft {
   id: string;
@@ -105,8 +106,7 @@ async function requireQuestionBankAdmin(client: SupabaseClient<Database>) {
   const { data, error } = await client.auth.getUser();
   if (error) throw new Error(`Could not verify administrator sign-in: ${error.message}`);
   if (!data.user) throw new Error("Sign in as an administrator to read the question bank");
-  const { data: admin, error: roleError } = await client.rpc("has_admin_module", { _module: "questions" });
-  if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
+  const admin = await hasAdminModule(client, 'questions', data.user.id);
   if (admin !== true) throw new Error("Administrator access is required to read the question bank");
 }
 

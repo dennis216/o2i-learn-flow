@@ -1,8 +1,12 @@
 # 管理员权限：交接与人工审核
 
-本轮交付是本地代码、独立 commits、可重复验收与部署材料。没有 push、没有生产部署、没有修改或删除真实账号。
+2026-10-24 更新：本任务已在用户明确确认后部署生产四项迁移、两个管理员云函数，并补齐两个正式域名的登录回跳白名单。用户确认 Admin 已恢复。原有账号角色与公共内容数量保持一致，未删除真实账号。见 [本次修复记录](REPAIR_2026-10-24_ZH.md)。
+
+当前生产不能重跑 10–40。复核使用 `npm run check:admin-release` 和 `production/50_verify_readonly.sql`；后者四条迁移应各有一份源 SQL。新的前端兼容修复尚未 push，由用户统一发布。
 
 ## 发布顺序
+
+以下顺序适用于尚未安装本权限包的环境。当前生产已完成数据库与函数部分；若某些迁移已登记，先核对实际对象和源 SQL，不删登记强行重跑。
 
 1. 合并本轮 commits 与你正在整理的其他工作。不要用 `git add .` 把并行文件混入。
 2. 在生产只读执行 `production/00_preflight_readonly.sql`；六个前置条件必须为 true。保存原角色名单和课程/题目/版本/审核/文件数量。核对 Instructor 账号，避免把仍有课程职责的人误当学生交接。
@@ -12,6 +16,8 @@
 6. 用以下真实账号检查。所有条件通过后，才把新角色分配给交接人员。
 
 不做全库 `db push`，不重放旧课程种子迁移，不自动删除历史内容。部署文件遇到已注册版本会停止，不能通过删除迁移记录强行重跑。
+
+上传前端前先运行 `npm run check:admin-release`。该检查核对五个权限接口、两个云函数的 CORS 与匿名拒绝、两个正式域名入口；不替代真实管理员登录验收或生产邮件送达验证。
 
 ## 人工审核清单
 
@@ -39,7 +45,8 @@
 ## 本地复验命令
 
 ```sh
-node --experimental-strip-types --test src/lib/adminAccess.test.mjs scripts/admin-access/deletion-handler.test.mjs
+npm run test:admin-access
+npm run test:admin-access:compatibility
 npm run test:question-bank
 npm run test:student-practice
 npm run test:courses

@@ -1,0 +1,145 @@
+{
+  "checkedAt": "2026-10-24T21:52:49.894Z",
+  "project": "lxoaeaewcrshjkigzyqe",
+  "before": {
+    "counts": {
+      "files": 9,
+      "courses": 3,
+      "reviews": 28,
+      "versions": 28,
+      "questions": 28
+    },
+    "roleCounts": {
+      "admin": 5,
+      "super_admin": 1
+    },
+    "missingFunctions": {
+      "public.get_admin_access()": false,
+      "public.has_admin_module(text)": false,
+      "public.preview_user_deletion(uuid)": false,
+      "public.prepare_user_deletion(uuid,text)": false,
+      "public.set_account_role(uuid,public.app_role)": false
+    }
+  },
+  "after": {
+    "counts": {
+      "files": 9,
+      "courses": 3,
+      "reviews": 28,
+      "versions": 28,
+      "questions": 28
+    },
+    "roleCounts": {
+      "admin": 5,
+      "super_admin": 1
+    },
+    "functions": {
+      "public.get_admin_access()": true,
+      "public.has_admin_module(text)": true,
+      "public.preview_user_deletion(uuid)": true,
+      "public.prepare_user_deletion(uuid,text)": true,
+      "public.set_account_role(uuid,public.app_role)": true
+    },
+    "guards": {
+      "delete_guard": true,
+      "no_instructor": true,
+      "private_roles": true,
+      "storage_guard": true,
+      "private_accounts": true,
+      "no_public_content_cascade": true,
+      "public_view_excludes_email": true
+    },
+    "exactSourceLedger": [
+      {
+        "md5": "136fbad2e284d5ecc3698853b3703fac",
+        "name": "admin_module_role_values",
+        "version": "20261103000000",
+        "source_parts": 1
+      },
+      {
+        "md5": "356652a085244925048f99d348fa13be",
+        "name": "admin_module_permissions",
+        "version": "20261103010000",
+        "source_parts": 1
+      },
+      {
+        "md5": "d11ccb83ad64a84db35645599c39f9eb",
+        "name": "admin_user_deletion",
+        "version": "20261103020000",
+        "source_parts": 1
+      },
+      {
+        "md5": "b33fe1b1cdfa87ff55fd140fca43dbd7",
+        "name": "admin_account_data_guards",
+        "version": "20261103030000",
+        "source_parts": 1
+      }
+    ],
+    "rolesUnchanged": true,
+    "legacyModuleGates": 0,
+    "deletionAuditCount": 0,
+    "pendingDeletions": 0
+  },
+  "databaseRequestContextChecks": {
+    "scope": "Read-only SQL under authenticated role with actual account IDs; not a browser login",
+    "superAdmin": {
+      "access": {
+        "team": true,
+        "users": true,
+        "courses": true,
+        "questions": true,
+        "playground": true
+      },
+      "owner": true,
+      "visible_profiles": 1869,
+      "visible_roles": 6,
+      "other_private_profiles": 44,
+      "unknown_module": false
+    },
+    "fullAdmin": {
+      "access": {
+        "team": true,
+        "users": false,
+        "courses": true,
+        "questions": true,
+        "playground": true
+      },
+      "owner": false,
+      "visible_profiles": 1,
+      "visible_roles": 1,
+      "other_private_profiles": 0,
+      "unknown_module": false
+    }
+  },
+  "edgeFunctions": [
+    {
+      "slug": "admin-invite-user",
+      "status": "ACTIVE",
+      "version": 2,
+      "verify_jwt": true
+    },
+    {
+      "slug": "admin-delete-user",
+      "status": "ACTIVE",
+      "version": 1,
+      "verify_jwt": true
+    }
+  ],
+  "redirects": {
+    "siteUrlUnchanged": true,
+    "existingEntriesPreserved": 7,
+    "added": [
+      "https://o2iinstitute.org/**",
+      "https://www.o2iinstitute.org/**"
+    ]
+  },
+  "realAccountAcceptance": {
+    "source": "User confirmation in this chat",
+    "result": "Admin 入口已恢复，后台可以打开"
+  },
+  "notExercised": [
+    "Production invitation email delivery",
+    "Permanent deletion of a real production account",
+    "Google external OAuth end-to-end"
+  ]
+}

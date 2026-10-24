@@ -25,7 +25,7 @@ const getErrorMessage = (error: unknown) => error instanceof Error ? error.messa
 
 
 export const UserManagement = () => {
-  const { isSuperAdmin, user } = useAuth();
+  const { isSuperAdmin, user, legacyAdminAccess } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [userRoles, setUserRoles] = useState<Map<string, string[]>>(new Map());
@@ -233,7 +233,9 @@ export const UserManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {legacyAdminAccess && <p role="status" className="mb-4 text-sm text-muted-foreground">Account invitations, role changes and deletion are unavailable until the administrator permissions update is installed.</p>}
         <form onSubmit={inviteManagedAccount} className="mb-6 rounded-lg border bg-muted/20 p-4">
+          <fieldset disabled={legacyAdminAccess}>
           <div className="mb-4 flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             <div>
@@ -263,6 +265,7 @@ export const UserManagement = () => {
               {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send invite"}
             </Button>
           </div>
+          </fieldset>
         </form>
 
         <div className="mb-6">
@@ -341,13 +344,13 @@ export const UserManagement = () => {
                     {isSuperAdminUser || isCurrentUser ? (
                       <span className="text-sm text-muted-foreground flex items-center gap-1"><Lock className="h-3 w-3" />Protected</span>
                     ) : (
-                      <Select value={accountRole} disabled={processingUserId === userProfile.user_id} onValueChange={(role: ManagedAccountRole) => void changeAccountRole(userProfile.user_id, role)}>
+                      <Select value={accountRole} disabled={legacyAdminAccess || processingUserId === userProfile.user_id} onValueChange={(role: ManagedAccountRole) => void changeAccountRole(userProfile.user_id, role)}>
                         <SelectTrigger className="w-44" aria-label={`Account type for ${userProfile.email}`}><SelectValue /></SelectTrigger>
                         <SelectContent>{ACCOUNT_ROLES.map(role => <SelectItem key={role} value={role}>{ACCOUNT_ROLE_LABELS[role]}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
 
-                    {!isCurrentUser && !isSuperAdminUser && <UserDeletionDialog userId={userProfile.user_id} email={userProfile.email} onDeleted={() => {
+                    {!legacyAdminAccess && !isCurrentUser && !isSuperAdminUser && <UserDeletionDialog userId={userProfile.user_id} email={userProfile.email} onDeleted={() => {
                       setUsers(current => current.filter(row => row.user_id !== userProfile.user_id));
                       setUserRoles(current => { const next = new Map(current); next.delete(userProfile.user_id); return next; });
                     }} />}

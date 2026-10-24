@@ -1,0 +1,9 @@
+LOCAL React UI; synthetic network and accounts, not production acceptance.
+PASS super_admin: old database restores Admin and Question Bank; unavailable account mutations disabled
+PASS admin: old database restores Admin and Question Bank; unavailable account mutations disabled
+PASS student remains denied on old database
+PASS instructor remains denied on old database
+PASS error-retry: visible error, no fallback or redirect, safe retry
+PASS wrong-rpc: visible error, no fallback or redirect, safe retry
+PASS delayed legacy responses cannot restore permissions after sign-out
+PASS registration confirmation link stays on current site origin, including 127.0.0.1 development

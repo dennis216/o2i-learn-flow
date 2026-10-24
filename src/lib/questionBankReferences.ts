@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../integrations/supabase/types.ts";
 import type { QuestionBankReferences } from "./questionBankImportPlan";
+import { hasAdminModule } from './adminAccessRepository.ts';
 
 const PAGE_SIZE = 1000;
 
@@ -24,8 +25,7 @@ async function readAll<T>(
 export async function loadQuestionBankReferences(client: SupabaseClient<Database>): Promise<QuestionBankReferences> {
   const { data: identity, error: identityError } = await client.auth.getUser();
   if (identityError || !identity.user) throw new Error("Sign in as an administrator to verify reference data and existing question IDs");
-  const { data: isAdmin, error: roleError } = await client.rpc("has_admin_module", { _module: "questions" });
-  if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
+  const isAdmin = await hasAdminModule(client, 'questions', identity.user.id);
   if (isAdmin !== true) throw new Error("Administrator access is required to check all existing external_id values");
 
   const [topics, skills, questions] = await Promise.all([
