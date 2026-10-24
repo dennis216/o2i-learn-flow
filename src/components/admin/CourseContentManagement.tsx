@@ -56,6 +56,8 @@ export function CourseContentManagement({ initialCourseId = '', initialTopicId =
   useEffect(() => { void reloadSaved().catch(e => setError(e.message)); }, [reloadSaved]);
   const course = courses.find(c => c.id === courseId);
   const topic = units.flatMap(u => u.topics).find(t => t.id === topicId);
+  const shared = (content?.linked_courses?.length ?? 0) > 1;
+  const sharingCourses = topic && !topic.is_bc_only ? courses.filter(c => c.id !== courseId && ((course?.practice_course_scope === 'AB' && c.practice_course_scope === 'BC') || (course?.practice_course_scope === 'BC' && c.practice_course_scope === 'AB'))) : [];
   useEffect(() => {
     let active = true;
     void supabase.from('courses').select('id,title,practice_course_scope').order('title').then(({ data, error }) => {
@@ -108,13 +110,37 @@ export function CourseContentManagement({ initialCourseId = '', initialTopicId =
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   };
+  const changeAvailability = async (value: string) => {
+    if (!content?.lesson_id || busy || dirty) return;
+    if (value === 'bc' && !window.confirm('Create a BC-only unpublished draft? AB keeps its current content. Publish the BC draft when ready.')) return;
+    setBusy(true); setError('');
+    try {
+      if (value === 'bc' && course?.practice_course_scope === 'BC' && shared) {
+        if (initialEntryId) await outlineRpc(supabase, 'link_course_outline_content', { _entry_id: initialEntryId, _source_entry_id: initialEntryId, _expected_content_id: content.lesson_id, _expected_revision: content.revision, _source_content_id: content.lesson_id, _source_revision: content.revision, _independent: true });
+        else await restoreCourseLesson(supabase, content, { lesson_id: content.lesson_id, revision: content.revision! });
+        await reloadCurrent(); setNotice('BC-only draft created. AB keeps its current content. Preview and publish the BC draft when ready.');
+      } else {
+        const targetCourse = sharingCourses.find(c => c.id === value);
+        if (!targetCourse) return;
+        let other: TopicContent;
+        if (initialEntryId) {
+          const [ownOutline, otherOutline] = await Promise.all([loadCustomOutline(supabase, courseId), loadCustomOutline(supabase, targetCourse.id)]);
+          const ids = ownOutline.units.flatMap(u => u.topics).find(e => e.id === initialEntryId)?.cb_topics.map(t => t.id).sort().join(',');
+          const target = otherOutline.units.flatMap(u => u.topics).find(e => e.cb_topics.map(t => t.id).sort().join(',') === ids);
+          if (!target) throw new Error('No matching lesson in the other course. Configure the same CB Topics there first.');
+          other = await loadOutlineEntry(supabase, targetCourse.id, target.id);
+        } else other = await loadCourseTopic(supabase, targetCourse.id, topicId);
+        setUseOther(false); setSharingWith(other);
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  };
   const failure = error && <div role="alert" className="space-y-2 text-destructive"><p>{error}</p>{ready && <Button variant="outline" disabled={busy} onClick={async () => { if (!canLeave()) return; setBusy(true); try { await reloadCurrent(); setError(''); setNotice('Reloaded saved lesson.'); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Reload saved lesson</Button>}</div>;
   return <Card><CardHeader><CardTitle>Course Content</CardTitle><p className="text-sm text-muted-foreground">Maintain lesson videos and publish when ready. Published edits take effect on Save.</p></CardHeader>
     <CardContent className="space-y-5">
       {!ready && failure}
 
       {!initialEntryId && <div className="space-y-2"><Label htmlFor="content-course">Course</Label><select id="content-course" className="w-full rounded border bg-background p-2" disabled={busy || !!initialCourseId} value={courseId} onChange={e => { if (canLeave()) { setCourseId(e.target.value); setTopicId(''); } }}><option value="">Choose a course</option>{courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></div>}
-      {course && <p className="text-sm text-muted-foreground">Course practice scope: {course.practice_course_scope ?? 'Not configured'}. This does not share lesson content.</p>}
       {!initialCourseId && <section aria-label="Saved course content" className="space-y-2 rounded border p-3"><h3 className="font-semibold">Saved content</h3><select aria-label="Saved content status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="rounded border bg-background p-2"><option value="all">All statuses</option><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Unlinked content</option></select><div className="flex flex-wrap gap-2">{savedLessons.filter(l => (!courseId || l.courses.some(c => c.id === courseId) || l.owner_course_id === courseId && l.archived) && (statusFilter === 'all' || statusFilter === 'archived' ? statusFilter === 'all' || l.archived : !l.archived && l.is_published === (statusFilter === 'published'))).map(l => <Button key={l.lesson_id} variant="outline" disabled={busy} onClick={async () => {
         if (!canLeave()) return;
         const target = l.archived ? courseId || l.owner_course_id : l.courses.find(c => c.id === courseId)?.id ?? l.courses[0].id;
@@ -128,15 +154,18 @@ export function CourseContentManagement({ initialCourseId = '', initialTopicId =
       }}>{l.courses.map(c => c.title).join(' / ') || l.owner_course_title} · {l.topic_code} · {l.archived ? 'Restore draft' : l.is_published ? 'Published' : 'Draft'}</Button>)}</div>{!savedLessons.length && <p>No saved lessons yet.</p>}</section>}
       {courseId && !initialEntryId && <div className="space-y-2"><Label htmlFor="content-topic">Unit / Topic</Label><select id="content-topic" className="w-full rounded border bg-background p-2" disabled={busy || loading || !!initialTopicId} value={topicId} onChange={e => { if (canLeave()) setTopicId(e.target.value); }}><option value="">Choose a Topic</option>{units.map(u => <optgroup key={u.id} label={`Unit ${u.unit_number}: ${u.title}`}>{u.topics.map(t => <option key={t.id} value={t.id}>{t.code} · {t.title} · {savedLessons.some(l => l.courses.some(c => c.id === courseId) && l.topic_id === t.id) ? savedLessons.find(l => l.courses.some(c => c.id === courseId) && l.topic_id === t.id)?.is_published ? 'Published' : 'Draft' : 'No content'}</option>)}</optgroup>)}</select></div>}
       {loading && <p role="status">Loading course content…</p>}
-      {ready && content && <section aria-label="Content availability" className="space-y-2 rounded border p-3"><h3 className="font-semibold">Content availability</h3><p>{(content.linked_courses?.length ?? 0) > 1 ? 'Shared with AB and BC. Editing, publishing or withdrawing affects both courses.' : `Only ${course?.title}`}</p>
-        {(content.linked_courses?.length ?? 0) > 1 ? <Button variant="outline" disabled={busy || dirty} onClick={async () => { if (!window.confirm('Create an independent unpublished draft for this course? The other course keeps its current lesson.')) return; setBusy(true); setError(''); try { if (initialEntryId) await outlineRpc(supabase, 'link_course_outline_content', { _entry_id: initialEntryId, _source_entry_id: initialEntryId, _expected_content_id: content.lesson_id, _expected_revision: content.revision, _source_content_id: content.lesson_id, _source_revision: content.revision, _independent: true }); else await restoreCourseLesson(supabase, content, { lesson_id: content.lesson_id!, revision: content.revision! }); await reloadCurrent(); setNotice('Independent draft created. Preview and publish when ready.'); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Make independent draft</Button> : !topic?.is_bc_only && content.lesson_id && courses.filter(c => c.id !== courseId && ((course?.practice_course_scope === 'AB' && c.practice_course_scope === 'BC') || (course?.practice_course_scope === 'BC' && c.practice_course_scope === 'AB'))).map(c => <Button key={c.id} variant="outline" disabled={busy || dirty} onClick={async () => { setBusy(true); setError(''); try { let other: TopicContent;
-          if (initialEntryId) {
-            const ownOutline = await loadCustomOutline(supabase, courseId), otherOutline = await loadCustomOutline(supabase, c.id);
-            const ids = ownOutline.units.flatMap(u => u.topics).find(e => e.id === initialEntryId)?.cb_topics.map(t => t.id).sort().join(',');
-            const target = otherOutline.units.flatMap(u => u.topics).find(e => e.cb_topics.map(t => t.id).sort().join(',') === ids);
-            if (!target) throw new Error('No matching lesson in the other course. Configure the same CB Topics there first.');
-            other = await loadOutlineEntry(supabase, c.id, target.id);
-          } else other = await loadCourseTopic(supabase, c.id, topicId); setUseOther(false); setSharingWith(other); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); } }}>Share with {c.title}</Button>)}
+      {ready && content && <section aria-label="Content availability" className="space-y-2 rounded border p-3"><h3 className="font-semibold">Content availability</h3>
+        {course?.practice_course_scope === 'AB' || course?.practice_course_scope === 'BC' ? <>
+          <Label htmlFor="lesson-availability">Used in</Label>
+          <select id="lesson-availability" className="w-full rounded border bg-background p-2" value={shared ? 'shared' : course.practice_course_scope === 'BC' ? 'bc' : ''} disabled={busy || dirty || !content.lesson_id || course.practice_course_scope === 'AB' && shared || !!topic?.is_bc_only} onChange={e => void changeAvailability(e.target.value)}>
+            {!shared && course.practice_course_scope === 'AB' && <option value="" disabled>Choose availability</option>}
+            {shared ? <option value="shared">AB / BC shared</option> : sharingCourses.map(c => <option key={c.id} value={c.id}>AB / BC shared{sharingCourses.length > 1 ? ` · ${c.title}` : ''}</option>)}
+            {course.practice_course_scope === 'BC' && <option value="bc">BC only</option>}
+          </select>
+          {shared ? <p>Both courses use this content. Editing, publishing or withdrawing affects both. Lesson titles and outline order remain separate.</p> : topic?.is_bc_only ? <p>This lesson includes BC-only CB Topics and cannot be shared with AB.</p> : course.practice_course_scope === 'BC' ? <p>This content is currently used only in BC. Choose AB / BC shared to use the same content in both courses.</p> : <p>This content has not been shared yet. Choose AB / BC shared and review the other course before confirming.</p>}
+          {!content.lesson_id && !topic?.is_bc_only && <p>Save a draft before sharing content.</p>}
+          {!shared && !topic?.is_bc_only && !sharingCourses.length && <p role="alert">No matching AB / BC course is configured. Check the course curriculum templates.</p>}
+        </> : <p>Only {course?.title}</p>}
         {dirty && <p className="text-sm">Save your edits before changing content availability.</p>}
       </section>}
       <Dialog open={!!sharingWith} onOpenChange={open => { if (!open && !busy) setSharingWith(null); }}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Share AB and BC content</DialogTitle></DialogHeader>{error && <p role="alert" className="text-destructive">{error}</p>}<p>Both courses will use one lesson, including its publication status. Future edits, publishing and withdrawal affect both.</p>{sharingWith && <><div className="rounded border p-3"><p className="font-semibold">Current course · {content?.is_published ? 'Published' : 'Draft'}</p>{content?.videos.map(v => <p key={v.id}>{v.title} · <a className="underline" href={v.video_url} target="_blank" rel="noreferrer">View video</a></p>)}<p>Game: {content?.game_path ? 'Attached' : 'None'}</p>{content?.game_path && <Button variant="outline" onClick={() => setSharingPreview(content.game_path)}>Preview current game</Button>}</div><div className="rounded border p-3"><p className="font-semibold">{courses.find(c => c.id === sharingWith.course_id)?.title} · {sharingWith.lesson_id ? sharingWith.is_published ? 'Published' : 'Draft' : 'No content'}</p>{sharingWith.videos.map(v => <p key={v.id}>{v.title} · <a className="underline" href={v.video_url} target="_blank" rel="noreferrer">View video</a></p>)}<p>Game: {sharingWith.game_path ? 'Attached' : 'None'}</p>{sharingWith.game_path && <Button variant="outline" onClick={() => setSharingPreview(sharingWith.game_path)}>Preview other game</Button>}</div>{sharingWith.lesson_id && <><p>These are different saved lessons. The unselected lesson stays recoverable in Saved content.</p><Label htmlFor="sharing-source">Content to keep in both courses</Label><select id="sharing-source" disabled={busy} value={useOther ? 'other' : 'current'} onChange={e => setUseOther(e.target.value === 'other')} className="rounded border bg-background p-2"><option value="current">Use current course content</option><option value="other">Use other course content</option></select></>}<Button disabled={busy} onClick={async () => { if (!content) return; setBusy(true); setError(''); try { if (initialEntryId) {

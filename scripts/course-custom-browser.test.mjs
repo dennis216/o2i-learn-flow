@@ -14,14 +14,16 @@ const savedRows=()=>content.lesson_id ? [{lesson_id:content.lesson_id,topic_id:t
 let outlineRevision=0;
 let entries=outline[0].topics.map(t=>({...t,entry_id:t.id,content_id:null,cb_topics:[{id:t.id,code:t.code,title:t.title}]}));
 let archivedEntries=[];
-const customOutline=()=>({revision:outlineRevision,units:[{...outline[0],topics:entries}]});
+const availabilityTest=!!process.env.O2I_COURSE_AVAILABILITY_BROWSER;
+let availabilityMode=false, otherEntries=[], linkCalls=0, failLink=false;
+const customOutline=(courseId)=>({revision:outlineRevision,units:[{...outline[0],topics:availabilityMode && courseId===ab ? otherEntries : entries}]});
 const anon=['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',Buffer.from(JSON.stringify({role:'anon'})).toString('base64url'),'synthetic'].join('.');
 let browser, page;
 let createdCourse=false;
 const stage=Number(process.env.O2I_OUTLINE_STAGE ?? 6);
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5194','--strictPort'],{env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});
 const out=resolve('docs/courses/custom-management/screenshots');mkdirSync(out,{recursive:true});
-const capture=(task,name,options)=>stage===task ? page.screenshot({path:resolve(out,name),...options}) : Promise.resolve();
+const capture=(task,name,options)=>!availabilityTest && stage===task ? page.screenshot({path:resolve(out,name),...options}) : Promise.resolve();
 try{
  for(let n=0;;n++){try{if((await fetch(app)).ok)break;}catch{}if(n>150)throw new Error('Vite startup timeout');await new Promise(r=>setTimeout(r,200));}
  browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
@@ -37,11 +39,11 @@ try{
      else if(fn==='profiles')body={user_id:uid,full_name:'Synthetic admin'};
      else if(fn==='courses'){ const all=[{id:course,title:'AP Calculus BC',practice_course_scope:'BC',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'},{id:ab,title:'AP Calculus AB',practice_course_scope:'AB',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'}];body=u.searchParams.get('id') ? all.filter(c=>'eq.'+c.id===u.searchParams.get('id')) : all; }
      else if(fn==='get_course_outline')body=outline;
-     else if(fn==='get_course_outline_v2')body=customOutline();
+     else if(fn==='get_course_outline_v2')body=customOutline(route.request().postDataJSON()._course_id);
      else if(fn==='resolve_course_entry'){const a=route.request().postDataJSON();body=entries.find(e=>e.is_published&&(!a._topic_id||e.cb_topics.some(t=>t.id===a._topic_id)))?.id??null;}
      else if(fn==='resolve_course_video')body={course_id:course,entry_id:entries.find(e=>e.is_published)?.id,topic_id:topic};
      else if(fn==='list_course_outline_archive')body=archivedEntries;
-     else if(fn==='get_course_outline_entry'){const a=route.request().postDataJSON();body={...content,course_id:a._course_id,entry_id:a._entry_id};}
+     else if(fn==='get_course_outline_entry'){const a=route.request().postDataJSON();body={...(availabilityMode && a._course_id===ab ? otherContent : content),course_id:a._course_id,entry_id:a._entry_id};}
      else if(fn==='edit_course_outline'){
        const a=route.request().postDataJSON(),p=a._payload;assert.equal(a._expected_revision,outlineRevision);outlineRevision++;
        if(a._action==='save'){if(p.entry_id){const e=entries.find(e=>e.id===p.entry_id);e.title=p.title;e.cb_topics=outline[0].topics.filter(t=>p.topic_ids.includes(t.id)).map(t=>({id:t.id,code:t.code,title:t.title}));body=e.id;}else{const id=crypto.randomUUID();entries.push({id,entry_id:id,title:p.title,code:'1.1',is_published:false,cb_topics:[{id:topic,code:'1.1',title:'Synthetic Topic'}]});body=id;}}
@@ -51,6 +53,22 @@ try{
      }
      else if(fn==='save_course_outline_content'){const a=route.request().postDataJSON();content={...content,lesson_id:content.lesson_id??other,revision:content.revision+1,entry_id:a._entry_id,is_published:a._is_published,videos:a._videos.map((v,n)=>({...v,id:v.id??crypto.randomUUID(),course_id:course,order_index:n})),game_path:a._game_path,linked_courses:[{id:course,title:'AP Calculus BC'}]};const e=entries.find(e=>e.id===a._entry_id);if(e){e.is_published=a._is_published;e.content_id=content.lesson_id;}body=null;}
 
+     else if(fn==='link_course_outline_content'){
+       linkCalls++;const a=route.request().postDataJSON();
+       if(failLink)return route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({message:'Content changed. Reload both lessons before linking.'})});
+       const fromAB=otherEntries.some(e=>e.id===a._source_entry_id),toAB=otherEntries.some(e=>e.id===a._entry_id);
+       const source=fromAB?otherContent:content,target=toAB?otherContent:content;
+       assert.equal(a._expected_content_id,target.lesson_id);assert.equal(a._expected_revision,target.revision);assert.equal(a._source_content_id,source.lesson_id);assert.equal(a._source_revision,source.revision);
+       if(a._independent){
+         assert.equal(toAB,false);otherContent={...otherContent,linked_courses:[{id:ab,title:'AP Calculus AB'}]};
+         content={...content,lesson_id:crypto.randomUUID(),revision:1,is_published:false,videos:content.videos.map(v=>({...v,id:crypto.randomUUID()})),linked_courses:[{id:course,title:'AP Calculus BC'}]};
+       }else{
+         const linked_courses=[{id:ab,title:'AP Calculus AB'},{id:course,title:'AP Calculus BC'}];
+         content={...source,course_id:course,entry_id:entries[0].id,revision:source.revision+1,linked_courses};
+         otherContent={...content,course_id:ab,entry_id:otherEntries[0].id};
+       }
+       body=null;
+     }
      else if(fn==='create_managed_course'){const args=route.request().postDataJSON();assert.equal(args._scope,'AB');assert.equal(args._details.title,'Synthetic new course');createdCourse=true;body=ab;}
      else if(fn==='subjects')body=[{id:other,name:'AP Calc',category:'High School',order_index:0}];
      else if(fn==='list_course_practice_topics')body=[{id:topic,question_count:1}];
@@ -116,6 +134,52 @@ try{
    await page.getByRole('button',{name:'Limits: graphs and tables CB 1.1 · 1.2',exact:true}).click();
    page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Split into Topic rows',exact:true}).click();await page.getByRole('heading',{name:'Edit lesson',exact:true}).waitFor({state:'detached'});assert.equal(entries.length,2);
    console.log('PASS task3: clickable outline, merged title/Topic mapping, chosen content preview, draft save, dirty-close cancellation, split restores Topic rows');
+   if(availabilityTest){
+     availabilityMode=true;
+     const abEntry='66666666-6666-4666-8666-666666666666';
+     entries=[{id:topic,entry_id:topic,title:'BC common lesson',code:'1.1',is_published:true,content_id:other,cb_topics:[{id:topic,code:'1.1',title:'Common Topic'}]}];
+     otherEntries=[{...structuredClone(entries[0]),id:abEntry,entry_id:abEntry,title:'AB custom title',content_id:uid}];
+     content={course_id:course,entry_id:topic,topic_id:topic,is_published:true,game_path:null,lesson_id:other,revision:2,owner_course_id:course,videos:[{id:other,title:'BC original video',video_url:'https://youtu.be/abcdefghijk'}],linked_courses:[{id:course,title:'AP Calculus BC'}]};
+     otherContent={...content,course_id:ab,entry_id:abEntry,lesson_id:uid,owner_course_id:ab,videos:[{id:uid,title:'AB original video',video_url:'https://youtu.be/12345678901'}],linked_courses:[{id:ab,title:'AP Calculus AB'}]};
+     await page.getByRole('button',{name:'Back to Courses',exact:true}).click();
+     await page.getByRole('button',{name:'AP Calculus BC',exact:true}).click();
+     await page.getByRole('button',{name:'BC common lesson CB 1.1',exact:true}).click();
+     const scope=()=>page.getByLabel('Used in',{exact:true});
+     await scope().waitFor();assert.equal(await scope().inputValue(),'bc');
+     assert.equal(await page.getByText('Course practice scope:',{exact:false}).count(),0);
+     assert.equal(await scope().locator('option').filter({hasText:'AB only'}).count(),0);
+     await scope().selectOption(ab);await page.getByRole('heading',{name:'Share AB and BC content',exact:true}).waitFor();
+     await page.getByLabel('Content to keep in both courses',{exact:true}).selectOption('other');
+     const oldBC=structuredClone(content),oldAB=structuredClone(otherContent);
+     failLink=true;await page.getByRole('button',{name:'Confirm shared content',exact:true}).click();
+     await page.getByRole('dialog').last().getByRole('alert').waitFor();assert.deepEqual(content,oldBC);assert.deepEqual(otherContent,oldAB);
+     failLink=false;await page.getByRole('button',{name:'Confirm shared content',exact:true}).click();
+     await page.getByRole('status').filter({hasText:'AB and BC now share'}).waitFor();
+     assert.equal(await scope().inputValue(),'shared');assert.equal(content.videos[0].title,'AB original video');assert.equal(entries[0].title,'BC common lesson');assert.equal(otherEntries[0].title,'AB custom title');
+     await page.screenshot({path:resolve(out,'availability-shared.png'),fullPage:true});
+     const calls=linkCalls;page.once('dialog',d=>d.dismiss());await scope().selectOption('bc');assert.equal(linkCalls,calls);assert.equal(await scope().inputValue(),'shared');
+     page.once('dialog',d=>d.accept());await scope().selectOption('bc');await page.getByRole('status').filter({hasText:'BC-only draft created'}).waitFor();
+     assert.equal(await scope().inputValue(),'bc');assert.notEqual(content.lesson_id,otherContent.lesson_id);assert.notEqual(content.videos[0].id,otherContent.videos[0].id);assert.equal(content.is_published,false);assert.equal(otherContent.is_published,true);
+     await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
+     entries[0].cb_topics.push({id:other,code:'1.2',title:'BC-only extension',is_bc_only:true});
+     content={...content,lesson_id:null,revision:0,videos:[],game_path:null,linked_courses:[]};
+     await page.getByRole('button',{name:'Back to Courses',exact:true}).click();await page.getByRole('button',{name:'AP Calculus BC',exact:true}).click();
+     await page.getByRole('button',{name:'BC common lesson CB 1.1 · 1.2',exact:true}).click();
+     await scope().waitFor();assert.equal(await scope().isDisabled(),true);assert.equal(await scope().locator('option').count(),1);assert.equal(await page.getByText('Save a draft before sharing content.',{exact:true}).count(),0);await page.getByText('This lesson includes BC-only CB Topics and cannot be shared with AB.',{exact:true}).waitFor();
+     await page.screenshot({path:resolve(out,'availability-bc-only.png'),fullPage:true});
+     await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
+     await page.getByRole('button',{name:'Back to Courses',exact:true}).click();await page.getByRole('button',{name:'AP Calculus AB',exact:true}).click();
+     await page.getByRole('button',{name:'AB custom title CB 1.1',exact:true}).click();await scope().waitFor();
+     assert.equal(await scope().locator('option[value="bc"]').count(),0);assert.equal(await scope().locator('option').filter({hasText:'AB only'}).count(),0);
+     const beforeMismatch=linkCalls;await scope().selectOption(course);await page.getByRole('alert').filter({hasText:'No matching lesson'}).waitFor();assert.equal(linkCalls,beforeMismatch);
+     entries[0].cb_topics=structuredClone(otherEntries[0].cb_topics);
+     await scope().selectOption(course);await page.getByRole('heading',{name:'Share AB and BC content',exact:true}).waitFor();
+     await page.getByRole('dialog').last().getByRole('button',{name:'Close',exact:true}).click();
+     await page.getByRole('heading',{name:'Share AB and BC content',exact:true}).waitFor({state:'detached'});
+     await page.screenshot({path:resolve(out,'availability-ab.png'),fullPage:true});
+     await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:resolve(out,'availability-mobile.png'),fullPage:true});
+     console.log('PASS availability: explicit shared/BC-only selector, no AB-only option, source preview and failed-link preservation, independent BC draft and cancelled detach, mixed BC-only lock, mismatched CB Topics blocked, separate titles, mobile width');
+   }
    if(stage>=4){
      await page.getByRole('button',{name:'Manage videos',exact:true}).click();await page.getByRole('heading',{name:'Course videos',exact:true}).waitFor();
      await page.getByRole('button',{name:'Edit',exact:true}).click();await page.getByRole('heading',{name:'Edit Video',exact:true}).waitFor();
