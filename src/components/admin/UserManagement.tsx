@@ -1,3 +1,4 @@
+import { UserDeletionDialog } from "./UserDeletionDialog";
 import { ACCOUNT_ROLES, ACCOUNT_ROLE_LABELS, type ManagedAccountRole } from "@/lib/adminAccess";
 import { useState, useEffect } from "react";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
@@ -276,7 +277,7 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
@@ -345,6 +346,11 @@ export const UserManagement = () => {
                         <SelectContent>{ACCOUNT_ROLES.map(role => <SelectItem key={role} value={role}>{ACCOUNT_ROLE_LABELS[role]}</SelectItem>)}</SelectContent>
                       </Select>
                     )}
+
+                    {!isCurrentUser && !isSuperAdminUser && <UserDeletionDialog userId={userProfile.user_id} email={userProfile.email} onDeleted={() => {
+                      setUsers(current => current.filter(row => row.user_id !== userProfile.user_id));
+                      setUserRoles(current => { const next = new Map(current); next.delete(userProfile.user_id); return next; });
+                    }} />}
 
                     {/* Force Confirm Button - visible for non-protected users */}
                     {!isCurrentUser && !isSuperAdminUser && (

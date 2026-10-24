@@ -115,6 +115,7 @@ try {
   const residual=sql("SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='f' AND (proname ~ '(course|question)' OR proname='assert_question_bank_admin') AND prosrc ~ 'has_role\\([^;]*''admin''' ");
   assert.equal(residual,'',residual);
  });
+ if(process.env.O2I_ADMIN_DELETION_DB) (await import('./deletion-db.acceptance.mjs')).verifyUserDeletion({sql,user,uid,superId,full,course,question,student});
  writeFileSync('docs/admin-access/task2-database-results.txt',`Local disposable PostgreSQL; synthetic accounts; no production connection.\n${passed.map(s=>'PASS '+s).join('\n')}\n${passed.length} checks passed.\n`);
 } catch(e){console.error(String(e.stderr||e.stack));try{console.error(sql("SELECT policyname,cmd,qual,with_check FROM pg_policies WHERE tablename='courses'"));}catch{}process.exitCode=1;}
 finally {if(created)docker(['rm','-f',name]);}

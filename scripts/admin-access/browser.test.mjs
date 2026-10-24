@@ -10,11 +10,12 @@ const profiles=roles.map((role,i)=>({id:uid(i+20),user_id:uid(i+1),full_name:`Sy
 const permissions=role=>({courses:['super_admin','admin','course_admin'].includes(role),questions:['super_admin','admin','question_admin'].includes(role),playground:role!=='student',team:['super_admin','admin'].includes(role),users:role==='super_admin'});
 const anon=['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',Buffer.from('{"role":"anon"}').toString('base64url'),'synthetic'].join('.');
 const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5197','--strictPort'],{env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});
-let browser;const passed=[];
+let browser;const passed=[];const deletionTest=!!process.env.O2I_ADMIN_DELETION_BROWSER;
 try {
  for(let n=0;;n++){try{if((await fetch(app)).ok)break;}catch{}if(n>120)throw Error('Vite timeout');await new Promise(r=>setTimeout(r,250));}
  browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
  for(const [i,role] of roles.entries()){
+  let deleteAttempts=0;const deleted=new Set();
   const id=uid(i+1),profile=profiles[i],access=permissions(role),calls=[],assigned=new Map(roles.map((r,i)=>[uid(i+1),r]));
   const context=await browser.newContext({viewport:{width:1360,height:960}});
   const identity={id,email:profile.email,aud:'authenticated',role:'authenticated',app_metadata:{provider:'email'},user_metadata:{full_name:profile.full_name}};
@@ -25,11 +26,16 @@ try {
    else if(fn==='get_admin_access')body=access;
    else if(fn==='has_admin_module')body=access[route.request().postDataJSON()._module]===true;
    else if(fn==='is_super_admin')body=access.users;
-   else if(fn==='profiles')body=url.searchParams.has('user_id')?profile:profiles;
+   else if(fn==='profiles')body=url.searchParams.has('user_id')?profile:profiles.filter(p=>!deleted.has(p.user_id));
    else if(fn==='user_roles')body=[...assigned].map(([user_id,role])=>({user_id,role}));
    else if(fn==='courses')body=[{id:uid(10),title:'Synthetic AP Calculus course',subject:'AP Calc',category:'High School',level:'advanced',price:0,is_published:false,practice_course_scope:'AB'}];
    else if(fn==='subjects')body=[{id:uid(11),name:'AP Calc',category:'High School',order_index:0}];
    else if(fn==='set_account_role'){const data=route.request().postDataJSON();assert.equal(role,'super_admin');assigned.set(data._user_id,data._role);body=null;}
+   else if(fn==='admin-delete-user'){
+    const data=route.request().postDataJSON();assert.equal(role,'super_admin');
+    if(data.action==='preview')body={email:profiles.find(p=>p.user_id===data.userId).email,can_delete:data.userId===uid(5),blockers:data.userId===uid(5)?[]:[{table:'courses',count:1}],personal_data:[{table:'profiles',count:1},{table:'user_roles',count:1}]};
+    else {assert.equal(data.email,'student@example.test');deleteAttempts++;if(deleteAttempts===1){status=409;body={error:'Account deletion failed. Refresh the preview before retrying.'};}else{deleted.add(data.userId);body={success:true};}}
+   }
    else if(fn==='admin-invite-user'){assert.equal(role,'super_admin');assert.equal(route.request().postDataJSON().role,'question_admin');body={success:true};}
    else if(fn==='list_course_video_library')body=[];
    return route.fulfill({status,contentType:'application/json',headers:{'access-control-allow-origin':app,'access-control-allow-headers':'*','access-control-allow-methods':'*','access-control-expose-headers':'content-range','content-range':'*/0'},body:JSON.stringify(body)});
@@ -55,11 +61,25 @@ try {
    await page.getByRole('combobox').first().click();assert.deepEqual(await page.getByRole('option').allTextContents(),['Student','Full Admin','Course Admin','Question Admin']);
    await page.getByRole('option',{name:'Question Admin',exact:true}).click();await page.getByRole('button',{name:'Send invite',exact:true}).click();
    await page.locator('li[role="status"]').filter({hasText:'Invitation sent'}).waitFor();
+   if(deletionTest){
+    assert.equal(await page.getByRole('button',{name:'Delete super_admin@example.test',exact:true}).count(),0);
+    await page.getByRole('button',{name:'Delete admin@example.test',exact:true}).click();await page.getByText('Deletion blocked',{exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Delete permanently',exact:true}).isDisabled(),true);
+    await page.screenshot({path:`${out}/task4-deletion-blocked.png`,fullPage:true});await page.getByRole('button',{name:'Cancel',exact:true}).click();
+    await page.getByRole('button',{name:'Delete student@example.test',exact:true}).click();const confirmation=page.getByLabel('Type student@example.test to confirm');await confirmation.waitFor();
+    await confirmation.fill('wrong@example.test');assert.equal(await page.getByRole('button',{name:'Delete permanently',exact:true}).isDisabled(),true);
+    await confirmation.fill('student@example.test');assert.equal(await page.getByRole('button',{name:'Delete permanently',exact:true}).isEnabled(),true);
+    await page.screenshot({path:`${out}/task4-deletion-confirm.png`,fullPage:true});await page.getByRole('button',{name:'Delete permanently',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Account deletion failed'}).waitFor();assert.equal(await page.locator('tr').filter({hasText:'Synthetic student'}).count(),1);
+    await page.screenshot({path:`${out}/task4-deletion-failed.png`,fullPage:true});await page.getByRole('button',{name:'Delete permanently',exact:true}).click();
+    await page.getByRole('dialog').waitFor({state:'hidden'});assert.equal(await page.locator('tr').filter({hasText:'Synthetic student'}).count(),0);assert.equal(deleteAttempts,2);
+    passed.push('deletion UI: protected owner, blocked content, email confirmation, failed request preserves user, success removes user');
+   }
 
   }
   assert.deepEqual(errors,[]);passed.push(`${role}: exact tabs, default page and no unauthorized module fetch`);
   await context.close();
  }
- writeFileSync('docs/admin-access/task3-browser-results.txt','Actual React UI; synthetic account/network fixtures, not live production acceptance.\n'+passed.map(s=>'PASS '+s).join('\n')+'\n');
+ writeFileSync(deletionTest?'docs/admin-access/task4-browser-results.txt':'docs/admin-access/task3-browser-results.txt','Actual React UI; synthetic account/network fixtures, not live production acceptance.\n'+passed.map(s=>'PASS '+s).join('\n')+'\n');
  console.log(passed.join('\n'));
 } finally {await browser?.close();vite.kill();}

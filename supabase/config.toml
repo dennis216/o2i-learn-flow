@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.zombie-schedule-comments-for-post]
 verify_jwt = false
+
+[functions.admin-delete-user]
+verify_jwt = true
