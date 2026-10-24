@@ -1,0 +1,12 @@
+Local disposable PostgreSQL; synthetic accounts; no production connection.
+PASS module matrix for all 5 roles
+PASS Instructor becomes student, cannot regain instructor or read owned draft
+PASS course writes allowed only to Course/Full/Super; course draft visibility isolated
+PASS Team writes denied to scoped admins, allowed to Full/Super
+PASS Playground writable by every admin, denied to student
+PASS question import RPC works for Question Admin; Course Admin denied
+PASS course RPC denies Question Admin; allows Course Admin
+PASS Storage module isolation, including legacy owner bypass
+PASS atomic role change, self/protected guard, no browser role writes
+PASS installed module RPCs contain no old admin gate
+10 checks passed.
