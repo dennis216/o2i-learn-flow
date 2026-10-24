@@ -72,7 +72,7 @@ export function buildQuestionBankImportPlan(
     const status: ImportPlanStatus = duplicate ? "duplicate_external_id"
       : canonicalBlocked || question.readiness === "unverified" ? "canonical_blocked"
         : ownErrors.length || batchErrors.length || question.readiness === "blocked" ? "blocked"
-          : question.humanReviewStatus === "pending" ? "pending"
+          : ["pending", "reviewed"].includes(question.humanReviewStatus) ? "pending"
             : reasons.length ? "blocked" : "candidate";
 
     return {

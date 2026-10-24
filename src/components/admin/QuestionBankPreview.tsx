@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { parseQuestionBankWorkbook, validateQuestionBankSheets, QUESTION_HEADERS, type WorkbookSheet } from "@/lib/questionBankImport";
+import { parseQuestionBankWorkbook, validateQuestionBankSheets, hasQuestionBankHeaders, type WorkbookSheet } from "@/lib/questionBankImport";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { buildQuestionBankDraftSavePlan, describeQuestionBankIssue, getPublicationReviewTasks, isPublicationReviewIssue } from "@/lib/questionBankDraftSave";
 import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts } from "@/lib/questionBankDraftRepository";
@@ -44,7 +44,7 @@ export function QuestionBankPreview() {
   const draftPlan = useMemo(() => report
     ? buildQuestionBankDraftSavePlan(report, references, edits) : null, [report, references, edits]);
   const questionsSheet = workingSheets?.find((sheet) => sheet.sheet === "Questions");
-  const canEdit = Boolean(questionsSheet && QUESTION_HEADERS.every((header, index) => questionsSheet.data[0]?.[index] === header))
+  const canEdit = Boolean(questionsSheet && hasQuestionBankHeaders(questionsSheet.data[0] ?? []))
     && !saving && !saved;
   const blockers = draftPlan?.issues ?? [];
   const questionIds = new Set(report?.questions.map((question) => question.externalId.trim()));
@@ -268,6 +268,7 @@ export function QuestionBankPreview() {
                 <summary className="cursor-pointer font-medium">Adjust metadata</summary>
                 <p className="mt-2 text-muted-foreground">Changes are revalidated immediately. Correct stems, options, solutions and complex LaTeX in the XLSX, then upload it again.</p>
                 <div className="mt-3"><QuestionBankMetadataFields question={question} references={references} disabled={!canEdit}
+                  showSourceLocator={Boolean(questionsSheet?.data[0]?.includes("source_locator"))}
                   onChange={(field, value) => editQuestion(question.row, field, value)} errors={errors} fieldHasError={fieldHasError} /></div>
                 <div className="mt-3 space-y-1 rounded bg-muted/50 p-2">
                   <p className="font-medium">Changes: {ownEdits.length}</p>

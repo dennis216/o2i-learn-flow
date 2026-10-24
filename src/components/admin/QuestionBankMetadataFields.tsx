@@ -13,10 +13,11 @@ const SELECT_VALUES = {
 const selectClassName = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
 /** The same bounded fields and canonical choices for XLSX work copies and saved drafts. */
-export function QuestionBankMetadataFields({ question, references, disabled, onChange, errors, fieldHasError }: {
+export function QuestionBankMetadataFields({ question, references, disabled, onChange, errors, fieldHasError, showSourceLocator = true }: {
   question: PreviewQuestion; references: QuestionBankReferences | null; disabled: boolean;
   onChange: (field: EditableQuestionField, value: string) => void;
   errors: (field: string) => ReactNode; fieldHasError: (field: string) => boolean;
+  showSourceLocator?: boolean;
 }) {
   const selectValues = { difficulty: question.difficulty, calculator_policy: question.calculatorPolicy,
     course_scope: question.courseScope, representation_type: question.representationType };
@@ -44,10 +45,10 @@ export function QuestionBankMetadataFields({ question, references, disabled, onC
       <Input aria-label={`${question.externalId} Physical PDF page`} aria-invalid={fieldHasError("source_page")} value={question.sourcePage}
         disabled={disabled} onChange={event => onChange("source_page", event.target.value)} />{errors("source_page")}
     </label>
-    <label className="space-y-1">Source locator
+    {showSourceLocator && <label className="space-y-1">Source locator
       <Input aria-label={`${question.externalId} Source locator`} aria-invalid={fieldHasError("source_locator")} value={question.sourceLocator}
         disabled={disabled} onChange={event => onChange("source_locator", event.target.value)} />{errors("source_locator")}
-    </label>
+    </label>}
     <fieldset className="space-y-2 rounded border p-2" disabled={disabled || !references}><legend>Practice Skills</legend>
       {references?.skills.map(skill => <label key={skill.id} className="flex items-start gap-2">
         <input type="checkbox" checked={question.practiceSkillCodes.includes(skill.skill_code)} onChange={event => onChange("practice_skill_codes",

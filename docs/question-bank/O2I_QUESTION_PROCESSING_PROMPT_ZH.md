@@ -1,11 +1,9 @@
-# O2I 题目处理提示词入口
+# O2I 提示词入口
 
-请直接复制 [v4指南第3节](O2I_AI_PRACTICE_WORKFLOW_V4_ZH.md#3-三个可复制prompt) 的三个prompt。离线HTML有相同文本和复制按钮。本文件不再维护另一套提取prompt，避免新旧混用。
+复制 [V5指南](workflow-v5/O2I_AI_ASSISTED_PRACTICE_PROBLEM_WORKFLOW_V5_ZH.md) 的三段提示词，或打开 [HTML指南](workflow-v5/START_HERE_O2I_Practice_Workflow_V5.html)。
 
-1. Chat A：原始来源包 → Draft.xlsx + Evidence.json。
-2. 新Chat B：相同原始来源包，先独立求解 → 保存Independent.json。此前不能看A输出。
-3. Chat B：接收A输出 → 展示差异/审核卡 → 等真实人工决定 → 保存Decisions.json → 自动导出Import.xlsx + Validation.md。
+1. Chat A：上传含五个文件的input package，整理XLSX和证据JSON。
+2. 新Chat B：上传同一个原始包，独立复核后先保存JSON。
+3. Chat B：再上传A的结果，直接生成全批审核卡；人工完成后导出最终XLSX和审核结果JSON。
 
-必要来源缺失、范围不清或未收到决定时，停住依赖这些信息的步骤，不猜。卡片交互不可用可接收明确文字决定，不能把默认值当同意。
-
-最终保持三sheet、28/6列、五项审核pending和空reviewed_by/at。后台只需一次发布确认，不必把XLSX改approved，不重复填四套表。
+填写本批题号范围；最后一段末尾的Reviewer填写实际审核人名字。不要在完成独立复核前给B看A结果，也不要把卡片的默认值当成人工确认。

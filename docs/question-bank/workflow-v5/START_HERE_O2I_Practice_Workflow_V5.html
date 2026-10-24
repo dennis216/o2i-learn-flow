@@ -1,0 +1,76 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>O2I 真实题整理与审核 V5</title><style>
+    :root{color-scheme:light;--ink:#172b3a;--muted:#526575;--line:#dbe4e9;--blue:#075985;--pale:#eef7fb;--paper:#fff;--bg:#f4f7f8}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+    .hero{background:#123449;color:#fff;padding:35px max(24px,calc((100vw - 1100px)/2));border-bottom:5px solid #25a0bd}.hero h1{font-size:clamp(25px,3.5vw,38px);line-height:1.3;margin:0 0 8px}.hero p{margin:0;color:#d8edf4}
+    .layout{max-width:1200px;margin:auto;display:grid;grid-template-columns:245px minmax(0,1fr);gap:24px;padding:24px}.toc{align-self:start;position:sticky;top:20px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}.toc h2{font-size:14px;margin:0 0 10px;color:var(--muted);letter-spacing:.05em}.toc a{display:block;padding:7px 4px;color:var(--blue);text-decoration:none;font-size:14px;line-height:1.35}.toc a:hover{text-decoration:underline}
+    main{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:30px 38px;box-shadow:0 6px 24px #162d3b0a}main>h1{display:none}h2{font-size:26px;line-height:1.35;margin:50px 0 20px;padding:0 0 10px;border-bottom:2px solid #b8dbe7;scroll-margin-top:20px}h2:first-of-type{margin-top:12px}h3{font-size:19px;margin:28px 0 10px}p,li{overflow-wrap:anywhere}a{color:var(--blue)}blockquote{margin:0 0 26px;background:var(--pale);border-left:4px solid #25a0bd;padding:12px 18px;color:#244759}blockquote p{margin:0}strong{font-weight:700}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em;background:#edf2f4;border-radius:4px;padding:1px 4px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:16px 0 26px}table{border-collapse:collapse;width:100%;min-width:620px;font-size:14px;line-height:1.5}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#eaf4f7;white-space:nowrap}tr:last-child td{border-bottom:0}ol,ul{padding-left:1.5em}li{margin:.35em 0}
+    .prompt{border:1px solid #bdd8e3;background:#f8fbfc;border-radius:10px;margin:18px 0 34px;overflow:hidden}.prompt-bar{display:flex;align-items:center;justify-content:space-between;background:#e7f2f6;padding:8px 12px;color:#365669;font-size:13px;font-weight:600}.copy{border:0;border-radius:7px;background:#075985;color:white;padding:7px 12px;font:inherit;cursor:pointer}.copy:hover{background:#03486c}.prompt pre{margin:0;padding:18px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.prompt code{background:none;padding:0;font:inherit}.note{margin-top:30px;color:var(--muted);font-size:13px}
+    @media(max-width:800px){.layout{display:block;padding:12px}.toc{position:static;margin-bottom:14px}.toc a{display:inline-block;margin-right:10px}main{padding:22px 18px}h2{font-size:22px}}
+    @media print{body{background:#fff;font-size:11pt}.hero{background:#fff;color:#000;padding:0 0 12px;border-color:#888}.hero p{color:#333}.layout{display:block;padding:0}.toc,.copy{display:none}main{border:0;box-shadow:none;padding:0}h2{break-after:avoid}.prompt{break-inside:avoid}.prompt pre{font-size:9pt}a{color:#000}}
+  </style></head><body>
+<header class="hero"><h1>O2I 真实题整理与审核 · V5</h1><p>准备五个文件，按顺序复制三段提示词。</p></header>
+<div class="layout"><nav class="toc" aria-label="目录"><h2>从这里开始</h2><div id="toc-links"></div><hr><a href="O2I_AI_ASSISTED_PRACTICE_PROBLEM_WORKFLOW_V5_ZH.md">流程说明</a><a href="O2I_HUMAN_REVIEW_SOP_ZH.md">审核卡怎么用</a><a href="input%20package/O2I_Question_Bank_Import_Template.xlsx">空白模板</a></nav><main id="content"><h1>O2I 真实题整理与审核 · V5</h1>
+<p>用两个聊天完成：<strong>A 整理 → B 独立复核 → B 展示全部审核卡 → 你审核后导出 XLSX。</strong></p>
+<h2>准备文件</h2>
+<p>外层的三个文件供你阅读。<code>input package</code> 已放好格式说明、空白模板和 CED 标签说明。</p>
+<p>把本批<strong>题目 PDF、答案 PDF</strong>放入 <code>input package</code>，再把这个文件夹压成 ZIP。Chat A 和新开的 Chat B 都上传同一个 ZIP，里面共五个文件。不要放入旧批次结果。</p>
+<p>下面三段直接复制即可，把 <code>【题号范围】</code> 换成本批范围，例如“印刷题号 1–10”。最后一段的 <code>Reviewer</code> 填你的名字。首次试跑建议 10 题。</p>
+<h2>1. Chat A：整理原题</h2>
+<p>上传准备好的 ZIP，发送：</p>
+<pre><code class="language-text">请只使用本消息上传的 ZIP，先列出实际能打开的五个文件：题目 PDF、答案 PDF、空白 XLSX、O2I 导入格式说明、CED 标签说明。缺文件或打不开就告诉我，不寻找本机其他文件，不复用旧聊天或旧草稿。
+
+只处理【题号范围】。逐题转录题干、全部选项和原顺序，记录真实印刷题号及 PDF 物理页码。按题号和内容配对答案、解析，不按出现顺序猜。保留原题数学符号，有疑点明确指出；来源没有解析时可以草拟，但注明“AI 草拟”。
+
+对照 CED 说明，建议主 Topic、Practice Skill、AB/BC/BOTH、表示方式和 easy/medium/hard。难度综合考虑方法、概念和易错程度，不按解析长短判断。misconception 留空。计算器政策只记录来源明确要求；没有说明就留空，交给后续人工选择。
+
+交付两个可下载文件：
+1. 待审核 XLSX：使用附件模板的 Questions、Options、Instructions，保留全部字段；五项 review status 都为 pending，审核人、时间留空。
+2. 逐题证据 JSON：记录题号、题目与答案各自的物理页、配对依据、解析来源、标签理由和具体疑点。
+
+交付前重新打开 XLSX，检查题目范围、选项关联、唯一正确项、答案键、中文和公式。不要修改网站、数据库或自动批准题目。
+</code></pre>
+<p>下载 A 的两个文件，暂时不要给 B。</p>
+<h2>2. 新开 Chat B：独立复核</h2>
+<p>只上传同一个原始 ZIP，发送：</p>
+<pre><code class="language-text">你是独立复核助手。只使用本消息上传的 ZIP，先列出并确认五个原始文件可以打开。只处理【题号范围】，不读旧聊天、旧草稿或其他本机文件。现在不要寻找 Chat A 的结果。
+
+先看原题独立求解，再核对答案 PDF。逐题检查题干、数学符号、全部选项及顺序、唯一正确答案、解析推导，以及题号和物理页码的配对。发现来源错误、跳步或变量不一致，要明确指出，不静默修正。
+
+独立建议主 Topic、Practice Skill、课程范围、表示方式和 easy/medium/hard，给简短理由。对照附件代码表；不能确认就写具体疑点，不假装已核实。计算器要求有来源就记录，没有则留待人工选择。misconception 留空。
+
+交付可下载的独立复核 JSON，逐题保存来源定位、独立答案、配对依据、数学疑点、标签建议和理由，另给简短的人工关注清单。区分来源事实、数学判断和分类判断。
+
+保存后停止，等我提供 A 的 XLSX 和证据 JSON。现在不要做审核卡或最终 XLSX，也不要填写人工审核人和时间。
+</code></pre>
+<p>下载独立复核 JSON，再进入下一步。</p>
+<h2>3. 继续 Chat B：审核全部卡片并导出</h2>
+<p>上传 A 的 XLSX 和证据 JSON，发送：</p>
+<pre><code class="language-text">请读取刚上传的 A 的 XLSX 和证据 JSON，确认范围、题数和选项数，再与你此前保存的独立复核逐题比较，不覆盖原来的独立判断。
+
+先简短汇总一致、冲突、无法确认的题数和原因，再一次做出【题号范围】的全部可操作审核卡，不用先试做两题。
+
+卡片按这个样式：显示题号、两个 PDF 的物理页、题干和全部选项；答案与解析可展开。题干、选项、解析、答案键、Topic、Skill、课程范围、难度可修改；难度用下拉框。明显差异要写清双方原值，并指出去原 PDF 哪页核对。
+
+每卡增加“计算器政策”下拉框：未选择、禁止使用、允许使用、必须使用，分别对应空值、no_calculator、calculator_allowed、calculator_required。可带入来源明确的要求；没有依据就默认未选择，由我决定。未选择时不能通过，不能因题目能手算就默认禁止。
+
+审核决定用“待审核 / 通过 / 需修改 / 暂不收录”，默认待审核。提供修改意见和“保存本卡”，让我看到是否已保存；修改保存后的内容要重新保存。保留可展开的解法，便于我先独立核对再看答案。若不能实现可点击且能保存的卡片，请直说并用可编辑表单或明确文字决定代替，不能把静态表格说成已保存。
+
+只有我实际保存并确认通过的题才导出；修改未完成、未审核、暂不收录的题不导出。不要替我点通过。题干和答案的修订须与来源或明确勘误一致；有未解决数学问题不能通过。
+
+我完成审核并要求导出后，交付最终待上传 XLSX 和审核结果 JSON。应用卡片上最后保存的全部修改，包括计算器政策。通过题的五项 review status 改为 reviewed，reviewed_by 用下方 Reviewer，reviewed_at 自动记录实际审核当天时间，含时区；不是复制草稿日期，也不是只因给了名字就算审核完成。Reviewer 没填先提醒我。
+
+重新打开最终 XLSX，核对通过题数、选项关联、唯一正确答案、标签、计算器政策、审核人和时间、中文及公式。使用原模板的三张表，不增加列。审核结果 JSON 保留每题决定、修订前后值和备注。最后给下载链接与实际导出/未导出数量；不修改网站或数据库。
+
+Reviewer：【审核人姓名】
+</code></pre>
+<p>审核完成后说“导出最终 XLSX”即可。想跨天继续审核，可先下载审核结果 JSON，之后带着它和原文件继续；已经保存的审核时间不因重新导出而改变。</p>
+<h2>最后上传</h2>
+<p>在 Admin 导入最终 XLSX，确认预览后保存。<code>reviewed</code> 表示你已经在卡片中审核，网站仍保存为未发布草稿，发布时再确认一次。</p>
+<p>新模板没有 source_locator、ai_flags 两列，其他疑点写备注和证据 JSON。仅处理有真实印刷题号的单选题；无题号题另行处理，不编造题号。不要拿旧模板与本版混用。</p></main></div>
+<script>
+const main=document.getElementById('content'),toc=document.getElementById('toc-links');
+main.querySelectorAll('h2').forEach((h,i)=>{h.id='step-'+i;const a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent;toc.append(a)});
+main.querySelectorAll('table').forEach(t=>{const w=document.createElement('div');w.className='table-wrap';t.before(w);w.append(t)});
+main.querySelectorAll('pre').forEach((pre,i)=>{const w=document.createElement('div');w.className='prompt';const bar=document.createElement('div');bar.className='prompt-bar';const label=document.createElement('span');label.textContent=['Chat A','Chat B · 独立复核','Chat B · 审核卡与导出'][i];const button=document.createElement('button');button.type='button';button.className='copy';button.textContent='复制提示词';button.addEventListener('click',async()=>{try{if(!navigator.clipboard)throw new Error();await navigator.clipboard.writeText(pre.textContent)}catch{const box=document.createElement('textarea');box.value=pre.textContent;document.body.append(box);box.select();const copied=document.execCommand('copy');box.remove();if(!copied){button.textContent='请手动选中文字复制';return}}button.textContent='已复制';setTimeout(()=>button.textContent='复制提示词',1600)});bar.append(label,button);pre.before(w);w.append(bar,pre)});
+</script></body></html>

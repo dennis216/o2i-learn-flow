@@ -56,7 +56,7 @@ const bootstrap = () => {
     CREATE POLICY "Local framework read" ON public.curriculum_frameworks FOR SELECT TO authenticated USING(true);`;
 };
 let serial=0;
-const fixture = async client => {
+const fixture = async (client, overrides = {}) => {
   const item = {external_id:`SYNTHETIC-4B-${++serial}`,stem:'Synthetic \\(x^2\\)',solution:'Synthetic \\[2x\\]',
     difficulty:'easy',course_scope:'AB',primary_topic_code:'1.1',practice_skill_codes:['1.A'],representation_type:'analytical',
     calculator_policy:null,source_document:'SYNTHETIC.pdf',source_page:'12-13',source_locator:'p012-item01',requires_figure:false,
@@ -64,7 +64,7 @@ const fixture = async client => {
       ai_flags:['ANSWER_AI_INFERRED'],manual_edits:[{field:'difficulty',before:'medium',after:'easy'}],
       review_gates:{math_review_status:'passed',source_rights_status:'passed',taxonomy_review_status:'passed',render_review_status:'passed'}},
     options:[{option_key:'A',option_text:'Synthetic correct',is_correct:true,import_evidence:{option_explanation:'Preserve choice note'}},
-      {option_key:'B',option_text:'Synthetic wrong',is_correct:false,import_evidence:{}}]};
+      {option_key:'B',option_text:'Synthetic wrong',is_correct:false,import_evidence:{}}], ...overrides};
   const saved=(await client.query('SELECT public.save_question_bank_drafts($1::jsonb) result',[JSON.stringify([item])])).rows[0].result[0];
   return get(client,saved.question_id,saved.version_id);
 };
@@ -126,6 +126,15 @@ test('Task 4B real disposable PostgreSQL integration', {timeout:180000}, async t
       return result;
     };
     const original=await unchangedSnapshot();
+    await t.test('V5 reviewed evidence and calculator policy persist without publishing or a source locator',async()=>{
+      const evidence={human_review_status:'reviewed',reviewed_by_text:'Synthetic reviewer',reviewed_at_text:'2026-10-22T09:30:00-07:00',
+        review_gates:{math_review_status:'reviewed',source_rights_status:'reviewed',taxonomy_review_status:'reviewed',render_review_status:'reviewed'}};
+      const s=await fixture(admin,{source_question_number:'6',source_locator:null,calculator_policy:'no_calculator',import_evidence:evidence});
+      assert.equal(s.question.status,'draft');assert.equal(s.question.current_version_id,null);
+      assert.equal(s.version.status,'draft');assert.equal(s.version.source_locator,null);
+      assert.equal(s.version.calculator_policy,'no_calculator');
+      assert.deepEqual(s.version.import_evidence,evidence);
+    });
     await t.test('original foundation and draft-import pgTAP regressions execute (99 + 29 assertions)',async()=>{
       for(const file of ['question_bank_foundation_test.sql','question_bank_draft_import_test.sql']) {
         // Historical pgTAP fixtures target the three-migration 4B baseline,

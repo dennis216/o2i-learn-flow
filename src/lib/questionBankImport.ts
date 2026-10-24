@@ -10,6 +10,16 @@ export const QUESTION_HEADERS = [
   "human_review_status", "human_review_notes", "reviewed_by", "reviewed_at",
 ] as const;
 
+export const WORKFLOW_QUESTION_HEADERS = QUESTION_HEADERS.filter(
+  (header) => header !== "source_locator" && header !== "ai_flags",
+);
+
+export function hasQuestionBankHeaders(row: readonly unknown[]): boolean {
+  return [QUESTION_HEADERS, WORKFLOW_QUESTION_HEADERS].some((headers) =>
+    headers.every((header, index) => row[index] === header)
+    && row.slice(headers.length).every((cell) => cell == null || cell === ""));
+}
+
 export const OPTION_HEADERS = [
   "question_external_id", "option_key", "option_text", "is_correct", "misconception_code",
   "option_explanation",
@@ -88,8 +98,8 @@ export interface QuestionBankReport {
 const REVIEW_GATES = [
   "math_review_status", "source_rights_status", "taxonomy_review_status", "render_review_status",
 ] as const;
-const GATE_VALUES = new Set(["pending", "passed", "failed", "blocked"]);
-const REVIEW_VALUES = new Set(["pending", "needs_correction", "blocked", "approved", "rejected"]);
+const GATE_VALUES = new Set(["pending", "reviewed", "passed", "failed", "blocked"]);
+const REVIEW_VALUES = new Set(["pending", "reviewed", "needs_correction", "blocked", "approved", "rejected"]);
 const ENUMS: Record<string, ReadonlySet<string>> = {
   difficulty: new Set(["easy", "medium", "hard"]),
   course_scope: new Set(["AB", "BC", "BOTH"]),
@@ -179,7 +189,9 @@ export function validateQuestionBankSheets(
       issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "Unexpected worksheet" });
     }
   }
-  const questionRows = records(sheets.find((sheet) => sheet.sheet === "Questions"), QUESTION_HEADERS, issues);
+  const questionSheet = sheets.find((sheet) => sheet.sheet === "Questions");
+  const simplified = !questionSheet?.data[0]?.includes("source_locator") && !questionSheet?.data[0]?.includes("ai_flags");
+  const questionRows = records(questionSheet, simplified ? WORKFLOW_QUESTION_HEADERS : QUESTION_HEADERS, issues);
   const optionRows = records(sheets.find((sheet) => sheet.sheet === "Options"), OPTION_HEADERS, issues);
   const topicVerified = canonical.topicCodes !== undefined;
   const skillVerified = canonical.practiceSkillCodes !== undefined;
@@ -217,7 +229,8 @@ export function validateQuestionBankSheets(
 
     const locator = get("source_locator").trim();
     const printedNumber = get("source_question_number").trim();
-    if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
+    if (simplified && !printedNumber) issue("source_question_number", "The simplified template requires an actual printed question number");
+    else if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
     if (locator) {
       const locatorMatch = locator.match(/^p(\d{3,})-item(\d{2,})$/);
       if (!locatorMatch) issue("source_locator", "Use a source locator such as p012-item03");
@@ -233,6 +246,14 @@ export function validateQuestionBankSheets(
     for (const field of REVIEW_GATES) {
       gates[field] = get(field).trim();
       if (gates[field] && !GATE_VALUES.has(gates[field])) issue(field, `Invalid review gate status: ${gates[field]}`);
+    }
+    if (status === "reviewed") {
+      if (!get("reviewed_by").trim()) issue("reviewed_by", "A reviewed question needs the human reviewer's name");
+      if (!isValidReviewTimestamp(get("reviewed_at").trim())) issue("reviewed_at", "Use the actual review time in ISO 8601 format with a timezone");
+      if (!get("calculator_policy").trim()) issue("calculator_policy", "Choose a calculator policy during human review");
+      for (const field of REVIEW_GATES) {
+        if (gates[field] !== "reviewed") issue(field, "Complete this review before marking the question reviewed");
+      }
     }
     const flags = codeList(record.cells.ai_flags);
     const requiresFigure = booleanValue(record.cells.requires_figure);

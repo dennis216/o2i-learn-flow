@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  OPTION_HEADERS, QUESTION_HEADERS, parseQuestionBankWorkbook, validateQuestionBankSheets,
+  OPTION_HEADERS, QUESTION_HEADERS, WORKFLOW_QUESTION_HEADERS, parseQuestionBankWorkbook, validateQuestionBankSheets,
 } from './questionBankImport.ts';
 
 const row = (headers, values) => headers.map((header) => values[header] ?? null);
@@ -40,6 +40,17 @@ test('the checked-in blank template parses as exactly three sheets and correct h
   assert.deepEqual(sheets[0].data[0], [...QUESTION_HEADERS]);
   assert.deepEqual(sheets[1].data[0], [...OPTION_HEADERS]);
   assert.equal(validateQuestionBankSheets(sheets).questionRowCount, 0);
+});
+
+test('the actual V5 input-package template has 26 columns and no hidden production questions', async () => {
+  const bytes = readFileSync(new URL('../../docs/question-bank/workflow-v5/input package/O2I_Question_Bank_Import_Template.xlsx', import.meta.url));
+  const sheets = await parseQuestionBankWorkbook(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  assert.deepEqual(sheets.map(sheet => sheet.sheet), ['Questions', 'Options', 'Instructions']);
+  assert.deepEqual(sheets[0].data, [[...WORKFLOW_QUESTION_HEADERS]]);
+  assert.deepEqual(sheets[1].data, [[...OPTION_HEADERS]]);
+  assert.equal(sheets[0].data[0].includes('source_locator'), false);
+  assert.equal(sheets[0].data[0].includes('ai_flags'), false);
+  assert.equal(validateQuestionBankSheets(sheets).issues.length, 0);
 });
 
 test('a structurally valid pending draft previews but is not import-ready', () => {
