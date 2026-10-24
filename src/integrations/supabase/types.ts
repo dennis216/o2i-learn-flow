@@ -1988,6 +1988,9 @@ export type Database = {
       }
       count_all_profiles: { Args: never; Returns: number }
       count_real_users: { Args: never; Returns: number }
+      get_admin_access: { Args: Record<PropertyKey, never>; Returns: Json }
+      has_admin_module: { Args: { _module: string }; Returns: boolean }
+      set_account_role: { Args: { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2010,7 +2013,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "instructor" | "student" | "super_admin"
+      app_role: "admin" | "instructor" | "student" | "super_admin" | "course_admin" | "question_admin"
       problem_type:
         | "geometry"
         | "algebra"
@@ -2167,7 +2170,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "instructor", "student", "super_admin"],
+      app_role: ["admin", "instructor", "student", "super_admin", "course_admin", "question_admin"],
       problem_type: [
         "geometry",
         "algebra",

@@ -13,7 +13,8 @@ const Editor = lazy(() => import('@/components/admin/CourseOutlineManagement').t
 const TopicLesson = lazy(() => import('./TopicLesson'));
 interface Props { course: Course; onClose: () => void; supabaseUrl: string; topicId?: string | null; entryId?: string | null; onEntryChange: (id: string | null) => void; resumeTime?: number | null; initialVideoId?: string }
 export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entryId, onEntryChange, resumeTime, initialVideoId }: Props) {
-  const { user, isAdmin } = useAuth();
+  const { user, adminAccess } = useAuth();
+  const isAdmin = adminAccess.courses;
   const [editing, setEditing] = useState<string | null>(null);
 
   const client = useQueryClient();

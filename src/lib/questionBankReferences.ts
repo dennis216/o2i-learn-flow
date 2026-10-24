@@ -24,9 +24,7 @@ async function readAll<T>(
 export async function loadQuestionBankReferences(client: SupabaseClient<Database>): Promise<QuestionBankReferences> {
   const { data: identity, error: identityError } = await client.auth.getUser();
   if (identityError || !identity.user) throw new Error("Sign in as an administrator to verify reference data and existing question IDs");
-  const { data: isAdmin, error: roleError } = await client.rpc("has_role", {
-    _user_id: identity.user.id, _role: "admin",
-  });
+  const { data: isAdmin, error: roleError } = await client.rpc("has_admin_module", { _module: "questions" });
   if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
   if (isAdmin !== true) throw new Error("Administrator access is required to check all existing external_id values");
 

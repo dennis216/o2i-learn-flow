@@ -1,3 +1,4 @@
+import { canAccessAdminTab, defaultAdminTab } from '@/lib/adminAccess';
 import { outlineRpc } from '@/lib/courseOutline';
 import { CourseOutlineManagement } from '@/components/admin/CourseOutlineManagement';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
@@ -63,10 +64,9 @@ interface Subject {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, isAdmin, adminAccess, accessLoading, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const loading = authLoading || accessLoading;
   const [submitting, setSubmitting] = useState(false);
   const [adminTab, setAdminTab] = useState('manage-courses');
   const [managedCourseId, setManagedCourseId] = useState('');
@@ -144,18 +144,18 @@ const Admin = () => {
   const [aiTestResult, setAiTestResult] = useState<{loading: boolean; error?: string; success?: boolean; response?: string}>({loading: false});
 
   useEffect(() => {
-    checkAdminStatus();
-  }, [user]);
+    if (loading) return;
+    if (!user) { navigate('/auth'); return; }
+    if (!isAdmin) { navigate('/'); return; }
+    if (!canAccessAdminTab(adminAccess, adminTab)) setAdminTab(defaultAdminTab(adminAccess));
+  }, [loading, user, isAdmin, adminAccess, adminTab, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchCourses();
-      fetchTeamMembers();
-      fetchSubjects();
-    }
-  }, [isAdmin]);
-
-  useEffect(() => { if (isAdmin) void fetchVideos(); }, [isAdmin, managedCourseId, videoFilter]);
+    if (loading) return;
+    if (adminAccess.courses) { void fetchCourses(); void fetchSubjects(); }
+    if (adminAccess.team) void fetchTeamMembers();
+  }, [loading, adminAccess]);
+  useEffect(() => { if (!loading && adminAccess.courses) void fetchVideos(); }, [loading, adminAccess.courses, managedCourseId, videoFilter]);
 
   // Helper: sanitize transcript JSON to {s, t} format
   const sanitizeTranscript = (rawJson: string): any[] | null => {
@@ -215,39 +215,6 @@ const Admin = () => {
       setTranscriptAutoFormatted(false);
     }
   }, [videoFormData.transcript, editingVideo]);
-
-  const checkAdminStatus = async () => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "admin",
-      });
-
-      if (error) throw error;
-
-      if (!data) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have admin permissions.",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
-      setIsAdmin(true);
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchCourses = async () => {
     try {
@@ -683,12 +650,12 @@ const Admin = () => {
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
       <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, and content</p>
 
-      <Tabs value={adminTab} onValueChange={value => { if (canLeaveContent()) setAdminTab(value); }} className="space-y-6">
+      <Tabs value={adminTab} onValueChange={value => { if (canAccessAdminTab(adminAccess, value) && canLeaveContent()) setAdminTab(value); }} className="space-y-6">
         <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
-          <TabsTrigger value={['courses', 'course-content', 'subjects', 'manage', 'videos'].includes(adminTab) ? adminTab : 'manage-courses'} onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Courses</TabsTrigger>
-          <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
-          <TabsTrigger value="playground">Playground</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
+          {adminAccess.courses && (<TabsTrigger value={['courses', 'course-content', 'subjects', 'manage', 'videos'].includes(adminTab) ? adminTab : 'manage-courses'} onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Courses</TabsTrigger>)}
+          {adminAccess.questions && (<TabsTrigger value="question-bank">Question Bank</TabsTrigger>)}
+          {adminAccess.playground && (<TabsTrigger value="playground">Playground</TabsTrigger>)}
+          {adminAccess.team && (<TabsTrigger value="team">Team</TabsTrigger>)}
           {isSuperAdmin && (
             <TabsTrigger value="users" className="flex items-center gap-1">
               <UserCog className="h-4 w-4" />
@@ -697,7 +664,7 @@ const Admin = () => {
           )}
         </TabsList>
 
-        <TabsContent value="course-content">
+        {canAccessAdminTab(adminAccess, 'course-content') && (<TabsContent value="course-content">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Back to Courses</Button>
             <span className="font-semibold">{courses.find(c => c.id === managedCourseId)?.title}</span>
@@ -705,10 +672,10 @@ const Admin = () => {
             <Button variant="outline" onClick={() => { if (canLeaveContent()) { setVideoFormData(v => ({ ...v, course_id: managedCourseId })); setAdminTab('videos'); } }}>Add video metadata</Button>
           </div>
           {managedCourseId && <CourseOutlineManagement key={managedCourseId} courseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} onSaved={() => { void fetchVideos(); }} />}
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Legacy video metadata editor; student access is controlled by canonical publication. */}
-        <TabsContent value="videos">
+        {canAccessAdminTab(adminAccess, 'videos') && (<TabsContent value="videos">
           <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <div className="grid gap-8 lg:grid-cols-2">
             <Card>
@@ -904,10 +871,10 @@ const Admin = () => {
               </Card>
             </div>
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Create Course Tab */}
-        <TabsContent value="courses">
+        {canAccessAdminTab(adminAccess, 'courses') && (<TabsContent value="courses">
           <Card className="max-w-2xl">
             <CardHeader>
               <CardTitle>Create New Course</CardTitle>
@@ -1036,20 +1003,20 @@ const Admin = () => {
               </form>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
-        <TabsContent value="question-bank">
+        {canAccessAdminTab(adminAccess, 'question-bank') && (<TabsContent value="question-bank">
           <QuestionBankPreview />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Subjects Management Tab */}
-        <TabsContent value="subjects">
+        {canAccessAdminTab(adminAccess, 'subjects') && (<TabsContent value="subjects">
           <Button className="mb-4" variant="outline" onClick={() => { void fetchSubjects(); setAdminTab('manage-courses'); }}>Back to Courses</Button>
           <SubjectManagement />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Manage Videos Tab */}
-        <TabsContent value="manage">
+        {canAccessAdminTab(adminAccess, 'manage') && (<TabsContent value="manage">
           <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <Card>
             <CardHeader>
@@ -1145,10 +1112,10 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Manage Courses Tab */}
-        <TabsContent value="manage-courses">
+        {canAccessAdminTab(adminAccess, 'manage-courses') && (<TabsContent value="manage-courses">
           <Card>
             <CardHeader>
               <CardTitle>All Courses</CardTitle>
@@ -1243,10 +1210,10 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Team Management Tab */}
-        <TabsContent value="team">
+        {canAccessAdminTab(adminAccess, 'team') && (<TabsContent value="team">
           {teamSaveNotice && <div role="status" className="mb-6 rounded border border-amber-400 bg-amber-50 p-4 text-amber-950">
             <p>{teamSaveNotice}</p><Button type="button" variant="outline" className="mt-2" onClick={() => void fetchTeamMembers()}>Reload Team data</Button>
           </div>}
@@ -1470,12 +1437,12 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Playground Management Tab */}
-        <TabsContent value="playground">
+        {canAccessAdminTab(adminAccess, 'playground') && (<TabsContent value="playground">
           <PlaygroundManagement />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* User Management Tab - Super Admin Only */}
         {isSuperAdmin && (

@@ -1,3 +1,4 @@
+import { NO_ADMIN_ACCESS, parseAdminAccess, type AdminAccess } from '@/lib/adminAccess';
 import { clearPracticeCaptures, initializePracticeCaptureTab } from '@/lib/practiceCapture';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AuthError, User, Session } from '@supabase/supabase-js';
@@ -17,6 +18,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  adminAccess: AdminAccess;
+  accessLoading: boolean;
   isSuperAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
@@ -39,7 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAccess, setAdminAccess] = useState<AdminAccess>(NO_ADMIN_ACCESS);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const isAdmin = Object.values(adminAccess).some(Boolean);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -59,11 +64,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (nextUserId !== currentUserId || !nextUserId) {
         try { clearPracticeCaptures(sessionStorage, currentUserId && nextUserId !== currentUserId ? undefined : nextUserId); } catch { /* Storage may be disabled. */ }
         setProfile(null);
-        setIsAdmin(false);
+        setAdminAccess(NO_ADMIN_ACCESS);
         setIsSuperAdmin(false);
       }
       currentUserId = nextUserId;
       setLoading(false);
+      setAccessLoading(!!nextUserId);
       if (!nextUserId) return;
 
       // Supabase requests must run outside the auth callback's lock.
@@ -77,23 +83,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, error => {
             if (isCurrent()) { setProfile(null); console.error('Error fetching profile:', error); }
           });
-        void Promise.all([
-          supabase.rpc('has_role', { _user_id: nextUserId, _role: 'admin' }),
-          supabase.rpc('is_super_admin', { _user_id: nextUserId }),
-        ]).then(([adminResult, superAdminResult]) => {
+        void Promise.resolve(supabase.rpc('get_admin_access')).then(({ data, error }) => {
           if (!isCurrent()) return;
-          if (adminResult.error || superAdminResult.error) {
-            setIsAdmin(false); setIsSuperAdmin(false);
-            console.error('Error checking account roles:', adminResult.error ?? superAdminResult.error);
-            return;
-          }
-          const superAdmin = superAdminResult.data === true;
-          setIsSuperAdmin(superAdmin);
-          setIsAdmin(adminResult.data === true || superAdmin);
+          const access = error ? NO_ADMIN_ACCESS : parseAdminAccess(data);
+          setAdminAccess(access);
+          setIsSuperAdmin(access.users);
+          setAccessLoading(false);
+          if (error) console.error('Error checking account permissions:', error);
         }).catch(error => {
           if (!isCurrent()) return;
-          setIsAdmin(false); setIsSuperAdmin(false);
-          console.error('Error checking account roles:', error);
+          setAdminAccess(NO_ADMIN_ACCESS); setIsSuperAdmin(false); setAccessLoading(false);
+          console.error('Error checking account permissions:', error);
         });
       }, 0);
     };
@@ -173,6 +173,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     isAdmin,
+    adminAccess,
+    accessLoading,
     isSuperAdmin,
     loading,
     signUp,
