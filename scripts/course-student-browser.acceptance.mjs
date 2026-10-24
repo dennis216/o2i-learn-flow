@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 export async function verifyStudentCourse({page,context,app,api,course,topic,other,outline,requests,out}) {
   await context.route('https://www.youtube.com/iframe_api',r=>r.fulfill({contentType:'application/javascript',body:`window.YT={Player:class { constructor(el,config){ this.el=document.createElement('iframe');this.el.title='Synthetic YouTube player';this.el.src='https://www.youtube.com/embed/'+config.videoId;this.el.width='640';this.el.height='360';el.replaceWith(this.el);setTimeout(()=>config.events.onReady(),0); }getCurrentTime(){return 0}destroy(){this.el.remove()} }};window.onYouTubeIframeAPIReady?.();`}));
   await context.route('https://www.youtube.com/embed/**',r=>r.fulfill({contentType:'text/html',body:'Synthetic player fixture'}));
-  await context.route(api+'/rest/v1/rpc/has_role',r=>r.fulfill({contentType:'application/json',body:'false'}));
+  await context.route(api+'/rest/v1/rpc/get_admin_access',r=>r.fulfill({contentType:'application/json',body:'{}'}));
   requests.length=0;
   await page.goto(app+'/courses');await page.getByRole('button',{name:'View Course',exact:true}).first().click();
   await page.getByRole('heading',{name:'Unit 1: Synthetic Unit'}).waitFor();

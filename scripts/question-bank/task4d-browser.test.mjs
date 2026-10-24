@@ -1,3 +1,4 @@
+import { legacyFixtureAccessSql } from '../admin-access/legacy-fixture-access.mjs';
 // Opt-in real Auth + PostgREST + PostgreSQL acceptance. NEVER uses an existing database.
 // O2I_PLAYWRIGHT_MODULE points to the locally installed Playwright entrypoint.
 // O2I_SYNTHETIC_XLSX is an existing synthetic-only intake fixture, never a real question file.
@@ -121,7 +122,7 @@ try {
     CREATE TABLE public.subjects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,category text,order_index int);
     CREATE TABLE public.team_members(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_index int);
     ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'has_role')}
-    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')}
+    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')} ${legacyFixtureAccessSql()}
     ${fn(read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql'),'update_updated_at_column')}
     ${taxonomy.slice(taxonomy.indexOf('CREATE TABLE public.curriculum_frameworks'),taxonomy.indexOf('-- Reuse the two existing AP Calculus course records'))}`);
   for(const migration of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management','20261019000000_question_bank_unpublished_status','20261019010000_question_bank_publication'])await db.query('BEGIN;'+read('supabase/migrations/'+migration+'.sql')+'COMMIT;');
@@ -189,7 +190,7 @@ try {
   await context.route('**/*',route=>{
     const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){if(u.hostname.includes('supabase'))remoteRequests.push(u.hostname);return route.abort();}
     if(u.origin===api&&u.pathname==='/rest/v1/rpc/save_question_bank_drafts'&&route.request().method()==='POST')draftSaveRequests.push(route.request().postDataJSON()._items);
-    if(u.origin===api&&u.pathname.startsWith('/rest/v1/rpc/')&&!['has_role','is_super_admin','get_question_bank_draft','get_question_publication_state','precheck_question_publication'].includes(u.pathname.split('/').at(-1)))writeRequests.push(u.pathname.split('/').at(-1));
+    if(u.origin===api&&u.pathname.startsWith('/rest/v1/rpc/')&&!['has_role','is_super_admin','get_admin_access','has_admin_module','get_question_bank_draft','get_question_publication_state','precheck_question_publication'].includes(u.pathname.split('/').at(-1)))writeRequests.push(u.pathname.split('/').at(-1));
     return route.continue();
   });
   page=await context.newPage();await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[0].email);await page.locator('input[name="password"]').first().fill(testPassword);

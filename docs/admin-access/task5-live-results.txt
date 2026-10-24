@@ -1,0 +1,7 @@
+LOCAL ONLY: cached GoTrue + PostgREST + PostgreSQL + installed SDK + actual React UI. No production access or real users.
+The deployed Deno gateway and email delivery are not exercised.
+PASS five real local Auth accounts sign in; PostgreSQL roles are read through actual JWT/PostgREST
+PASS real HTTP rejects non-owner deletion and unconfirmed direct Auth Admin deletion without removing target
+PASS real active session gains and loses module access after atomic role changes
+PASS actual React UI with real local JWT, Auth, database RPC and user deletion passes; screenshots saved
+PASS deleted real account has no Auth user/sessions; old access token and refresh token rejected; one success audit retained

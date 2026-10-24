@@ -34,7 +34,9 @@ try{
    if(u.origin===api){
      let body=[];
      const fn=u.pathname.split('/').at(-1);
-     if(fn==='has_role')body=true;
+     if(fn==='get_admin_access')body={courses:true,questions:true,playground:true,team:true,users:false};
+     else if(fn==='has_admin_module')body=true;
+     else if(fn==='has_role')body=true;
      else if(fn==='is_super_admin')body=false;
      else if(fn==='profiles')body={user_id:uid,full_name:'Synthetic admin'};
      else if(fn==='courses'){ const all=[{id:course,title:'AP Calculus BC',practice_course_scope:'BC',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'},{id:ab,title:'AP Calculus AB',practice_course_scope:'AB',category:'High School',subject:'AP Calc',is_published:true,level:'advanced',price:0,description:'Synthetic browser fixture'}];body=u.searchParams.get('id') ? all.filter(c=>'eq.'+c.id===u.searchParams.get('id')) : all; }
@@ -196,7 +198,7 @@ try{
        entries=[{id:mergedId,entry_id:mergedId,code:'1.1 · 1.2',title:'Limits: graphs and tables',is_published:true,content_id:content.lesson_id,cb_topics:outline[0].topics.map(t=>({id:t.id,code:t.code,title:t.title}))},{id:draftId,entry_id:draftId,code:'1.3',title:'Unprepared Topic',is_published:false,cb_topics:[{id:draftId,code:'1.3',title:'Unprepared Topic'}]}];content.is_published=true;
        await context.route('https://www.youtube.com/iframe_api',r=>r.fulfill({contentType:'application/javascript',body:`window.YT={Player:class { constructor(el,config){ this.el=document.createElement('iframe');this.el.title='Synthetic YouTube player';this.el.src='https://www.youtube.com/embed/'+config.videoId;el.replaceWith(this.el);setTimeout(()=>config.events.onReady(),0); }getCurrentTime(){return 0}destroy(){this.el.remove()} }};window.onYouTubeIframeAPIReady?.();`}));
        await context.route('https://www.youtube.com/embed/**',r=>r.fulfill({contentType:'text/html',body:'Synthetic player fixture'}));
-       await context.route(api+'/rest/v1/rpc/has_role',r=>r.fulfill({contentType:'application/json',body:'false'}));requests.length=0;
+       await context.route(api+'/rest/v1/rpc/get_admin_access',r=>r.fulfill({contentType:'application/json',body:'{}'}));requests.length=0;
        await page.goto(app+'/courses?course='+course);await page.getByRole('heading',{name:'Unit 1: Synthetic Unit'}).waitFor();assert.equal(requests.filter(p=>p.endsWith('/get_course_outline_entry')).length,0);
        await page.getByText('Unprepared Topic',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:/Unprepared Topic/}).count(),0);
        await page.getByRole('button',{name:'1.1 · 1.2 · Limits: graphs and tables',exact:true}).click();await page.getByTitle('Synthetic YouTube player').waitFor();

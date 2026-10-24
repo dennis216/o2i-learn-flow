@@ -1,3 +1,4 @@
+import { legacyFixtureAccessSql } from './admin-access/legacy-fixture-access.mjs';
 // Disposable local Auth/REST/database/browser acceptance. No production connection or credentials.
 import assert from 'node:assert/strict';
 import { execFileSync,spawn } from 'node:child_process';
@@ -76,7 +77,7 @@ try {
     CREATE TABLE public.subjects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,category text,order_index int);
     CREATE TABLE public.team_members(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_index int);
     ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'has_role')}
-    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')}
+    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')} ${legacyFixtureAccessSql()}
     ${fn(read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql'),'update_updated_at_column')}
     ${taxonomy.slice(taxonomy.indexOf('CREATE TABLE public.curriculum_frameworks'),taxonomy.indexOf('-- Reuse the two existing AP Calculus course records'))}`);
   for(const migration of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management','20261019000000_question_bank_unpublished_status','20261019010000_question_bank_publication'])await db.query('BEGIN;'+read('supabase/migrations/'+migration+'.sql')+'COMMIT;');
@@ -277,7 +278,7 @@ try {
   const before=startRequests;await page.goto(app+'/quiz?subject=calculus&lesson=limits&source=lesson');await page.getByRole('heading',{name:'This practice scope is not connected'}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/learn/limits-foundations');await page.waitForURL(app+'/courses');await page.getByRole('heading',{name:'Math Courses',exact:true}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/review');await page.getByRole('link',{name:'Choose published practice',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Choose published practice',exact:true}).getAttribute('href'),'/practice');
-  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'No published questions in this practice scope'}).waitFor();check('Legacy Learn redirects to Courses, Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
+  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'Practice for this topic is being prepared. Stay tuned.',exact:true}).waitFor();check('Legacy Learn redirects to Courses, Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
   // Render the real saved draft projection only in a local browser fixture. This is not publication.
   for(const [i,row] of realRows.entries()){
     const id=randomUUID();await page.route('**/rpc/start_question_practice',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id,topic_id:row.topic.id,created_at:new Date().toISOString(),questions:[row]})}));

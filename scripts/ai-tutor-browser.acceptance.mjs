@@ -31,7 +31,8 @@ export async function verifyAiTutorHidden({browser,routeFixture,app,api,course,t
       await context.route(api+'/**',async route=>{
         const fn = new URL(route.request().url()).pathname.split('/').at(-1);
         let body;
-        if(fn==='has_role')body=role==='admin'||role==='super_admin';
+        if(fn==='get_admin_access')body={courses:['admin','super_admin'].includes(role),questions:['admin','super_admin'].includes(role),playground:['admin','super_admin'].includes(role),team:['admin','super_admin'].includes(role),users:role==='super_admin'};
+        else if(fn==='has_role')body=role==='admin'||role==='super_admin';
         else if(fn==='is_super_admin')body=role==='super_admin';
         else if(fn==='profiles')body={user_id:uid,full_name:'Synthetic '+role,role};
         else return route.fallback();

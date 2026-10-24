@@ -4,4 +4,5 @@ PASS course ownership, question authorship and stored files block permanent dele
 PASS preview lists personal records, validates confirmation and blocks direct Auth deletion
 PASS new references after preview/confirmation abort deletion without losing content
 PASS expired authorization and revoked owner permissions cannot delete
+PASS unowned course asset paths are not mistaken for account IDs
 PASS confirmed Auth deletion removes only personal data and sessions, records success atomically

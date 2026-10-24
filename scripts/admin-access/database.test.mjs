@@ -12,10 +12,13 @@ const user=(id,s)=>sql(`BEGIN;SET LOCAL ROLE authenticated;SELECT set_config('re
 const fail=(f,pattern)=>assert.throws(f,e=>!pattern||pattern.test(String(e.stderr||e.message)));
 const passed=[];const check=(name,run)=>{run();passed.push(name);console.log('PASS '+name);};
 const migration=prefix=>{const path=execFileSync('rg',['--files','supabase/migrations'],{encoding:'utf8'}).split('\n').find(p=>p.split('/').at(-1).startsWith(prefix));assert.ok(path,prefix);return read(path);};
-let created=false;
+let created=false,authContainer;const liveAuth=!!process.env.O2I_ADMIN_LIVE_AUTH;const releasePackage=!!process.env.O2I_ADMIN_RELEASE_PACKAGE;
 try {
- docker(['run','--pull','never','-d','--name',name,'--network','none','--tmpfs','/var/lib/postgresql/data:rw','-e','POSTGRES_HOST_AUTH_METHOD=trust','public.ecr.aws/supabase/postgres:17.11.0.002']);created=true;
+ docker(['run','--pull','never','-d','--name',name,...(liveAuth?['-p','127.0.0.1:55997:9999','-p','127.0.0.1:55996:3000']:['--network','none']),'--tmpfs','/var/lib/postgresql/data:rw','-e','POSTGRES_HOST_AUTH_METHOD=trust','public.ecr.aws/supabase/postgres:17.11.0.002']);created=true;
  for(let n=0;;n++){try{if(docker(['logs',name]).includes('PostgreSQL init process complete') && sql("SELECT count(*) FROM pg_roles WHERE rolname='authenticated'")==='1')break;}catch{}if(n>600)throw Error('Postgres startup timed out');await new Promise(r=>setTimeout(r,250));}
+ if(liveAuth)authContainer=name+'-auth';
+ if(liveAuth)authContainer=await (await import('./live-auth.acceptance.mjs')).startLocalAuth({docker,sql,name});
+ const applyAdmin=(prefix,file)=>{const source=migration(prefix);const packaged=read('docs/admin-access/production/'+file);assert.ok(packaged.includes(source),'Deployment source mismatch: '+prefix);sql(releasePackage?packaged:source);};
  const taxonomy=migration('20260920010000');
  sql(`DO $$ DECLARE r record;BEGIN FOR r IN SELECT evtname FROM pg_event_trigger LOOP EXECUTE format('ALTER EVENT TRIGGER %I DISABLE',r.evtname);END LOOP;END $$;
  CREATE SCHEMA IF NOT EXISTS storage;
@@ -40,6 +43,7 @@ try {
  ${migration('20260118030406')}
  ALTER TYPE public.app_role ADD VALUE 'super_admin';`);
  sql(migration('20260920000000'));
+ sql(migration('20260116020640'));
  sql(`ALTER TABLE public.profiles ADD COLUMN is_zombie boolean DEFAULT false;
  ${taxonomy.slice(taxonomy.indexOf('CREATE TABLE public.curriculum_frameworks'),taxonomy.indexOf('ALTER TABLE public.course_videos'))}
  ALTER TABLE public.course_videos ADD COLUMN curriculum_topic_id uuid REFERENCES public.curriculum_topics(id);
@@ -57,8 +61,13 @@ try {
  for(const prefix of ['20260926000000','20261004000000','20261018000000','20261019000000','20261019010000','20261020000000','20261021000000','20261023000000','20261024000000','20261025000000','20261026000000','20261027000000','20261028000000','20261029000000','20261030000000','20261031000000','20261101000000','20261101010000','20261101020000','20261101030000'])sql(migration(prefix));
  // Original production policy shapes plus broad grants make authorization failures observable.
  sql(`GRANT USAGE ON SCHEMA public,storage TO authenticated,anon;GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO authenticated;GRANT SELECT,INSERT,UPDATE,DELETE ON storage.objects TO authenticated;
- ${migration('20261103000000')}`);
- sql(migration('20261103010000'));
+ CREATE SCHEMA IF NOT EXISTS supabase_migrations;CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations(version text PRIMARY KEY,name text,statements text[]);
+ CREATE VIEW public.public_profiles AS SELECT id,user_id,full_name,avatar_url,role FROM public.profiles;GRANT SELECT ON public.public_profiles TO anon,authenticated;`);
+ applyAdmin('20261103000000','10_roles.sql');
+ applyAdmin('20261103010000','20_permissions.sql');
+ if(releasePackage)applyAdmin('20261103020000','30_deletion.sql');
+ applyAdmin('20261103030000','40_account_data.sql');
+ sql("CREATE POLICY own_roles_read ON public.user_roles FOR SELECT TO authenticated USING(user_id=auth.uid());");
  sql(`INSERT INTO public.user_roles(user_id,role) VALUES('${course}','course_admin'),('${question}','question_admin');`);
  check('module matrix for all 5 roles',()=>{
   const expected=[[true,true,true,true,true],[true,true,true,true,false],[true,false,true,false,false],[false,true,true,false,false],[false,false,false,false,false]];
@@ -111,11 +120,14 @@ try {
   user(superId,`SELECT public.set_account_role('${student}','student')`);
   assert.equal(user(student,"SELECT public.has_admin_module('questions')"),'f');
  });
+ check('private account profiles and roles are inaccessible to all ordinary admins',()=>{for(const id of [full,course,question,student])assert.equal(user(id,`SELECT count(*) FROM public.profiles WHERE user_id<>'${id}'`),'0');assert.ok(Number(user(superId,'SELECT count(*) FROM public.profiles'))>=6);});
  check('installed module RPCs contain no old admin gate',()=>{
   const residual=sql("SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='f' AND (proname ~ '(course|question)' OR proname='assert_question_bank_admin') AND prosrc ~ 'has_role\\([^;]*''admin''' ");
   assert.equal(residual,'',residual);
  });
  if(process.env.O2I_ADMIN_DELETION_DB) (await import('./deletion-db.acceptance.mjs')).verifyUserDeletion({sql,user,uid,superId,full,course,question,student});
+ if(releasePackage){assert.equal(sql("SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version BETWEEN '20261103000000' AND '20261103030000'"),'4');assert.throws(()=>sql(read('docs/admin-access/production/20_permissions.sql')));assert.ok(sql(read('docs/admin-access/production/50_verify_readonly.sql')).includes('t|t|t|t|t|t|t|t'));console.log('PASS exact deployment package, four registrations, repeat deployment refused and read-only verification');}
+ if(liveAuth)await (await import('./live-auth.acceptance.mjs')).verifyLiveAuth({docker,sql,name,superId});
  writeFileSync('docs/admin-access/task2-database-results.txt',`Local disposable PostgreSQL; synthetic accounts; no production connection.\n${passed.map(s=>'PASS '+s).join('\n')}\n${passed.length} checks passed.\n`);
 } catch(e){console.error(String(e.stderr||e.stack));try{console.error(sql("SELECT policyname,cmd,qual,with_check FROM pg_policies WHERE tablename='courses'"));}catch{}process.exitCode=1;}
-finally {if(created)docker(['rm','-f',name]);}
+finally {if(authContainer)docker(['rm','-f',authContainer]);if(created)docker(['rm','-f',name]);}

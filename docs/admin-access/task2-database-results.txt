@@ -8,5 +8,6 @@ PASS question import RPC works for Question Admin; Course Admin denied
 PASS course RPC denies Question Admin; allows Course Admin
 PASS Storage module isolation, including legacy owner bypass
 PASS atomic role change, self/protected guard, no browser role writes
+PASS private account profiles and roles are inaccessible to all ordinary admins
 PASS installed module RPCs contain no old admin gate
-10 checks passed.
+11 checks passed.

@@ -69,17 +69,18 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
     return r.continue();
   });
   // Old A role and profile responses arrive after B has loaded.
-  const rolePattern='**/rpc/is_super_admin';
+  const fromAccountA=request=>{try{return JSON.parse(Buffer.from(request.headers().authorization?.split('.')[1]??'','base64url').toString()).sub===a.user.id;}catch{return false;}};
+  const rolePattern='**/rpc/get_admin_access';
   await page.route(rolePattern,async r=>{
-    if(r.request().postDataJSON()?._user_id===a.user.id) { await gate;await r.fulfill({status:200,contentType:'application/json',body:'true'}); }
+    if(fromAccountA(r.request())) { await gate;await r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({courses:true,questions:true,playground:true,team:true,users:true})}); }
     else await r.continue();
   });
   const profilePattern='**/rest/v1/profiles?*';
   await page.route(profilePattern,r=>new URL(r.request().url()).searchParams.get('user_id')===`eq.${a.user.id}`?held(r):r.continue());
-  for(const match of [u=>u.includes('/question_practice_attempts?'),u=>u.endsWith('/is_super_admin'),u=>u.includes('/profiles?')]) pending.push(page.waitForRequest(r=>match(r.url())));
+  for(const match of [u=>u.includes('/question_practice_attempts?'),u=>u.endsWith('/get_admin_access'),u=>u.includes('/profiles?')]) pending.push(page.waitForRequest(r=>match(r.url())));
   await page.reload();await Promise.all(pending);await page.getByRole('status').filter({hasText:'Loading your practice statistics'}).waitFor();
   assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);
-  const late=page.waitForResponse(r=>r.url().endsWith('/is_super_admin')&&r.request().postDataJSON()?._user_id===a.user.id);
+  const late=page.waitForResponse(r=>r.url().endsWith('/get_admin_access')&&fromAccountA(r.request()));
   await switchAccount(b);await verify(b.user.id);
   assert.equal(await page.locator('#email').inputValue(),b.user.email);
   release();await late;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));

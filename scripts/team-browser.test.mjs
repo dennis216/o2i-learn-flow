@@ -1,3 +1,4 @@
+import { legacyFixtureAccessSql } from './admin-access/legacy-fixture-access.mjs';
 // Opt-in Team acceptance: disposable local Auth/PostgREST/PostgreSQL, never an existing database.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
@@ -45,7 +46,7 @@ try {
     CREATE TABLE public.user_roles(user_id uuid,role public.app_role); ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
     CREATE TABLE public.profiles(id uuid DEFAULT gen_random_uuid(),user_id uuid,full_name text,email text,role text);
     CREATE TABLE public.user_login_events(id uuid DEFAULT gen_random_uuid(),user_id uuid,created_at timestamptz DEFAULT now());
-    ${fn(rolesMigration, 'has_role')} ${fn(rolesMigration, 'is_super_admin')}
+    ${fn(rolesMigration, 'has_role')} ${fn(rolesMigration, 'is_super_admin')} ${legacyFixtureAccessSql()}
     ${teamMigration.slice(0, teamMigration.indexOf('-- Create storage bucket'))}
     ALTER TABLE public.team_members ADD COLUMN department text NOT NULL DEFAULT 'Publicity';
     INSERT INTO public.team_members(name,role,bio,order_index,department) VALUES('Legacy Co-founder','Co-founder & Team Leader','Migrated legacy member',0,'Curriculum Content & Production');`);

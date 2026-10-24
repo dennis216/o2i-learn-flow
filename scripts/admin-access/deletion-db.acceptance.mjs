@@ -5,7 +5,7 @@ export function verifyUserDeletion({sql,user,uid,superId,full,course,question,st
  const fail=(run,pattern)=>assert.throws(run,e=>!pattern||pattern.test(String(e.stderr||e.message)));
  const preview=id=>JSON.parse(user(superId,`SELECT public.preview_user_deletion('${id}')`));
  const prepare=(id,email)=>user(superId,`SELECT public.prepare_user_deletion('${id}','${email}')`);
- sql(readFileSync(new URL('../../supabase/migrations/20261103020000_admin_user_deletion.sql',import.meta.url),'utf8'));
+ if(sql("SELECT to_regprocedure('public.preview_user_deletion(uuid)') IS NOT NULL")==='f')sql(readFileSync(new URL('../../supabase/migrations/20261103020000_admin_user_deletion.sql',import.meta.url),'utf8'));
  check('Super Admin only, self protected, private inspector inaccessible',()=>{
   for(const id of [full,course,question,student])fail(()=>user(id,`SELECT public.preview_user_deletion('${student}')`),/Super Admin/);
   fail(()=>user(superId,`SELECT public.preview_user_deletion('${superId}')`),/own account/);
@@ -48,6 +48,7 @@ export function verifyUserDeletion({sql,user,uid,superId,full,course,question,st
   fail(()=>sql(`DELETE FROM auth.users WHERE id='${clean}'`),/confirmation/);
   sql(`INSERT INTO public.user_roles(user_id,role) VALUES('${superId}','super_admin')`);
  });
+ check('unowned course asset paths are not mistaken for account IDs',()=>{sql(`INSERT INTO storage.objects(bucket_id,name) VALUES('course-games','${uid(10)}/${uid(60)}/synthetic.html')`);sql("DELETE FROM storage.objects WHERE name LIKE '%/synthetic.html'");});
  check('confirmed Auth deletion removes only personal data and sessions, records success atomically',()=>{
   const before=sql('SELECT count(*) FROM public.courses');prepare(clean,email);sql(`DELETE FROM auth.users WHERE id='${clean}'`);
   for(const table of ['public.profiles','public.user_roles','public.user_login_events','public.question_practice_sessions','auth.sessions'])assert.equal(sql(`SELECT count(*) FROM ${table} WHERE user_id='${clean}'`),'0',table);

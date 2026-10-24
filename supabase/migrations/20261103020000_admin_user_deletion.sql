@@ -121,7 +121,8 @@ NOTIFY pgrst,'reload schema';
 CREATE FUNCTION public.guard_storage_account_owner() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,extensions AS $$
 DECLARE owner_value text:=coalesce(nullif(to_jsonb(NEW)->>'owner_id',''),nullif(to_jsonb(NEW)->>'owner',''),
- nullif(NEW.metadata->>'user_id',''),nullif(NEW.metadata->>'creator',''),split_part(NEW.name,'/',1));
+ nullif(NEW.metadata->>'user_id',''),nullif(NEW.metadata->>'creator',''),
+ CASE WHEN NEW.bucket_id IN ('avatars','solution-images') THEN split_part(NEW.name,'/',1) END);
 BEGIN
  IF owner_value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
   PERFORM 1 FROM auth.users WHERE id=owner_value::uuid FOR KEY SHARE;
