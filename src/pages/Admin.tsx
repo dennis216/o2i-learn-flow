@@ -23,7 +23,7 @@ import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SubjectManagement } from "@/components/admin/SubjectManagement";
 import { QuestionBankPreview } from "@/components/admin/QuestionBankPreview";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, UserCog } from "lucide-react";
 
@@ -1459,11 +1459,9 @@ const Admin = () => {
 
       {/* Edit Course Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>Update course details</DialogDescription>
-          </DialogHeader>
+        <DialogContent scrollable className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit Course</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update course details</DialogDescription>
           {editingCourse && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1528,17 +1526,15 @@ const Admin = () => {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* Edit Video Dialog */}
       <Dialog open={editVideoDialogOpen} onOpenChange={open => { if (!open) closeVideoEditor(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Video</DialogTitle>
-            <DialogDescription>Update video details, transcript, and PDF links</DialogDescription>
-            {!!editingVideo?.usage?.length && <div className="rounded border border-amber-400 p-3 text-sm"><p className="font-semibold">Editing this video affects these saved lessons:</p>{editingVideo.usage.map(u => <p key={u.entry_id}>{u.course_title} · {u.lesson_title}{u.archived ? ' · recoverable' : ''}</p>)}</div>}
-          </DialogHeader>
+        <DialogContent scrollable className="max-w-2xl max-h-[90vh]">
+          <DialogHeader><DialogTitle>Edit Video</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update video details, transcript, and PDF links</DialogDescription>{!!editingVideo?.usage?.length && <div className="rounded border border-amber-400 p-3 text-sm"><p className="font-semibold">Editing this video affects these saved lessons:</p>{editingVideo.usage.map(u => <p key={u.entry_id}>{u.course_title} · {u.lesson_title}{u.archived ? ' · recoverable' : ''}</p>)}</div>}
           {editingVideo && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1614,6 +1610,7 @@ const Admin = () => {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 
@@ -1664,11 +1661,9 @@ const Admin = () => {
 
       {/* Edit Team Member Dialog */}
       <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Team Member</DialogTitle>
-            <DialogDescription>Update team member details</DialogDescription>
-          </DialogHeader>
+        <DialogContent scrollable className="max-w-lg max-h-[90dvh]">
+          <DialogHeader><DialogTitle>Edit Team Member</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update team member details</DialogDescription>
           {editingTeamMember && (
             <div className="space-y-4">
               {!teamCanSave && <p role="status" className="text-sm text-amber-800">{teamSaveNotice}</p>}
@@ -1768,6 +1763,7 @@ const Admin = () => {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 

@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { QuestionBankDraftEditor } from "./QuestionBankDraftEditor";
 import { QuestionBankVersionDetails } from "./QuestionBankVersionDetails";
@@ -92,9 +92,9 @@ export function QuestionBankLibrary({ refreshKey }: { refreshKey: number }) {
     {notice && <p role="status" className="rounded border border-green-500 p-3 text-sm text-green-700">{notice}</p>}
     <QuestionBankList kind="drafts" refreshKey={refreshKey + changed} onPreview={setSelected} onAction={onAction} onPublishAll={() => { setNotice(""); setAll(true); }} />
     <QuestionBankList kind="published" refreshKey={refreshKey + changed} onPreview={setSelected} onAction={onAction} onPublishAll={() => setAll(true)} />
-    {selected && <Dialog open onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto"><DialogHeader>
-      <DialogTitle className="break-all">{selected.externalId}</DialogTitle><DialogDescription>{statusLabel(selected)} · Version {selected.versionNumber} · Read-only administrator preview</DialogDescription>
-    </DialogHeader><QuestionBankVersionDetails key={selected.versionId} item={selected} /><QuestionPracticeStatistics key={"statistics:" + selected.id} questionId={selected.id} currentVersionId={selected.currentVersionId} previewVersionId={selected.versionId} /><Button type="button" variant="outline" onClick={() => setSelected(null)}>Close preview</Button></DialogContent></Dialog>}
+    {selected && <Dialog open onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent scrollable className="max-h-[85vh] max-w-3xl"><DialogHeader><DialogTitle className="break-all">{selected.externalId}</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>{statusLabel(selected)} · Version {selected.versionNumber} · Read-only administrator preview</DialogDescription><QuestionBankVersionDetails key={selected.versionId} item={selected} /><QuestionPracticeStatistics key={"statistics:" + selected.id} questionId={selected.id} currentVersionId={selected.currentVersionId} previewVersionId={selected.versionId} /><Button type="button" variant="outline" onClick={() => setSelected(null)}>Close preview</Button></DialogBody>
+    </DialogContent></Dialog>}
     {operation && ["edit", "delete"].includes(operation.action) && <QuestionBankDraftEditor key={operation.item.versionId} item={operation.item}
       initialAction={operation.action === "delete" ? "delete" : undefined} onClose={() => setOperation(null)} onChanged={refresh} />}
     {(all || operation?.action === "publish") && <QuestionBankPublicationDialog single={all ? undefined : operation?.item} onClose={() => { setAll(false); setOperation(null); }} onChanged={refresh} onSuccess={setNotice} />}

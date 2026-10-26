@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,9 +96,9 @@ export function QuestionBankManualEntry({ onClose, onChanged }: { onClose: () =>
 
   return <>
     <Dialog open onOpenChange={open => { if (!open) close(); }}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto" onPointerDownOutside={event => event.preventDefault()}>
-        <DialogHeader><DialogTitle>New question</DialogTitle>
-          <DialogDescription>Uses the same fields and checks as XLSX import. Saves an unpublished draft pending review. After saving, only metadata can be edited.</DialogDescription></DialogHeader>
+      <DialogContent scrollable className="max-h-[90vh] max-w-4xl" onPointerDownOutside={event => event.preventDefault()}>
+        <DialogHeader><DialogTitle>New question</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>Uses the same fields and checks as XLSX import. Saves an unpublished draft pending review. After saving, only metadata can be edited.</DialogDescription>
         <div className="space-y-5 text-sm">
           {referenceBusy && <p role="status">Loading canonical Topics, Skills and existing question IDs…</p>}
           {referenceError && <div role="alert"><p className="text-destructive">{referenceError}</p>
@@ -163,7 +163,8 @@ export function QuestionBankManualEntry({ onClose, onChanged }: { onClose: () =>
             </>}
           </div>
         </div>
-      </DialogContent>
+      </DialogBody>
+    </DialogContent>
     </Dialog>
     <AlertDialog open={discard} onOpenChange={setDiscard}><AlertDialogContent>
       <AlertDialogHeader><AlertDialogTitle>Discard unsaved question?</AlertDialogTitle><AlertDialogDescription>Your form will be discarded. This action does not change the database.</AlertDialogDescription></AlertDialogHeader>

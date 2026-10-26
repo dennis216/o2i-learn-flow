@@ -314,7 +314,7 @@ try {
     const label=await target.getAttribute('aria-label');if(!['Publication target SYNTHETIC-BATCH-A','Publication target SYNTHETIC-BATCH-B'].includes(label))await target.getByRole('checkbox').first().uncheck();
   }
   await fillReview();
-  await dialog().evaluate(el=>{el.scrollTop=0;});await shot('04-batch-review');
+  await dialog().locator('[data-dialog-body]').evaluate(el=>{el.scrollTop=0;});await shot('04-batch-review');
   await db.query(`CREATE FUNCTION public.local_4d_fail_second() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF EXISTS(SELECT 1 FROM public.question_publication_events e JOIN public.questions q ON q.id=e.question_id WHERE q.external_id IN ('SYNTHETIC-BATCH-A','SYNTHETIC-BATCH-B')) THEN RAISE EXCEPTION 'Synthetic injected event failure'; END IF; RETURN NEW; END$$;
     CREATE TRIGGER local_4d_batch_failure BEFORE INSERT ON public.question_publication_events FOR EACH ROW EXECUTE FUNCTION public.local_4d_fail_second();`);
   await dialog().getByRole('button',{name:'Publish 2 problems',exact:true}).click();await dialog().getByText('Publication could not be confirmed.',{exact:false}).waitFor();

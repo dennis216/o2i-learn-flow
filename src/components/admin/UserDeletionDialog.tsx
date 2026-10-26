@@ -3,7 +3,7 @@ import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 type LinkedRecords = { table: string; column?: string; count: number; reason?: string };
@@ -54,8 +54,9 @@ export function UserDeletionDialog({ userId, email, onDeleted }: { userId: strin
   return <>
     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setOpen(true)} aria-label={`Delete ${email}`}>Delete</Button>
     <Dialog open={open} onOpenChange={value => { if (!deleting) setOpen(value); }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Delete account permanently?</DialogTitle><DialogDescription>{email}. This cannot be undone. Public content and review history must be preserved.</DialogDescription></DialogHeader>
+      <DialogContent scrollable className="max-h-[90vh]">
+        <DialogHeader><DialogTitle>Delete account permanently?</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>{email}. This cannot be undone. Public content and review history must be preserved.</DialogDescription>
         {loading && <p role="status">Checking associated data…</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         {preview && <div className="space-y-4">
@@ -64,7 +65,8 @@ export function UserDeletionDialog({ userId, email, onDeleted }: { userId: strin
           {preview.can_delete && <div className="space-y-2"><Label htmlFor={`delete-email-${userId}`}>Type {preview.email} to confirm</Label><Input id={`delete-email-${userId}`} value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="off" disabled={deleting} /></div>}
         </div>}
         <DialogFooter><Button variant="outline" disabled={deleting} onClick={() => setOpen(false)}>Cancel</Button><Button variant="destructive" disabled={loading || deleting || preview?.can_delete !== true || confirmation.trim().toLowerCase() !== preview.email.toLowerCase()} onClick={() => void remove()}>{deleting ? 'Deleting…' : 'Delete permanently'}</Button></DialogFooter>
-      </DialogContent>
+      </DialogBody>
+    </DialogContent>
     </Dialog>
   </>;
 }

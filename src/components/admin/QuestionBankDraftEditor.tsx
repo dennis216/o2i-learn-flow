@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { draftSnapshotSheets, loadQuestionBankDraft, updateQuestionBankDraft, deleteQuestionBankDraft,
@@ -79,9 +79,9 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
     } finally { writing.current = false; setBusy(false); }
   };
   return <Dialog open onOpenChange={open => { if (!open && !writing.current) onClose(); }}>
-    <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-      <DialogHeader><DialogTitle className="break-all">{item.externalId} · Draft metadata</DialogTitle>
-        <DialogDescription>Only the browser work copy changes until Save changes. Stems, choices and solutions are read-only. The original XLSX is never modified.</DialogDescription></DialogHeader>
+    <DialogContent scrollable className="max-h-[90vh] max-w-3xl">
+      <DialogHeader><DialogTitle className="break-all">{item.externalId} · Draft metadata</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>Only the browser work copy changes until Save changes. Stems, choices and solutions are read-only. The original XLSX is never modified.</DialogDescription>
       {busy && <p role="status">{writing.current ? "Applying confirmed operation…" : "Loading latest draft and canonical choices…"}</p>}
       {error && <div role="alert" className="space-y-2 text-sm"><p className="text-destructive">{error}</p>
         <Button type="button" variant="outline" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Reload latest (discard local changes)</Button></div>}
@@ -123,6 +123,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
         </div>
       </div>}
       {!snapshot && <Button type="button" variant="outline" disabled={writing.current} onClick={onClose}>Cancel</Button>}
+    </DialogBody>
     </DialogContent>
   </Dialog>;
 }

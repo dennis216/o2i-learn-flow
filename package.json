@@ -19,6 +19,7 @@
     "preview": "vite preview",
     "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs src/lib/practiceCapture.test.mjs src/lib/practiceAnalysis.test.mjs src/lib/practiceTopics.test.mjs",
     "test:practice-topics:browser": "node scripts/practice-topics-browser.test.mjs",
+    "test:dialogs:browser": "node scripts/dialog-scroll-browser.test.mjs",
     "test:student-practice:integration": "node --experimental-strip-types scripts/student-practice.test.mjs",
     "test:courses": "node --experimental-strip-types --test src/lib/courseContent.test.mjs src/lib/courseGame.test.mjs",
     "test:ai-tutor:browser": "O2I_AI_TUTOR_BROWSER=1 node scripts/course-custom-browser.test.mjs",

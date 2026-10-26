@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { ChevronDown } from 'lucide-react';
 
@@ -100,7 +100,8 @@ export function CourseOutlineManagement({ courseId, initialEntryId, onSaved, onD
     await mutate('reorder', { unit_id: unit.id, entry_ids: ids }).catch(() => {});
   };
   const topicsFor = (unit: OutlineUnit): CanonicalTopic[] => [...new Map(unit.topics.flatMap(e => e.cb_topics).map(t => [t.id, t])).values()].sort((a,b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
-  const editorDialog = <Dialog open={!!editing} onOpenChange={openState => { if (!openState && canLeave()) { setEditing(null); setContentDirty(false); onClose?.(); } }}><DialogContent className="max-h-[95dvh] w-[96vw] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{editing?.merge ? 'Merge lessons' : editing?.entry ? 'Edit lesson' : 'Add lesson'}</DialogTitle></DialogHeader>
+  const editorDialog = <Dialog open={!!editing} onOpenChange={openState => { if (!openState && canLeave()) { setEditing(null); setContentDirty(false); onClose?.(); } }}><DialogContent scrollable className="max-h-[95dvh] w-[96vw] max-w-5xl"><DialogHeader><DialogTitle>{editing?.merge ? 'Merge lessons' : editing?.entry ? 'Edit lesson' : 'Add lesson'}</DialogTitle></DialogHeader>
+      <DialogBody>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {editing && <><fieldset disabled={blocked} className="space-y-3 rounded border p-3"><Label htmlFor="outline-title">Lesson title shown to students</Label><Input id="outline-title" maxLength={200} value={title} onChange={e => setTitle(e.target.value)} />
         <div className="space-y-2"><p className="font-medium">CB Topics · Unit {editing.unit.unit_number}</p>{topicsFor(editing.unit).map(t => <label key={t.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={topicIds.includes(t.id)} disabled={!!editing.merge} onChange={e => setTopicIds(ids => e.target.checked ? [...ids,t.id] : ids.filter(id => id !== t.id))} />{t.code} · {t.title}</label>)}</div>
@@ -113,6 +114,7 @@ export function CourseOutlineManagement({ courseId, initialEntryId, onSaved, onD
         {editing.entry && <div className="flex flex-wrap gap-2">{editing.entry.cb_topics.length > 1 && <Button variant="outline" onClick={() => { if (contentDirty || !window.confirm('Split this lesson into its original CB Topic rows? Current content remains recoverable.')) return; void mutate('split', { entry_id: editing.entry!.id }).then(() => setEditing(null)).catch(() => {}); }}>Split into Topic rows</Button>}<Button variant="outline" onClick={() => { if (contentDirty || !window.confirm('Remove this lesson from the outline? Content stays recoverable; uncovered CB Topics return as individual rows.')) return; void mutate('remove', { entry_id: editing.entry!.id }).then(() => setEditing(null)).catch(() => {}); }}>Remove lesson from outline</Button></div>}
       </fieldset>
       {editing.entry && <CourseContentManagement key={editing.entry.id} initialCourseId={courseId} initialEntryId={editing.entry.id} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} onSaved={() => { void refresh().catch(e => setError(e.message)); onSaved?.(); }} />}</>}
+    </DialogBody>
     </DialogContent></Dialog>;
   if (initialEntryId && error && !editing) return <div role="alert"><p>{error}</p><Button variant="outline" onClick={onClose}>Close editor</Button></div>;
   if (initialEntryId) return editorDialog;

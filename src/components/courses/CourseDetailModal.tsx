@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { loadCustomOutline } from '@/lib/courseOutline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Course } from './types';
 const Editor = lazy(() => import('@/components/admin/CourseOutlineManagement').then(m => ({ default: m.CourseOutlineManagement })));
@@ -27,8 +27,9 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entry
   const resolved = outline.data?.units.flatMap(u => u.topics).find(e => entryId ? e.id === entryId : !initialVideoId && e.cb_topics.some(t => t.id === topicId) && (isAdmin || e.is_published));
   const activeEntryId = resolved?.id;
   useEffect(() => { if (!entryId && resolved) onEntryChange(resolved.id); }, [entryId, resolved, onEntryChange]);
-  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none overflow-y-auto rounded-none p-3 pt-[max(1rem,env(safe-area-inset-top))] sm:rounded-none sm:p-5">
-    <DialogHeader><DialogTitle className="text-3xl">{course.title}</DialogTitle><DialogDescription>{course.description}</DialogDescription></DialogHeader>
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent scrollable className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none rounded-none p-3 pt-[max(1rem,env(safe-area-inset-top))] sm:rounded-none sm:p-5">
+    <DialogHeader><DialogTitle className="text-3xl">{course.title}</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>{course.description}</DialogDescription>
     <div className="flex gap-2"><Badge variant="secondary" className={course.level === 'advanced' ? 'bg-red-100 text-red-800' : undefined}>{course.level}</Badge><Badge variant="outline">{course.subject}</Badge></div>
     {outline.isPending ? <p role="status">Loading course outline…</p> : outline.isError ? <div role="alert"><p>{outline.error.message}</p><Button onClick={() => void outline.refetch()}>Retry outline</Button></div> : <div className="space-y-4">{outline.data.units.map(unit => {
       const isBC = course.practice_course_scope === 'BC';
@@ -56,5 +57,6 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entry
     {entryId && outline.isSuccess && !resolved && <p role="alert">This lesson is no longer available in the course outline.</p>}
     {isAdmin && editing && <Suspense fallback={<p>Loading editor…</p>}><Editor key={editing} courseId={course.id} initialEntryId={editing} onClose={() => setEditing(null)} onSaved={() => { void client.invalidateQueries({ queryKey: ['course-outline'] }); void client.invalidateQueries({ queryKey: ['course-topic'] }); void client.invalidateQueries({ queryKey: ['course-practice-counts'] }); }} /></Suspense>}
 
-  </DialogContent></Dialog>;
+  </DialogBody>
+    </DialogContent></Dialog>;
 }
