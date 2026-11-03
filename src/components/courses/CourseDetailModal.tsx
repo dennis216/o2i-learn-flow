@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,9 @@ const Editor = lazy(() => import('@/components/admin/CourseOutlineManagement').t
 const TopicLesson = lazy(() => import('./TopicLesson'));
 interface Props { course: Course; onClose: () => void; supabaseUrl: string; topicId?: string | null; entryId?: string | null; onEntryChange: (id: string | null) => void; resumeTime?: number | null; initialVideoId?: string }
 export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entryId, onEntryChange, resumeTime, initialVideoId }: Props) {
-  const { user, adminAccess } = useAuth();
+  const { user, adminAccess, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const requestedUnit = new URLSearchParams(location.search).get('unit');
   const isAdmin = adminAccess.courses;
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -32,17 +35,21 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entry
       <DialogBody><DialogDescription>{course.description}</DialogDescription>
     <div className="flex gap-2"><Badge variant="secondary" className={course.level === 'advanced' ? 'bg-red-100 text-red-800' : undefined}>{course.level}</Badge><Badge variant="outline">{course.subject}</Badge></div>
     {outline.isPending ? <p role="status">Loading course outline…</p> : outline.isError ? <div role="alert"><p>{outline.error.message}</p><Button onClick={() => void outline.refetch()}>Retry outline</Button></div> : <div className="space-y-4">{outline.data.units.map(unit => {
+      const locked = !user && unit.unit_number >= 4;
+      const returnParams = new URLSearchParams(location.search);
+      returnParams.set('unit', String(unit.unit_number));
+      const loginUrl = '/auth?' + new URLSearchParams({ returnTo: location.pathname + '?' + returnParams });
       const isBC = course.practice_course_scope === 'BC';
       const weightMin = isBC ? unit.bc_exam_weight_min : unit.ab_exam_weight_min;
       const weightMax = isBC ? unit.bc_exam_weight_max : unit.ab_exam_weight_max;
-      return <Collapsible key={unit.id} defaultOpen={unit.unit_number === 1 || unit.topics.some(t => t.id === entryId || !entryId && t.cb_topics.some(cb => cb.id === topicId) && (!initialVideoId || t.is_published))} className="rounded-lg border">
+      return <Collapsible key={unit.id} defaultOpen={String(unit.unit_number) === requestedUnit || unit.unit_number === 1 || unit.topics.some(t => t.id === entryId || !entryId && t.cb_topics.some(cb => cb.id === topicId) && (!initialVideoId || t.is_published))} className="rounded-lg border">
         <CollapsibleTrigger className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[#4A90E2]/10">
           <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-0.5 whitespace-nowrap">Unit {unit.unit_number}</Badge><div>
             <h2 aria-label={`Unit ${unit.unit_number}: ${unit.title}`} className="text-lg font-semibold text-[#4A90E2]">{unit.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{unit.topics.length} lessons{weightMin != null && weightMax != null ? ` · ${weightMin}–${weightMax}% of the ${isBC ? 'BC' : 'AB'} exam` : ''}</p>
           </div></div><ChevronDown className="ml-4 h-5 w-5 shrink-0" />
         </CollapsibleTrigger>
-        <CollapsibleContent className="px-4 pb-4"><div className="divide-y rounded-md border">{unit.topics.map((topic, index) => {
+        <CollapsibleContent className="px-4 pb-4">{authLoading ? <p role="status">Checking login…</p> : locked ? <div className="flex flex-col items-center gap-3 rounded-md border bg-muted/30 p-6 text-center"><p className="font-medium">Log in to access more</p><Button asChild><Link to={loginUrl}>Log in</Link></Button></div> : <div className="divide-y rounded-md border">{unit.topics.map((topic, index) => {
           const lessonNumber = `${unit.unit_number}.${index + 1}`;
           const label = <><span className="w-16 shrink-0 whitespace-nowrap font-mono text-sm font-semibold text-primary">{lessonNumber}</span><div className="min-w-0 flex-1"><p className="text-sm font-medium text-foreground">{topic.title}</p><div className="mt-1.5 flex flex-wrap gap-2">{topic.cb_topics.map(cb => <Badge key={cb.id} variant="outline" className="text-xs">CB {cb.code}</Badge>)}{topic.cb_topics.some(cb => cb.is_bc_only) && <Badge variant="secondary" className="text-xs">BC only</Badge>}</div></div></>;
           const editButton = isAdmin && <div className="flex items-center gap-2 px-4 py-2"><Badge variant="outline">{topic.is_published ? 'Published' : topic.content_id ? 'Draft' : 'No content'}</Badge><Button size="sm" variant="outline" onClick={() => setEditing(topic.id)}>Edit {lessonNumber}</Button></div>;
@@ -51,7 +58,7 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entry
             {editButton}
             <CollapsibleContent className="px-3 pb-3 sm:px-4">{activeEntryId === topic.id && <Suspense fallback={<p role="status">Loading lesson…</p>}><TopicLesson key={topic.id} course={course} entry={topic} supabaseUrl={supabaseUrl} resumeTime={resumeTime ?? undefined} initialVideoId={initialVideoId} /></Suspense>}</CollapsibleContent>
           </Collapsible> : <div key={topic.id} className="flex items-start gap-3 px-4 py-3">{label}</div>;
-        })}</div></CollapsibleContent>
+        })}</div>}</CollapsibleContent>
       </Collapsible>;
     })}</div>}
     {entryId && outline.isSuccess && !resolved && <p role="alert">This lesson is no longer available in the course outline.</p>}

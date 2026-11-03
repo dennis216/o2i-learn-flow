@@ -99,4 +99,38 @@ export async function verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids})
  mkdirSync('node_modules/.cache/course-outline',{recursive:true});writeFileSync('node_modules/.cache/course-outline/task1-report.json',JSON.stringify(report,null,2));
  console.log('PASS custom release package: exact prerequisite, atomic four-migration deployment, 26 checks, repeat refusal');
  console.log('PASS custom outline database:',report.checks.join(', '));
+ if (process.env.O2I_COURSE_LOGIN_DB) {
+  // The isolated fixture predates module permissions; mirror its courses-admin check.
+  sql("CREATE FUNCTION public.has_admin_module(text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT public.has_role(auth.uid(),'admin') $$;");
+  sql(read('supabase/migrations/20261103020000_course_login_access.sql'));
+  const anonymous=query=>asUser('',query,'anon').trim().split('\n').at(-1);
+  const published=entry(ab,commonAB);
+  assert.ok(published.videos.length);
+  const gamePath=`${ab}/${tids[0]}/00000000-0000-4000-8000-000000000099.html`;
+  sql(`INSERT INTO storage.objects(bucket_id,name) VALUES('course-games','${gamePath}'); UPDATE public.course_lessons SET game_path='${gamePath}' WHERE id='${published.lesson_id}'`);
+  const unit=sql(`SELECT unit_id FROM public.course_outline_entries WHERE id='${commonAB}'`).trim();
+  sql(`UPDATE public.curriculum_units SET unit_number=3 WHERE id='${unit}'`);
+  assert.ok(JSON.parse(anonymous(`SELECT public.get_course_outline_entry('${ab}','${commonAB}')`)).videos.length);
+  assert.equal(anonymous(`SELECT count(*) FROM storage.objects WHERE name='${gamePath}'`),'1');
+  sql(`UPDATE public.curriculum_units SET unit_number=4 WHERE id='${unit}'`);
+  assert.throws(()=>anonymous(`SELECT public.get_course_outline_entry('${ab}','${commonAB}')`));
+  assert.throws(()=>anonymous(`SELECT public.get_course_topic('${ab}','${tids[0]}')`));
+  assert.equal(anonymous('SELECT count(*) FROM public.course_lessons'),'0');
+  assert.equal(anonymous('SELECT count(*) FROM public.course_lesson_videos'),'0');
+  assert.equal(anonymous('SELECT count(*) FROM public.course_videos'),'0');
+  assert.equal(anonymous(`SELECT count(*) FROM storage.objects WHERE name='${gamePath}'`),'0');
+  assert.equal(asUser(student,`SELECT count(*) FROM storage.objects WHERE name='${gamePath}'`).trim().split('\n').at(-1),'1');
+  assert.equal(anonymous(`SELECT public.course_topic_visible('${ab}','${tids[0]}')`),'f');
+  assert.ok(JSON.parse(anonymous(`SELECT public.get_course_outline_v2('${ab}')`)).units.length);
+  assert.ok(JSON.parse(call(student,'get_course_outline_entry',ab,commonAB)).videos.length);
+  assert.ok(entry(ab,commonAB).videos.length);
+  // A shared published asset is public if another open Unit uses it.
+  sql(`INSERT INTO public.curriculum_units(framework_id,unit_number,title) SELECT framework_id,3,'Public shared unit' FROM public.curriculum_units WHERE id='${unit}';
+   INSERT INTO public.course_outline_entries(course_id,unit_id,title,position,content_id)
+   SELECT '${ab}',id,'Public shared lesson',0,'${published.lesson_id}' FROM public.curriculum_units WHERE title='Public shared unit'`);
+  assert.equal(anonymous(`SELECT public.course_lesson_visible('${published.lesson_id}')`),'t');
+  assert.throws(()=>anonymous(`SELECT public.get_course_outline_entry('${ab}','${commonAB}')`));
+  console.log('PASS course login access: Unit 3 public, Unit 4 RPC/table denial, authenticated/admin access, public outline and shared assets');
+ }
+
 }
