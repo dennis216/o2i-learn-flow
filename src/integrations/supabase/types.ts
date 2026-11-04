@@ -1885,6 +1885,12 @@ export type Database = {
       }
     }
     Functions: {
+      arena_catalog: { Args: never; Returns: Json }
+      arena_next_question: {
+        Args: { _current_unit: number; _prefer_current?: boolean; _run_id: string; _tier: number; _units: number[] }
+        Returns: Json
+      }
+      arena_submit_answer: { Args: { _issue_id: string; _selected: number }; Returns: Json }
       list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
       list_question_practice_attempts: { Args: { _incorrect_only?: boolean }; Returns: Json }
       start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
