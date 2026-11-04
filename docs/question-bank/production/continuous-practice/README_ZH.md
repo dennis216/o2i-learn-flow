@@ -5,6 +5,7 @@
 ## 已实现行为
 
 - 练习页顶部：Start 5 questions / Free practice / Review。Topic 卡片、课节 Start practice、旧视频跳转、分析面板和答案里的 Practice this Topic 都进入无限练习；只有 Start 5 questions 和旧 5 题会话的 Start another set 仍是 5 题。
+- 有问题的题（没有题干、选项不是 2–6 个、或正确答案不是正好一个）不会被发出，避免学生卡在一道交不了的题上。
 - 服务器每次只发一题；刷新或重复请求返回仍在等待的题，不多发。单次最多 100 题。
 - Topic 状态只看每道题**第一次**作答：最近 6 道中少于 4 道为 insufficient；第一次做对 ≥75% 为 stable，否则 needs_practice。复习题（第一次做对过的题再做）做错，退回 needs_practice，直到之后又有 4 道新题的第一次作答。
 - 选下一题：首题 medium（needs_practice 时 easy）；做错降一档，连续 3 道做对升一档；没有更简单的新题时出最接近的难度，不提示；做错后优先同 Skill。每第 5 题优先复习一道第一次和最近一次都做对、且距今 ≥3 天的题，没有就跳过。不重出做过的题。

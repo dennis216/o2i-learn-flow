@@ -67,6 +67,9 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,extensions AS $$
     FROM public.question_practice_attempts a WHERE a.user_id=s.user_id AND a.question_id=q.id
   ) h ON true
   WHERE s.id=_session_id AND v.status='approved' AND v.question_type='mcq_single'
+    -- A malformed question would block the student (no Skip), so never issue one: needs a stem, 2-6 options, one correct.
+    AND btrim(coalesce(v.stem,''))<>''
+    AND (SELECT count(*) BETWEEN 2 AND 6 AND count(*) FILTER(WHERE o.is_correct)=1 FROM public.question_options o WHERE o.question_version_id=v.id)
     AND (s.topic_id IS NULL OR v.primary_topic_id=s.topic_id)
     AND (s.course_id IS NULL OR s.course_scope='BC' OR v.course_scope IN ('AB','BOTH'))
     AND NOT EXISTS(SELECT 1 FROM public.question_practice_items i WHERE i.session_id=s.id AND i.question_id=q.id);
