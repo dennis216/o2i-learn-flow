@@ -67,6 +67,7 @@ try {
  console.log('PASS course database: canonical scope, cross-course FK, atomic save, publish validation, draft URL/mapping isolation, outline without assets, legacy write guards and unpublish');
  if(process.env.O2I_COURSE_GAME_DB){await (await import('./course-game-db.acceptance.mjs')).verifyCourseGameStorage({sql,asUser,admin,student,bc,t1,save,video});}
  if(process.env.O2I_COURSE_DB_EXTRA){await (await import('./course-practice-db.acceptance.mjs')).verifyCoursePractice({sql,asUser,admin,student,ab,bc,tids,save,video});}
+ if(process.env.O2I_COURSE_CONTINUOUS_DB){(await import('./continuous-practice-db.acceptance.mjs')).verifyContinuousPractice({sql,asUser,admin,bc,tids});}
  if(process.env.O2I_COURSE_RELEASE_DB){await (await import('./course-release-db.acceptance.mjs')).verifyCourseRelease({sql,bootstrap,admin,student});}
  if(process.env.O2I_COURSE_SHARED_DB){await (await import('./course-shared-db.acceptance.mjs')).verifySharedLessons({sql,asUser,admin,student,ab,bc,tids});}
  if(process.env.O2I_COURSE_OUTLINE_DB){await (await import('./course-outline-db.acceptance.mjs')).verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids});}

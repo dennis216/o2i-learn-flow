@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { selectionRationale, parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome, loadPracticeHistory, loadPracticeStatistics } from './studentPractice.ts';
+import { selectionRationale, parsePracticeRoute, readPracticeSession, startPractice, submitPractice, loadPracticeHome, loadPracticeHistory, loadPracticeStatistics, startContinuousPractice, endContinuousPractice, loadOpenContinuousPractice, continuousPracticePath, continuousReasonText, topicStatusBasis } from './studentPractice.ts';
 const id='11111111-1111-4111-8111-111111111111', qid='22222222-2222-4222-8222-222222222222', oid='33333333-3333-4333-8333-333333333333';
 const fixture=()=>({id,topic_id:id,created_at:'2026-01-01',questions:[{question_id:qid,version_id:id,stem:'Test',topic:{id},skills:['1.A'],options:[{id:oid,key:'A',text:'A'},{id:qid,key:'B',text:'B'}],attempt:null}]});
 function countClient(results, calls = []) {
@@ -147,4 +147,56 @@ test('Course routes validate UUID context and issue through the scoped RPC', asy
 test('Lesson identity is navigation context only and requires a canonical course/Topic scope',()=>{
   const scope=parsePracticeRoute(new URLSearchParams(`course=${id}&topic=${qid}&lesson=${id}`));assert.equal(scope.entryId,id);assert.equal(scope.topicId,qid);
   for(const query of [`lesson=${id}`,`topic=${qid}&lesson=${id}`,`course=${id}&topic=${qid}&lesson=bad`,`course=${id}&topic=${qid}&lesson=${id}&lesson=${qid}`]) assert.ok(parsePracticeRoute(new URLSearchParams(query)).error,query);
+});
+
+const reason=(kind,extra={})=>({rule_version:'continuous-v1',kind,topic_code:'1.2',target_difficulty:'easy',topic_status:'needs_practice',...extra});
+const recap=()=>({answered_count:0,new_count:0,new_correct_count:0,timed_seconds:null,topics:[],suggestion:null});
+const continuous=(questions,extra={})=>({...fixture(),mode:'continuous',ended_at:null,questions,continuous:{rule_version:'continuous-v1',stuck:false,items:questions.map(q=>({question_id:q.question_id,reason:reason('start')})),recap:recap()},...extra});
+const many=n=>Array.from({length:n},(_,i)=>({...fixture().questions[0],question_id:`22222222-2222-4222-8222-${String(i).padStart(12,'0')}`}));
+test('Continuous sessions allow up to 100 issued questions; sets stay capped at five', () => {
+  assert.equal(readPracticeSession(continuous(many(100)),id).questions.length,100);
+  assert.throws(()=>readPracticeSession(continuous(many(101)),id));
+  assert.throws(()=>readPracticeSession({...fixture(),questions:many(6)},id));
+  assert.throws(()=>readPracticeSession({...fixture(),ended_at:'2026-01-02'},id),'Only continuous sessions can end');
+});
+test('Continuous records reject mismatched reasons, unknown kinds and impossible recap counts', () => {
+  const ok=continuous(many(2));
+  assert.equal(readPracticeSession(structuredClone(ok),id).continuous.items.length,2);
+  const bad=[
+    s=>{s.continuous.items.reverse();},
+    s=>{s.continuous.items[0].reason.kind='mastered';},
+    s=>{s.continuous.items[0].reason.topic_status='mastery_72';},
+    s=>{s.continuous.recap.new_count=1;},
+    s=>{s.continuous.recap.topics=[{topic_id:id,topic_code:'1.2',topic_title:'T',status:'stable',sample_count:7,correct_count:7}];},
+    s=>{s.next_result='random';},
+    s=>{delete s.continuous;},
+  ];
+  for(const change of bad){const s=structuredClone(ok);change(s);assert.throws(()=>readPracticeSession(s,id));}
+  const legacy=structuredClone(ok);legacy.continuous.items[0].reason=null;assert.ok(readPracticeSession(legacy,id));
+});
+test('Continuous route, links and plain-language reasons', () => {
+  assert.equal(parsePracticeRoute(new URLSearchParams(`subject=calculus&mode=continuous&topic=${id}`)).continuous,true);
+  assert.ok(parsePracticeRoute(new URLSearchParams('mode=endless')).error);
+  const path=new URLSearchParams(continuousPracticePath({topicId:id,courseId:qid,sessionId:oid}).split('?')[1]);
+  assert.deepEqual(Object.fromEntries(path),{subject:'calculus',mode:'continuous',course:qid,topic:id,session:oid});
+  assert.equal(continuousPracticePath({}),'/quiz?subject=calculus&mode=continuous');
+  assert.match(continuousReasonText(reason('easier_after_error')),/incorrect.*easy question on Topic 1\.2/);
+  assert.match(continuousReasonText(reason('review')),/still sticks/);
+  assert.equal(continuousReasonText(null),null);
+  assert.equal(topicStatusBasis({sample_count:4,correct_count:1}),'1 of your last 4 new questions correct on the first try.');
+  assert.doesNotMatch(Object.values({a:topicStatusBasis({sample_count:6,correct_count:6})}).join(),/%|mastery/i);
+});
+test('Continuous RPC helpers bind scope, confirm the end and verify the open-session reminder', async () => {
+  const calls=[];const client=data=>({rpc:async(name,args)=>{calls.push([name,args]);return {data,error:null};}});
+  const s=continuous(many(1),{topic_id:id,next_result:'issued'});
+  assert.equal((await startContinuousPractice(client(s),id,id)).next_result,'issued');
+  assert.deepEqual(calls.at(-1),['start_continuous_question_practice',{_session_id:id,_topic_id:id,_course_id:undefined}]);
+  await assert.rejects(startContinuousPractice(client(s),id,qid),/different practice scope/);
+  await assert.rejects(startContinuousPractice(client({...s,mode:'set'}),id,id));
+  await assert.rejects(endContinuousPractice(client(s),id),/could not be confirmed/);
+  assert.ok((await endContinuousPractice(client({...s,ended_at:'2026-01-02T00:00:00Z'}),id)).ended_at);
+  assert.equal(await loadOpenContinuousPractice(client(null)),null);
+  const open={id,topic_id:null,course_id:null,created_at:'2026-01-01',topic_code:null,topic_title:null,answered_count:3};
+  assert.deepEqual(await loadOpenContinuousPractice(client(open)),open);
+  await assert.rejects(loadOpenContinuousPractice(client({...open,answered_count:0})));
 });

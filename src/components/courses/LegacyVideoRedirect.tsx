@@ -10,7 +10,7 @@ export default function LegacyVideoRedirect() {
     void supabase.rpc('resolve_course_video', { _video_id: videoId }).then(({ data, error }) => {
       if (!active) return;
       const mapping = data as { course_id?: string; topic_id?: string } | null;
-      setTarget(!error && mapping?.course_id && mapping?.topic_id ? '/quiz?' + new URLSearchParams({ course: mapping.course_id, topic: mapping.topic_id, source: 'course' }) : '/practice');
+      setTarget(!error && mapping?.course_id && mapping?.topic_id ? '/quiz?' + new URLSearchParams({ course: mapping.course_id, topic: mapping.topic_id, source: 'course', mode: 'continuous' }) : '/practice');
     });
     return () => { active = false; };
   }, [videoId]);

@@ -1924,6 +1924,10 @@ export type Database = {
       get_question_practice: { Args: { _session_id: string }; Returns: Json }
       submit_question_practice: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number }; Returns: Json }
       submit_question_practice_v2: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number; _selection_trajectory?: Json; _timing_complete?: boolean }; Returns: Json }
+      start_continuous_question_practice: { Args: { _session_id: string; _topic_id?: string; _course_id?: string }; Returns: Json }
+      next_continuous_question_practice: { Args: { _session_id: string }; Returns: Json }
+      end_continuous_question_practice: { Args: { _session_id: string }; Returns: Json }
+      get_open_continuous_question_practice: { Args: Record<PropertyKey, never>; Returns: Json }
       get_question_practice_analysis: { Args: { _from?: string; _to?: string }; Returns: Json }
       get_question_practice_admin_statistics: { Args: { _question_id: string; _version_id?: string; _from?: string; _to?: string }; Returns: Json }
       precheck_question_publication: {

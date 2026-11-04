@@ -45,7 +45,37 @@ export function selectionRationale(summary?: SelectionSummary | null): string | 
     : `${summary.correct_count}/${summary.sample_count} correct on your most recently answered distinct questions in this Topic. Target difficulty: ${summary.target_difficulty}.`;
   return basis + (summary.fallback_count ? ' Other difficulties are included to prioritize unseen questions or fill this set.' : '');
 }
-export interface PracticeSession { id: string; topic_id: string | null; course_id?: string | null; course_scope?: string | null; created_at: string; selection_summary?: SelectionSummary | null; adaptation_summary?: AdaptationSummary | null; questions: IssuedPracticeQuestion[] }
+export type TopicStatus = 'insufficient' | 'needs_practice' | 'stable';
+export interface ContinuousReason {
+  rule_version: 'continuous-v1'; kind: 'start' | 'new_topic' | 'easier_after_error' | 'step_up' | 'continue' | 'review';
+  topic_code: string; target_difficulty: 'easy' | 'medium' | 'hard'; topic_status: TopicStatus;
+}
+export interface PracticeRecapTopic { topic_id: string; topic_code: string; topic_title: string; status: TopicStatus; sample_count: number; correct_count: number }
+export interface PracticeRecap {
+  answered_count: number; new_count: number; new_correct_count: number; timed_seconds: number | null;
+  topics: PracticeRecapTopic[]; suggestion: { topic_id: string; topic_code: string; topic_title: string } | null;
+}
+export interface ContinuousState { rule_version: 'continuous-v1'; stuck: boolean; items: { question_id: string; reason: ContinuousReason | null }[]; recap: PracticeRecap }
+export type ContinuousNextResult = 'issued' | 'topic_exhausted' | 'all_exhausted' | 'limit' | 'ended';
+export interface PracticeSession {
+  id: string; topic_id: string | null; course_id?: string | null; course_scope?: string | null; created_at: string;
+  selection_summary?: SelectionSummary | null; adaptation_summary?: AdaptationSummary | null; questions: IssuedPracticeQuestion[];
+  mode?: 'set' | 'continuous'; ended_at?: string | null; continuous?: ContinuousState; next_result?: ContinuousNextResult;
+}
+export interface OpenContinuousPractice { id: string; topic_id: string | null; course_id: string | null; created_at: string; topic_code: string | null; topic_title: string | null; answered_count: number }
+const reasonText: Record<ContinuousReason['kind'], (r: ContinuousReason) => string> = {
+  start: r => `Starting Topic ${r.topic_code} at ${r.target_difficulty} difficulty.`,
+  new_topic: r => r.topic_status === 'needs_practice' ? `Topic ${r.topic_code} needs more practice.` : `Topic ${r.topic_code} has questions you have not tried yet.`,
+  easier_after_error: r => `The last answer was incorrect, so here is a ${r.target_difficulty} question on Topic ${r.topic_code}.`,
+  step_up: r => `Three correct in a row: moving up to ${r.target_difficulty} difficulty.`,
+  continue: r => `Continuing Topic ${r.topic_code} at ${r.target_difficulty} difficulty.`,
+  review: r => `Checking that Topic ${r.topic_code} still sticks after a few days.`,
+};
+export function continuousReasonText(reason?: ContinuousReason | null): string | null { return reason ? reasonText[reason.kind]?.(reason) ?? null : null; }
+export const topicStatusLabel: Record<TopicStatus, string> = { insufficient: 'Too few questions to tell yet', needs_practice: 'Needs more practice', stable: 'Fairly steady' };
+export function topicStatusBasis(t: PracticeRecapTopic): string {
+  return t.sample_count ? `${t.correct_count} of your last ${t.sample_count} new ${t.sample_count === 1 ? 'question' : 'questions'} correct on the first try.` : 'No first-try answers yet.';
+}
 export interface RecentPracticeAnswer {
   id: string; session_id: string; question_id: string; version_id: string; selected_option_id: string;
   is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string;
@@ -71,21 +101,23 @@ export async function loadPracticeStatistics(client: SupabaseClient<Database>, u
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Old lesson/skill IDs have no canonical mapping. Never drop an unsupported filter. */
-export function parsePracticeRoute(params: URLSearchParams): { error?: string; topicId?: string; sessionId?: string; questionId?: string; courseId?: string; entryId?: string } {
-  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question', 'course', 'lesson']);
+export function parsePracticeRoute(params: URLSearchParams): { error?: string; topicId?: string; sessionId?: string; questionId?: string; courseId?: string; entryId?: string; continuous?: boolean } {
+  const allowed = new Set(['subject', 'source', 'topic', 'session', 'question', 'course', 'lesson', 'mode']);
   if ([...params.keys()].some(key => !allowed.has(key)) || [...allowed].some(key => params.getAll(key).length > 1))
     return { error: 'This practice filter is not connected to the published question bank. Choose a published Topic in Practice.' };
   if (params.has('subject') && params.get('subject') !== 'calculus') return { error: 'This subject has no published practice connection.' };
+  if (params.has('mode') && params.get('mode') !== 'continuous') return { error: 'This practice mode is not available.' };
   for (const key of ['topic', 'session', 'question', 'course', 'lesson']) if (params.has(key) && !uuid.test(params.get(key) ?? '')) return { error: `Invalid ${key} identity. Return to Practice and choose a published Topic.` };
   if (params.has('question') && !params.has('session')) return { error: 'A saved question requires its original practice session.' };
   if (params.has('lesson') && (!params.has('course') || !params.has('topic'))) return { error: 'A lesson return link requires a course and canonical Topic.' };
   if (params.has('course') && !params.has('topic')) return { error: 'Course practice requires a canonical Topic.' };
-  return { ...(params.has('lesson') ? { entryId: params.get('lesson')! } : {}), ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
+  return { ...(params.has('mode') ? { continuous: true } : {}), ...(params.has('lesson') ? { entryId: params.get('lesson')! } : {}), ...(params.has('course') ? { courseId: params.get('course')! } : {}), topicId: params.get('topic') ?? undefined, sessionId: params.get('session') ?? undefined, questionId: params.get('question') ?? undefined };
 }
 export function readPracticeSession(value: unknown, expectedId: string): PracticeSession {
   const raw = value as PracticeSession;
   const s = raw?.adaptation_summary != null ? { ...raw, selection_summary: raw.adaptation_summary } : raw;
-  if (!s || s.id !== expectedId || !Array.isArray(s.questions) || s.questions.length > 5
+  const continuous = s?.mode === 'continuous';
+  if (!s || s.id !== expectedId || !Array.isArray(s.questions) || s.questions.length > (continuous ? 100 : 5)
     || new Set(s.questions.map(q => q.question_id)).size !== s.questions.length
     || s.questions.some(q => !uuid.test(q.question_id) || !uuid.test(q.version_id) || !q.stem || !q.topic?.id
       || !Array.isArray(q.skills) || !Array.isArray(q.options) || q.options.length < 2 || q.options.length > 6
@@ -93,6 +125,8 @@ export function readPracticeSession(value: unknown, expectedId: string): Practic
       || (q.attempt !== null && (!q.attempt?.id || typeof q.attempt.is_correct !== 'boolean' || !q.attempt.submitted_at || !q.attempt.solution
         || !q.options.some(o => o.id === q.attempt?.selected_option_id) || !q.options.some(o => o.id === q.attempt?.correct_option_id)))))
     throw new Error('The saved practice response could not be verified. Reload your session.');
+  if (continuous) verifyContinuous(s);
+  else if (s.continuous != null || s.ended_at != null) throw new Error('The saved practice response could not be verified. Reload your session.');
   const summary = s.selection_summary;
   if (summary?.rule_version === 'practice-adaptation-v2') {
     if (!Array.isArray(summary.items) || summary.items.length !== s.questions.length
@@ -129,6 +163,54 @@ export function readPracticeSession(value: unknown, expectedId: string): Practic
     }
   }
   return s;
+}
+const count = (n: unknown, max = 100) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= max;
+function verifyContinuous(s: PracticeSession) {
+  const c = s.continuous, r = c?.recap;
+  const statuses = ['insufficient', 'needs_practice', 'stable'];
+  if (!c || c.rule_version !== 'continuous-v1' || typeof c.stuck !== 'boolean' || !Array.isArray(c.items) || c.items.length !== s.questions.length
+    || c.items.some((i, n) => i?.question_id !== s.questions[n].question_id || (i.reason !== null && (i.reason?.rule_version !== 'continuous-v1'
+      || !(i.reason.kind in reasonText) || !i.reason.topic_code || !['easy', 'medium', 'hard'].includes(i.reason.target_difficulty) || !statuses.includes(i.reason.topic_status))))
+    || !r || !count(r.answered_count) || !count(r.new_count) || !count(r.new_correct_count) || r.new_count > r.answered_count || r.new_correct_count > r.new_count
+    || (r.timed_seconds !== null && !count(r.timed_seconds, 8_640_000)) || !Array.isArray(r.topics)
+    || r.topics.some(t => !uuid.test(t?.topic_id) || !t.topic_code || !t.topic_title || !statuses.includes(t.status) || !count(t.sample_count, 6) || !count(t.correct_count, t.sample_count))
+    || (r.suggestion !== null && (!uuid.test(r.suggestion?.topic_id) || !r.suggestion.topic_code))
+    || (s.ended_at != null && !Number.isFinite(Date.parse(s.ended_at)))
+    || (s.next_result !== undefined && !['issued', 'topic_exhausted', 'all_exhausted', 'limit', 'ended'].includes(s.next_result)))
+    throw new Error('The continuous practice record could not be verified. Reload your session.');
+}
+export async function startContinuousPractice(client: SupabaseClient<Database>, id: string, topicId?: string, courseId?: string) {
+  const { data, error } = await client.rpc('start_continuous_question_practice', { _session_id: id, _topic_id: topicId ?? undefined, _course_id: courseId ?? undefined });
+  if (error) throw new Error(error.message);
+  const session = readPracticeSession(data, id);
+  if (session.mode !== 'continuous' || (session.topic_id ?? undefined) !== topicId || (session.course_id ?? undefined) !== courseId) throw new Error('This session belongs to a different practice scope.');
+  return session;
+}
+export async function nextContinuousPractice(client: SupabaseClient<Database>, id: string) {
+  const { data, error } = await client.rpc('next_continuous_question_practice', { _session_id: id });
+  if (error) throw new Error(error.message);
+  return readPracticeSession(data, id);
+}
+export async function endContinuousPractice(client: SupabaseClient<Database>, id: string) {
+  const { data, error } = await client.rpc('end_continuous_question_practice', { _session_id: id });
+  if (error) throw new Error(error.message);
+  const session = readPracticeSession(data, id);
+  if (!session.ended_at) throw new Error('Ending the session could not be confirmed. Retry.');
+  return session;
+}
+export async function loadOpenContinuousPractice(client: SupabaseClient<Database>): Promise<OpenContinuousPractice | null> {
+  const { data, error } = await client.rpc('get_open_continuous_question_practice');
+  if (error) throw new Error(error.message);
+  if (data === null) return null;
+  const o = data as unknown as OpenContinuousPractice;
+  if (!o || !uuid.test(o.id) || (o.topic_id !== null && !uuid.test(o.topic_id)) || (o.course_id !== null && !uuid.test(o.course_id)) || !count(o.answered_count) || o.answered_count < 1)
+    throw new Error('Could not verify your unfinished practice.');
+  return o;
+}
+/** Route that resumes or starts continuous practice in the same scope the server saved. */
+export function continuousPracticePath(scope: { sessionId?: string; topicId?: string | null; courseId?: string | null; entryId?: string }) {
+  return '/quiz?' + new URLSearchParams({ subject: 'calculus', mode: 'continuous', ...(scope.courseId ? { course: scope.courseId } : {}),
+    ...(scope.topicId ? { topic: scope.topicId } : {}), ...(scope.entryId ? { lesson: scope.entryId } : {}), ...(scope.sessionId ? { session: scope.sessionId } : {}) });
 }
 export async function startPractice(client: SupabaseClient<Database>, id: string, topicId?: string, courseId?: string) {
   const { data, error } = courseId ? await client.rpc('start_course_question_practice', { _session_id: id, _topic_id: topicId!, _course_id: courseId }) : await client.rpc('start_question_practice', { _session_id: id, _topic_id: topicId ?? undefined });
