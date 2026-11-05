@@ -13,7 +13,7 @@ print('ok')`;
 });
 test('tables keep all cells, unknown glyphs and active markup are rejected',()=>{
  assert.equal(run(`assert markdown('<table><tr><th>x</th><th>f(x)</th></tr><tr><td>1</td><td>2</td></tr></table>')=='| x | f(x) |\\n| --- | --- |\\n| 1 | 2 |'
-for v in ['<svg><use href="https://invalid/x"/></svg>','<svg><use href="#MJX-TEX-S4-E000"/></svg>','<script>bad</script>','<span onclick="bad">x</span>']:
+for v in ['<svg><use href="https://invalid/x"/></svg>','<svg><use href="#MJX-TEX-S4-E000"/></svg>','<svg><use href="#MJX-TEX-S3-7B"/></svg>','<script>bad</script>','<span onclick="bad">x</span>']:
  try: markdown(v);raise AssertionError('accepted unsafe input')
  except Unsupported: pass
 print('ok')`),'ok');

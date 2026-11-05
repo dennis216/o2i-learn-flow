@@ -63,6 +63,48 @@ export async function verifyLegacySource({t,rootClient:db,admin,connect,fixture,
   assert.equal((await db.query('SELECT count(*) n FROM public.questions')).rows[0].n,before);
   await assert.rejects(save([await item()]),/already exists/);
  });
+ await t.test('published native-source drafts enter real Practice and Arena; private answers and learner records stay isolated',async()=>{
+  await db.query(`ALTER TABLE public.courses ADD COLUMN practice_course_scope public.question_course_scope;
+   CREATE TABLE public.course_topic_content(course_id uuid,topic_id uuid);
+   CREATE FUNCTION public.course_topic_visible(uuid,uuid) RETURNS boolean LANGUAGE sql STABLE AS $$SELECT false$$;`);
+  for(const migration of ['20261021000000_question_bank_student_practice','20261026000000_question_practice_adaptation_v2',
+   '20261025000000_question_practice_review_history','20261028000000_course_topic_practice','20261104000000_question_practice_continuous','20261105000000_arena_practice_integration']) {
+   await db.query(read('supabase/migrations/'+migration+'.sql'));
+  }
+  await db.query(`INSERT INTO public.arena_questions(id,unit,tier,topic,stem,options,explanation)
+   SELECT 'synthetic-native-'||n,1,1,'Synthetic','Synthetic native '||n,'["A","B","C","D"]','Synthetic solution' FROM generate_series(1,5)n`);
+  const items=[];for(let n=1;n<=5;n++)items.push(await item('synthetic-native-'+n));
+  const batch=await save(items);
+  const nativeIds=batch.map(b=>b.question_id);
+  const publishTargets=[];
+  for(const target of batch) {
+   const check=(await admin.query('SELECT public.precheck_question_publication($1,$2,$3) result',[target.question_id,target.version_id,'publish'])).rows[0].result;
+   const reviewed=(await admin.query('SELECT public.record_question_version_review($1,$2,$3,$4) result',[target.question_id,target.version_id,check.fingerprint,{confirmed:true}])).rows[0].result.precheck;
+   publishTargets.push({question_id:target.question_id,version_id:target.version_id,expected_fingerprint:reviewed.fingerprint,action:'publish'});
+  }
+  await admin.query('SELECT public.publish_question_versions($1)',[JSON.stringify(publishTargets)]);
+  const student=await connect('authenticated',studentId);
+  try {
+   const rpc=async(sql,args=[])=>(await student.query(sql,args)).rows[0].result;
+   const topic=(await db.query("SELECT id FROM public.curriculum_topics WHERE topic_code='1.1'")).rows[0].id;
+   const session=(await db.query('SELECT gen_random_uuid() id')).rows[0].id;
+   const practice=await rpc('SELECT public.start_question_practice($1,$2) result',[session,topic]);
+   assert.ok(practice.questions.some(q=>nativeIds.includes(q.question_id)),JSON.stringify(practice));
+   assert.ok(practice.questions.every(q=>q.solution===undefined&&q.options.every(o=>o.is_correct===undefined)));
+   const run=(await db.query('SELECT gen_random_uuid() id')).rows[0].id;
+   const issued=await rpc('SELECT public.arena_practice_next_question($1,$2,$3,$4,$5) result',[run,[1],1,1,true]);
+   assert.equal(issued.status,'ok');assert.equal(issued.explanation,undefined);assert.equal(issued.correct_index,undefined);
+   const issue=(await db.query('SELECT * FROM public.arena_practice_issues WHERE id=$1',[issued.issue_id])).rows[0];
+   assert.ok(nativeIds.includes(issue.question_id)||issue.question_id===saved.question_id);
+   const right=(await db.query('SELECT id FROM public.question_options WHERE question_version_id=$1 AND is_correct',[issue.version_id])).rows[0].id;
+   const answer=await rpc('SELECT public.arena_practice_submit_answer($1,$2) result',[issued.issue_id,issue.option_order.indexOf(right)]);
+   assert.equal(answer.correct,true);assert.equal(answer.explanation,'Synthetic solution');
+   assert.deepEqual(await rpc('SELECT public.arena_practice_submit_answer($1,$2) result',[issued.issue_id,0]),answer);
+   assert.equal((await db.query('SELECT count(*)::int n FROM public.question_practice_attempts WHERE session_id=$1',[run])).rows[0].n,1);
+   const foreign=await connect('authenticated',(await db.query('SELECT gen_random_uuid() id')).rows[0].id);
+   try {assert.deepEqual((await foreign.query('SELECT public.arena_practice_submit_answer($1,$2) result',[issued.issue_id,0])).rows[0].result,{status:'not_found'});}finally{await foreign.end();}
+  } finally {await student.end();}
+ });
  await t.test('changed legacy content fails source checks; anon/student cannot import or probe private source helper',async()=>{
   await db.query("UPDATE public.arena_questions SET stem='Synthetic changed' WHERE id='q9001'");
   const issues=(await db.query('SELECT public.question_bank_content_issues($1,$2) result',[saved.question_id,saved.version_id])).rows[0].result;

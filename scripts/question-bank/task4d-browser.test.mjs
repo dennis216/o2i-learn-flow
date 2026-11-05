@@ -344,6 +344,7 @@ try {
   const visitor=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});assert.ok((await visitor.from('questions').select('id')).error || !(await visitor.from('questions').select('id')).data.length);
   assert.ok((await student.rpc('precheck_question_publication',{_question_id:stale.question_id,_version_id:stale.id,_action:'publish'})).error);check('Actual REST student/anonymous draft and answer isolation; unauthorized management RPC rejected');
   await openBank();await page.setViewportSize({width:390,height:844});await card('SYNTHETIC-BATCH-A','Published problems').scrollIntoViewIfNeeded();await shot('05-narrow');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));check('Narrow layout has no horizontal page overflow');
+  if(process.env.O2I_LEGACY_ARENA_PRIVATE_DIR)await (await import('../arena/legacy/browser.acceptance.mjs')).verifyLegacyBrowser({db,admin,page,context,openBank,card,dialog,closeEditor,check,read});
   assert.deepEqual(remoteRequests,[]);assert.ok(writeRequests.includes('publish_question_versions'));check('All tested lifecycle buttons use real local RPCs, with no remote Supabase request');
   check('Repeated Publish clicks send only one publication RPC');
 } catch(error) {

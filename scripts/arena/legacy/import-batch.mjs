@@ -15,6 +15,7 @@ export function batchPlan(batch, references) {
  for(const q of batch.questions) {
   assert.ok(legacyArenaSource(sources.get(q.external_id),q.external_id),'Invalid native source.');
   assert.equal(q.human_review_status,'pending','Import cannot claim human approval.');
+  assert.equal(q.calculator_policy,'no_calculator','Only verified non-calculator legacy candidates may enter this import.');
   for(const field of ['math_review_status','source_rights_status','taxonomy_review_status','render_review_status']) assert.equal(q[field],'pending');
   assert.ok(!q.reviewed_by&&!q.reviewed_at,'Import cannot invent a human reviewer.');
  }

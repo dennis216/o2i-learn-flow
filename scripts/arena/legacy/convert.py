@@ -38,6 +38,8 @@ def glyph(node):
     match = re.fullmatch(r'#MJX-TEX-(N|I|SO|S[1-4]|LO|V)-([0-9A-Fa-f]+)', href)
     if not match:
         raise Unsupported('unknown_or_external_glyph')
+    if match[1].startswith('S') and match[2].upper() in ('7B', '7D'):
+        raise Unsupported('unsupported_piecewise_or_multiline_brace')
     char = chr(int(match[2], 16))
     if char in SYMBOLS:
         return SYMBOLS[char]
