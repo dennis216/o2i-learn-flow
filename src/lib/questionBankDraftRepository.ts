@@ -91,7 +91,7 @@ export interface QuestionBankVersionPreview extends Pick<QuestionBankListItem, "
   stem: string;
   solution: string;
   sourceDocument: string;
-  sourcePage: number;
+  sourcePage: number | null;
   sourceQuestionNumber: string | null;
   sourceLocator: string | null;
   sourceReference: string | null;

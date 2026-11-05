@@ -19,6 +19,7 @@
     "preview": "vite preview",
     "test:arena": "node --experimental-strip-types --test src/lib/arenaBridge.test.mjs scripts/arena/public-game.test.mjs scripts/arena/zh-cn.test.mjs",
     "test:arena:legacy": "node --experimental-strip-types --test scripts/arena/legacy/*.test.mjs",
+    "test:arena:legacy:source:db": "O2I_LEGACY_ARENA_SOURCE_DB=1 node --test supabase/tests/question_bank_draft_management.integration.test.mjs",
     "test:arena:practice:db": "O2I_COURSE_DB_EXTRA=1 O2I_COURSE_CONTINUOUS_DB=1 O2I_ARENA_PRACTICE_DB=1 node scripts/course-content-db.test.mjs",
     "test:arena:db": "node --test supabase/tests/arena_game.integration.test.mjs",
     "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs src/lib/practiceCapture.test.mjs src/lib/practiceAnalysis.test.mjs src/lib/practiceTopics.test.mjs",

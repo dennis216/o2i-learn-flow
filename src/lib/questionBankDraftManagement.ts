@@ -19,6 +19,7 @@ const text = (value: Json | undefined): string => typeof value === "string" ? va
 
 /** Round-trip the intake range encoding, never replace it with the Excel row number. */
 export function draftSourcePage(version: Pick<Version, "source_page" | "source_reference">): string {
+  if (version.source_page === null) return "";
   const range = version.source_reference?.match(/^(\d+)-(\d+)$/);
   return range && Number(range[1]) === version.source_page && Number(range[2]) >= version.source_page
     ? version.source_reference! : String(version.source_page);

@@ -7,7 +7,7 @@
 | Task | 内容 | 当前状态 |
 | --- | --- | --- |
 | T1 | 私有原始快照、校验、逐题清单和确定性批次 | 已完成 |
-| T2 | 数据库支持经过核验的旧 Arena 非 PDF 来源；保留旧 PDF 规则 | 待做 |
+| T2 | 数据库支持经过核验的旧 Arena 非 PDF 来源；保留旧 PDF 规则 | 本地已完成，生产未部署 |
 | T3 | 公式、图形、表格转换及问题隔离 | 待做 |
 | T4 | 可重试的批量录入与现有后台预览、编辑兼容 | 待做 |
 | T5 | 首批 20 道本地全链路演练与独立复核 | 待做 |
@@ -32,8 +32,20 @@
 
 ```sh
 npm run test:arena:legacy
+npm run test:arena:legacy:source:db
 node scripts/arena/legacy/snapshot.mjs export /仓库外的全新私有目录
 node scripts/arena/legacy/snapshot.mjs verify /已有私有目录
 ```
 
 导出使用 Supabase Management API 的 `read_only: true` 和一致性只读事务。已有冻结目录拒绝覆盖；禁止把导出内容复制进 Git。后续输入校验不通过时停止调查，不自动改写快照。
+
+## T2 证据与接口约定
+
+- 新迁移：`20261105020000_question_bank_legacy_arena_source`；原迁移文件和原有题目行均未修改。
+- 继续使用 `save_question_bank_drafts` 等原有 RPC。只有 `import_evidence.legacy_arena` 包含真实 `source_id`、与旧表完整原行一致的 `source_sha256`、`batch_id`、`conversion_version` 时，才接受非 PDF 来源；新编号须严格等于 `arena_legacy_<source_id>`。
+- 旧 Arena 来源文档固定为 `Legacy Arena bank`，页码、印刷题号、PDF locator 均为空；reference 为 `arena:<source_id>`。原始行校验统一使用 UTC；来源证据在元数据编辑中只读。
+- 表约束、保存、编辑、发布均验证来源；无来源标记的 PDF 保持原规则。复制已发布题的修订版保留来源，但不复制人工审核。
+- 不新增版本列、不批量重写旧证据；实际数据库测试确认现有全部版本行和选定 PDF 内容指纹保持不变。
+- 27 项本地数据库检查通过，包含原题库回归、非 PDF 草稿/编辑/真实审核入口/发布/修订、伪造来源拒绝、原文漂移拒绝、批次原子回滚、匿名和学生权限隔离。91 项题库单测、4 项新工具测试、TypeScript 检查通过。
+- 生产只读 preflight 的 known_functions_match、target_absent、legacy_table_present 均为 true；尚未执行生产迁移、导入或发布。
+- 后台对空页码和来源的完整展示/编辑适配属于 T4；不能将 T2 后端本地通过解释为用户可用交付完成。

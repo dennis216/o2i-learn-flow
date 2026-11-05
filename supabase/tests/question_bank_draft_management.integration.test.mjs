@@ -307,6 +307,9 @@ test('Task 4B real disposable PostgreSQL integration', {timeout:180000}, async t
       assert.equal((await rootClient.query('SELECT * FROM public.practice_problems')).rowCount,1);
       assert.equal((await rootClient.query('SELECT * FROM auth.users')).rowCount,2);
     });
+    if (process.env.O2I_LEGACY_ARENA_SOURCE_DB) {
+      await (await import('../../scripts/arena/legacy/source-db.acceptance.mjs')).verifyLegacySource({t,rootClient,admin,connect,fixture,get,read,studentId});
+    }
   } finally {
     await admin?.end();await rootClient?.end();
     if(created) {

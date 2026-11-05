@@ -1361,7 +1361,7 @@ export type Database = {
           source_document: string
           source_locator: string | null
           source_locator_verified: boolean
-          source_page: number
+          source_page: number | null
           source_question_number: string | null
           source_reference: string | null
           source_type: Database["public"]["Enums"]["question_source_type"] | null
@@ -1390,7 +1390,7 @@ export type Database = {
           source_document: string
           source_locator?: string | null
           source_locator_verified?: boolean
-          source_page: number
+          source_page: number | null
           source_question_number?: string | null
           source_reference?: string | null
           source_type?: Database["public"]["Enums"]["question_source_type"] | null
@@ -1419,7 +1419,7 @@ export type Database = {
           source_document?: string
           source_locator?: string | null
           source_locator_verified?: boolean
-          source_page?: number
+          source_page?: number | null
           source_question_number?: string | null
           source_reference?: string | null
           source_type?: Database["public"]["Enums"]["question_source_type"] | null

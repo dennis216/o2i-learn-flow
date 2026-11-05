@@ -78,6 +78,7 @@ export function verifySnapshot(directory) {
 
 export const exportQuery = `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='30s';
+SET LOCAL timezone='UTC';
 SELECT jsonb_build_object(
  'exported_at',now(),
  'rows',(SELECT jsonb_agg(jsonb_build_object('source',to_jsonb(q),'source_sha256',encode(extensions.digest(to_jsonb(q)::text,'sha256'),'hex')) ORDER BY q.unit,length(q.id),q.id) FROM public.arena_questions q),
