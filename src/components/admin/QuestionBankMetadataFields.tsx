@@ -41,11 +41,11 @@ export function QuestionBankMetadataFields({ question, references, disabled, onC
         {references?.topics.map(topic => <option key={topic.id} value={topic.topic_code}>{topic.topic_code} · {topic.title}</option>)}
       </select>{errors("primary_topic_code")}
     </label>
-    <label className="space-y-1">Physical PDF page (ranges such as 12-13 allowed)
+    {!question.legacyArena && <label className="space-y-1">Physical PDF page (ranges such as 12-13 allowed)
       <Input aria-label={`${question.externalId} Physical PDF page`} aria-invalid={fieldHasError("source_page")} value={question.sourcePage}
         disabled={disabled} onChange={event => onChange("source_page", event.target.value)} />{errors("source_page")}
-    </label>
-    {showSourceLocator && <label className="space-y-1">Source locator
+    </label>}
+    {showSourceLocator && !question.legacyArena && <label className="space-y-1">Source locator
       <Input aria-label={`${question.externalId} Source locator`} aria-invalid={fieldHasError("source_locator")} value={question.sourceLocator}
         disabled={disabled} onChange={event => onChange("source_locator", event.target.value)} />{errors("source_locator")}
     </label>}

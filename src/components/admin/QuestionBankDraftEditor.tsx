@@ -31,7 +31,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
   const [retry, setRetry] = useState(0);
   const [needsReload, setNeedsReload] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "return" | null>(null);
-  const validated = useMemo(() => working.length ? validateDraftMetadata(working, references) : null, [working, references]);
+  const validated = useMemo(() => working.length ? validateDraftMetadata(working, references, snapshot) : null, [working, references, snapshot]);
   const changes = useMemo(() => getQuestionEditChanges(original, working), [original, working]);
   const question = validated?.report.questions[0];
   const issues = validated?.plan.issues ?? [];
@@ -91,7 +91,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
         {revisionTarget && <p className="rounded border p-3">Save creates a new unpublished revision. The current published version stays unchanged. Opening or cancelling creates nothing.</p>}
         {snapshot.version.id !== item.versionId && <p className="rounded border p-3">Editing existing working version {snapshot.version.version_number}; the current approved version is not overwritten.</p>}
         <MarkdownWithMath content={question.stem} strictMath className="overflow-x-auto" />
-        <p className="break-words text-muted-foreground">Source: {question.sourceDocument} · Printed question number: {question.sourceQuestionNumber || "not recorded"}</p>
+        <p className="break-words text-muted-foreground">Source: {question.sourceDocument} · {question.legacyArena ? `Original ID: ${question.legacyArena.source_id} · Batch: ${question.legacyArena.batch_id}` : `Printed question number: ${question.sourceQuestionNumber || "not recorded"}`}</p>
         {readOnly && <p className="rounded border p-3">Review versions cannot be edited or deleted. Explicitly return this version to draft first.</p>}
         <QuestionBankMetadataFields question={question} references={references} disabled={busy || readOnly || needsReload}
           onChange={(field, value) => { setWorking(current => applyQuestionFieldEdit(current, 2, field, value)); setNotice(""); setError(""); }}

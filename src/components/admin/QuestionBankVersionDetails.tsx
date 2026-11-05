@@ -50,8 +50,8 @@ export function QuestionBankVersionDetails({ item, publication = false }: { item
       <details open={publication}><summary className="cursor-pointer font-semibold">Solution</summary><MarkdownWithMath content={preview.solution} className="mt-2 overflow-x-auto" strictMath /></details>
       {!publication && <QuestionBankVersionMetadata item={preview} />}
       <details className="space-y-1 break-words rounded bg-muted/50 p-3"><summary>Source details</summary>
-        <p>Source: {preview.sourceDocument} · Physical PDF page: {preview.sourcePage}</p>
-        <p>Printed question number: {preview.sourceQuestionNumber || "not recorded"} · Locator: {preview.sourceLocator || "not provided"}</p>
+        <p>Source: {preview.sourceDocument}{preview.sourcePage !== null && ` · Physical PDF page: ${preview.sourcePage}`}</p>
+        {preview.sourcePage !== null && <p>Printed question number: {preview.sourceQuestionNumber || "not recorded"} · Locator: {preview.sourceLocator || "not provided"}</p>}
         {preview.sourceReference && <p>Source reference: {preview.sourceReference}</p>}
       </details>
       {!publication && <details><summary>Original import evidence</summary>

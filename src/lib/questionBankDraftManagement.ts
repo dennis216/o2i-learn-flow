@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../integrations/supabase/types.ts";
-import { OPTION_HEADERS, QUESTION_HEADERS, validateQuestionBankSheets, type WorkbookSheet } from "./questionBankImport.ts";
+import { OPTION_HEADERS, QUESTION_HEADERS, legacyArenaSource, validateQuestionBankSheets, type WorkbookSheet } from "./questionBankImport.ts";
 import type { QuestionBankReferences } from "./questionBankImportPlan.ts";
 import { buildQuestionBankDraftSavePlan } from "./questionBankDraftSave.ts";
 import { EDITABLE_QUESTION_FIELDS, type EditableQuestionField } from "./questionBankPreviewEdits.ts";
@@ -61,15 +61,16 @@ export function draftSnapshotSheets(snapshot: DraftSnapshot): WorkbookSheet[] {
   ];
 }
 
-export function validateDraftMetadata(sheets: readonly WorkbookSheet[], references: QuestionBankReferences | null) {
+export function validateDraftMetadata(sheets: readonly WorkbookSheet[], references: QuestionBankReferences | null, snapshot?: DraftSnapshot | null) {
+  const source = snapshot ? legacyArenaSource(object(snapshot.version.import_evidence).legacy_arena, snapshot.question.external_id) : undefined;
   const report = validateQuestionBankSheets(sheets, references ? {
     topicCodes: new Set(references.topics.map(topic => topic.topic_code)),
     practiceSkillCodes: new Set(references.skills.map(skill => skill.skill_code)),
-  } : undefined);
+  } : undefined, source ? new Map([[snapshot!.question.external_id, source]]) : undefined);
   // This identity already exists: do not apply the NEW-import duplicate-ID check to editing it.
   const plan = buildQuestionBankDraftSavePlan(report, references ? { ...references, existingExternalIds: new Set() } : null);
-  const source = plan.payload[0];
-  const metadata = source ? Object.fromEntries(EDITABLE_QUESTION_FIELDS.map(field => [field, source[field]])) : null;
+  const payload = plan.payload[0];
+  const metadata = payload ? Object.fromEntries(EDITABLE_QUESTION_FIELDS.map(field => [field, payload[field]])) : null;
   return { report, plan, metadata: metadata as Record<EditableQuestionField, unknown> | null };
 }
 
@@ -114,7 +115,7 @@ export async function loadQuestionBankEditor(client: SupabaseClient<Database>, q
 /** Called only by explicit confirmation, never by loading, validation, undo or Cancel. */
 export async function updateQuestionBankDraft(client: SupabaseClient<Database>, snapshot: DraftSnapshot,
   sheets: readonly WorkbookSheet[], references: QuestionBankReferences | null): Promise<void> {
-  const { plan, metadata } = validateDraftMetadata(sheets, references);
+  const { plan, metadata } = validateDraftMetadata(sheets, references, snapshot);
   if (!plan.canSave || !metadata || snapshot.version.status !== "draft") throw new Error("Resolve draft field issues before saving changes.");
   const { data, error } = await client.rpc("update_question_bank_draft_metadata", {
     _question_id: snapshot.question.id, _version_id: snapshot.version.id,

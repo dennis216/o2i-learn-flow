@@ -55,6 +55,26 @@ export interface PreviewOption {
   explanation: string;
 }
 
+export interface LegacyArenaSource {
+  source_id: string;
+  source_sha256: string;
+  batch_id: string;
+  conversion_version: string;
+}
+
+/** Client shape check only; the database verifies the hash against the original row. */
+export function legacyArenaSource(value: unknown, externalId: string): LegacyArenaSource | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  if (typeof source.source_id !== "string" || !/^[A-Za-z0-9_.:-]+$/.test(source.source_id)
+    || externalId !== `arena_legacy_${source.source_id}`
+    || typeof source.source_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(source.source_sha256)
+    || typeof source.batch_id !== "string" || !source.batch_id.trim()
+    || typeof source.conversion_version !== "string" || !source.conversion_version.trim()) return undefined;
+  return { source_id: source.source_id, source_sha256: source.source_sha256,
+    batch_id: source.batch_id, conversion_version: source.conversion_version };
+}
+
 export interface PreviewQuestion {
   row: number;
   externalId: string;
@@ -65,6 +85,7 @@ export interface PreviewQuestion {
   sourcePage: string;
   sourceQuestionNumber: string;
   sourceLocator: string;
+  legacyArena?: LegacyArenaSource;
   primaryTopicCode: string;
   practiceSkillCodes: string[];
   difficulty: string;
@@ -167,6 +188,7 @@ export async function parseQuestionBankWorkbook(bytes: ArrayBuffer): Promise<Wor
 /** Pure validation: it neither repairs cells nor writes to Supabase. */
 export function validateQuestionBankSheets(
   sheets: readonly WorkbookSheet[], canonical: CanonicalTaxonomy = {},
+  legacySources: ReadonlyMap<string, LegacyArenaSource> = new Map(),
 ): QuestionBankReport {
   const issues: ValidationIssue[] = [];
   const expectedNames = ["Questions", "Options", "Instructions"];
@@ -201,6 +223,7 @@ export function validateQuestionBankSheets(
   for (const record of questionRows) {
     const get = (field: string) => text(record.cells[field]);
     const id = get("external_id").trim();
+    const legacy = legacyArenaSource(legacySources.get(id), id);
     const status = get("human_review_status").trim();
     const issue = (field: string, message: string, severity: ValidationIssue["severity"] = "error", category?: ValidationIssue["category"]) => {
       issues.push({ severity, sheet: "Questions", row: record.row, field, message, questionExternalId: id || undefined, category });
@@ -210,14 +233,20 @@ export function validateQuestionBankSheets(
         field === "calculator_policy" ? "publication_review" : undefined);
     };
 
-    for (const field of ["external_id", "source_document", "source_page", "stem", "requires_figure", "human_review_status"]) required(field);
+    for (const field of ["external_id", "source_document", "stem", "requires_figure", "human_review_status"]) required(field);
+    if (!legacy) required("source_page");
     for (const field of ["solution", "correct_option_key", "difficulty", "course_scope", "primary_topic_code", "practice_skill_codes", "representation_type"]) required(field, "review");
     for (const field of ["stem", "solution"]) {
       if (filled(record.cells[field]) && typeof record.cells[field] !== "string") issue(field, "Content must be text, not a number, date or computed formula value");
     }
     if (id && byId.has(id)) issue("external_id", "Duplicate external_id makes option associations ambiguous");
     if (get("external_id") !== id) issue("external_id", "ID has leading or trailing spaces; the preview does not repair cells");
-    if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "Enter the original PDF filename including .pdf");
+    if (legacy) {
+      if (get("source_document") !== "Legacy Arena bank") issue("source_document", "Legacy Arena source identity is read-only");
+      for (const field of ["source_page", "source_question_number", "source_locator"]) {
+        if (get(field)) issue(field, "Legacy Arena sources have no PDF page, printed number or locator");
+      }
+    } else if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "Enter the original PDF filename including .pdf");
 
     const pageText = get("source_page").trim();
     const pageMatch = pageText.match(/^(\d+)(?:-(\d+))?$/);
@@ -229,8 +258,10 @@ export function validateQuestionBankSheets(
 
     const locator = get("source_locator").trim();
     const printedNumber = get("source_question_number").trim();
-    if (simplified && !printedNumber) issue("source_question_number", "The simplified template requires an actual printed question number");
-    else if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
+    if (!legacy) {
+      if (simplified && !printedNumber) issue("source_question_number", "The simplified template requires an actual printed question number");
+      else if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
+    }
     if (locator) {
       const locatorMatch = locator.match(/^p(\d{3,})-item(\d{2,})$/);
       if (!locatorMatch) issue("source_locator", "Use a source locator such as p012-item03");
@@ -285,7 +316,7 @@ export function validateQuestionBankSheets(
       row: record.row, externalId: get("external_id"), stem: get("stem"), solution: get("solution"),
       correctOptionKey: get("correct_option_key"), sourceDocument: get("source_document"),
       sourcePage: get("source_page"), sourceQuestionNumber: get("source_question_number"),
-      sourceLocator: get("source_locator"), primaryTopicCode: topic, practiceSkillCodes: skills,
+      sourceLocator: get("source_locator"), ...(legacy ? { legacyArena: legacy } : {}), primaryTopicCode: topic, practiceSkillCodes: skills,
       difficulty: get("difficulty"), courseScope: get("course_scope"),
       representationType: get("representation_type"), calculatorPolicy: get("calculator_policy"),
       requiresFigure, figureReference: get("figure_reference"), imageUrl,
