@@ -29,6 +29,8 @@
     "test:ai-tutor:browser": "O2I_AI_TUTOR_BROWSER=1 node scripts/course-custom-browser.test.mjs",
     "test:courses:db": "O2I_COURSE_SHARED_DB=1 O2I_COURSE_GAME_DB=1 O2I_COURSE_DB_EXTRA=1 O2I_COURSE_RELEASE_DB=1 node scripts/course-content-db.test.mjs",
     "test:courses:login:db": "O2I_COURSE_GAME_DB=1 O2I_COURSE_DB_EXTRA=1 O2I_COURSE_RELEASE_DB=1 O2I_COURSE_SHARED_DB=1 O2I_COURSE_OUTLINE_DB=1 O2I_COURSE_LOGIN_DB=1 node scripts/course-content-db.test.mjs",
+    "test:migrations": "node --test scripts/migrations/reconciliation.test.mjs scripts/continuous-practice-migration.test.mjs",
+    "test:migrations:db": "O2I_MIGRATION_RECONCILIATION_DB=1 npm run test:courses:login:db",
     "test:courses:login:browser": "node scripts/course-login-browser.test.mjs",
     "test:courses:browser": "node scripts/course-custom-browser.test.mjs"
   },

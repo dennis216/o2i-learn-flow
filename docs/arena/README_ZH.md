@@ -25,7 +25,7 @@
 
 **第 0 步：先把 GitHub 仓库改成私有。** 这一步完成前，不要推送这个分支。
 
-1. 在 Supabase SQL Editor 执行 `supabase/migrations/20261104000100_arena_game.sql`。
+1. 先核对对象和账本。当前生产已有旧 Arena 对象，使用[目录校验及登记修复包](../database-reconciliation/README_ZH.md)，不要执行原建表脚本。只有已确认没有任何旧 Arena 对象的全新环境，才可通过迁移工具安装 `20261104000100_arena_game.sql` 并登记；SQL Editor 直接执行源文件不会自动登记。
 2. 导入题库。题库文件不在仓库里，由 `prepare-game.mjs` 生成：
 
    ```bash

@@ -102,7 +102,8 @@ export async function verifyCustomOutline({sql,asUser,admin,student,ab,bc,tids})
  if (process.env.O2I_COURSE_LOGIN_DB) {
   // The isolated fixture predates module permissions; mirror its courses-admin check.
   sql("CREATE FUNCTION public.has_admin_module(text) RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT public.has_role(auth.uid(),'admin') $$;");
-  sql(read('supabase/migrations/20261103020000_course_login_access.sql'));
+  if (process.env.O2I_MIGRATION_RECONCILIATION_DB) (await import('./migrations/reconciliation-db.acceptance.mjs')).verifyReconciliation({sql,student});
+  else sql(read('supabase/migrations/20261105010000_course_login_access.sql'));
   const anonymous=query=>asUser('',query,'anon').trim().split('\n').at(-1);
   const published=entry(ab,commonAB);
   assert.ok(published.videos.length);
