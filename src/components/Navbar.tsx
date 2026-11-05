@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bot, FlaskConical, Gamepad2, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
+import { Bot, Compass, FlaskConical, Gamepad2, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -27,14 +27,15 @@ export default function Navbar() {
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>Courses</Button></Link>
-      <Link to="/practice" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Target className="mr-2 h-4 w-4" />Practice</Button></Link>
-      <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="mr-2 h-4 w-4" />AI Tutor</Button></Link>
-      <Link to="/arena" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Gamepad2 className="mr-2 h-4 w-4" />Arena</Button></Link>
-      <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />Playground</Button></Link>
-      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>Solution Requests</Button></Link>
-      <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />Team</Button></Link>
-      {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
+      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}>Courses</Button></Link>
+      <Link to="/practice" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Target className="mr-2 h-4 w-4" />Practice</Button></Link>
+      <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Bot className="mr-2 h-4 w-4" />AI Tutor</Button></Link>
+      <Link to="/arena" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Gamepad2 className="mr-2 h-4 w-4" />Arena</Button></Link>
+      <Link to="/world" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Compass className="mr-2 h-4 w-4" />World</Button></Link>
+      <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><FlaskConical className="mr-2 h-4 w-4" />Playground</Button></Link>
+      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}>Solution Requests</Button></Link>
+      <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Users className="mr-2 h-4 w-4" />Team</Button></Link>
+      {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : 'px-2.5'}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
     </>
   );
 
@@ -50,15 +51,15 @@ export default function Navbar() {
   return (
     <nav className="border-b border-border bg-background shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between">
-          <div className="flex items-center">
+        <div className="flex h-16 justify-between gap-4">
+          <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
               <img src="/o2i-logo.jpg" alt="O2I Institute" className="h-8 w-8 rounded-full object-cover" />
               <span className="whitespace-nowrap text-xl font-bold text-primary">O2I Institute</span>
             </Link>
           </div>
 
-          <div className="hidden items-center space-x-4 xl:flex"><NavLinks /><AuthButtons /></div>
+          <div className="hidden items-center space-x-1 xl:flex"><NavLinks /><div className="pl-3"><AuthButtons /></div></div>
 
           <div className="flex items-center xl:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

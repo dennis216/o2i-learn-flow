@@ -26,6 +26,7 @@ const AITutor = lazy(() => import('@/pages/AITutor'));
 const Team = lazy(() => import('@/pages/Team'));
 const Playground = lazy(() => import('@/pages/Playground'));
 const Arena = lazy(() => import('@/pages/Arena'));
+const World = lazy(() => import('@/pages/World'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 const queryClient = new QueryClient();
@@ -75,6 +76,7 @@ export default function App() {
                   <Route path="/review" element={<Review />} />
                   <Route path="/quiz" element={<Quiz />} />
                   <Route path="/arena" element={<Arena />} />
+                  <Route path="/world" element={<World />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
