@@ -15,7 +15,7 @@
 
 **第 0 步：先把 GitHub 仓库改成私有。** 这一步完成前，不要推送这个分支。
 
-1. 在 Supabase SQL Editor 执行 `supabase/migrations/20261104000000_arena_game.sql`。
+1. 在 Supabase SQL Editor 执行 `supabase/migrations/20261104000100_arena_game.sql`。
 2. 导入题库。题库文件不在仓库里，由 `prepare-game.mjs` 生成：
 
    ```bash
