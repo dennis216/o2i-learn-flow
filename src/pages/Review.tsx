@@ -27,7 +27,7 @@ function AnswerHistory({ incorrectOnly }: { incorrectOnly: boolean }) {
   return <ul aria-label="Saved answer history" className="space-y-3">{history.map(answer =>
     <li key={answer.id}><Link to={`/quiz?session=${answer.session_id}&question=${answer.question_id}`} className="block rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
       <Card className="hover:border-primary"><CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
-        <div className="min-w-0"><p className="break-words font-medium">Topic {answer.topic_code} · {answer.topic_title}</p><p className={answer.is_correct ? 'text-green-700' : 'text-destructive'}>{answer.is_correct ? 'Correct' : 'Incorrect'}</p><time dateTime={answer.submitted_at} className="text-sm text-muted-foreground">{new Date(answer.submitted_at).toLocaleString()}</time></div>
+        <div className="min-w-0"><p className="break-words font-medium">Topic {answer.topic_code} · {answer.topic_title}</p><p className="text-sm text-muted-foreground">{answer.source === 'arena' ? 'Arena' : 'Practice'}</p><p className={answer.is_correct ? 'text-green-700' : 'text-destructive'}>{answer.is_correct ? 'Correct' : 'Incorrect'}</p><time dateTime={answer.submitted_at} className="text-sm text-muted-foreground">{new Date(answer.submitted_at).toLocaleString()}</time></div>
         <span className="flex items-center gap-2 text-sm text-primary">View solution <ArrowRight className="h-4 w-4" /></span>
       </CardContent></Card>
     </Link></li>

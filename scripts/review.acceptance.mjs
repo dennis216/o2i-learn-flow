@@ -36,7 +36,7 @@ export async function verifyReviewBrowser({page,context,app,start,submit,rpc,stu
   await page.goto(app+'/practice');await review().waitFor();
   assert.equal(await review().getAttribute('href'),'/review');
   assert.equal(await page.getByRole('navigation').getByRole('link',{name:'Review',exact:true}).count(),0);
-  const startButton=await page.getByRole('link',{name:'Start up to 5 questions',exact:false}).boundingBox();
+  const startButton=await page.getByRole('link',{name:'Start 5 questions',exact:false}).boundingBox();
   const reviewButton=await review().boundingBox();
   assert.ok(startButton&&reviewButton&&Math.abs(startButton.y-reviewButton.y)<1&&reviewButton.x>startButton.x);
   await shot('11-practice-review-desktop');

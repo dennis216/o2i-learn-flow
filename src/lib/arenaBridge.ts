@@ -28,9 +28,9 @@ async function runAction(rpc: ArenaRpc, action: string, payload: Record<string, 
   };
   switch (action) {
     case 'catalog':
-      return call('arena_catalog');
+      return call('arena_practice_catalog');
     case 'next':
-      return call('arena_next_question', {
+      return call('arena_practice_next_question', {
         _run_id: payload.runId,
         _units: payload.units,
         _current_unit: payload.currentUnit,
@@ -38,7 +38,7 @@ async function runAction(rpc: ArenaRpc, action: string, payload: Record<string, 
         _prefer_current: payload.preferCurrent,
       });
     case 'answer':
-      return call('arena_submit_answer', { _issue_id: payload.issueId, _selected: payload.index });
+      return call('arena_practice_submit_answer', { _issue_id: payload.issueId, _selected: payload.index });
     default:
       throw new Error('Unknown arena action');
   }

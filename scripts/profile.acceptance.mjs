@@ -12,7 +12,7 @@ async function databaseStatistics(db, userId) {
     (SELECT count(*)::int FROM public.question_practice_sessions WHERE user_id=$1) AS "sessionCount",
     count(*)::int AS "attemptCount", count(*) FILTER (WHERE is_correct)::int AS "correctCount"
     FROM public.question_practice_attempts WHERE user_id=$1`, [userId]);
-  return row;
+  return { ...row, sources: [{ source: 'arena', sessionCount: 0, attemptCount: 0, correctCount: 0 }, { source: 'practice', ...row }] };
 }
 export async function verifyProfileDatabase({db,start,submit,student,other,visitor,topicId,check}) {
   const userId=(await identity(other)).user.id, studentId=(await identity(student)).user.id;
@@ -24,10 +24,10 @@ export async function verifyProfileDatabase({db,start,submit,student,other,visit
       const q=s.questions[0], option=q.options.find(o=>o.key===(i<6?'A':'B')).id;
       await submit(other,s,q,option);await submit(other,s,q,option);
     }
-    assert.deepEqual(await loadPracticeStatistics(other,userId), {sessionCount:before.sessionCount+14,attemptCount:before.attemptCount+13,correctCount:before.correctCount+6});
+    assert.deepEqual(await loadPracticeStatistics(other,userId), {sessionCount:before.sessionCount+14,attemptCount:before.attemptCount+13,correctCount:before.correctCount+6,sources:[{source:'arena',sessionCount:0,attemptCount:0,correctCount:0},{source:'practice',sessionCount:before.sessionCount+14,attemptCount:before.attemptCount+13,correctCount:before.correctCount+6}]});
     assert.deepEqual(await loadPracticeStatistics(other,userId),await databaseStatistics(db,userId));
-    assert.deepEqual(await loadPracticeStatistics(student,userId),{sessionCount:0,attemptCount:0,correctCount:0});
-    assert.deepEqual(await loadPracticeStatistics(other,studentId),{sessionCount:0,attemptCount:0,correctCount:0});
+    assert.deepEqual(await loadPracticeStatistics(student,userId),{sessionCount:0,attemptCount:0,correctCount:0,sources:[{source:'arena',sessionCount:0,attemptCount:0,correctCount:0},{source:'practice',sessionCount:0,attemptCount:0,correctCount:0}]});
+    assert.deepEqual(await loadPracticeStatistics(other,studentId),{sessionCount:0,attemptCount:0,correctCount:0,sources:[{source:'arena',sessionCount:0,attemptCount:0,correctCount:0},{source:'practice',sessionCount:0,attemptCount:0,correctCount:0}]});
     await assert.rejects(loadPracticeStatistics(visitor,userId));
     check('Profile database: exact full-history counts beyond ten, unstarted/partial sets, repeat submissions counted once, RLS and anonymous rejection');
   } finally { await db.query('DELETE FROM public.question_practice_sessions WHERE id=ANY($1::uuid[])',[sessions]); }
@@ -45,7 +45,7 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   assert.equal(await page.locator('#email').inputValue(),a.user.email);
   assert.equal(await page.locator('#user-id').inputValue(),a.user.id);
   await shot('09-profile-statistics');
-  const pattern='**/rest/v1/question_practice_attempts?*';
+  const pattern='**/rest/v1/rpc/get_question_practice_statistics';
   await page.route(pattern,r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic count outage'})}));
   await page.reload();await page.getByRole('alert').filter({hasText:'Could not load your practice statistics'}).waitFor();
   assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);await page.unroute(pattern);
@@ -65,7 +65,7 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   const pending=[];
   const held=async r=>{const response=await r.fetch();await gate;await r.fulfill({response});};
   await page.route(pattern,r=>{
-    if(new URL(r.request().url()).searchParams.get('user_id')===`eq.${a.user.id}`) return held(r);
+    if(r.request().postDataJSON()?._user_id===a.user.id) return held(r);
     return r.continue();
   });
   // Old A role and profile responses arrive after B has loaded.
@@ -77,7 +77,7 @@ export async function verifyProfileBrowser({page,context,app,db,start,student,ot
   });
   const profilePattern='**/rest/v1/profiles?*';
   await page.route(profilePattern,r=>new URL(r.request().url()).searchParams.get('user_id')===`eq.${a.user.id}`?held(r):r.continue());
-  for(const match of [u=>u.includes('/question_practice_attempts?'),u=>u.endsWith('/get_admin_access'),u=>u.includes('/profiles?')]) pending.push(page.waitForRequest(r=>match(r.url())));
+  for(const match of [u=>u.endsWith('/get_question_practice_statistics'),u=>u.endsWith('/get_admin_access'),u=>u.includes('/profiles?')]) pending.push(page.waitForRequest(r=>match(r.url())));
   await page.reload();await Promise.all(pending);await page.getByRole('status').filter({hasText:'Loading your practice statistics'}).waitFor();
   assert.equal(await page.locator('dl[aria-label="Practice statistics"] dd').count(),0);
   const late=page.waitForResponse(r=>r.url().endsWith('/get_admin_access')&&fromAccountA(r.request()));

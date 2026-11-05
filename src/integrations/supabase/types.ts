@@ -20,6 +20,7 @@ export type Database = {
           user_id: string
           topic_id: string | null
           created_at: string
+          source: "practice" | "arena"
           selection_summary: Json | null
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           user_id: string
           topic_id?: string | null
           created_at?: string
+          source?: "practice" | "arena"
           selection_summary?: Json | null
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           user_id?: string
           topic_id?: string | null
           created_at?: string
+          source?: "practice" | "arena"
           selection_summary?: Json | null
         }
         Relationships: []
@@ -1925,6 +1928,10 @@ export type Database = {
       save_course_topic: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path?: string | null }; Returns: undefined }
 
       list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
+      arena_practice_catalog: { Args: Record<PropertyKey, never>; Returns: Json }
+      arena_practice_next_question: { Args: { _run_id: string; _units: number[]; _current_unit: number; _tier: number; _prefer_current?: boolean }; Returns: Json }
+      arena_practice_submit_answer: { Args: { _issue_id: string; _selected: number }; Returns: Json }
+      get_question_practice_statistics: { Args: { _user_id: string }; Returns: Json }
       list_question_practice_attempts: { Args: { _incorrect_only?: boolean }; Returns: Json }
       start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
       get_question_practice: { Args: { _session_id: string }; Returns: Json }

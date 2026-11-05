@@ -1,17 +1,27 @@
 # Limit Arena 上线说明
 
-游戏在 `/arena`，必须登录才能玩。题目、答案和解析只存在 Supabase，不进仓库，也不进前端。
+游戏在 `/arena`，必须登录才能玩。完整题库不打包进公开游戏文件；服务器每次只发一道题，提交后才返回正确答案和解析。
 
 ```text
 浏览器：public/games/limit-arena.html（只有游戏本身）
   │ postMessage
 /arena 页面（src/pages/Arena.tsx，带登录状态）
   │ supabase.rpc
-数据库：arena_catalog / arena_next_question / arena_submit_answer
-  └─ arena_questions（题库）、arena_question_issues（发题和作答记录）
+数据库：arena_practice_catalog / arena_practice_next_question / arena_practice_submit_answer
+  ├─ questions / question_versions / question_options（正式题库）
+  ├─ question_practice_sessions / items / attempts（统一学习记录，source=arena）
+  └─ arena_practice_issues（冻结的显示选项顺序）
 ```
 
-## 上线顺序
+## 当前接入：正式题库
+
+游戏已改为从正式题库取题，游戏答题进入总览和 Practice Review，并标记 Arena；第一版不参与普通练习自适应。题目、选项和解析通过 Practice 同款 Markdown/公式渲染，保留图片和表格。中英文切换继续只翻译游戏 UI。
+
+发布请使用 [正式题库接入发布包](production/README_ZH.md)，任务和验收边界见 [任务清单](FORMAL_QUESTION_BANK_TASKS_ZH.md)。新前端必须在数据库前置和接入迁移部署并核验后发布。旧 Arena 数据保留，不会自动进入正式学习记录。
+
+以下是旧独立题库的历史构建和部署说明；不用于当前正式题库接入。此前生产只读核对发现旧 Arena 两张表已存在而账本未登记，禁止直接重跑旧建表迁移或重新导入旧题。
+
+## 旧独立题库上线顺序（历史参考）
 
 **第 0 步：先把 GitHub 仓库改成私有。** 这一步完成前，不要推送这个分支。
 
@@ -59,7 +69,7 @@ npm run test:arena
 - 未登录用户拿不到题目；任何客户端都不能直接读题库表。
 - 提交之前拿不到答案和解析，同一次发题只有第一次作答有效。
 - 每个账号限制为每分钟 30 题、每 24 小时 300 题，改动时修改 `arena_next_question` 里的 `per_minute` 和 `per_day`。超限时游戏发基础奖励，不会卡住。
-- 防不住有账号的人慢慢抄题：按上限算，一个账号约两天可以看到全部 471 题。
+- 防不住有账号的人慢慢抄题：旧独立题库的 471 题按旧限流约两天可被一个账号逐题收集；当前正式题库的可用数量取决于已发布且符合游戏格式的题目，限流不能彻底防止收集。
 - 游戏引擎和美术会被下载到浏览器，已压缩混淆，但无法彻底隐藏。
 - 分数目前只在浏览器本地计算和保存，以后做排行榜要改成由服务器记录。
 

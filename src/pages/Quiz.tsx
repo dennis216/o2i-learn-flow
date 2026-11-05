@@ -24,7 +24,7 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, continuous, ret
   const writing = useRef(false);
   const question = session?.questions[index];
   // Continuous sessions own their capture; never time the same draft twice.
-  const delegated = session?.mode === 'continuous' && !questionId;
+  const delegated = (session?.mode === 'continuous' && !questionId) || session?.source === 'arena';
   const tracking = usePracticeCapture(user!.id, sessionId, delegated ? undefined : question, busy || finished || !!saveError);
   const selected = question?.attempt?.selected_option_id ?? tracking.capture.selected;
   const elapsed = question?.attempt?.elapsed_seconds ?? Math.floor(tracking.capture.milliseconds / 1000);
@@ -63,6 +63,16 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, continuous, ret
   };
   if (error) return <div role="alert" className="space-y-4"><p>Could not load this practice session. {error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div>;
   if (!session) return <p role="status">Loading your published questions…</p>;
+  if (session.source === 'arena') return <section className="space-y-5">
+    <h1 className="text-2xl font-bold">Arena · Saved answers</h1>
+    <p>These answers count in your learning statistics and Review. Continue playing in Arena; use Practice this Topic below for normal practice.</p>
+    <Button asChild variant="outline"><Link to="/arena">Back to Arena</Link></Button>
+    {(questionId ? session.questions.filter(q => q.question_id === questionId && q.attempt) : session.questions.filter(q => q.attempt)).map(q => <Card key={q.question_id}><CardContent className="space-y-4 p-5">
+      <p className="text-sm text-muted-foreground">Saved {new Date(q.attempt!.submitted_at).toLocaleString()}</p>
+      <QuestionBody question={q} selected={q.attempt!.selected_option_id} disabled onSelect={() => {}} />
+      <SavedAnswer question={q} />
+    </CardContent></Card>)}
+  </section>;
   if (delegated) return <ContinuousPractice initial={session} returnTo={returnTo} />;
   if (!session.questions.length) return <div className="space-y-4"><h1 className="text-2xl font-bold">Practice for this topic is being prepared. Stay tuned.</h1>{courseId && <Link className="underline" to={returnTo ?? courseLocation(courseId, topicId)}>Back to Course</Link>}</div>;
   if (finished) return <div className="space-y-5"><h1 className="text-3xl font-bold">Practice complete</h1>{rationale && <p aria-label="Selection rationale" className="text-sm text-muted-foreground">{rationale}</p>}<p>{session.questions.filter(q => q.attempt?.is_correct).length}/{session.questions.length} correct</p><Button onClick={() => onNextSet(session.topic_id, session.course_id)}>Start another set <ArrowRight /></Button>{session.questions.map(q => <Card key={q.question_id}><CardContent className="p-5"><MarkdownWithMath content={q.stem} strictMath /><SavedAnswer question={q} courseId={session.course_id} /></CardContent></Card>)}</div>;

@@ -60,7 +60,7 @@ export type ContinuousNextResult = 'issued' | 'topic_exhausted' | 'all_exhausted
 export interface PracticeSession {
   id: string; topic_id: string | null; course_id?: string | null; course_scope?: string | null; created_at: string;
   selection_summary?: SelectionSummary | null; adaptation_summary?: AdaptationSummary | null; questions: IssuedPracticeQuestion[];
-  mode?: 'set' | 'continuous'; ended_at?: string | null; continuous?: ContinuousState; next_result?: ContinuousNextResult;
+  source?: 'practice' | 'arena'; mode?: 'set' | 'continuous'; ended_at?: string | null; continuous?: ContinuousState; next_result?: ContinuousNextResult;
 }
 export interface OpenContinuousPractice { id: string; topic_id: string | null; course_id: string | null; created_at: string; topic_code: string | null; topic_title: string | null; answered_count: number }
 const reasonText: Record<ContinuousReason['kind'], (r: ContinuousReason) => string> = {
@@ -78,25 +78,23 @@ export function topicStatusBasis(t: PracticeRecapTopic): string {
 }
 export interface RecentPracticeAnswer {
   id: string; session_id: string; question_id: string; version_id: string; selected_option_id: string;
-  is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string;
+  is_correct: boolean; submitted_at: string; elapsed_seconds: number | null; topic_code: string; topic_title: string; source?: 'practice' | 'arena';
 }
-export interface PracticeStatistics { sessionCount: number; attemptCount: number; correctCount: number }
+export interface PracticeSourceStatistics { source: 'practice' | 'arena'; sessionCount: number; attemptCount: number; correctCount: number }
+export interface PracticeStatistics { sessionCount: number; attemptCount: number; correctCount: number; sources: PracticeSourceStatistics[] }
 
 export async function loadPracticeStatistics(client: SupabaseClient<Database>, userId: string): Promise<PracticeStatistics> {
   if (!uuid.test(userId)) throw new Error('Sign in to load your practice statistics.');
-  // shortcut: counts use separate snapshots; use one aggregate RPC if atomic reporting becomes necessary.
-  const results = await Promise.all([
-    client.from('question_practice_sessions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-    client.from('question_practice_attempts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-    client.from('question_practice_attempts').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_correct', true),
-  ]);
-  for (const result of results) {
-    if (result.error) throw new Error(result.error.message);
-    if (!Number.isSafeInteger(result.count) || result.count! < 0) throw new Error('Could not verify account practice statistics.');
-  }
-  const [sessionCount, attemptCount, correctCount] = results.map(result => result.count!);
-  if (correctCount > attemptCount || (attemptCount > 0 && sessionCount === 0)) throw new Error('Practice statistics changed while loading. Retry to refresh them.');
-  return { sessionCount, attemptCount, correctCount };
+  const { data, error } = await client.rpc('get_question_practice_statistics', { _user_id: userId });
+  if (error) throw new Error(error.message);
+  const stats = data as unknown as PracticeStatistics;
+  const valid = (row: PracticeSourceStatistics | PracticeStatistics) => row && [row.sessionCount, row.attemptCount, row.correctCount].every(n => Number.isSafeInteger(n) && n >= 0)
+    && row.correctCount <= row.attemptCount && (row.attemptCount === 0 || row.sessionCount > 0);
+  if (!valid(stats) || !Array.isArray(stats.sources) || stats.sources.length !== 2
+    || new Set(stats.sources.map(row => row?.source)).size !== 2 || stats.sources.some(row => !valid(row) || !['practice', 'arena'].includes(row.source))
+    || (['sessionCount', 'attemptCount', 'correctCount'] as const).some(key => stats.sources.reduce((total, row) => total + row[key], 0) !== stats[key]))
+    throw new Error('Could not verify account practice statistics. Retry to refresh them.');
+  return stats;
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -117,7 +115,8 @@ export function readPracticeSession(value: unknown, expectedId: string): Practic
   const raw = value as PracticeSession;
   const s = raw?.adaptation_summary != null ? { ...raw, selection_summary: raw.adaptation_summary } : raw;
   const continuous = s?.mode === 'continuous';
-  if (!s || s.id !== expectedId || !Array.isArray(s.questions) || s.questions.length > (continuous ? 100 : 5)
+  if (!s || s.id !== expectedId || !Array.isArray(s.questions) || s.questions.length > (continuous || s.source === 'arena' ? 100 : 5)
+    || (s.source !== undefined && !['practice', 'arena'].includes(s.source)) || (s.source === 'arena' && continuous)
     || new Set(s.questions.map(q => q.question_id)).size !== s.questions.length
     || s.questions.some(q => !uuid.test(q.question_id) || !uuid.test(q.version_id) || !q.stem || !q.topic?.id
       || !Array.isArray(q.skills) || !Array.isArray(q.options) || q.options.length < 2 || q.options.length > 6
@@ -251,6 +250,7 @@ export async function loadPracticeHistory(client: SupabaseClient<Database>, inco
   if (!Array.isArray(rows) || rows.length > 10 || new Set(rows.map(a => a?.id)).size !== rows.length
     || rows.some(a => !a || typeof a !== 'object' || Array.isArray(a)
       || ![a.id, a.session_id, a.question_id, a.version_id, a.selected_option_id].every(value => typeof value === 'string' && uuid.test(value))
+      || (a.source !== undefined && !['practice', 'arena'].includes(a.source))
       || typeof a.is_correct !== 'boolean' || (incorrectOnly && a.is_correct)
       || typeof a.submitted_at !== 'string' || !Number.isFinite(Date.parse(a.submitted_at))
       || typeof a.topic_code !== 'string' || !a.topic_code.trim() || typeof a.topic_title !== 'string' || !a.topic_title.trim()))
