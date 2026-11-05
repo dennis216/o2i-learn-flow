@@ -1906,6 +1906,12 @@ export type Database = {
       }
     }
     Functions: {
+      arena_catalog: { Args: never; Returns: Json }
+      arena_next_question: {
+        Args: { _current_unit: number; _prefer_current?: boolean; _run_id: string; _tier: number; _units: number[] }
+        Returns: Json
+      }
+      arena_submit_answer: { Args: { _issue_id: string; _selected: number }; Returns: Json }
       list_saved_course_lessons: { Args: Record<PropertyKey, never>; Returns: Json }
       save_course_lesson: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path: string | null; _expected_revision: number; _expected_lesson_id: string | null }; Returns: undefined }
       share_course_lesson: { Args: { _course_id: string; _topic_id: string; _other_course_id: string; _use_other: boolean; _expected_lesson_id: string | null; _expected_revision: number; _expected_other_lesson_id: string | null; _expected_other_revision: number }; Returns: undefined }
