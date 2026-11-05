@@ -51,16 +51,21 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-border bg-background shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 justify-between">
-          <div className="flex items-center">
+      <div className="px-4 sm:px-6">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
               <img src="/o2i-logo.jpg" alt="O2I Institute" className="h-8 w-8 rounded-full object-cover" />
               <span className="whitespace-nowrap text-xl font-bold text-primary">O2I Institute</span>
             </Link>
           </div>
 
-          <div className="hidden items-center space-x-4 xl:flex"><NavLinks /><AuthButtons /></div>
+          <div className="hidden min-w-0 flex-1 items-center gap-4 xl:flex">
+            <div role="region" aria-label="Scrollable navigation" tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <div className="flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0"><NavLinks /></div>
+            </div>
+            <div className="shrink-0"><AuthButtons /></div>
+          </div>
 
           <div className="flex items-center xl:hidden">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
