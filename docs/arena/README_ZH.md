@@ -35,13 +35,24 @@
 完整版 HTML（含题库）只保存在仓库外。拿到新版本后运行：
 
 ```bash
-npm install --no-save esbuild
+npm install --no-save esbuild typescript
 node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路径.json>
 npm run test:arena
 ```
 
 脚本依赖游戏代码的具体写法，新版本改动过这些地方时会直接报错，不会悄悄产出错误文件。
 题目有改动时，重新运行导入脚本：相同 id 会被覆盖。要下架题目，把 `active` 改成 false。
+
+## 语言切换
+
+游戏右上角可以切换 English / 中文，选择保存在玩家的浏览器里。首次打开时，浏览器语言是中文就显示中文。切换会重新加载游戏，所以进行中的一局里不能切换。
+
+**题目、选项和解析始终是英文**，它们是服务器发来的数据，不会被翻译。翻译只作用于游戏代码里的文字：
+
+- 词表在 `scripts/arena/zh-CN.json`，运行 `prepare-game.mjs` 时写入游戏。
+- 模板用 `{}` 按顺序占位，需要调整顺序或省略时用 `{0}`、`{1}`。
+- 词表用到新汉字时，构建会报错。用完整版 Cubic 11 字体运行 `python3 scripts/arena/subset-zh-font.py <Cubic_11.ttf>` 重建字体子集。字体授权见 `scripts/arena/fonts/Cubic-11-OFL.txt`。
+- 新版游戏如果增加了文字，没进词表的部分会继续显示英文，不会报错，发布前要切到中文检查一遍。
 
 ## 能防什么，不能防什么
 
