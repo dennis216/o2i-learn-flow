@@ -17,6 +17,8 @@
     "test:question-bank:browser": "node --experimental-strip-types scripts/question-bank/task4d-browser.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:arena": "node --experimental-strip-types --test src/lib/arenaBridge.test.mjs scripts/arena/public-game.test.mjs",
+    "test:arena:db": "node --test supabase/tests/arena_game.integration.test.mjs",
     "test:student-practice": "node --experimental-strip-types --test src/lib/studentPractice.test.mjs src/lib/practiceCapture.test.mjs src/lib/practiceAnalysis.test.mjs src/lib/practiceTopics.test.mjs",
     "test:practice-topics:browser": "node scripts/practice-topics-browser.test.mjs",
     "test:dialogs:browser": "node scripts/dialog-scroll-browser.test.mjs",
