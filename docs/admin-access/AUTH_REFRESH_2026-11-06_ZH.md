@@ -27,3 +27,7 @@
 运行 `node scripts/admin-access/serve-auth-refresh-fixture.mjs`，打开 `http://127.0.0.1:5197/__auth-refresh-test`。添加 `O2I_AUTH_REFRESH_BASELINE=1` 则在 5198 端口运行修复前对照。
 
 在 Question Bank → New question 输入题干，用页面列出的 Alt 快捷键切换合成权限状态。服务仅监听本机，测试 mock 不进入生产入口。上述本地结果不代替部署后的真实管理员发布验收。
+
+## 生产验收
+
+修复提交 `119c0bf` 已通过 Lovable 发布；两个正式域名实际的 `Admin-CKQoC3hS.js` 均包含新加载条件。真实管理员页面重新加载后，下一批 20 道选择在多次浏览器操作间保留并完成发布；数据库累计本次转录题 100 道，内容、确认与发布事件回读通过。未更改后台 RPC、RLS 或 Storage 权限。
