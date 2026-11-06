@@ -35,6 +35,7 @@ export default function Navbar() {
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />Playground</Button></Link>
       <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>Solution Requests</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />Team</Button></Link>
+      <Button variant="ghost" asChild className={mobile ? 'w-full justify-start' : ''}><Link to="/about" onClick={closeMobileMenu}>About Us</Link></Button>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>Retry permissions</Button>}
     </>
@@ -51,7 +52,7 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-border bg-background shadow-sm">
-      <div className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
@@ -62,7 +63,7 @@ export default function Navbar() {
 
           <div className="hidden min-w-0 flex-1 items-center gap-4 xl:flex">
             <div role="region" aria-label="Scrollable navigation" tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <div className="flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0"><NavLinks /></div>
+              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0"><NavLinks /></div>
             </div>
             <div className="shrink-0"><AuthButtons /></div>
           </div>

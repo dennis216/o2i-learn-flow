@@ -22,6 +22,7 @@ const Admin = lazy(() => import('@/pages/Admin'));
 const LegacyVideoRedirect = lazy(() => import('@/components/courses/LegacyVideoRedirect'));
 const AITutor = lazy(() => import('@/pages/AITutor'));
 const Team = lazy(() => import('@/pages/Team'));
+const About = lazy(() => import('@/pages/About'));
 const Playground = lazy(() => import('@/pages/Playground'));
 const Arena = lazy(() => import('@/pages/Arena'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
@@ -67,6 +68,7 @@ export default function App() {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/team" element={<Team />} />
+                  <Route path="/about" element={<About />} />
                   <Route path="/learn" element={<Navigate to="/courses" replace />} />
                   <Route path="/learn/:lessonId" element={<Navigate to="/courses" replace />} />
                   <Route path="/review" element={<Review />} />
