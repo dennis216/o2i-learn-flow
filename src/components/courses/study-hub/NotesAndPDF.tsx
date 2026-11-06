@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CourseVideo, ChatMessage, TranscriptEntry } from '../types';
 import MarkdownWithMath from '@/components/MarkdownWithMath';
 import { supabase } from '@/integrations/supabase/client';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 
 const SUPABASE_URL = 'https://lxoaeaewcrshjkigzyqe.supabase.co';
 
@@ -209,7 +210,7 @@ export function NotesAndPDF({ video, currentTime }: NotesAndPDFProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[400px]">
+    <div className={`grid grid-cols-1 gap-4 min-h-[400px] ${AI_TUTOR_ENABLED ? 'lg:grid-cols-2' : ''}`}>
       {/* PDF Preview */}
       <div className="border rounded-lg overflow-hidden bg-muted/20">
         <div className="p-3 border-b bg-muted/50 flex items-center gap-2">
@@ -234,7 +235,7 @@ export function NotesAndPDF({ video, currentTime }: NotesAndPDFProps) {
       </div>
 
       {/* AI Chat */}
-      <div className="border rounded-lg flex flex-col bg-background">
+      {AI_TUTOR_ENABLED && <div className="border rounded-lg flex flex-col bg-background">
         <div className="p-3 border-b bg-muted/50 flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
           <span className="font-medium text-sm">Ask AI about Notes</span>
@@ -309,7 +310,7 @@ export function NotesAndPDF({ video, currentTime }: NotesAndPDFProps) {
             </Button>
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

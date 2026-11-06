@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { QuestionBankListItem } from "@/lib/questionBankDraftRepository";
 import { QuestionPublicationError } from "@/lib/questionBankPublication";
@@ -52,9 +52,9 @@ export function QuestionBankPublicationDialog({ single, onClose, onChanged, onSu
     } finally { writing.current = false; setBusy(false); }
   };
   return <Dialog open onOpenChange={open => { if (!open && !writing.current) onClose(); }}>
-    <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-      <DialogHeader><DialogTitle>{single ? "Publish problem" : "Publish all · Select problems"}</DialogTitle>
-        <DialogDescription>Review the selected problems and deselect any with issues. Confirm once below, then click Publish. Opening, selection, preview and Cancel write nothing.</DialogDescription></DialogHeader>
+    <DialogContent scrollable className="max-h-[90vh] max-w-4xl">
+      <DialogHeader><DialogTitle>{single ? "Publish problem" : "Publish all · Select problems"}</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>Review the selected problems and deselect any with issues. Confirm once below, then click Publish. Opening, selection, preview and Cancel write nothing.</DialogDescription>
       {busy && <p role="status">{writing.current ? "Recording confirmation and publishing…" : "Loading the complete publication scope…"}</p>}
       {error && <div role="alert" className="space-y-2 rounded border border-destructive/50 p-3 text-sm"><p>{error}</p>
         <details><summary>Technical details</summary><p className="break-words">{technical}</p></details></div>}
@@ -83,6 +83,7 @@ export function QuestionBankPublicationDialog({ single, onClose, onChanged, onSu
         <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" disabled={busy && writing.current} onClick={onClose}>Cancel</Button>
           <Button type="button" disabled={busy || !!error || needsReload || !!readiness} onClick={() => void publish()}>Publish {selected.size} problems</Button></div>
       </div>
+    </DialogBody>
     </DialogContent>
   </Dialog>;
 }

@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { NO_ADMIN_ACCESS, type AdminAccess } from '@/lib/adminAccess';
+import { loadAdminAccess } from '@/lib/adminAccessRepository';
+import { clearPracticeCaptures, initializePracticeCaptureTab } from '@/lib/practiceCapture';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AuthError, User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +19,11 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  adminAccess: AdminAccess;
+  accessLoading: boolean;
+  accessError: string | null;
+  legacyAdminAccess: boolean;
+  retryAdminAccess: () => void;
   isSuperAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
@@ -38,29 +46,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAccess, setAdminAccess] = useState<AdminAccess>(NO_ADMIN_ACCESS);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [legacyAdminAccess, setLegacyAdminAccess] = useState(false);
+  const retryAccess = useRef<() => void>(() => {});
+  const isAdmin = Object.values(adminAccess).some(Boolean);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    try { window.name = initializePracticeCaptureTab(sessionStorage, window.name, crypto.randomUUID()); } catch { /* Capture will be marked incomplete. */ }
     let active = true;
     let revision = 0;
     let currentUserId: string | undefined;
+    let currentSession: Session | null = null;
 
     const applySession = (nextSession: Session | null) => {
       if (!active) return;
       const requestRevision = ++revision;
       const isCurrent = () => active && revision === requestRevision;
       const nextUserId = nextSession?.user.id;
+      currentSession = nextSession;
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       if (nextUserId !== currentUserId || !nextUserId) {
+        try { clearPracticeCaptures(sessionStorage, currentUserId && nextUserId !== currentUserId ? undefined : nextUserId); } catch { /* Storage may be disabled. */ }
         setProfile(null);
-        setIsAdmin(false);
+        setAdminAccess(NO_ADMIN_ACCESS);
         setIsSuperAdmin(false);
+        setLegacyAdminAccess(false);
       }
       currentUserId = nextUserId;
       setLoading(false);
+      setAccessLoading(!!nextUserId);
+      setAccessError(null);
       if (!nextUserId) return;
 
       // Supabase requests must run outside the auth callback's lock.
@@ -74,26 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }, error => {
             if (isCurrent()) { setProfile(null); console.error('Error fetching profile:', error); }
           });
-        void Promise.all([
-          supabase.rpc('has_role', { _user_id: nextUserId, _role: 'admin' }),
-          supabase.rpc('is_super_admin', { _user_id: nextUserId }),
-        ]).then(([adminResult, superAdminResult]) => {
+        void loadAdminAccess(supabase, nextUserId).then(({ access, legacy }) => {
           if (!isCurrent()) return;
-          if (adminResult.error || superAdminResult.error) {
-            setIsAdmin(false); setIsSuperAdmin(false);
-            console.error('Error checking account roles:', adminResult.error ?? superAdminResult.error);
-            return;
-          }
-          const superAdmin = superAdminResult.data === true;
-          setIsSuperAdmin(superAdmin);
-          setIsAdmin(adminResult.data === true || superAdmin);
+          setAdminAccess(access);
+          setLegacyAdminAccess(legacy);
+          setIsSuperAdmin(access.users);
+          setAccessLoading(false);
         }).catch(error => {
           if (!isCurrent()) return;
-          setIsAdmin(false); setIsSuperAdmin(false);
-          console.error('Error checking account roles:', error);
+          setAdminAccess(NO_ADMIN_ACCESS); setIsSuperAdmin(false); setAccessLoading(false);
+          setLegacyAdminAccess(false);
+          setAccessError('Could not load account permissions. Please retry. If this continues, contact the site administrator.');
+          console.error('Error checking account permissions:', error);
         });
       }, 0);
     };
+    retryAccess.current = () => applySession(currentSession);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       applySession(nextSession);
@@ -119,15 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       applySession(null);
     });
 
-    return () => { active = false; ++revision; subscription.unsubscribe(); };
+    return () => { active = false; ++revision; retryAccess.current = () => {}; subscription.unsubscribe(); };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    // Use production domain for auth emails, fallback to current origin for local dev
-    const isProduction = window.location.hostname !== 'localhost';
-    const redirectUrl = isProduction 
-      ? 'https://www.o2iinstitute.org/' 
-      : `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -170,6 +182,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     profile,
     isAdmin,
+    adminAccess,
+    accessLoading,
+    accessError,
+    legacyAdminAccess,
+    retryAdminAccess: () => retryAccess.current(),
     isSuperAdmin,
     loading,
     signUp,

@@ -30,6 +30,23 @@ test('saved draft reuses intake validation; pending, notes, flags and own extern
   assert.deepEqual(validated.report.questions[0].aiFlags,['ANSWER_AI_INFERRED']);
   assert.equal(validated.report.questions[0].options[0].explanation,'Original choice note');
 });
+test('native Arena provenance round-trips without fake PDF metadata and cannot bypass ordinary workbook rules',async()=>{
+  const s=snapshot();s.question.external_id='arena_legacy_synthetic';
+  Object.assign(s.version,{source_document:'Legacy Arena bank',source_page:null,source_reference:'arena:synthetic',source_locator:null});
+  s.version.import_evidence.legacy_arena={source_id:'synthetic',source_sha256:'a'.repeat(64),batch_id:'synthetic-pilot',conversion_version:'v1'};
+  const sheets=draftSnapshotSheets(s);
+  assert.equal(validateDraftMetadata(sheets,refs).plan.canSave,false,'Uploaded workbook receives no source bypass');
+  const validated=validateDraftMetadata(sheets,refs,s);
+  assert.equal(validated.plan.canSave,true,JSON.stringify(validated.plan.batchReasons));
+  assert.equal(validated.metadata.source_page,null);
+  assert.deepEqual(validated.plan.payload[0].import_evidence.legacy_arena,s.version.import_evidence.legacy_arena);
+  assert.equal(validated.report.questions[0].humanReviewStatus,'pending');
+  assert.equal(validateDraftMetadata(applyQuestionFieldEdit(sheets,2,'source_page','1'),refs,s).plan.canSave,false);
+  const c=client('v');await updateQuestionBankDraft(c,s,sheets,refs);
+  assert.equal(c.calls[0][1]._metadata.source_page,null);
+  s.version.import_evidence.legacy_arena.source_sha256='invalid';
+  assert.equal(validateDraftMetadata(sheets,refs,s).plan.canSave,false);
+});
 test('canonical errors, locator mismatch and unavailable references block save immediately',()=>{
   const original=draftSnapshotSheets(snapshot());
   for(const [field,value] of [['primary_topic_code','9.9'],['practice_skill_codes','9.Z'],['source_page','14'],['difficulty','fictional']]) {

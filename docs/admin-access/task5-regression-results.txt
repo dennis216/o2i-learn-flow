@@ -1,0 +1,52 @@
+Current working tree regression, local fixtures/services only.
+Unit checks: question bank 91/91; student practice 21/21; courses 7/7; admin/deletion 6/6 (125 total).
+TypeScript and build passed. Targeted ESLint: zero errors, two existing warnings.
+
+Existing course browser regression:
+PASS task2: Courses entry, nested creation/subjects/videos, course context, creation routes directly to outline
+PASS task3: clickable outline, merged title/Topic mapping, chosen content preview, draft save, dirty-close cancellation, split restores Topic rows
+PASS task4: nested video library, shared impact, raw invalid transcript retained and blocked, metadata round trip, referenced deletion disabled, filters/search
+PASS course practice browser: scoped entry, safe question render, submitted result and return to original expanded Topic
+PASS course practice browser: scoped entry, safe question render, submitted result and return to original expanded Topic
+PASS task5: original Unit layout, merged title once, CB labels, uncovered Topic retained, lazy player, mobile width, both canonical Topic practice submits return to original lesson, old Topic/video links
+PASS HTML game browser: deferred download, runnable inline script, parent/storage isolation, blocked fetch and unload on close
+PASS task6: global old video/Learn links and sandboxed game interaction
+
+Existing practice / Review / Profile / adaptation regression:
+PASS Actual local migrations and canonical 111 Topics / 23 Skills loaded
+PASS Copyable deployment transaction, matching ledger and all catalog/privilege checks
+PASS Review forward migration works before random/adaptive migrations, rejects replay, and passes ledger/privilege checks
+PASS Release preflight identifies absent, matching and drifted stages without returning account or question content
+PASS Zero published questions returns an actual empty session, not sample questions
+PASS Canonical Topic counts, max five distinct, fewer than five, draft/withdrawn/archive exclusion and safe delivery
+PASS Session ownership, scope consistency, anonymous and private helpers denied; raw answers retain admin-only RLS
+PASS Server correct/wrong grading, immutable own attempts, account isolation, concurrent retries once, saved result readback
+PASS Review RPC: latest 10, wrong answers beyond latest 10, deterministic ties, legacy compatibility, anonymous/null rejection and account isolation
+PASS Profile database: exact full-history counts beyond ten, unstarted/partial sets, repeat submissions counted once, RLS and anonymous rejection
+PASS Injected server failure atomically rolls back attempt and grading
+PASS Published revision does not change the answer or identity of an already issued version
+PASS Random selection: twelve-question pool, ten distinct across two sets, per-account concurrency and stable retry/snapshot
+PASS Random selection: eight-question exhaustion uses three unseen then oldest; one/four-question pools remain usable
+PASS New frontend against an actual pre-v2 backend: missing RPC safely falls back, server grades and persists, reload restores, repeat is idempotent and foreign account is denied
+PASS Adaptation v2: random-only database upgrades directly without replaying the optional v1 migration
+PASS Adaptive: cold start medium, five server-graded correct answers select hard, frozen rationale and account/global-scope isolation
+PASS Adaptive: exact 50/80 percent thresholds, fewer-than-five cold start, ten distinct limit and latest-result deduplication
+PASS Adaptive: missing difficulty falls back within Topic, exhausted pool stays unique, unseen outranks difficulty and ties prefer lower difficulty
+PASS Adaptive: later Topic/difficulty revision does not rewrite the historical signal or count it in the new Topic
+PASS Adaptation v2: full selection trajectory, server grading, frozen telemetry retries, invalid/foreign trajectories rejected and unsubmitted projection safe
+PASS Adaptation v2: Topic isolation, Quick cross-Topic 1 error + 1 slow + 3 regular, unseen distinct alternatives, missing reinforcement fallback and immutable summary
+PASS Adaptation v2: exact 144/288/432 boundaries, correct-only slow signals, incomplete timing excluded, deduplication and latest-result resolution
+PASS Adaptation v2: exact full-history/Unit/Topic aggregates, half-open date filters, legacy timing exclusion, account isolation, admin-only version-specific average/median and retained history
+PASS Browser real authenticated practice, safe network response, correct/wrong results, server failure/retry, lost response lookup and refresh/account history
+PASS Practice Review entry: beside start, desktop/mobile navigation, no global menu entry and no mobile overflow
+PASS Review browser: real account fields/time, no sample data, wrong filter, exact completed/partial-session solution, refresh, invalid/unanswered links fail read-only
+PASS Review browser: history failure/retry, malformed response, distinct empty states, stale filter response ignored, loading hides old rows and mobile layout
+PASS Profile browser: database-matched counts, refresh, own account fields, hidden placeholders, outage/missing-count errors and retry
+PASS Profile browser: cross-tab A/B switch, late A counts/profile/super-admin responses ignored, zero-answer sets, mobile and both cross-tab/local logout
+PASS Legacy Learn redirects to Courses, Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state
+PASS Review browser: cross-tab A-to-B switch resets mounted view/filter, late A response cannot refill B, foreign solution denied and logout removes history
+PASS Logout/account switch removes prior account data; another account cannot resume it; mobile layout and loopback-only network
+PASS Adaptation v2 browser: B/A/B/A trajectory, duplicate-click suppression, monotonic running time, hidden-tab pause, manual pause, same-tab refresh recovery, complete timed submission, post-submit-only correctness and saved history
+PASS Adaptation v2 browser: server-matched full-history statistics, custom local dates, Unit/Topic drilldown, real failure/retry and mobile layout
+PASS Adaptation v2 browser: incomplete capture warning, logout draft cleanup, foreign saved trajectory denied, actual Admin current/history version statistics and retry
+Completed 36 checks; local containers removed.

@@ -20,6 +20,7 @@ export type Database = {
           user_id: string
           topic_id: string | null
           created_at: string
+          source: "practice" | "arena"
           selection_summary: Json | null
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           user_id: string
           topic_id?: string | null
           created_at?: string
+          source?: "practice" | "arena"
           selection_summary?: Json | null
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           user_id?: string
           topic_id?: string | null
           created_at?: string
+          source?: "practice" | "arena"
           selection_summary?: Json | null
         }
         Relationships: []
@@ -68,6 +71,8 @@ export type Database = {
           version_id: string
           selected_option_id: string
           is_correct: boolean
+          selection_trajectory: Json | null
+          timing_complete: boolean
           elapsed_seconds: number | null
           submitted_at: string
         }
@@ -79,6 +84,8 @@ export type Database = {
           version_id: string
           selected_option_id: string
           is_correct: boolean
+          selection_trajectory?: Json | null
+          timing_complete?: boolean
           elapsed_seconds?: number | null
           submitted_at?: string
         }
@@ -90,6 +97,8 @@ export type Database = {
           version_id?: string
           selected_option_id?: string
           is_correct?: boolean
+          selection_trajectory?: Json | null
+          timing_complete?: boolean
           elapsed_seconds?: number | null
           submitted_at?: string
         }
@@ -303,6 +312,18 @@ export type Database = {
           },
         ]
       }
+      course_topic_content: {
+        Row: { course_id: string; topic_id: string; is_published: boolean; game_path: string | null; updated_at: string }
+        Insert: { course_id: string; topic_id: string; is_published?: boolean; game_path?: string | null; updated_at?: string }
+        Update: { is_published?: boolean; game_path?: string | null; updated_at?: string }
+        Relationships: []
+      }
+      course_topic_videos: {
+        Row: { course_id: string; topic_id: string; video_id: string; order_index: number }
+        Insert: { course_id: string; topic_id: string; video_id: string; order_index: number }
+        Update: { order_index?: number }
+        Relationships: []
+      }
       course_videos: {
         Row: {
           course_id: string
@@ -383,6 +404,7 @@ export type Database = {
           id: string
           image_url: string | null
           instructor_id: string
+          practice_course_scope: "AB" | "BC" | "BOTH" | null
           is_published: boolean
           level: string
           price: number | null
@@ -397,6 +419,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id: string
+          practice_course_scope?: "AB" | "BC" | "BOTH" | null
           is_published?: boolean
           level: string
           price?: number | null
@@ -411,6 +434,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructor_id?: string
+          practice_course_scope?: "AB" | "BC" | "BOTH" | null
           is_published?: boolean
           level?: string
           price?: number | null
@@ -1337,7 +1361,7 @@ export type Database = {
           source_document: string
           source_locator: string | null
           source_locator_verified: boolean
-          source_page: number
+          source_page: number | null
           source_question_number: string | null
           source_reference: string | null
           source_type: Database["public"]["Enums"]["question_source_type"] | null
@@ -1366,7 +1390,7 @@ export type Database = {
           source_document: string
           source_locator?: string | null
           source_locator_verified?: boolean
-          source_page: number
+          source_page: number | null
           source_question_number?: string | null
           source_reference?: string | null
           source_type?: Database["public"]["Enums"]["question_source_type"] | null
@@ -1395,7 +1419,7 @@ export type Database = {
           source_document?: string
           source_locator?: string | null
           source_locator_verified?: boolean
-          source_page?: number
+          source_page?: number | null
           source_question_number?: string | null
           source_reference?: string | null
           source_type?: Database["public"]["Enums"]["question_source_type"] | null
@@ -1891,11 +1915,34 @@ export type Database = {
         Returns: Json
       }
       arena_submit_answer: { Args: { _issue_id: string; _selected: number }; Returns: Json }
+      list_saved_course_lessons: { Args: Record<PropertyKey, never>; Returns: Json }
+      save_course_lesson: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path: string | null; _expected_revision: number; _expected_lesson_id: string | null }; Returns: undefined }
+      share_course_lesson: { Args: { _course_id: string; _topic_id: string; _other_course_id: string; _use_other: boolean; _expected_lesson_id: string | null; _expected_revision: number; _expected_other_lesson_id: string | null; _expected_other_revision: number }; Returns: undefined }
+      restore_course_lesson: { Args: { _course_id: string; _topic_id: string; _source_lesson_id: string; _source_revision: number; _expected_lesson_id: string | null; _expected_revision: number }; Returns: undefined }
+      resolve_course_video: { Args: { _video_id: string }; Returns: Json }
+      list_course_practice_topics: { Args: { _course_id: string }; Returns: Json }
+      start_course_question_practice: { Args: { _session_id: string; _course_id: string; _topic_id: string }; Returns: Json }
+
+      get_course_outline: { Args: { _course_id: string }; Returns: Json }
+      get_course_topic: { Args: { _course_id: string; _topic_id: string }; Returns: Json }
+      save_course_topic: { Args: { _course_id: string; _topic_id: string; _is_published: boolean; _videos: Json; _game_path?: string | null }; Returns: undefined }
+
       list_question_practice_topics: { Args: Record<PropertyKey, never>; Returns: Json }
+      arena_practice_catalog: { Args: Record<PropertyKey, never>; Returns: Json }
+      arena_practice_next_question: { Args: { _run_id: string; _units: number[]; _current_unit: number; _tier: number; _prefer_current?: boolean }; Returns: Json }
+      arena_practice_submit_answer: { Args: { _issue_id: string; _selected: number }; Returns: Json }
+      get_question_practice_statistics: { Args: { _user_id: string }; Returns: Json }
       list_question_practice_attempts: { Args: { _incorrect_only?: boolean }; Returns: Json }
       start_question_practice: { Args: { _session_id: string; _topic_id?: string }; Returns: Json }
       get_question_practice: { Args: { _session_id: string }; Returns: Json }
       submit_question_practice: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number }; Returns: Json }
+      submit_question_practice_v2: { Args: { _session_id: string; _question_id: string; _option_id: string; _elapsed_seconds?: number; _selection_trajectory?: Json; _timing_complete?: boolean }; Returns: Json }
+      start_continuous_question_practice: { Args: { _session_id: string; _topic_id?: string; _course_id?: string }; Returns: Json }
+      next_continuous_question_practice: { Args: { _session_id: string }; Returns: Json }
+      end_continuous_question_practice: { Args: { _session_id: string }; Returns: Json }
+      get_open_continuous_question_practice: { Args: Record<PropertyKey, never>; Returns: Json }
+      get_question_practice_analysis: { Args: { _from?: string; _to?: string }; Returns: Json }
+      get_question_practice_admin_statistics: { Args: { _question_id: string; _version_id?: string; _from?: string; _to?: string }; Returns: Json }
       precheck_question_publication: {
         Args: { _question_id: string; _version_id: string; _action: string }
         Returns: Json
@@ -1958,6 +2005,9 @@ export type Database = {
       }
       count_all_profiles: { Args: never; Returns: number }
       count_real_users: { Args: never; Returns: number }
+      get_admin_access: { Args: Record<PropertyKey, never>; Returns: Json }
+      has_admin_module: { Args: { _module: string }; Returns: boolean }
+      set_account_role: { Args: { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1980,7 +2030,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "instructor" | "student" | "super_admin"
+      app_role: "admin" | "instructor" | "student" | "super_admin" | "course_admin" | "question_admin"
       problem_type:
         | "geometry"
         | "algebra"
@@ -2137,7 +2187,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "instructor", "student", "super_admin"],
+      app_role: ["admin", "instructor", "student", "super_admin", "course_admin", "question_admin"],
       problem_type: [
         "geometry",
         "algebra",

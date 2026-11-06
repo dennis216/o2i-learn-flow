@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Book } from 'lucide-react';
 import { z } from 'zod';
+import { authReturnTo } from '@/lib/authReturnTo';
 
 const passwordSchema = z.string()
   .min(8, 'Password must be at least 8 characters')
@@ -33,6 +34,9 @@ export default function Auth() {
   const [passwordError, setPasswordError] = useState('');
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const requestedReturn = params.get('returnTo') ?? '/';
+  const returnTo = authReturnTo(requestedReturn);
   const { toast } = useToast();
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -70,7 +74,7 @@ export default function Auth() {
           title: "Welcome back!",
           description: "You have been signed in successfully.",
         });
-        navigate('/');
+        navigate(returnTo);
       }
     } catch (error) {
       toast({

@@ -10,6 +10,16 @@ export const QUESTION_HEADERS = [
   "human_review_status", "human_review_notes", "reviewed_by", "reviewed_at",
 ] as const;
 
+export const WORKFLOW_QUESTION_HEADERS = QUESTION_HEADERS.filter(
+  (header) => header !== "source_locator" && header !== "ai_flags",
+);
+
+export function hasQuestionBankHeaders(row: readonly unknown[]): boolean {
+  return [QUESTION_HEADERS, WORKFLOW_QUESTION_HEADERS].some((headers) =>
+    headers.every((header, index) => row[index] === header)
+    && row.slice(headers.length).every((cell) => cell == null || cell === ""));
+}
+
 export const OPTION_HEADERS = [
   "question_external_id", "option_key", "option_text", "is_correct", "misconception_code",
   "option_explanation",
@@ -45,6 +55,26 @@ export interface PreviewOption {
   explanation: string;
 }
 
+export interface LegacyArenaSource {
+  source_id: string;
+  source_sha256: string;
+  batch_id: string;
+  conversion_version: string;
+}
+
+/** Client shape check only; the database verifies the hash against the original row. */
+export function legacyArenaSource(value: unknown, externalId: string): LegacyArenaSource | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  if (typeof source.source_id !== "string" || !/^[A-Za-z0-9_.:-]+$/.test(source.source_id)
+    || externalId !== `arena_legacy_${source.source_id}`
+    || typeof source.source_sha256 !== "string" || !/^[a-f0-9]{64}$/.test(source.source_sha256)
+    || typeof source.batch_id !== "string" || !source.batch_id.trim()
+    || typeof source.conversion_version !== "string" || !source.conversion_version.trim()) return undefined;
+  return { source_id: source.source_id, source_sha256: source.source_sha256,
+    batch_id: source.batch_id, conversion_version: source.conversion_version };
+}
+
 export interface PreviewQuestion {
   row: number;
   externalId: string;
@@ -55,6 +85,7 @@ export interface PreviewQuestion {
   sourcePage: string;
   sourceQuestionNumber: string;
   sourceLocator: string;
+  legacyArena?: LegacyArenaSource;
   primaryTopicCode: string;
   practiceSkillCodes: string[];
   difficulty: string;
@@ -88,8 +119,8 @@ export interface QuestionBankReport {
 const REVIEW_GATES = [
   "math_review_status", "source_rights_status", "taxonomy_review_status", "render_review_status",
 ] as const;
-const GATE_VALUES = new Set(["pending", "passed", "failed", "blocked"]);
-const REVIEW_VALUES = new Set(["pending", "needs_correction", "blocked", "approved", "rejected"]);
+const GATE_VALUES = new Set(["pending", "reviewed", "passed", "failed", "blocked"]);
+const REVIEW_VALUES = new Set(["pending", "reviewed", "needs_correction", "blocked", "approved", "rejected"]);
 const ENUMS: Record<string, ReadonlySet<string>> = {
   difficulty: new Set(["easy", "medium", "hard"]),
   course_scope: new Set(["AB", "BC", "BOTH"]),
@@ -157,6 +188,7 @@ export async function parseQuestionBankWorkbook(bytes: ArrayBuffer): Promise<Wor
 /** Pure validation: it neither repairs cells nor writes to Supabase. */
 export function validateQuestionBankSheets(
   sheets: readonly WorkbookSheet[], canonical: CanonicalTaxonomy = {},
+  legacySources: ReadonlyMap<string, LegacyArenaSource> = new Map(),
 ): QuestionBankReport {
   const issues: ValidationIssue[] = [];
   const expectedNames = ["Questions", "Options", "Instructions"];
@@ -179,7 +211,9 @@ export function validateQuestionBankSheets(
       issues.push({ severity: "error", sheet: name, row: 1, field: "sheet", message: "Unexpected worksheet" });
     }
   }
-  const questionRows = records(sheets.find((sheet) => sheet.sheet === "Questions"), QUESTION_HEADERS, issues);
+  const questionSheet = sheets.find((sheet) => sheet.sheet === "Questions");
+  const simplified = !questionSheet?.data[0]?.includes("source_locator") && !questionSheet?.data[0]?.includes("ai_flags");
+  const questionRows = records(questionSheet, simplified ? WORKFLOW_QUESTION_HEADERS : QUESTION_HEADERS, issues);
   const optionRows = records(sheets.find((sheet) => sheet.sheet === "Options"), OPTION_HEADERS, issues);
   const topicVerified = canonical.topicCodes !== undefined;
   const skillVerified = canonical.practiceSkillCodes !== undefined;
@@ -189,6 +223,7 @@ export function validateQuestionBankSheets(
   for (const record of questionRows) {
     const get = (field: string) => text(record.cells[field]);
     const id = get("external_id").trim();
+    const legacy = legacyArenaSource(legacySources.get(id), id);
     const status = get("human_review_status").trim();
     const issue = (field: string, message: string, severity: ValidationIssue["severity"] = "error", category?: ValidationIssue["category"]) => {
       issues.push({ severity, sheet: "Questions", row: record.row, field, message, questionExternalId: id || undefined, category });
@@ -198,14 +233,20 @@ export function validateQuestionBankSheets(
         field === "calculator_policy" ? "publication_review" : undefined);
     };
 
-    for (const field of ["external_id", "source_document", "source_page", "stem", "requires_figure", "human_review_status"]) required(field);
+    for (const field of ["external_id", "source_document", "stem", "requires_figure", "human_review_status"]) required(field);
+    if (!legacy) required("source_page");
     for (const field of ["solution", "correct_option_key", "difficulty", "course_scope", "primary_topic_code", "practice_skill_codes", "representation_type"]) required(field, "review");
     for (const field of ["stem", "solution"]) {
       if (filled(record.cells[field]) && typeof record.cells[field] !== "string") issue(field, "Content must be text, not a number, date or computed formula value");
     }
     if (id && byId.has(id)) issue("external_id", "Duplicate external_id makes option associations ambiguous");
     if (get("external_id") !== id) issue("external_id", "ID has leading or trailing spaces; the preview does not repair cells");
-    if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "Enter the original PDF filename including .pdf");
+    if (legacy) {
+      if (get("source_document") !== "Legacy Arena bank") issue("source_document", "Legacy Arena source identity is read-only");
+      for (const field of ["source_page", "source_question_number", "source_locator"]) {
+        if (get(field)) issue(field, "Legacy Arena sources have no PDF page, printed number or locator");
+      }
+    } else if (get("source_document") && !/\.pdf$/i.test(get("source_document").trim())) issue("source_document", "Enter the original PDF filename including .pdf");
 
     const pageText = get("source_page").trim();
     const pageMatch = pageText.match(/^(\d+)(?:-(\d+))?$/);
@@ -217,7 +258,10 @@ export function validateQuestionBankSheets(
 
     const locator = get("source_locator").trim();
     const printedNumber = get("source_question_number").trim();
-    if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
+    if (!legacy) {
+      if (simplified && !printedNumber) issue("source_question_number", "The simplified template requires an actual printed question number");
+      else if (!printedNumber && !locator) issue("source_locator", "An unnumbered source question needs a source_locator; do not use the Excel row number");
+    }
     if (locator) {
       const locatorMatch = locator.match(/^p(\d{3,})-item(\d{2,})$/);
       if (!locatorMatch) issue("source_locator", "Use a source locator such as p012-item03");
@@ -233,6 +277,14 @@ export function validateQuestionBankSheets(
     for (const field of REVIEW_GATES) {
       gates[field] = get(field).trim();
       if (gates[field] && !GATE_VALUES.has(gates[field])) issue(field, `Invalid review gate status: ${gates[field]}`);
+    }
+    if (status === "reviewed") {
+      if (!get("reviewed_by").trim()) issue("reviewed_by", "A reviewed question needs the human reviewer's name");
+      if (!isValidReviewTimestamp(get("reviewed_at").trim())) issue("reviewed_at", "Use the actual review time in ISO 8601 format with a timezone");
+      if (!get("calculator_policy").trim()) issue("calculator_policy", "Choose a calculator policy during human review");
+      for (const field of REVIEW_GATES) {
+        if (gates[field] !== "reviewed") issue(field, "Complete this review before marking the question reviewed");
+      }
     }
     const flags = codeList(record.cells.ai_flags);
     const requiresFigure = booleanValue(record.cells.requires_figure);
@@ -264,7 +316,7 @@ export function validateQuestionBankSheets(
       row: record.row, externalId: get("external_id"), stem: get("stem"), solution: get("solution"),
       correctOptionKey: get("correct_option_key"), sourceDocument: get("source_document"),
       sourcePage: get("source_page"), sourceQuestionNumber: get("source_question_number"),
-      sourceLocator: get("source_locator"), primaryTopicCode: topic, practiceSkillCodes: skills,
+      sourceLocator: get("source_locator"), ...(legacy ? { legacyArena: legacy } : {}), primaryTopicCode: topic, practiceSkillCodes: skills,
       difficulty: get("difficulty"), courseScope: get("course_scope"),
       representationType: get("representation_type"), calculatorPolicy: get("calculator_policy"),
       requiresFigure, figureReference: get("figure_reference"), imageUrl,

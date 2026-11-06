@@ -19,6 +19,7 @@ supabase/.branches/
 *.pem
 # Limit Arena question bank: lives in the database, never in this repo
 *questions*.json
+*.dump.json
 *.key
 
 # Editor directories and files

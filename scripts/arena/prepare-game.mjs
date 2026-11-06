@@ -1,11 +1,13 @@
 // Turns a full Limit Arena HTML build into two separate outputs:
 //   1. public/games/limit-arena.html: minified, with no questions or answers.
 //   2. A private questions JSON file, for import-questions.mjs. It must stay outside this repo.
+// It also builds the English/Chinese switch from scripts/arena/zh-CN.json. Questions are
+// served as data, so they stay English: only strings in the game's own code get translated.
 //
 // node scripts/arena/prepare-game.mjs <full-game.html> --questions <outside-repo.json>
-// Needs esbuild: run `npm install --no-save esbuild` first, or point
-// O2I_ESBUILD_MODULE at an installed copy. --keep-test-hooks and --out are only
-// for local browser tests.
+// Needs esbuild and typescript: run `npm install --no-save esbuild typescript` first, or point
+// O2I_ESBUILD_MODULE at an installed copy (O2I_TYPESCRIPT_MODULE likewise for typescript).
+// --keep-test-hooks, --out and --dump-strings are only for local checks.
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve, relative } from 'node:path';
@@ -18,6 +20,7 @@ const flag = name => { const i = args.indexOf(name); return i < 0 ? undefined : 
 const input = args[0];
 const questionsPath = flag('--questions');
 const keepHooks = args.includes('--keep-test-hooks');
+const dumpStrings = flag('--dump-strings');
 const outPath = resolve(flag('--out') ?? resolve(root, 'public/games/limit-arena.html'));
 assert.ok(input && questionsPath, 'Usage: prepare-game.mjs <full-game.html> --questions <outside-repo.json>');
 const fromRoot = relative(root, resolve(questionsPath));
@@ -25,6 +28,10 @@ assert.ok(fromRoot.startsWith('..'), 'The questions file must stay outside this 
 
 const require = createRequire(import.meta.url);
 const esbuild = require(process.env.O2I_ESBUILD_MODULE ?? 'esbuild');
+const ts = require(process.env.O2I_TYPESCRIPT_MODULE ?? 'typescript');
+const zh = JSON.parse(readFileSync(new URL('./zh-CN.json', import.meta.url), 'utf8'));
+const subsetFont = readFileSync(new URL('./fonts/cubic-zh-subset.woff', import.meta.url)).toString('base64');
+const subsetChars = new Set(readFileSync(new URL('./fonts/cubic-zh-subset.chars.txt', import.meta.url), 'utf8'));
 
 let html = readFileSync(input, 'utf8');
 const swap = (from, to) => {
@@ -57,6 +64,19 @@ const questions = bank.map(q => {
 // ---- talk to the host page instead of reading QBANK
 swap('<script>\n', `<script>
 if (window.parent === window) location.replace('/arena');
+const LANG_KEY = 'cq-arena-lang';
+const __zh = (() => {
+  let saved = null;
+  try { saved = localStorage.getItem(LANG_KEY); } catch (e) {}
+  return (saved || (/^zh/i.test(navigator.language || '') ? 'zh' : 'en')) === 'zh';
+})();
+const MINIQ = [];
+if (__zh) {
+  document.documentElement.lang = 'zh-CN';
+  for (const [selector, content] of Object.entries(__ZH_STATIC__)) document.querySelectorAll(selector).forEach(el => { el.innerHTML = content; });
+  document.querySelectorAll('[aria-label="Game screen"]').forEach(el => el.setAttribute('aria-label', '游戏画面'));
+  document.getElementById('lang').title = '本局结束后才能切换语言';
+}
 const ARENA = {
   counts: {}, seq: 0, pending: new Map(),
   call(action, payload) {
@@ -138,16 +158,96 @@ swapBetween('  answer(k) {\n', '  cardsFor(opts, title, basic) {', `  answer(k) 
 
 swap('  UI.init();\n', `  UI.init();
   ARENA.call('catalog').then(r => { ARENA.counts = (r && r.counts) || {}; }, () => {});
+  $('lang').onclick = () => {
+    if (document.body.dataset.mode === 'run') return;
+    try { localStorage.setItem(LANG_KEY, __zh ? 'en' : 'zh'); } catch (e) {}
+    location.reload();
+  };
 `);
+
+// ---- language switch: Chinese font, HUD text and the header button
+swap('<button id="music" type="button"', `<button id="lang" type="button" title="Finish the run to change language">中文</button>
+    <button id="music" type="button"`);
+swap("--pix: 'FusionPixel', 'Noto Sans SC', monospace;", "--pix: 'FusionPixel', 'CubicZh', 'Noto Sans SC', monospace;");
+swap("@font-face { font-family: 'FusionPixel';", `@font-face { font-family: 'CubicZh'; src: url(data:font/woff;base64,${subsetFont}) format('woff'); }
+body[data-mode="run"] #lang { opacity: 0.45; cursor: not-allowed; }
+@font-face { font-family: 'FusionPixel';`);
+swap("const FONT = 'FusionPixel';", "const FONT = 'FusionPixel, CubicZh';");
+swap("  try { await document.fonts.load('12px FusionPixel');", "  try { if (__zh) await document.fonts.load('12px CubicZh', '极限'); } catch (e) {}\n  try { await document.fonts.load('12px FusionPixel');");
+// The 3x5 HUD font has no Chinese, so Chinese HUD text goes on the sharper main canvas.
+swap('  s = miniTxt(s); const w = miniW(s),', "  s = miniTxt(s);\n  if (__zh && /[^\\x00-\\x7f·×]/.test(s)) { MINIQ.push([s, x, y, col, o]); return measure(s, 12, { pixel: 1 }) * VW / W; }\n  const w = miniW(s),");
+swap('  X.drawImage(HC, 0, 0, W, H);\n  // low hp vignette', "  X.drawImage(HC, 0, 0, W, H);\n  for (const [s, x, y, col, o] of MINIQ.splice(0)) text(X, s, x * W / VW, y * W / VW - 2, { pixel: true, size: 12, col, align: o.align, outline: o.outline });\n  // low hp vignette");
 
 // ---- test hooks can read game state, so they never ship
 if (keepHooks) swap("q: UI.mode === 'quiz' && UI.q ? { id: UI.q.id, correctKey: 'ABCD'[UI.order.indexOf(0)] } : null,", "q: UI.mode === 'quiz' && UI.q ? { issue: UI.q.issue_id, opts: UI.q.opts } : null,");
 else swapBetween('// ------------------------------------------------------------------ test hooks', '// ------------------------------------------------------------------ boot', '');
 
-// ---- minify
+// ---- translate strings in the game's code
 const script = /<script>\n([\s\S]*?)<\/script>/.exec(html);
 assert.ok(script, 'Game script not found.');
-const js = await esbuild.transform(script[1], {
+
+const templateKey = node => [node.head.text, ...node.templateSpans.map(span => span.literal.text)].join('{}');
+const isText = node => ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
+const zhKey = node => (isText(node) ? node.text : ts.isTemplateExpression(node) ? templateKey(node) : undefined);
+const isDirective = node => ts.isExpressionStatement(node.parent);
+
+function localize(source) {
+  const file = ts.createSourceFile('game.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const used = new Set();
+  const seen = new Set();
+  const isTarget = node => {
+    const key = zhKey(node);
+    if (key === undefined || isDirective(node)) return false;
+    seen.add(key);
+    return Object.hasOwn(zh.strings, key);
+  };
+  const targetsIn = (node, found = []) => {
+    ts.forEachChild(node, child => { if (isTarget(child)) found.push(child); else targetsIn(child, found); });
+    return found;
+  };
+  const compose = node => {
+    let out = '', position = node.getStart(file);
+    for (const target of targetsIn(node)) {
+      out += source.slice(position, target.getStart(file)) + render(target);
+      position = target.getEnd();
+    }
+    return out + source.slice(position, node.getEnd());
+  };
+  const zhSource = node => {
+    const value = zh.strings[zhKey(node)];
+    if (isText(node)) return JSON.stringify(value);
+    const expressions = node.templateSpans.map(span => compose(span.expression));
+    let next = 0;
+    const parts = value.split(/\{(\d*)\}/);
+    return '`' + parts.map((part, i) => (i % 2
+      ? '${' + expressions[part === '' ? next++ : Number(part)] + '}'
+      : part.replace(/[\\`]|\$\{/g, match => '\\' + match))).join('') + '`';
+  };
+  function render(node) {
+    used.add(zhKey(node));
+    const parent = node.parent;
+    const compared = ts.isCaseClause(parent) || (ts.isBinaryExpression(parent) && /^[!=]==?$/.test(parent.operatorToken.getText(file)));
+    assert.ok(!compared, `A translated string is used in game logic: ${zhKey(node)}`);
+    const choice = `(__zh ? ${zhSource(node)} : ${compose(node)})`;
+    return ts.isPropertyAssignment(parent) && parent.name === node ? `[${choice}]` : choice;
+  }
+  const first = file.statements[0].getFullStart();
+  return { code: source.slice(0, first) + file.statements.map(statement => {
+    return source.slice(statement.getFullStart(), statement.getStart(file)) + compose(statement);
+  }).join(''), used, seen };
+}
+
+const localized = localize(script[1].replace('__ZH_STATIC__', () => JSON.stringify(zh.static)));
+if (dumpStrings) writeFileSync(dumpStrings, JSON.stringify([...localized.seen]));
+for (const key of Object.keys(zh.strings)) {
+  if (!localized.used.has(key)) console.warn(`Unused translation: ${key.slice(0, 70)}`);
+}
+const missingGlyphs = [...new Set([...Object.values(zh.strings), ...Object.values(zh.static)].join(''))]
+  .filter(ch => ch.charCodeAt(0) > 0x2e7f && !subsetChars.has(ch));
+assert.deepEqual(missingGlyphs, [], 'Rebuild the font subset: scripts/arena/subset-zh-font.py');
+
+// ---- minify
+const js = await esbuild.transform(localized.code, {
   loader: 'js', format: 'iife', target: 'es2020', legalComments: 'none',
   minify: !keepHooks,
   banner: '/* Includes ZzFX, MIT License, Copyright (c) 2019 Frank Force, https://github.com/KilledByAPixel/ZzFX */',

@@ -1,15 +1,9 @@
-# O2I 真实题工作流入口
+# O2I 真实题工作流
 
-当前版本是 **v4（2026-10-20）**。使用 [完整指南与三个prompt](O2I_AI_PRACTICE_WORKFLOW_V4_ZH.md)，或解压分发文件 `O2I_AI_PRACTICE_WORKFLOW_V4_PACKAGE.zip` 后打开 [离线手册](START_HERE_O2I_Practice_Workflow_V4.html)。
+当前使用 **V5**：[操作说明与三个提示词](workflow-v5/O2I_AI_ASSISTED_PRACTICE_PROBLEM_WORKFLOW_V5_ZH.md)，或下载 [完整包](O2I_AI_PRACTICE_WORKFLOW_V5_PACKAGE.zip)。
 
-流程：来源包 → Chat A整理 → 新Chat B独立复核 → 对照与人工决定后自动导出 → Admin预览、保存草稿、回读、一次确认发布。
+目录按截图整理：外层HTML、流程说明、审核SOP；input package内是格式说明、空白模板、CED标签说明。使用时再加入题目和答案PDF，共五个输入文件。
 
-配套文件：
+Chat A整理 → 新Chat B独立复核 → B一次生成全部审核卡 → 人工通过后导出。每卡必选计算器政策；最终五项审核状态reviewed，名字来自Reviewer，时间记录实际审核当天。网站仍保存未发布草稿。
 
-- [导入Schema](O2I_QUESTION_IMPORT_SCHEMA.md)：28个Questions字段、6个Options字段及当前保存/发布边界。
-- [空白XLSX](templates/O2I_Question_Bank_Import_Template.xlsx)：只含表头与说明，没有真实题。
-- [Topic/Skill代码快照](O2I_CED_CODE_REFERENCE.md)：来自仓库规范迁移，Admin保存时还要核对实际数据库。
-- [人工审核SOP](O2I_HUMAN_REVIEW_SOP_ZH.md)：核验项与修订处理。
-- [校验记录](WORKFLOW_V4_VALIDATION.md)：区分已验证与未执行。
-
-旧V1/V2/V3及无版本号的旧ZIP均为历史材料，不能与v4混用。AI只交pending草稿，正式发布由管理员在后台确认。
+新版Questions 26列，去掉source_locator、ai_flags。当前代码兼容旧28列文件。部署状态与本地检查见 [校验记录](WORKFLOW_V5_VALIDATION.md)。V1–V4保留供追溯。

@@ -21,9 +21,9 @@ test('each game action maps to its RPC', async () => {
   await replyToArenaRequest(rpc, request('next', { runId: 'r', units: [1], currentUnit: 1, tier: 2, preferCurrent: false }));
   await replyToArenaRequest(rpc, request('answer', { issueId: 'i', index: 3 }));
   assert.deepEqual(calls, [
-    { name: 'arena_catalog', args: undefined },
-    { name: 'arena_next_question', args: { _run_id: 'r', _units: [1], _current_unit: 1, _tier: 2, _prefer_current: false } },
-    { name: 'arena_submit_answer', args: { _issue_id: 'i', _selected: 3 } },
+    { name: 'arena_practice_catalog', args: undefined },
+    { name: 'arena_practice_next_question', args: { _run_id: 'r', _units: [1], _current_unit: 1, _tier: 2, _prefer_current: false } },
+    { name: 'arena_practice_submit_answer', args: { _issue_id: 'i', _selected: 3 } },
   ]);
 });
 

@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-24T21:50:39.492Z",
+  "scope": "Public API availability and denied anonymous access; authenticated acceptance is separate.",
+  "results": [
+    {
+      "check": "get_admin_access: installed and anonymous access denied",
+      "status": 200
+    },
+    {
+      "check": "has_admin_module: installed and anonymous access denied",
+      "status": 200
+    },
+    {
+      "check": "set_account_role: installed and anonymous access denied",
+      "status": 401
+    },
+    {
+      "check": "preview_user_deletion: installed and anonymous access denied",
+      "status": 401
+    },
+    {
+      "check": "prepare_user_deletion: installed and anonymous access denied",
+      "status": 401
+    },
+    {
+      "check": "admin-invite-user: deployed, CORS works, anonymous request denied",
+      "preflight": 200,
+      "anonymous": 401
+    },
+    {
+      "check": "admin-delete-user: deployed, CORS works, anonymous request denied",
+      "preflight": 200,
+      "anonymous": 401
+    },
+    {
+      "check": "https://o2iinstitute.org/admin: reachable",
+      "status": 200,
+      "finalUrl": "https://o2iinstitute.org/admin"
+    },
+    {
+      "check": "https://www.o2iinstitute.org/admin: reachable",
+      "status": 200,
+      "finalUrl": "https://www.o2iinstitute.org/admin"
+    }
+  ]
+}

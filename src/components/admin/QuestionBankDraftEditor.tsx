@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { draftSnapshotSheets, loadQuestionBankDraft, updateQuestionBankDraft, deleteQuestionBankDraft,
@@ -31,7 +31,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
   const [retry, setRetry] = useState(0);
   const [needsReload, setNeedsReload] = useState(false);
   const [confirm, setConfirm] = useState<"delete" | "return" | null>(null);
-  const validated = useMemo(() => working.length ? validateDraftMetadata(working, references) : null, [working, references]);
+  const validated = useMemo(() => working.length ? validateDraftMetadata(working, references, snapshot) : null, [working, references, snapshot]);
   const changes = useMemo(() => getQuestionEditChanges(original, working), [original, working]);
   const question = validated?.report.questions[0];
   const issues = validated?.plan.issues ?? [];
@@ -79,9 +79,9 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
     } finally { writing.current = false; setBusy(false); }
   };
   return <Dialog open onOpenChange={open => { if (!open && !writing.current) onClose(); }}>
-    <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-      <DialogHeader><DialogTitle className="break-all">{item.externalId} · Draft metadata</DialogTitle>
-        <DialogDescription>Only the browser work copy changes until Save changes. Stems, choices and solutions are read-only. The original XLSX is never modified.</DialogDescription></DialogHeader>
+    <DialogContent scrollable className="max-h-[90vh] max-w-3xl">
+      <DialogHeader><DialogTitle className="break-all">{item.externalId} · Draft metadata</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>Only the browser work copy changes until Save changes. Stems, choices and solutions are read-only. The original XLSX is never modified.</DialogDescription>
       {busy && <p role="status">{writing.current ? "Applying confirmed operation…" : "Loading latest draft and canonical choices…"}</p>}
       {error && <div role="alert" className="space-y-2 text-sm"><p className="text-destructive">{error}</p>
         <Button type="button" variant="outline" disabled={busy} onClick={() => { setNotice(""); setRetry(value => value + 1); }}>Reload latest (discard local changes)</Button></div>}
@@ -91,7 +91,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
         {revisionTarget && <p className="rounded border p-3">Save creates a new unpublished revision. The current published version stays unchanged. Opening or cancelling creates nothing.</p>}
         {snapshot.version.id !== item.versionId && <p className="rounded border p-3">Editing existing working version {snapshot.version.version_number}; the current approved version is not overwritten.</p>}
         <MarkdownWithMath content={question.stem} strictMath className="overflow-x-auto" />
-        <p className="break-words text-muted-foreground">Source: {question.sourceDocument} · Printed question number: {question.sourceQuestionNumber || "not recorded"}</p>
+        <p className="break-words text-muted-foreground">Source: {question.sourceDocument} · {question.legacyArena ? `Original ID: ${question.legacyArena.source_id} · Batch: ${question.legacyArena.batch_id}` : `Printed question number: ${question.sourceQuestionNumber || "not recorded"}`}</p>
         {readOnly && <p className="rounded border p-3">Review versions cannot be edited or deleted. Explicitly return this version to draft first.</p>}
         <QuestionBankMetadataFields question={question} references={references} disabled={busy || readOnly || needsReload}
           onChange={(field, value) => { setWorking(current => applyQuestionFieldEdit(current, 2, field, value)); setNotice(""); setError(""); }}
@@ -123,6 +123,7 @@ export function QuestionBankDraftEditor({ item, onClose, onChanged, initialActio
         </div>
       </div>}
       {!snapshot && <Button type="button" variant="outline" disabled={writing.current} onClick={onClose}>Cancel</Button>}
+    </DialogBody>
     </DialogContent>
   </Dialog>;
 }

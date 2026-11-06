@@ -1,3 +1,4 @@
+import { legacyFixtureAccessSql } from './admin-access/legacy-fixture-access.mjs';
 // Disposable local Auth/REST/database/browser acceptance. No production connection or credentials.
 import assert from 'node:assert/strict';
 import { execFileSync,spawn } from 'node:child_process';
@@ -10,6 +11,7 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { parseQuestionBankWorkbook,validateQuestionBankSheets } from '../src/lib/questionBankImport.ts';
 import { buildQuestionBankDraftSavePlan } from '../src/lib/questionBankDraftSave.ts';
+import { submitPractice } from '../src/lib/studentPractice.ts';
 const root=fileURLToPath(new URL('../',import.meta.url));
 assert.equal(process.cwd(),root.replace(/\/$/,''));
 const {chromium}=await import(process.env.O2I_PLAYWRIGHT_MODULE??'playwright');
@@ -75,7 +77,7 @@ try {
     CREATE TABLE public.subjects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,category text,order_index int);
     CREATE TABLE public.team_members(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_index int);
     ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'has_role')}
-    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')}
+    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')} ${legacyFixtureAccessSql()}
     ${fn(read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql'),'update_updated_at_column')}
     ${taxonomy.slice(taxonomy.indexOf('CREATE TABLE public.curriculum_frameworks'),taxonomy.indexOf('-- Reuse the two existing AP Calculus course records'))}`);
   for(const migration of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management','20261019000000_question_bank_unpublished_status','20261019010000_question_bank_publication'])await db.query('BEGIN;'+read('supabase/migrations/'+migration+'.sql')+'COMMIT;');
@@ -132,8 +134,8 @@ try {
   const precheck=async(s,action='publish')=>rpc(admin,'precheck_question_publication',{_question_id:s.question_id,_version_id:s.version_id,_action:action});
   const publish=async s=>{let p=await precheck(s);const r=await rpc(admin,'record_question_version_review',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint,_review:{confirmed:true}});assert.equal(r.precheck.eligible,true,JSON.stringify(r));p=r.precheck;return rpc(admin,'publish_question_version',{_question_id:s.question_id,_version_id:s.version_id,_expected_fingerprint:p.fingerprint});};
   let serial=0;
-  const fixture=async(topic='1.1',published=true,difficulty='easy')=>{
-    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty,course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
+  const fixture=async(topic='1.1',published=true,difficulty='easy',metadata={})=>{
+    const [s]=await rpc(admin,'save_question_bank_drafts',{_items:[{external_id:'SYNTHETIC-PRACTICE-'+(++serial),stem:'Synthetic: find $\\frac{d}{dx}x^2$.',solution:'Synthetic: $2x$ by the power rule.',difficulty,course_scope:'AB',primary_topic_code:topic,practice_skill_codes:['1.A'],representation_type:'analytical',calculator_policy:null,source_document:'Synthetic.pdf',source_page:'1',source_locator:'p001-item'+String(serial).padStart(2,'0'),requires_figure:topic==='1.2',image_url:topic==='1.2'?api+'/synthetic-figure.svg':null,...metadata,correct_option_key:'A',import_evidence:{ai_flags:['CALCULATOR_POLICY_UNCERTAIN'],human_review_status:'pending'},options:[{option_key:'A',option_text:'$2x$',is_correct:true,import_evidence:{}},{option_key:'B',option_text:'$x$',is_correct:false,import_evidence:{}}]}]});
     if(published)await publish(s);return s;
   };
   const t1=topics.find(t=>t.topic_code==='1.1'),t2=topics.find(t=>t.topic_code==='1.2'),empty=topics.find(t=>t.topic_code==='1.3');
@@ -168,6 +170,10 @@ try {
   assert.equal((await rpc(student,'get_question_practice',{_session_id:session.id})).questions[0].attempt.id,results[0].questions[0].attempt.id);
   assert.equal((await rpc(student,'list_question_practice_attempts')).length,2);assert.deepEqual(await rpc(other,'list_question_practice_attempts'),[]);assert.deepEqual(await ok(other.from('question_practice_attempts').select('*')),[]);check('Server correct/wrong grading, immutable own attempts, account isolation, concurrent retries once, saved result readback');
   await (await import('./review.acceptance.mjs')).verifyReviewDatabase({db,start,submit,rpc,student,other,visitor,topicId:t2.id,check});
+  // Profile's new aggregate is tested here against the original Practice fixture too.
+  await db.query("ALTER TABLE public.question_practice_sessions ADD COLUMN source text NOT NULL DEFAULT 'practice'");
+  await db.query(fn(read('supabase/migrations/20261105000000_arena_practice_integration.sql'),'get_question_practice_statistics'));
+  await db.query('REVOKE ALL ON FUNCTION public.get_question_practice_statistics(uuid) FROM PUBLIC,anon; GRANT EXECUTE ON FUNCTION public.get_question_practice_statistics(uuid) TO authenticated');
   await (await import('./profile.acceptance.mjs')).verifyProfileDatabase({db,start,submit,student,other,visitor,topicId:t2.id,check});
   // A database error after INSERT must roll back both grading and the saved attempt.
   await db.query("CREATE FUNCTION public.local_practice_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic transaction failure'; END $$; CREATE TRIGGER local_practice_fail AFTER INSERT ON public.question_practice_attempts FOR EACH ROW EXECUTE FUNCTION public.local_practice_fail();");
@@ -182,12 +188,61 @@ try {
   const retained=await submit(student,session,failureQ,failureQ.options.find(o=>o.key==='A').id);assert.equal(retained.questions[2].version_id,original.version_id);assert.equal(retained.questions[2].attempt.is_correct,true);
   const revisionSets=[await start(student,t1.id),await start(student,t1.id)];assert.equal(revisionSets.flatMap(s=>s.questions).find(q=>q.question_id===original.question_id)?.version_id,newV);check('Published revision does not change the answer or identity of an already issued version');
   await (await import('./practice-selection.acceptance.mjs')).verifyRandomSelection({db,fixture,topics,start,student,other,rpc,safe,check});
+  vite=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(appPort),'--strictPort'],{cwd:root,env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});await wait(async()=> (await fetch(app)).ok);
+  browser=await chromium.launch({headless:true,executablePath:process.env.O2I_CHROME_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+  context=await browser.newContext({viewport:{width:1280,height:960}});context.setDefaultTimeout(20000);
+  const remote=[];let startRequests=0;const safeResponses=[];
+  await context.route('**/*',async route=>{const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){remote.push(u.hostname);return route.abort();}if(u.pathname.endsWith('/start_question_practice'))startRequests++;return route.continue();});
+  page=await context.newPage();page.on('response',async res=>{if(res.url().endsWith('/start_question_practice')&&res.ok())safeResponses.push(await res.json());});
+  const login=async n=>{await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[n].email);await page.locator('input[name="password"]').first().fill(testPassword);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');};
+  if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
+    assert.equal(await scalar("SELECT to_regprocedure('public.submit_question_practice_v2(uuid,uuid,uuid,integer,jsonb,boolean)') IS NULL result"),true);
+    const compatibilitySession=randomUUID();await login(1);
+    await page.goto(app+'/quiz?topic='+t2.id+'&session='+compatibilitySession);
+    await page.getByRole('heading',{name:'Question 1 of 2',exact:true}).waitFor();
+    const oldSession=await rpc(student,'get_question_practice',{_session_id:compatibilitySession}),oldQuestion=oldSession.questions[0];safe(oldSession);
+    const wrongOption=oldQuestion.options.find(option=>option.key==='B').id;
+    const missing=page.waitForResponse(response=>response.url().endsWith('/submit_question_practice_v2')&&response.status()===404);
+    const saved=page.waitForResponse(response=>response.url().endsWith('/submit_question_practice')&&response.ok());
+    await page.getByRole('button',{name:'Option B',exact:true}).click();
+    await page.getByRole('button',{name:'Submit answer',exact:true}).evaluate(button=>{button.click();button.click();});
+    assert.equal((await (await missing).json()).code,'PGRST202');await saved;
+    await page.getByRole('region',{name:'Saved answer',exact:true}).getByText('Incorrect',{exact:true}).waitFor();
+    await page.getByText('Incomplete or legacy timing; excluded from speed analysis',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('alert').count(),0);await shot('00-legacy-backend-saved');
+    const captured={trajectory:[{option_id:wrongOption,elapsed_seconds:0}],complete:true};
+    const repeated=await submitPractice(student,compatibilitySession,oldQuestion.question_id,wrongOption,2,captured);
+    assert.equal(repeated.questions[0].attempt.is_correct,false);
+    await assert.rejects(submitPractice(other,compatibilitySession,oldQuestion.question_id,wrongOption,2,captured),/not issued/);
+    assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[compatibilitySession]),1);
+    await page.goto(app+'/quiz?session='+compatibilitySession+'&question='+oldQuestion.question_id);await page.reload();
+    await page.getByRole('region',{name:'Saved answer',exact:true}).getByText('Incorrect',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('link',{name:'Sign In / Sign Up',exact:true}).waitFor();
+    await ok(student.auth.signInWithPassword({email:accounts[1].email,password:testPassword}));
+    await db.query('DELETE FROM public.question_practice_sessions WHERE id=$1',[compatibilitySession]);
+    check('New frontend against an actual pre-v2 backend: missing RPC safely falls back, server grades and persists, reload restores, repeat is idempotent and foreign account is denied');
+  }
+  // Prove the v2 forward package works without deploying v1, then roll back this rehearsal.
+  const directV2Package=read('docs/question-bank/production/adaptation-v2/10_deploy.sql').replace('BEGIN;\n','').replace(/\nCOMMIT;\n$/, '\n');
+  await db.query('BEGIN;'+directV2Package);
+  assert.equal((await db.query(read('docs/question-bank/production/adaptation-v2/20_verify_readonly.sql'))).rows[0].adaptation_verification.all_checks_pass,true);
+  await db.query("SELECT set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:accounts[1].id,role:'authenticated'})]);
+  assert.equal((await db.query('SELECT public.start_question_practice($1,$2) AS session',[randomUUID(),t1.id])).rows[0].session.adaptation_summary.rule_version,'practice-adaptation-v2');
+  await db.query('ROLLBACK');
+  check('Adaptation v2: random-only database upgrades directly without replaying the optional v1 migration');
   await db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql'));
   assert.equal((await db.query(read('docs/question-bank/production/practice-selection/21_adaptive_verify.sql'))).rows[0].practice_selection_verification.all_checks_pass,true);
   await assert.rejects(db.query(read('docs/question-bank/production/practice-selection/20_adaptive_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
   await db.query("NOTIFY pgrst,'reload schema'");
   assert.equal((await rpc(student,'get_question_practice',{_session_id:session.id})).selection_summary,null);
   await (await import('./practice-selection.acceptance.mjs')).verifyTopicAdaptation({db,fixture,topics,start,student,other,rpc,submit,check,admin,precheck,publish});
+  await db.query(read('docs/question-bank/production/adaptation-v2/10_deploy.sql'));
+  const v2Verification=(await db.query(read('docs/question-bank/production/adaptation-v2/20_verify_readonly.sql'))).rows[0].adaptation_verification;
+  assert.equal(v2Verification.all_checks_pass,true,JSON.stringify(v2Verification));
+  await assert.rejects(db.query(read('docs/question-bank/production/adaptation-v2/10_deploy.sql')),/already recorded/);await db.query('ROLLBACK');
+  await db.query("NOTIFY pgrst,'reload schema'");
+  await wait(async()=>!(await student.rpc('get_question_practice_analysis',{})).error);
+  const v2Fixture=await (await import('./adaptation-v2.acceptance.mjs')).verifyAdaptationV2({db,fixture,topics,start,student,other,visitor,admin,rpc,safe,check,precheck,publish});
   let realRows=[];
   if(process.env.O2I_ACCEPTANCE_XLSX){
     const b=readFileSync(process.env.O2I_ACCEPTANCE_XLSX),sheets=await parseQuestionBankWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
@@ -205,35 +260,29 @@ try {
     assert.equal(realRows.length,8);const afterReal=await start(student);assert.ok(afterReal.questions.every(q=>!realRows.some(r=>r.question_id===q.question_id)));
     check('Real workbook: all eight drafts / 32 options, canonical labels and formula text round-trip through actual local save RPC; never published or issued');
   }
-  vite=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port',String(appPort),'--strictPort'],{cwd:root,env:{...process.env,VITE_LOCAL_SUPABASE_URL:api,VITE_LOCAL_SUPABASE_ANON_KEY:anon},stdio:'ignore'});await wait(async()=> (await fetch(app)).ok);
-  browser=await chromium.launch({headless:true,executablePath:process.env.O2I_CHROME_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
-  context=await browser.newContext({viewport:{width:1280,height:960}});context.setDefaultTimeout(20000);
-  const remote=[];let startRequests=0;const safeResponses=[];
-  await context.route('**/*',async route=>{const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){remote.push(u.hostname);return route.abort();}if(u.pathname.endsWith('/start_question_practice'))startRequests++;return route.continue();});
-  page=await context.newPage();page.on('response',async res=>{if(res.url().endsWith('/start_question_practice')&&res.ok())safeResponses.push(await res.json());});
-  const login=async n=>{await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[n].email);await page.locator('input[name="password"]').first().fill(testPassword);await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');};
+  if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
   await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();await login(1);
   await page.evaluate(()=>localStorage.setItem('o2i-learning-prototype-v1',JSON.stringify({attempts:[{id:'FAKE_LOCALSTORAGE',correct:true,skillIds:[],misconceptionTags:[],overTarget:false}]})));
   await page.goto(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(await page.getByText('FAKE_LOCALSTORAGE').count(),0);
   const browserSession=randomUUID();await page.goto(app+'/quiz?topic='+t2.id+'&session='+browserSession);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.getByLabel('Saved question labels').waitFor();assert.equal(await page.getByLabel('Saved answer',{exact:true}).count(),0);assert.equal(await page.getByText('Correct answer:',{exact:false}).count(),0);
   await wait(()=>safeResponses.length);safe(safeResponses.at(-1));assert.ok(await page.locator('.katex').count());await page.getByRole('img',{name:'Question figure',exact:true}).waitFor();assert.ok(await page.getByRole('img',{name:'Question figure',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0));await page.getByLabel('Selection rationale').filter({hasText:'Building your practice history'}).waitFor();await shot('01-safe-question');
   // The first failure is before the database request; do not display a saved result.
-  await page.route('**/rpc/submit_question_practice',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic server unavailable'})}));
-  await page.getByRole('button',{name:'Option A',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('alert').filter({hasText:'Save could not be confirmed'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),0);
-  await shot('02-save-failure');await page.unroute('**/rpc/submit_question_practice');
+  await page.route('**/rpc/submit_question_practice_v2',r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Synthetic server unavailable'})}));
+  await page.getByRole('button',{name:'Option A',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('alert').filter({hasText:'Save could not be confirmed'}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),0);assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),0);
+  await shot('02-save-failure');await page.unroute('**/rpc/submit_question_practice_v2');
   await page.getByRole('button',{name:'Retry submission',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),1);await shot('03-saved-answer');
   await page.getByRole('button',{name:'Next question',exact:true}).click();await page.getByRole('heading',{name:'Question 2 of 2'}).waitFor();
   // A committed answer with a lost response is recovered by the read-only result RPC.
-  await page.route('**/rpc/submit_question_practice',async route=>{await route.fetch();await route.abort('failed');});await page.getByRole('button',{name:'Option B',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('button',{name:'Check saved answer',exact:true}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
-  await page.unroute('**/rpc/submit_question_practice');await page.getByRole('button',{name:'Check saved answer',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();await page.getByRole('button',{name:'Finish practice',exact:true}).click();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),2);
+  await page.route('**/rpc/submit_question_practice_v2',async route=>{await route.fetch();await route.abort('failed');});await page.getByRole('button',{name:'Option B',exact:true}).click();await page.getByRole('button',{name:'Submit answer',exact:true}).click();await page.getByRole('button',{name:'Check saved answer',exact:true}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),0);
+  await page.unroute('**/rpc/submit_question_practice_v2');await page.getByRole('button',{name:'Check saved answer',exact:true}).click();await page.getByRole('region',{name:'Saved answer',exact:true}).waitFor();await page.getByRole('button',{name:'Finish practice',exact:true}).click();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await scalar('SELECT count(*)::int result FROM public.question_practice_attempts WHERE session_id=$1',[browserSession]),2);
   await page.reload();await page.getByRole('heading',{name:'Practice complete'}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),2);
-  await page.goto(app+'/practice');await page.getByRole('heading',{name:'Recent account answers'}).waitFor();await page.locator(`a[href="/quiz?session=${browserSession}"]`).first().waitFor();await shot('04-account-history');check('Browser real authenticated practice, safe network response, correct/wrong results, server failure/retry, lost response lookup and refresh/account history');
+  await page.goto(app+'/practice');await page.getByRole('heading',{name:'Recent account answers'}).waitFor();await page.locator(`a[href^="/quiz?session=${browserSession}&question="]`).first().waitFor();await shot('04-account-history');check('Browser real authenticated practice, safe network response, correct/wrong results, server failure/retry, lost response lookup and refresh/account history');
   await (await import('./review.acceptance.mjs')).verifyReviewBrowser({page,context,app,start,submit,rpc,student,topicId:t2.id,browserSession,check,shot});
   await (await import('./profile.acceptance.mjs')).verifyProfileBrowser({page,context,app,db,start,student,other,login,topicId:t2.id,check,shot});
   const before=startRequests;await page.goto(app+'/quiz?subject=calculus&lesson=limits&source=lesson');await page.getByRole('heading',{name:'This practice scope is not connected'}).waitFor();assert.equal(startRequests,before);
-  await page.goto(app+'/learn/limits-foundations');await page.getByRole('button',{name:'Finish lesson and choose practice',exact:true}).click();await page.waitForURL(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(startRequests,before);
+  await page.goto(app+'/learn/limits-foundations');await page.waitForURL(app+'/courses');await page.getByRole('heading',{name:'Math Courses',exact:true}).waitFor();assert.equal(startRequests,before);
   await page.goto(app+'/review');await page.getByRole('link',{name:'Choose published practice',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Choose published practice',exact:true}).getAttribute('href'),'/practice');
-  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'No published questions in this practice scope'}).waitFor();check('Legacy Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
+  await page.goto(app+'/quiz?topic='+empty.id);await page.getByRole('heading',{name:'Practice for this topic is being prepared. Stay tuned.',exact:true}).waitFor();check('Legacy Learn redirects to Courses, Lesson filters explicitly refused; Review goes to canonical Topic selection; zero-topic quiz has real empty state');
   // Render the real saved draft projection only in a local browser fixture. This is not publication.
   for(const [i,row] of realRows.entries()){
     const id=randomUUID();await page.route('**/rpc/start_question_practice',r=>r.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id,topic_id:row.topic.id,created_at:new Date().toISOString(),questions:[row]})}));
@@ -242,9 +291,15 @@ try {
   }
   if(realRows.length)check('All eight real saved draft projections render four options, readonly labels and math in Quiz (local UI fixture only; no real publication or grading)');
   await (await import('./review.acceptance.mjs')).verifyReviewAccountSwitch({page,context,app,other,login,browserSession,check});
-  await page.goto(app+'/practice');await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('link',{name:'Sign In / Sign Up',exact:true}).waitFor();await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();assert.equal(await page.locator(`a[href="/quiz?session=${browserSession}"]`).count(),0);
-  await login(2);await page.goto(app+'/practice');await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();await page.goto(app+'/quiz?session='+browserSession);await page.getByRole('alert').filter({hasText:'not available to your account'}).waitFor();assert.equal(await page.getByText('Saved to your account',{exact:false}).count(),0);
+  await page.goto(app+'/practice');await page.getByRole('button',{name:'Sign Out',exact:true}).click();await page.getByRole('link',{name:'Sign In / Sign Up',exact:true}).waitFor();await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();assert.equal(await page.locator(`a[href^="/quiz?session=${browserSession}&question="]`).count(),0);
+  await login(2);await page.goto(app+'/practice');await page.getByText('Your saved answers will appear here after you submit a published question.',{exact:true}).waitFor();await page.goto(app+'/quiz?session='+browserSession);await page.getByRole('alert').filter({hasText:'not available to your account'}).waitFor();assert.equal(await page.getByRole('region',{name:'Saved answer',exact:true}).count(),0);
   await page.goto(app+'/quiz?topic='+t2.id);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.setViewportSize({width:390,height:844});await shot('06-mobile');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(remote.every(host=>host==='storage.googleapis.com'),'Unexpected non-loopback backend request');report.blockedExternalHosts=[...new Set(remote)];check('Logout/account switch removes prior account data; another account cannot resume it; mobile layout and loopback-only network');
+  await (await import('./adaptation-v2-browser.acceptance.mjs')).verifyAdaptationV2Browser({page,app,db,login,student,topics,v2Fixture,check,shot,userId:accounts[1].id});
+  }
+  if(process.env.O2I_COURSE_INTEGRATION){
+    docker(['exec',dbName,'psql','-U','supabase_admin','-d','postgres','-c','GRANT USAGE, CREATE ON SCHEMA storage TO postgres;']);
+    await (await import('./course-content-integration.acceptance.mjs')).verifyCourseContentIntegration({db,topics,admin,student,other,visitor,rpc,fixture,check,page,context,app,login,shot});
+  }
 } catch(error){if(page)await page.screenshot({path:resolve(output,'failure.png')}).catch(()=>{});report.error=redact(error.stack??error);console.error(report.error);process.exitCode=1;}
 finally {
   if(browser)await browser.close().catch(()=>{});if(vite&&vite.exitCode===null){vite.kill('SIGTERM');await new Promise(r=>vite.once('exit',r));}if(proxy){proxy.closeAllConnections();await new Promise(r=>proxy.close(r));}if(db)await db.end().catch(()=>{});

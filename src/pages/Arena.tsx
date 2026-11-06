@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import katexStyles from 'katex/dist/katex.min.css?inline';
+import { arenaQuestionContent } from '@/components/courses/ArenaQuestionContent';
 import { isArenaRequest, replyToArenaRequest, type ArenaRpc } from '@/lib/arenaBridge';
 
 const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never);
@@ -15,7 +17,13 @@ function ArenaGame() {
     const onMessage = async (event: MessageEvent) => {
       const game = frame.current?.contentWindow;
       if (!game || event.source !== game || event.origin !== window.location.origin || !isArenaRequest(event.data)) return;
-      game.postMessage(await replyToArenaRequest(rpc, event.data), window.location.origin);
+      const request = event.data;
+      const renderRpc: ArenaRpc = async (name, args) => {
+        const result = await rpc(name, args);
+        return { ...result, data: result.error ? null : arenaQuestionContent(request.action, result.data) };
+      };
+      const reply = await replyToArenaRequest(renderRpc, request);
+      if (frame.current?.contentWindow === game) game.postMessage(reply, window.location.origin);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
@@ -26,7 +34,15 @@ function ArenaGame() {
       ref={frame}
       src="/games/limit-arena.html"
       title="CALC QUEST Limit Arena"
-      onLoad={() => frame.current?.focus()}
+      onLoad={() => {
+        const doc = frame.current?.contentDocument;
+        if (doc) {
+          const style = doc.createElement('style');
+          style.textContent = katexStyles + '.math-content{overflow-x:auto;overflow-wrap:anywhere}.math-content p{margin:.35em 0}.math-content table{border-collapse:collapse}.math-content th,.math-content td{border:1px solid currentColor;padding:.4em}.qz img{max-width:100%;max-height:45vh;object-fit:contain}.qz .katex-display{overflow-x:auto;overflow-y:hidden}';
+          doc.head.append(style);
+        }
+        frame.current?.focus();
+      }}
       className="block w-full border-0 bg-black"
       style={{ height: 'calc(100dvh - 4rem)' }}
     />
