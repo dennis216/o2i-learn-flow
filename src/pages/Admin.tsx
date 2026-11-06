@@ -66,7 +66,8 @@ const Admin = () => {
   const navigate = useNavigate();
   const { user, isSuperAdmin, isAdmin, adminAccess, accessLoading, accessError, retryAdminAccess, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const loading = authLoading || accessLoading;
+  // Same-account background checks must not unmount open editors or publication selections.
+  const loading = authLoading || (accessLoading && !isAdmin);
   const [submitting, setSubmitting] = useState(false);
   const [adminTab, setAdminTab] = useState('manage-courses');
   const [managedCourseId, setManagedCourseId] = useState('');
