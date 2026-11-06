@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../integrations/supabase/types.ts";
 import type { DraftSavePlan } from "./questionBankDraftSave.ts";
+import { hasAdminModule } from './adminAccessRepository.ts';
 
 export interface SavedDraft {
   id: string;
@@ -12,12 +13,12 @@ export interface SavedDraft {
 
 export class DraftSaveResultError extends Error {}
 
-/** The only write path for XLSX drafts. One RPC call is one database transaction. */
+/** Shared write path for manual and XLSX drafts. One RPC call is one database transaction. */
 export async function saveQuestionBankDrafts(
   client: SupabaseClient<Database>,
   plan: DraftSavePlan,
 ): Promise<string[]> {
-  if (!plan.canSave || plan.payload.length === 0) throw new Error("The workbook has not passed draft-save checks");
+  if (!plan.canSave || plan.payload.length === 0) throw new Error("The question data has not passed draft-save checks");
   const { data, error } = await client.rpc("save_question_bank_drafts", {
     _items: plan.payload as Json,
   });
@@ -90,7 +91,7 @@ export interface QuestionBankVersionPreview extends Pick<QuestionBankListItem, "
   stem: string;
   solution: string;
   sourceDocument: string;
-  sourcePage: number;
+  sourcePage: number | null;
   sourceQuestionNumber: string | null;
   sourceLocator: string | null;
   sourceReference: string | null;
@@ -105,10 +106,7 @@ async function requireQuestionBankAdmin(client: SupabaseClient<Database>) {
   const { data, error } = await client.auth.getUser();
   if (error) throw new Error(`Could not verify administrator sign-in: ${error.message}`);
   if (!data.user) throw new Error("Sign in as an administrator to read the question bank");
-  const { data: admin, error: roleError } = await client.rpc("has_role", {
-    _user_id: data.user.id, _role: "admin",
-  });
-  if (roleError) throw new Error(`Could not verify administrator access: ${roleError.message}`);
+  const admin = await hasAdminModule(client, 'questions', data.user.id);
   if (admin !== true) throw new Error("Administrator access is required to read the question bank");
 }
 

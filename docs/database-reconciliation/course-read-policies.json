@@ -1,0 +1,62 @@
+[
+  {
+    "cmd": "SELECT",
+    "qual": "(has_admin_module('courses'::text) OR course_topic_visible(course_id, topic_id))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "course_lesson_courses",
+    "permissive": "PERMISSIVE",
+    "policyname": "lesson_binding_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(has_admin_module('courses'::text) OR course_lesson_visible(lesson_id))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "course_lesson_videos",
+    "permissive": "PERMISSIVE",
+    "policyname": "lesson_video_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(has_admin_module('courses'::text) OR course_lesson_visible(id))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "course_lessons",
+    "permissive": "PERMISSIVE",
+    "policyname": "lesson_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(has_admin_module('courses'::text) OR (EXISTS ( SELECT 1\n   FROM course_lesson_videos v\n  WHERE ((v.video_id = course_videos.id) AND course_lesson_visible(v.lesson_id)))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "course_videos",
+    "permissive": "PERMISSIVE",
+    "policyname": "course_published_video_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'course-games'::text) AND (has_admin_storage_access(bucket_id) OR (EXISTS ( SELECT 1\n   FROM course_lessons l\n  WHERE ((l.game_path = objects.name) AND course_lesson_visible(l.id))))))",
+    "roles": [
+      "public"
+    ],
+    "tablename": "objects",
+    "permissive": "PERMISSIVE",
+    "policyname": "course_game_read",
+    "schemaname": "storage",
+    "with_check": null
+  }
+]

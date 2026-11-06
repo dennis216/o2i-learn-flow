@@ -37,7 +37,7 @@ function fixtureClient({ admin = true, authenticated = true, failTable, missingD
     auth: { getUser: async () => ({ data: { user: authenticated ? { id: 'synthetic-admin' } : null }, error: authError ? { message: 'Synthetic identity network failure' } : null }) },
     rpc: async name => {
       calls.push(['rpc', name]);
-      assert.equal(name, 'has_role', 'list/preview must never call a write RPC');
+      assert.equal(name, 'has_admin_module', 'list/preview must never call a write RPC');
       return { data: admin, error: roleError ? { message: 'Synthetic role network failure' } : null };
     },
     from(table) {
@@ -150,7 +150,7 @@ test('preview reads the selected version and ordered options with source evidenc
   assert.deepEqual(preview.options.map(o => o.option_key), ['A', 'B']);
   assert.equal(preview.options[0].is_correct, true);
   assert.match(preview.solution, /\\\[2x\\\]/);
-  assert.ok(calls.filter(([name]) => name === 'rpc').every(([, name]) => name === 'has_role'));
+  assert.ok(calls.filter(([name]) => name === 'rpc').every(([, name]) => name === 'has_admin_module'));
 });
 
 test('non-admin, signed-out, query errors and missing responses reject instead of returning an empty list', async () => {

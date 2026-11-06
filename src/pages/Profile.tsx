@@ -1,3 +1,4 @@
+import { PracticeAnalysisPanel } from '@/components/practice/PracticeAnalysisPanel';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +29,7 @@ function LearningStatistics({ userId }: { userId: string }) {
   return <Card>
     <CardHeader>
       <CardTitle>Learning Statistics</CardTitle>
-      <CardDescription>All saved practice history for your account. Practice sets include unstarted and partially completed sets. Each submitted answer counts once per question per set; accuracy is correct answers divided by submitted answers.</CardDescription>
+      <CardDescription>Saved Practice and Arena answers for your account. Each Arena run counts as one learning session after its first question is issued. Sessions include partially completed practice; accuracy counts submitted answers only.</CardDescription>
     </CardHeader>
     <CardContent>
       {busy ? <p role="status">Loading your practice statistics…</p> : error ? (
@@ -36,7 +37,7 @@ function LearningStatistics({ userId }: { userId: string }) {
       ) : statistics && <>
         <dl aria-label="Practice statistics" className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            ['Practice Sets', statistics.sessionCount],
+            ['Learning Sessions', statistics.sessionCount],
             ['Submitted Answers', statistics.attemptCount],
             ['Accuracy', statistics.attemptCount ? `${(statistics.correctCount / statistics.attemptCount * 100).toFixed(1)}%` : '—'],
           ].map(([label, value]) => <div key={label} className="text-center p-4 border rounded-lg">
@@ -44,6 +45,12 @@ function LearningStatistics({ userId }: { userId: string }) {
             <dd className="text-2xl font-bold text-primary">{value}</dd>
           </div>)}
         </dl>
+        <table className="mt-5 w-full text-left text-sm">
+          <caption className="mb-2 text-left font-medium">Answers by source</caption>
+          <thead><tr><th scope="col">Source</th><th scope="col">Sessions</th><th scope="col">Answers</th><th scope="col">Accuracy</th></tr></thead>
+          <tbody>{statistics.sources.map(row => <tr key={row.source}><th scope="row">{row.source === 'arena' ? 'Arena' : 'Practice'}</th><td>{row.sessionCount}</td><td>{row.attemptCount}</td><td>{row.attemptCount ? `${(row.correctCount / row.attemptCount * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody>
+        </table>
+        <p className="mt-3 text-sm text-muted-foreground">Arena answers appear in Review. They do not change normal practice difficulty, Topic status or speed analysis.</p>
         {statistics.attemptCount === 0 && <div className="mt-4 space-y-3"><p>No submitted answers yet. Your accuracy will appear after you submit an answer.</p><Button asChild><Link to="/practice">Start practice</Link></Button></div>}
       </>}
     </CardContent>
@@ -151,6 +158,7 @@ export default function Profile() {
           </Card>
 
           <LearningStatistics key={user.id} userId={user.id} />
+          <PracticeAnalysisPanel key={"analysis:" + user.id} />
         </div>
       </div>
     </div>

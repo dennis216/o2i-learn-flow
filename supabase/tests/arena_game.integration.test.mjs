@@ -45,7 +45,7 @@ psql(`
   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
   INSERT INTO auth.users VALUES ('${alice}'), ('${bob}');
 `);
-const migration = new URL('../migrations/20261104000000_arena_game.sql', import.meta.url);
+const migration = new URL('../migrations/20261104000100_arena_game.sql', import.meta.url);
 execFileSync('psql', [url, '-qX', '-v', 'ON_ERROR_STOP=1', '-f', migration.pathname], { stdio: ['ignore', 'pipe', 'pipe'] });
 psql(`INSERT INTO public.arena_questions(id, unit, tier, topic, stem, options, explanation)
   SELECT 'q' || n, 1 + n % 2, 1 + n % 3, 'Topic', 'Stem ' || n,

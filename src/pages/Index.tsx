@@ -47,7 +47,7 @@ export default function Index() {
             {user ? (
               <>
                 <Button size="lg" asChild><Link to="/courses"><Book className="mr-2 h-5 w-5" />Browse Courses</Link></Button>
-                <Button size="lg" variant="outline" asChild><Link to="/solution-requests"><Image className="mr-2 h-5 w-5" />Get Help Now</Link></Button>
+                <Button size="lg" variant="outline" asChild><Link to="/practice"><Target className="mr-2 h-5 w-5" />Go to Practice</Link></Button>
               </>
             ) : (
               <>

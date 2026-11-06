@@ -1,3 +1,5 @@
+import { UserDeletionDialog } from "./UserDeletionDialog";
+import { ACCOUNT_ROLES, ACCOUNT_ROLE_LABELS, type ManagedAccountRole } from "@/lib/adminAccess";
 import { useState, useEffect } from "react";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, ShieldCheck, ShieldX, Search, UserCog, CheckCircle, Lock, UserPlus } from "lucide-react";
+import { Loader2, Shield, ShieldX, Search, UserCog, CheckCircle, Lock, UserPlus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 interface UserProfile {
   id: string;
@@ -20,10 +22,10 @@ interface UserProfile {
 }
 
 const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : "Unexpected error";
-type ManagedAccountRole = "student" | "instructor" | "admin";
+
 
 export const UserManagement = () => {
-  const { isSuperAdmin, user } = useAuth();
+  const { isSuperAdmin, user, legacyAdminAccess } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [userRoles, setUserRoles] = useState<Map<string, string[]>>(new Map());
@@ -126,7 +128,7 @@ export const UserManagement = () => {
 
       toast({
         title: "Invitation sent",
-        description: `${inviteForm.fullName} was invited as ${inviteForm.role === "admin" ? "Content Admin" : inviteForm.role}.`,
+        description: `${inviteForm.fullName} was invited as ${ACCOUNT_ROLE_LABELS[inviteForm.role]}.`,
       });
       setInviteForm({ fullName: "", email: "", role: "student" });
       await Promise.all([fetchUsers(), fetchUserRoles()]);
@@ -137,55 +139,17 @@ export const UserManagement = () => {
     }
   };
 
-  const grantAdminRole = async (userId: string) => {
+  const changeAccountRole = async (userId: string, role: ManagedAccountRole) => {
+    if (!window.confirm(`Change this account to ${ACCOUNT_ROLE_LABELS[role]}? Previous permissions will be replaced.`)) return;
     setProcessingUserId(userId);
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({ user_id: userId, role: 'admin' });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast({ title: "Info", description: "User already has admin role" });
-        } else {
-          throw error;
-        }
-      } else {
-        toast({ title: "Success", description: "Admin role granted" });
-        fetchUserRoles();
-      }
-    } catch (error: unknown) {
-      console.error("Error granting admin role:", error);
-      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
-    } finally {
-      setProcessingUserId(null);
-    }
-  };
-
-  const revokeAdminRole = async (userId: string) => {
-    // Prevent revoking own super_admin or admin role
-    if (userId === user?.id) {
-      toast({ title: "Error", description: "Cannot revoke your own admin role", variant: "destructive" });
-      return;
-    }
-
-    setProcessingUserId(userId);
-    try {
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId)
-        .eq("role", "admin");
-
+      const { error } = await supabase.rpc('set_account_role', { _user_id: userId, _role: role });
       if (error) throw error;
-      toast({ title: "Success", description: "Admin role revoked" });
-      fetchUserRoles();
-    } catch (error: unknown) {
-      console.error("Error revoking admin role:", error);
-      toast({ title: "Error", description: getErrorMessage(error), variant: "destructive" });
-    } finally {
-      setProcessingUserId(null);
-    }
+      await fetchUserRoles();
+      toast({ title: 'Account type updated', description: ACCOUNT_ROLE_LABELS[role] });
+    } catch (error) {
+      toast({ title: 'Update failed', description: getErrorMessage(error), variant: 'destructive' });
+    } finally { setProcessingUserId(null); }
   };
 
   const forceConfirmUser = async (userId: string, userEmail: string) => {
@@ -200,7 +164,7 @@ export const UserManagement = () => {
       }
 
       const response = await fetch(
-        `https://lxoaeaewcrshjkigzyqe.supabase.co/functions/v1/force-confirm-user`,
+        `${SUPABASE_URL}/functions/v1/force-confirm-user`,
         {
           method: 'POST',
           headers: {
@@ -265,11 +229,13 @@ export const UserManagement = () => {
           User Management
         </CardTitle>
         <CardDescription>
-          Manage user roles and permissions. Grant or revoke admin access.
+          Invite accounts and set their access. Only Super Admin can manage users.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {legacyAdminAccess && <p role="status" className="mb-4 text-sm text-muted-foreground">Account invitations, role changes and deletion are unavailable until the administrator permissions update is installed.</p>}
         <form onSubmit={inviteManagedAccount} className="mb-6 rounded-lg border bg-muted/20 p-4">
+          <fieldset disabled={legacyAdminAccess}>
           <div className="mb-4 flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             <div>
@@ -291,9 +257,7 @@ export const UserManagement = () => {
               <Select value={inviteForm.role} onValueChange={(role: ManagedAccountRole) => setInviteForm({ ...inviteForm, role })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="instructor">Instructor</SelectItem>
-                  <SelectItem value="admin">Content Admin</SelectItem>
+                  {ACCOUNT_ROLES.map(role => <SelectItem key={role} value={role}>{ACCOUNT_ROLE_LABELS[role]}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -301,6 +265,7 @@ export const UserManagement = () => {
               {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send invite"}
             </Button>
           </div>
+          </fieldset>
         </form>
 
         <div className="mb-6">
@@ -315,7 +280,7 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
@@ -332,9 +297,8 @@ export const UserManagement = () => {
           ) : (
             filteredUsers.map((userProfile, index) => {
               const roles = userRoles.get(userProfile.user_id) || [];
-              const isAdmin = roles.includes('admin');
-              const isInstructor = roles.includes('instructor');
               const isSuperAdminUser = roles.includes('super_admin');
+              const accountRole = ACCOUNT_ROLES.filter(role => role !== 'student').find(role => roles.includes(role)) ?? 'student';
               const isCurrentUser = userProfile.user_id === user?.id;
               const showSuperAdminBadge = isSuperAdminUser;
 
@@ -358,18 +322,7 @@ export const UserManagement = () => {
                           <Lock className="h-3 w-3 ml-1" />
                         </Badge>
                       )}
-                      {isAdmin && !showSuperAdminBadge && (
-                        <Badge variant="secondary">
-                          <ShieldCheck className="h-3 w-3 mr-1" />
-                          Content Admin
-                        </Badge>
-                      )}
-                      {isInstructor && !isAdmin && !showSuperAdminBadge && (
-                        <Badge variant="secondary">Instructor</Badge>
-                      )}
-                      {!isInstructor && !isAdmin && !showSuperAdminBadge && (
-                        <Badge variant="outline">Student</Badge>
-                      )}
+                      {!showSuperAdminBadge && <Badge variant={accountRole === 'student' ? 'outline' : 'secondary'}>{ACCOUNT_ROLE_LABELS[accountRole]}</Badge>}
                       {isCurrentUser && (
                         <Badge variant="outline" className="border-primary text-primary">You</Badge>
                       )}
@@ -388,72 +341,20 @@ export const UserManagement = () => {
                   </td>
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                    {/* Super Admin roles are never editable from the browser. */}
-                    {isSuperAdminUser ? (
-                      <span className="text-sm text-muted-foreground italic flex items-center gap-1">
-                        <Lock className="h-3 w-3" />
-                        Immutable
-                      </span>
+                    {isSuperAdminUser || isCurrentUser ? (
+                      <span className="text-sm text-muted-foreground flex items-center gap-1"><Lock className="h-3 w-3" />Protected</span>
                     ) : (
-                      <>
-                        {!isSuperAdminUser && !isCurrentUser && (
-                          <>
-                            {isAdmin ? (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-destructive"
-                                    disabled={processingUserId === userProfile.user_id}
-                                  >
-                                    {processingUserId === userProfile.user_id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <>
-                                        <ShieldX className="h-4 w-4 mr-1" />
-                                        Revoke
-                                      </>
-                                    )}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Revoke Admin Role?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will remove admin privileges from {userProfile.full_name}. They will no longer be able to access the admin dashboard.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => revokeAdminRole(userProfile.user_id)}>
-                                      Revoke
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => grantAdminRole(userProfile.user_id)}
-                                disabled={processingUserId === userProfile.user_id}
-                              >
-                                {processingUserId === userProfile.user_id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <ShieldCheck className="h-4 w-4 mr-1" />
-                                    Grant Admin
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </>
+                      <Select value={accountRole} disabled={legacyAdminAccess || processingUserId === userProfile.user_id} onValueChange={(role: ManagedAccountRole) => void changeAccountRole(userProfile.user_id, role)}>
+                        <SelectTrigger className="w-44" aria-label={`Account type for ${userProfile.email}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>{ACCOUNT_ROLES.map(role => <SelectItem key={role} value={role}>{ACCOUNT_ROLE_LABELS[role]}</SelectItem>)}</SelectContent>
+                      </Select>
                     )}
-                    
+
+                    {!legacyAdminAccess && !isCurrentUser && !isSuperAdminUser && <UserDeletionDialog userId={userProfile.user_id} email={userProfile.email} onDeleted={() => {
+                      setUsers(current => current.filter(row => row.user_id !== userProfile.user_id));
+                      setUserRoles(current => { const next = new Map(current); next.delete(userProfile.user_id); return next; });
+                    }} />}
+
                     {/* Force Confirm Button - visible for non-protected users */}
                     {!isCurrentUser && !isSuperAdminUser && (
                       <AlertDialog>
@@ -502,7 +403,7 @@ export const UserManagement = () => {
 
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Total Users: {users.length} | Admins: {Array.from(userRoles.values()).filter(r => r.includes('admin')).length}
+            Total Users: {users.length} | Admins: {Array.from(userRoles.values()).filter(r => r.some(role => ['super_admin','admin','course_admin','question_admin'].includes(role))).length}
           </p>
         </div>
       </CardContent>

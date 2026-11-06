@@ -1,5 +1,9 @@
+import { canAccessAdminTab, defaultAdminTab } from '@/lib/adminAccess';
+import { outlineRpc } from '@/lib/courseOutline';
+import { CourseOutlineManagement } from '@/components/admin/CourseOutlineManagement';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,14 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil, Image, FolderOpen } from "lucide-react";
+import { Loader2, Play, AlertCircle, CheckCircle, Eye, FileText, Trash2, Pencil } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MarkdownWithMath from "@/components/MarkdownWithMath";
 import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SubjectManagement } from "@/components/admin/SubjectManagement";
 import { QuestionBankPreview } from "@/components/admin/QuestionBankPreview";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, UserCog } from "lucide-react";
 
@@ -45,18 +49,9 @@ interface CourseVideo {
   notes_url: string | null;
   order_index: number;
   courses?: { title: string };
-}
-
-interface PracticeProblem {
-  id: string;
-  title: string;
-  content: string;
-  solution: string | null;
-  video_id: string | null;
-  image_url: string | null;
-  unit_number: number | null;
-  lesson_number: string | null;
-  created_at: string;
+  metadata_revision?: number;
+  reference_count?: number;
+  usage?: { course_id: string; course_title: string; entry_id: string; lesson_title: string; archived: boolean }[];
 }
 
 interface Subject {
@@ -67,34 +62,31 @@ interface Subject {
   order_index: number;
 }
 
-// Helper to extract YouTube video ID
-const getYouTubeVideoId = (url: string): string | null => {
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
-  return match ? match[1] : null;
-};
-
-// Helper to get YouTube thumbnail URL
-const getYouTubeThumbnail = (videoUrl: string): string => {
-  const videoId = getYouTubeVideoId(videoUrl);
-  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "/placeholder.svg";
-};
-
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, isAdmin, adminAccess, accessLoading, accessError, retryAdminAccess, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // Same-account background checks must not unmount open editors or publication selections.
+  const loading = authLoading || (accessLoading && !isAdmin);
   const [submitting, setSubmitting] = useState(false);
+  const [adminTab, setAdminTab] = useState('manage-courses');
+  const [managedCourseId, setManagedCourseId] = useState('');
+  const [contentDirty, setContentDirty] = useState(false);
+  const [contentBusy, setContentBusy] = useState(false);
+  const [courseTemplate, setCourseTemplate] = useState('');
+  const [videoFilter, setVideoFilter] = useState('course');
+  const [videoSearch, setVideoSearch] = useState('');
+  const [videoLibraryError, setVideoLibraryError] = useState('');
+  const videoLoad = useRef(0);
+  const canLeaveContent = () => !contentBusy && (!contentDirty || window.confirm('Discard unsaved lesson changes?'));
+  const openCourseContent = (id: string) => { if (canLeaveContent()) { setManagedCourseId(id); setAdminTab('course-content'); } };
   const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<CourseVideo[]>([]);
-  const [practiceProblems, setPracticeProblems] = useState<PracticeProblem[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamCanSave, setTeamCanSave] = useState(false);
   const [teamLoadFailed, setTeamLoadFailed] = useState(false);
   const [teamSaveNotice, setTeamSaveNotice] = useState('Loading Team schema…');
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [practiceSubjectFilter, setPracticeSubjectFilter] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -118,19 +110,6 @@ const Admin = () => {
     order_index: "0",
   });
 
-  // Practice problem form
-  const [practiceFormData, setPracticeFormData] = useState({
-    title: "",
-    content: "",
-    solution: "",
-    video_id: "",
-    image_url: "",
-    unit_number: "",
-    lesson_number: "",
-  });
-  const [practiceImageFile, setPracticeImageFile] = useState<File | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-
   // Team member form
   const [teamFormData, setTeamFormData] = useState({
     name: "",
@@ -145,11 +124,15 @@ const Admin = () => {
   // Edit states
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingVideo, setEditingVideo] = useState<CourseVideo | null>(null);
-  const [editingProblem, setEditingProblem] = useState<PracticeProblem | null>(null);
   const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editVideoDialogOpen, setEditVideoDialogOpen] = useState(false);
-  const [editProblemDialogOpen, setEditProblemDialogOpen] = useState(false);
+  const [videoTranscriptDraft, setVideoTranscriptDraft] = useState('');
+  const [videoEditSnapshot, setVideoEditSnapshot] = useState('');
+  const videoDirty = editVideoDialogOpen && JSON.stringify({ video: editingVideo, transcript: videoTranscriptDraft }) !== videoEditSnapshot;
+  const closeVideoEditor = () => { if (!submitting && (!videoDirty || window.confirm('Discard unsaved video changes?'))) setEditVideoDialogOpen(false); };
+  const openVideoEditor = (video: CourseVideo) => { const transcript = video.transcript ? JSON.stringify(video.transcript, null, 2) : ''; setEditingVideo(video); setVideoTranscriptDraft(transcript); setVideoEditSnapshot(JSON.stringify({ video, transcript })); setEditVideoDialogOpen(true); };
+  useEffect(() => { const guard = (e: BeforeUnloadEvent) => { if (videoDirty) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', guard); return () => window.removeEventListener('beforeunload', guard); }, [videoDirty]);
   const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false);
 
   // JSON validation state
@@ -162,18 +145,19 @@ const Admin = () => {
   const [aiTestResult, setAiTestResult] = useState<{loading: boolean; error?: string; success?: boolean; response?: string}>({loading: false});
 
   useEffect(() => {
-    checkAdminStatus();
-  }, [user]);
+    if (loading) return;
+    if (!user) { navigate('/auth'); return; }
+    if (accessError) return;
+    if (!isAdmin) { navigate('/'); return; }
+    if (!canAccessAdminTab(adminAccess, adminTab)) setAdminTab(defaultAdminTab(adminAccess));
+  }, [loading, user, isAdmin, adminAccess, adminTab, accessError, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchCourses();
-      fetchVideos();
-      fetchPracticeProblems();
-      fetchTeamMembers();
-      fetchSubjects();
-    }
-  }, [isAdmin]);
+    if (loading) return;
+    if (adminAccess.courses) { void fetchCourses(); void fetchSubjects(); }
+    if (adminAccess.team) void fetchTeamMembers();
+  }, [loading, adminAccess]);
+  useEffect(() => { if (!loading && adminAccess.courses) void fetchVideos(); }, [loading, adminAccess.courses, managedCourseId, videoFilter]);
 
   // Helper: sanitize transcript JSON to {s, t} format
   const sanitizeTranscript = (rawJson: string): any[] | null => {
@@ -234,39 +218,6 @@ const Admin = () => {
     }
   }, [videoFormData.transcript, editingVideo]);
 
-  const checkAdminStatus = async () => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.rpc("has_role", {
-        _user_id: user.id,
-        _role: "admin",
-      });
-
-      if (error) throw error;
-
-      if (!data) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have admin permissions.",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
-      setIsAdmin(true);
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchCourses = async () => {
     try {
       const { data, error } = await supabase
@@ -282,32 +233,12 @@ const Admin = () => {
   };
 
   const fetchVideos = async () => {
+    const request = ++videoLoad.current;
     try {
-      const { data, error } = await supabase
-        .from("course_videos")
-        .select("id, course_id, title, subtitle, video_url, transcript, exam_tips, notes_url, order_index, courses(title)")
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      setVideos(data || []);
-    } catch (error) {
-      console.error("Error fetching videos:", error);
-    }
-  };
-
-  const fetchPracticeProblems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("practice_problems")
-        .select("id, title, content, solution, video_id, image_url, unit_number, lesson_number, created_at")
-        .order("unit_number", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setPracticeProblems(data || []);
-    } catch (error) {
-      console.error("Error fetching practice problems:", error);
-    }
+      const data = await outlineRpc(supabase, 'list_course_video_library', { _course_id: managedCourseId || null, _filter: videoFilter });
+      if (!Array.isArray(data)) throw new Error('Could not verify the video library.');
+      if (request === videoLoad.current) { setVideos(data); setVideoLibraryError(''); }
+    } catch (error) { if (request === videoLoad.current) { setVideos([]); setVideoLibraryError(error instanceof Error ? error.message : String(error)); } }
   };
 
   const fetchTeamMembers = async () => {
@@ -364,18 +295,6 @@ const Admin = () => {
       fetchVideos();
     } catch (error: any) {
       console.error("Error deleting video:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const deletePracticeProblem = async (problemId: string) => {
-    try {
-      const { error } = await supabase.from("practice_problems").delete().eq("id", problemId);
-      if (error) throw error;
-      toast({ title: "Practice problem deleted successfully" });
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error deleting practice problem:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
@@ -457,56 +376,20 @@ const Admin = () => {
     if (!editingVideo) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("course_videos")
-        .update({
-          title: editingVideo.title,
-          subtitle: editingVideo.subtitle,
-          video_url: editingVideo.video_url,
-          transcript: editingVideo.transcript,
-          exam_tips: editingVideo.exam_tips,
-          notes_url: editingVideo.notes_url,
-          order_index: editingVideo.order_index,
-        })
-        .eq("id", editingVideo.id);
+      let transcript = null;
+      if (videoTranscriptDraft.trim()) {
+        transcript = sanitizeTranscript(videoTranscriptDraft);
+        if (!transcript) throw new Error('Fix the transcript JSON before saving.');
+      }
+      await outlineRpc(supabase, 'save_course_video_metadata', { _video_id: editingVideo.id, _expected_revision: editingVideo.metadata_revision,
+        _details: { ...editingVideo, transcript } });
 
-      if (error) throw error;
       toast({ title: "Video updated successfully" });
       setEditVideoDialogOpen(false);
       setEditingVideo(null);
       fetchVideos();
     } catch (error: any) {
       console.error("Error updating video:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const updatePracticeProblem = async () => {
-    if (!editingProblem) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from("practice_problems")
-        .update({
-          title: editingProblem.title,
-          content: editingProblem.content,
-          solution: editingProblem.solution,
-          video_id: editingProblem.video_id,
-          image_url: editingProblem.image_url,
-          unit_number: editingProblem.unit_number,
-          lesson_number: editingProblem.lesson_number,
-        })
-        .eq("id", editingProblem.id);
-
-      if (error) throw error;
-      toast({ title: "Practice problem updated successfully" });
-      setEditProblemDialogOpen(false);
-      setEditingProblem(null);
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error updating practice problem:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -548,24 +431,6 @@ const Admin = () => {
   };
 
   // ===== IMAGE UPLOAD =====
-  const uploadPracticeImage = async (file: File): Promise<string | null> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `practice/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('practice-images')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
-      return null;
-    }
-
-    const { data } = supabase.storage.from('practice-images').getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-
   const uploadTeamPhoto = async (file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -591,18 +456,11 @@ const Admin = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("courses").insert({
-        title: formData.title,
-        description: formData.description,
-        level: formData.level,
-        subject: formData.subject,
-        category: formData.category,
-        price: parseFloat(formData.price),
-        instructor_id: user.id,
-        is_published: formData.is_published,
+      const createdId = await outlineRpc(supabase, 'create_managed_course', {
+        _details: { ...formData, price: Number(formData.price) },
+        _scope: courseTemplate || null,
       });
-
-      if (error) throw error;
+      if (typeof createdId !== 'string') throw new Error('Could not verify the created course. Reload Courses before retrying.');
 
       toast({ title: "Success", description: "Course created successfully!" });
 
@@ -616,10 +474,12 @@ const Admin = () => {
         is_published: false,
       });
 
-      fetchCourses();
+      setCourseTemplate('');
+      await fetchCourses();
+      openCourseContent(createdId);
     } catch (error) {
       console.error("Error creating course:", error);
-      toast({ title: "Error", description: "Failed to create course.", variant: "destructive" });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to create course.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -681,65 +541,6 @@ const Admin = () => {
       toast({ title: "Error", description: error.message || "Failed to add video.", variant: "destructive" });
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handlePracticeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
-    setSubmitting(true);
-    setUploadingImage(true);
-
-    try {
-      let imageUrl = practiceFormData.image_url;
-
-      // Upload custom image if provided
-      if (practiceImageFile) {
-        const uploadedUrl = await uploadPracticeImage(practiceImageFile);
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl;
-        }
-      } else if (!imageUrl && practiceFormData.video_id) {
-        // Use YouTube thumbnail as default
-        const video = videos.find(v => v.id === practiceFormData.video_id);
-        if (video) {
-          imageUrl = getYouTubeThumbnail(video.video_url);
-        }
-      }
-
-      const { error } = await supabase.from("practice_problems").insert({
-        title: practiceFormData.title,
-        content: practiceFormData.content,
-        solution: practiceFormData.solution || null,
-        video_id: practiceFormData.video_id || null,
-        image_url: imageUrl || null,
-        unit_number: practiceFormData.unit_number ? parseInt(practiceFormData.unit_number) : null,
-        lesson_number: practiceFormData.lesson_number || null,
-      });
-
-      if (error) throw error;
-
-      toast({ title: "Success", description: "Practice problem created!" });
-
-      setPracticeFormData({
-        title: "",
-        content: "",
-        solution: "",
-        video_id: "",
-        image_url: "",
-        unit_number: "",
-        lesson_number: "",
-      });
-      setPracticeImageFile(null);
-
-      fetchPracticeProblems();
-    } catch (error: any) {
-      console.error("Error creating practice problem:", error);
-      toast({ title: "Error", description: error.message || "Failed to create practice problem.", variant: "destructive" });
-    } finally {
-      setSubmitting(false);
-      setUploadingImage(false);
     }
   };
 
@@ -839,6 +640,10 @@ const Admin = () => {
     );
   }
 
+  if (accessError) {
+    return <div className="container mx-auto max-w-xl py-12" role="alert"><h1 className="text-2xl font-semibold">Account permissions unavailable</h1><p className="my-4">{accessError}</p><Button onClick={retryAdminAccess}>Retry</Button></div>;
+  }
+
   if (!isAdmin) {
     return null;
   }
@@ -849,22 +654,14 @@ const Admin = () => {
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-      <p className="text-muted-foreground mb-8">Manage courses, videos, practice problems, and content</p>
+      <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, and content</p>
 
-      <Tabs defaultValue="videos" className="space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-5 xl:grid-cols-10">
-          <TabsTrigger value="videos">Add Video</TabsTrigger>
-          <TabsTrigger value="courses">Create Course</TabsTrigger>
-          <TabsTrigger value="practice">Practice</TabsTrigger>
-          <TabsTrigger value="question-bank">Question Bank</TabsTrigger>
-          <TabsTrigger value="subjects" className="flex items-center gap-1">
-            <FolderOpen className="h-4 w-4" />
-            Subjects
-          </TabsTrigger>
-          <TabsTrigger value="playground">Playground</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="manage">Manage Videos</TabsTrigger>
-          <TabsTrigger value="manage-courses">Courses</TabsTrigger>
+      <Tabs value={adminTab} onValueChange={value => { if (canAccessAdminTab(adminAccess, value) && canLeaveContent()) setAdminTab(value); }} className="space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+          {adminAccess.courses && (<TabsTrigger value={['courses', 'course-content', 'subjects', 'manage', 'videos'].includes(adminTab) ? adminTab : 'manage-courses'} onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Courses</TabsTrigger>)}
+          {adminAccess.questions && (<TabsTrigger value="question-bank">Question Bank</TabsTrigger>)}
+          {adminAccess.playground && (<TabsTrigger value="playground">Playground</TabsTrigger>)}
+          {adminAccess.team && (<TabsTrigger value="team">Team</TabsTrigger>)}
           {isSuperAdmin && (
             <TabsTrigger value="users" className="flex items-center gap-1">
               <UserCog className="h-4 w-4" />
@@ -873,8 +670,19 @@ const Admin = () => {
           )}
         </TabsList>
 
-        {/* Add Video Tab */}
-        <TabsContent value="videos">
+        {canAccessAdminTab(adminAccess, 'course-content') && (<TabsContent value="course-content">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Back to Courses</Button>
+            <span className="font-semibold">{courses.find(c => c.id === managedCourseId)?.title}</span>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) { setVideoFilter('course'); setAdminTab('manage'); } }}>Manage videos</Button>
+            <Button variant="outline" onClick={() => { if (canLeaveContent()) { setVideoFormData(v => ({ ...v, course_id: managedCourseId })); setAdminTab('videos'); } }}>Add video metadata</Button>
+          </div>
+          {managedCourseId && <CourseOutlineManagement key={managedCourseId} courseId={managedCourseId} onDirtyChange={setContentDirty} onBusyChange={setContentBusy} onSaved={() => { void fetchVideos(); }} />}
+        </TabsContent>)}
+
+        {/* Legacy video metadata editor; student access is controlled by canonical publication. */}
+        {canAccessAdminTab(adminAccess, 'videos') && (<TabsContent value="videos">
+          <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <div className="grid gap-8 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -983,7 +791,7 @@ const Admin = () => {
                       className={`font-mono text-sm ${transcriptValid === false ? 'border-destructive' : ''}`}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Format: Array of objects with "s" (seconds) and "t" (text). Used by AI Tutor.
+                      Format: Array of objects with "s" (seconds) and "t" (text).
                     </p>
                   </div>
 
@@ -1069,14 +877,15 @@ const Admin = () => {
               </Card>
             </div>
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Create Course Tab */}
-        <TabsContent value="courses">
+        {canAccessAdminTab(adminAccess, 'courses') && (<TabsContent value="courses">
           <Card className="max-w-2xl">
             <CardHeader>
               <CardTitle>Create New Course</CardTitle>
               <CardDescription>Add a new course to the platform</CardDescription>
+              <Button variant="outline" onClick={() => setAdminTab('manage-courses')}>Back to Courses</Button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -1139,6 +948,7 @@ const Admin = () => {
                   </div>
                 </div>
 
+                <div className="space-y-2"><Label htmlFor="course-template">Curriculum template</Label><select id="course-template" className="w-full rounded border bg-background p-2" value={courseTemplate} onChange={e => setCourseTemplate(e.target.value)} required={formData.subject === 'AP Calc'}><option value="">No template</option><option value="AB">AP Calculus AB</option><option value="BC">AP Calculus BC</option></select><p className="text-sm text-muted-foreground">AB / BC initializes its complete outline and practice scope. Other courses start without an outline.</p></div>
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <Label htmlFor="course-published">Publish course</Label>
@@ -1199,296 +1009,34 @@ const Admin = () => {
               </form>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
-        {/* Practice Problems Tab */}
-        <TabsContent value="practice">
-          <div className="grid gap-8 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add Practice Problem</CardTitle>
-                <CardDescription>Create a new practice problem linked to a video</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePracticeSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_title">Title *</Label>
-                    <Input
-                      id="practice_title"
-                      value={practiceFormData.title}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, title: e.target.value })}
-                      placeholder="e.g., Limit at Infinity Problem"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_subject">Subject *</Label>
-                    <Select
-                      value={practiceSubjectFilter}
-                      onValueChange={(value) => {
-                        setPracticeSubjectFilter(value);
-                        // Reset video selection when subject changes
-                        setPracticeFormData({ ...practiceFormData, video_id: "" });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a subject first" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.length === 0 ? (
-                          <SelectItem value="none" disabled>No subjects available</SelectItem>
-                        ) : (
-                          <>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">High School</div>
-                            {subjects.filter(s => s.category === "High School").map((subject) => (
-                              <SelectItem key={subject.id} value={subject.name}>
-                                {subject.name}
-                              </SelectItem>
-                            ))}
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Contest</div>
-                            {subjects.filter(s => s.category === "Contest").map((subject) => (
-                              <SelectItem key={subject.id} value={subject.name}>
-                                {subject.name}
-                              </SelectItem>
-                            ))}
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_video">Link to Video</Label>
-                    <Select
-                      value={practiceFormData.video_id}
-                      onValueChange={(value) => setPracticeFormData({ ...practiceFormData, video_id: value })}
-                      disabled={!practiceSubjectFilter}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={practiceSubjectFilter ? "Select a video (optional)" : "Select a subject first"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(() => {
-                          // Filter videos by selected subject via their course
-                          const filteredVideos = videos.filter(video => {
-                            const course = courses.find(c => c.id === video.course_id);
-                            return course && course.subject === practiceSubjectFilter;
-                          });
-                          
-                          if (filteredVideos.length === 0) {
-                            return <SelectItem value="none" disabled>No videos for this subject</SelectItem>;
-                          }
-                          
-                          return filteredVideos.map((video) => (
-                            <SelectItem key={video.id} value={video.id}>
-                              {video.title} {video.subtitle ? `(${video.subtitle})` : ""}
-                            </SelectItem>
-                          ));
-                        })()}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {practiceSubjectFilter 
-                        ? "If no image is uploaded, the video thumbnail will be used as default."
-                        : "Select a subject above to see available videos."}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="unit_number">Unit Number</Label>
-                      <Input
-                        id="unit_number"
-                        type="number"
-                        value={practiceFormData.unit_number}
-                        onChange={(e) => setPracticeFormData({ ...practiceFormData, unit_number: e.target.value })}
-                        placeholder="e.g., 2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lesson_number">Lesson Number</Label>
-                      <Input
-                        id="lesson_number"
-                        value={practiceFormData.lesson_number}
-                        onChange={(e) => setPracticeFormData({ ...practiceFormData, lesson_number: e.target.value })}
-                        placeholder="e.g., 2.1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_content">Problem Content (Markdown + LaTeX) *</Label>
-                    <Textarea
-                      id="practice_content"
-                      value={practiceFormData.content}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, content: e.target.value })}
-                      rows={4}
-                      placeholder="Find $$\lim_{x \to \infty} \frac{3x^2 + 2x}{x^2 - 1}$$"
-                      required
-                    />
-                  </div>
-
-                  {practiceFormData.content && (
-                    <div className="p-4 border rounded-lg bg-muted/30">
-                      <p className="text-xs text-muted-foreground mb-2">Preview:</p>
-                      <MarkdownWithMath content={practiceFormData.content} />
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="practice_solution">Solution (Markdown + LaTeX)</Label>
-                    <Textarea
-                      id="practice_solution"
-                      value={practiceFormData.solution}
-                      onChange={(e) => setPracticeFormData({ ...practiceFormData, solution: e.target.value })}
-                      rows={4}
-                      placeholder="Step 1: Divide top and bottom by $$x^2$$..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Problem Diagram (Optional)</Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPracticeImageFile(e.target.files?.[0] || null)}
-                        className="flex-1"
-                      />
-                      {practiceImageFile && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPracticeImageFile(null)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {practiceImageFile && (
-                      <p className="text-xs text-green-600">
-                        <CheckCircle className="inline h-3 w-3 mr-1" />
-                        {practiceImageFile.name} selected
-                      </p>
-                    )}
-                    {!practiceImageFile && practiceFormData.video_id && (
-                      <p className="text-xs text-muted-foreground">
-                        <Image className="inline h-3 w-3 mr-1" />
-                        Will use video thumbnail as default
-                      </p>
-                    )}
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {uploadingImage ? "Uploading Image..." : "Creating..."}
-                      </>
-                    ) : (
-                      "Create Practice Problem"
-                    )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Existing Practice Problems</CardTitle>
-                <CardDescription>Manage your practice problems</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {practiceProblems.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No practice problems yet</p>
-                  ) : (
-                    practiceProblems.map((problem) => (
-                      <div
-                        key={problem.id}
-                        className="p-4 border rounded-lg space-y-2 hover:bg-accent/30 transition-colors"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{problem.title}</h3>
-                            <p className="text-sm text-muted-foreground line-clamp-2">
-                              {problem.content.slice(0, 100)}...
-                            </p>
-                            {problem.image_url && (
-                              <img 
-                                src={problem.image_url} 
-                                alt="Problem thumbnail"
-                                className="w-16 h-12 object-cover rounded mt-2"
-                              />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingProblem(problem);
-                                setEditProblemDialogOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Practice Problem?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deletePracticeProblem(problem.id)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="question-bank">
+        {canAccessAdminTab(adminAccess, 'question-bank') && (<TabsContent value="question-bank">
           <QuestionBankPreview />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Subjects Management Tab */}
-        <TabsContent value="subjects">
+        {canAccessAdminTab(adminAccess, 'subjects') && (<TabsContent value="subjects">
+          <Button className="mb-4" variant="outline" onClick={() => { void fetchSubjects(); setAdminTab('manage-courses'); }}>Back to Courses</Button>
           <SubjectManagement />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Manage Videos Tab */}
-        <TabsContent value="manage">
+        {canAccessAdminTab(adminAccess, 'manage') && (<TabsContent value="manage">
+          <Button className="mb-4" variant="outline" onClick={() => setAdminTab(managedCourseId ? 'course-content' : 'manage-courses')}>Back to course content</Button>
           <Card>
             <CardHeader>
-              <CardTitle>All Videos</CardTitle>
-              <CardDescription>Manage existing videos, edit transcripts, and test AI integration</CardDescription>
+              <CardTitle>Course videos</CardTitle>
+              <CardDescription>Manage videos used by this course, including transcript, subtitle, exam tips and PDF links.</CardDescription>
+              <div className="flex flex-wrap gap-3"><Label htmlFor="video-library-filter">Show videos</Label><select id="video-library-filter" className="rounded border bg-background p-2" value={videoFilter} onChange={e => setVideoFilter(e.target.value)}><option value="course">This course</option><option value="all">All courses</option><option value="unlinked">Not linked to saved lessons</option></select><Input aria-label="Search videos" placeholder="Search videos" value={videoSearch} onChange={e => setVideoSearch(e.target.value)} /></div>
+              {videoLibraryError && <p role="alert" className="text-destructive">{videoLibraryError}</p>}
             </CardHeader>
             <CardContent>
               <div className="space-y-3 max-h-[700px] overflow-y-auto">
                 {videos.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">No videos yet</p>
                 ) : (
-                  videos.map((video) => (
+                  videos.filter(v => (v.title + ' ' + (v.subtitle ?? '')).toLowerCase().includes(videoSearch.toLowerCase())).map((video) => (
                     <div
                       key={video.id}
                       className="p-4 border rounded-lg flex items-center justify-between hover:bg-accent/30 transition-colors"
@@ -1528,24 +1076,23 @@ const Admin = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setEditingVideo(video);
-                            setEditVideoDialogOpen(true);
+                            openVideoEditor(video);
                           }}
                         >
                           <Pencil className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button
+                        {AI_TUTOR_ENABLED && <Button
                           variant="outline"
                           size="sm"
                           onClick={() => testAIForVideo(video)}
                         >
                           <Play className="h-4 w-4 mr-1" />
                           Test AI
-                        </Button>
+                        </Button>}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-destructive">
+                            <Button variant="outline" size="sm" className="text-destructive" disabled={(video.reference_count ?? 0) > 0} aria-label={`Delete ${video.title}`} title={(video.reference_count ?? 0) > 0 ? 'Referenced by saved lessons; remove associations first' : 'Delete unused video'}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -1553,7 +1100,7 @@ const Admin = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Video?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete this video and all associated practice problems.
+                                This permanently deletes an unused video. Videos referenced by any saved lesson cannot be deleted. Canonical question-bank data is not affected.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1571,14 +1118,15 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Manage Courses Tab */}
-        <TabsContent value="manage-courses">
+        {canAccessAdminTab(adminAccess, 'manage-courses') && (<TabsContent value="manage-courses">
           <Card>
             <CardHeader>
               <CardTitle>All Courses</CardTitle>
-              <CardDescription>Edit or delete existing courses</CardDescription>
+              <CardDescription>Select a course to manage its outline and content.</CardDescription>
+              <div className="flex flex-wrap gap-2"><Button onClick={() => setAdminTab('courses')}>Create Course</Button><Button variant="outline" onClick={() => setAdminTab('subjects')}>Manage subjects</Button></div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4 max-h-[700px] overflow-y-auto">
@@ -1591,7 +1139,7 @@ const Admin = () => {
                       className="p-4 border rounded-lg flex items-start justify-between hover:bg-accent/30 transition-colors"
                     >
                       <div className="space-y-2 flex-1">
-                        <h3 className="font-semibold">{course.title}</h3>
+                        <Button variant="link" className="h-auto p-0 text-base font-semibold" onClick={() => openCourseContent(course.id)}>{course.title}</Button>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {course.description}
                         </p>
@@ -1617,7 +1165,8 @@ const Admin = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex flex-wrap items-center gap-2 ml-4">
+                        <Button size="sm" onClick={() => openCourseContent(course.id)}>Manage content</Button>
                         <div className="flex items-center gap-2 mr-2">
                           <Switch
                             checked={course.is_published}
@@ -1649,7 +1198,7 @@ const Admin = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Course?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will permanently delete this course. Videos associated with it will remain but will be unlinked.
+                                Deletion is permanent and may be blocked when this course has an outline or saved content. Unpublish the course to hide it while keeping its lessons and videos.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1667,10 +1216,10 @@ const Admin = () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Team Management Tab */}
-        <TabsContent value="team">
+        {canAccessAdminTab(adminAccess, 'team') && (<TabsContent value="team">
           {teamSaveNotice && <div role="status" className="mb-6 rounded border border-amber-400 bg-amber-50 p-4 text-amber-950">
             <p>{teamSaveNotice}</p><Button type="button" variant="outline" className="mt-2" onClick={() => void fetchTeamMembers()}>Reload Team data</Button>
           </div>}
@@ -1894,12 +1443,12 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+        </TabsContent>)}
 
         {/* Playground Management Tab */}
-        <TabsContent value="playground">
+        {canAccessAdminTab(adminAccess, 'playground') && (<TabsContent value="playground">
           <PlaygroundManagement />
-        </TabsContent>
+        </TabsContent>)}
 
         {/* User Management Tab - Super Admin Only */}
         {isSuperAdmin && (
@@ -1911,11 +1460,9 @@ const Admin = () => {
 
       {/* Edit Course Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
-            <DialogDescription>Update course details</DialogDescription>
-          </DialogHeader>
+        <DialogContent scrollable className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit Course</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update course details</DialogDescription>
           {editingCourse && (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -1980,29 +1527,28 @@ const Admin = () => {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* Edit Video Dialog */}
-      <Dialog open={editVideoDialogOpen} onOpenChange={setEditVideoDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Video</DialogTitle>
-            <DialogDescription>Update video details, transcript, and PDF links</DialogDescription>
-          </DialogHeader>
+      <Dialog open={editVideoDialogOpen} onOpenChange={open => { if (!open) closeVideoEditor(); }}>
+        <DialogContent scrollable className="max-w-2xl max-h-[90vh]">
+          <DialogHeader><DialogTitle>Edit Video</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update video details, transcript, and PDF links</DialogDescription>{!!editingVideo?.usage?.length && <div className="rounded border border-amber-400 p-3 text-sm"><p className="font-semibold">Editing this video affects these saved lessons:</p>{editingVideo.usage.map(u => <p key={u.entry_id}>{u.course_title} · {u.lesson_title}{u.archived ? ' · recoverable' : ''}</p>)}</div>}
           {editingVideo && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input
+                  <Label htmlFor="metadata-title">Title</Label>
+                  <Input id="metadata-title"
                     value={editingVideo.title}
                     onChange={(e) => setEditingVideo({ ...editingVideo, title: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Subtitle/Unit</Label>
-                  <Input
+                  <Label htmlFor="metadata-subtitle">Subtitle/Unit</Label>
+                  <Input id="metadata-subtitle"
                     value={editingVideo.subtitle || ""}
                     onChange={(e) => setEditingVideo({ ...editingVideo, subtitle: e.target.value })}
                   />
@@ -2010,15 +1556,15 @@ const Admin = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Video URL</Label>
-                  <Input
+                  <Label htmlFor="metadata-url">Video URL</Label>
+                  <Input id="metadata-url"
                     value={editingVideo.video_url}
                     onChange={(e) => setEditingVideo({ ...editingVideo, video_url: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Order Index</Label>
-                  <Input
+                  <Label htmlFor="metadata-order">Order Index</Label>
+                  <Input id="metadata-order"
                     type="number"
                     value={editingVideo.order_index}
                     onChange={(e) => setEditingVideo({ ...editingVideo, order_index: parseInt(e.target.value) || 0 })}
@@ -2026,32 +1572,25 @@ const Admin = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Notes/PDF URL</Label>
-                <Input
+                <Label htmlFor="metadata-pdf">Notes/PDF URL</Label>
+                <Input id="metadata-pdf"
                   value={editingVideo.notes_url || ""}
                   onChange={(e) => setEditingVideo({ ...editingVideo, notes_url: e.target.value })}
                   placeholder="https://example.com/notes.pdf"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Transcript (JSON)</Label>
-                <Textarea
-                  value={editingVideo.transcript ? JSON.stringify(editingVideo.transcript, null, 2) : ""}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setEditingVideo({ ...editingVideo, transcript: parsed });
-                    } catch {
-                      // Keep the raw string temporarily
-                    }
-                  }}
+                <Label htmlFor="metadata-transcript">Transcript (JSON)</Label>
+                <Textarea id="metadata-transcript"
+                  value={videoTranscriptDraft}
+                  onChange={e => setVideoTranscriptDraft(e.target.value)}
                   rows={6}
                   className="font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Exam Tips (Markdown + LaTeX)</Label>
-                <Textarea
+                <Label htmlFor="metadata-tips">Exam Tips (Markdown + LaTeX)</Label>
+                <Textarea id="metadata-tips"
                   value={editingVideo.exam_tips || ""}
                   onChange={(e) => setEditingVideo({ ...editingVideo, exam_tips: e.target.value })}
                   rows={4}
@@ -2066,111 +1605,18 @@ const Admin = () => {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditVideoDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={closeVideoEditor}>Cancel</Button>
             <Button onClick={updateVideo} disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Changes
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Practice Problem Dialog */}
-      <Dialog open={editProblemDialogOpen} onOpenChange={setEditProblemDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Practice Problem</DialogTitle>
-            <DialogDescription>Update problem content, solution, and image</DialogDescription>
-          </DialogHeader>
-          {editingProblem && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input
-                  value={editingProblem.title}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Link to Video</Label>
-                <Select
-                  value={editingProblem.video_id || ""}
-                  onValueChange={(value) => setEditingProblem({ ...editingProblem, video_id: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a video" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {videos.map((video) => (
-                      <SelectItem key={video.id} value={video.id}>
-                        {video.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Problem Content</Label>
-                <Textarea
-                  value={editingProblem.content}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, content: e.target.value })}
-                  rows={4}
-                />
-              </div>
-              {editingProblem.content && (
-                <div className="p-4 border rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground mb-2">Preview:</p>
-                  <MarkdownWithMath content={editingProblem.content} />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Solution</Label>
-                <Textarea
-                  value={editingProblem.solution || ""}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, solution: e.target.value })}
-                  rows={4}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Image URL</Label>
-                <Input
-                  value={editingProblem.image_url || ""}
-                  onChange={(e) => setEditingProblem({ ...editingProblem, image_url: e.target.value })}
-                  placeholder="https://..."
-                />
-                {editingProblem.image_url && (
-                  <div className="flex items-center gap-4">
-                    <img 
-                      src={editingProblem.image_url} 
-                      alt="Preview" 
-                      className="w-24 h-16 object-cover rounded"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingProblem({ ...editingProblem, image_url: null })}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Remove
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditProblemDialogOpen(false)}>Cancel</Button>
-            <Button onClick={updatePracticeProblem} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save Changes
-            </Button>
-          </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* AI Test Dialog */}
-      <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
+      {AI_TUTOR_ENABLED && <Dialog open={aiPreviewOpen} onOpenChange={setAiPreviewOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>AI Tutor Test: {aiPreviewVideo?.title}</DialogTitle>
@@ -2212,15 +1658,13 @@ const Admin = () => {
             )}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Edit Team Member Dialog */}
       <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Team Member</DialogTitle>
-            <DialogDescription>Update team member details</DialogDescription>
-          </DialogHeader>
+        <DialogContent scrollable className="max-w-lg max-h-[90dvh]">
+          <DialogHeader><DialogTitle>Edit Team Member</DialogTitle></DialogHeader>
+          <DialogBody><DialogDescription>Update team member details</DialogDescription>
           {editingTeamMember && (
             <div className="space-y-4">
               {!teamCanSave && <p role="status" className="text-sm text-amber-800">{teamSaveNotice}</p>}
@@ -2320,6 +1764,7 @@ const Admin = () => {
               Save Changes
             </Button>
           </DialogFooter>
+        </DialogBody>
         </DialogContent>
       </Dialog>
 

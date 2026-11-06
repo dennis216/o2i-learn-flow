@@ -1,16 +1,23 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { Maximize, MessageCircle, X, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { AITutorSidebar } from './AITutorSidebar';
 import { AITutorDrawer } from './AITutorDrawer';
-import { StudyHub } from './StudyHub';
+const StudyHub = lazy(() => import('./StudyHub').then(m => ({ default: m.StudyHub })));
+import { youtubeId as parseYoutubeId } from '@/lib/courseContent';
 import { CourseVideo } from './types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 
+interface YouTubePlayer {
+  destroy: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  getCurrentTime: () => number;
+}
 declare global {
   interface Window {
-    YT: any;
+    YT: { Player: new (container: HTMLElement, options: { videoId: string; playerVars: { enablejsapi: number; origin: string }; events: { onReady: () => void } }) => YouTubePlayer };
     onYouTubeIframeAPIReady: () => void;
   }
 }
@@ -22,16 +29,17 @@ interface VideoPlayerWithTutorProps {
   courseSubject?: string;
   /** Initial time in seconds to seek to when video loads */
   initialTime?: number;
+  showStudyHub?: boolean;
 }
 
-export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime }: VideoPlayerWithTutorProps) {
+export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initialTime, showStudyHub = true }: VideoPlayerWithTutorProps) {
   const [currentTime, setCurrentTime] = useState<number>(initialTime ?? 0);
   const [showMobileTutor, setShowMobileTutor] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPrompt, setDrawerPrompt] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<YouTubePlayer | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMobile = useIsMobile();
@@ -41,21 +49,13 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
     setDrawerOpen(true);
   }, []);
 
-  const isYouTube = video.video_url.includes('youtube.com') || video.video_url.includes('youtu.be');
-
-  // Extract YouTube video ID
-  const getYouTubeId = (url: string): string => {
-    if (url.includes('youtu.be')) {
-      return url.split('youtu.be/')[1]?.split('?')[0] || '';
-    }
-    return url.split('v=')[1]?.split('&')[0] || '';
-  };
-
-  const youtubeId = isYouTube ? getYouTubeId(video.video_url) : '';
+  const youtubeId = parseYoutubeId(video.video_url) ?? '';
+  const isYouTube = !!youtubeId;
 
   // Load YouTube Iframe API
   useEffect(() => {
     if (!isYouTube) return;
+    setPlayerReady(false);
 
     // Load the YouTube API script if not already loaded
     if (!window.YT) {
@@ -109,7 +109,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         playerRef.current.destroy();
       }
     };
-  }, [isYouTube, youtubeId]);
+  }, [isYouTube, youtubeId, isMobile]);
 
   // Seek to initial time when player is ready
   useEffect(() => {
@@ -175,10 +175,9 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   const VideoPlayer = (
     <div className="relative group">
       {isYouTube ? (
-        <div 
-          ref={playerContainerRef}
-          className="w-full aspect-video rounded-lg"
-        />
+        <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full">
+          <div ref={playerContainerRef} />
+        </div>
       ) : (
         <>
           <video
@@ -218,7 +217,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         </div>
         
         {/* AI Tutor below - collapsible on mobile */}
-        {showMobileTutor ? (
+        {AI_TUTOR_ENABLED && (showMobileTutor ? (
           <div className="flex-1 border-t min-h-[300px]">
             <div className="flex items-center justify-between p-3 border-b bg-muted/50">
               <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -250,7 +249,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
             <MessageCircle className="h-4 w-4" />
             Open AI Tutor
           </Button>
-        )}
+        ))}
       </div>
     );
   }
@@ -258,8 +257,8 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
   // Desktop layout with resizable panels (70/30 split)
   return (
     <div className="space-y-0">
-      <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-        <ResizablePanel defaultSize={70} minSize={50}>
+      <ResizablePanelGroup direction="horizontal" className={AI_TUTOR_ENABLED ? 'min-h-[500px] rounded-lg border' : 'rounded-lg border'}>
+        <ResizablePanel defaultSize={AI_TUTOR_ENABLED ? 70 : 100} minSize={50}>
           <div className="p-4 h-full flex flex-col">
             {VideoPlayer}
             <div className="mt-4">
@@ -271,6 +270,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
           </div>
         </ResizablePanel>
         
+        {AI_TUTOR_ENABLED && <>
         <ResizableHandle withHandle />
         
         <ResizablePanel defaultSize={30} minSize={20}>
@@ -284,13 +284,14 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
             courseSubject={courseSubject}
           />
         </ResizablePanel>
+        </>}
       </ResizablePanelGroup>
 
       {/* Study Hub below the video player */}
-      <StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} />
+      {showStudyHub && <Suspense fallback={<p>Loading study tools…</p>}><StudyHub video={video} currentTime={currentTime} courseSubject={courseSubject} onAskTutor={handleAskTutor} /></Suspense>}
 
       {/* AI Tutor Drawer for mock test Ask AI */}
-      <AITutorDrawer
+      {AI_TUTOR_ENABLED && <AITutorDrawer
         open={drawerOpen}
         onOpenChange={(open) => {
           setDrawerOpen(open);
@@ -301,7 +302,7 @@ export function VideoPlayerWithTutor({ video, supabaseUrl, courseSubject, initia
         videoTitle={video.title}
         videoSubject={courseSubject}
         initialPrompt={drawerPrompt}
-      />
+      />}
     </div>
   );
 }

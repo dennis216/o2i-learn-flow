@@ -57,6 +57,7 @@ export interface Course {
   price: number;
   image_url: string;
   is_published: boolean;
+  practice_course_scope?: 'AB' | 'BC' | 'BOTH' | null;
   public_profiles?: {
     full_name: string;
   } | null;

@@ -148,7 +148,7 @@ test('reference loading checks this user is admin before any SELECT and reads ev
     auth: { getUser: async () => { calls.push('getUser'); return { data: { user: { id: 'admin-test-id' } }, error: null }; } },
     rpc: async (name, args) => {
       calls.push(`rpc:${name}`);
-      assert.deepEqual(args, { _user_id: 'admin-test-id', _role: 'admin' });
+      assert.deepEqual(args, { _module: 'questions' });
       return { data: true, error: null };
     },
     from: (table) => ({
@@ -162,7 +162,7 @@ test('reference loading checks this user is admin before any SELECT and reads ev
     }),
   };
   const loaded = await loadQuestionBankReferences(client);
-  assert.deepEqual(calls.slice(0, 2), ['getUser', 'rpc:has_role']);
+  assert.deepEqual(calls.slice(0, 2), ['getUser', 'rpc:has_admin_module']);
   assert.equal(loaded.topics.length, 1);
   assert.equal(loaded.skills.length, 1);
   assert.equal(loaded.existingExternalIds.size, 1001);
@@ -194,5 +194,5 @@ test('missing questions schema rejects the reference snapshot and a read-only re
   assert.deepEqual(loaded.topics, []);
   assert.deepEqual(loaded.skills, []);
   assert.equal(loaded.existingExternalIds.size, 0);
-  assert.deepEqual(calls, ['has_role', 'has_role']);
+  assert.deepEqual(calls, ['has_admin_module', 'has_admin_module']);
 });

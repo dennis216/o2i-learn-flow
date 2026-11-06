@@ -1,3 +1,4 @@
+import { legacyFixtureAccessSql } from '../admin-access/legacy-fixture-access.mjs';
 // Opt-in real Auth + PostgREST + PostgreSQL acceptance. NEVER uses an existing database.
 // O2I_PLAYWRIGHT_MODULE points to the locally installed Playwright entrypoint.
 // O2I_SYNTHETIC_XLSX is an existing synthetic-only intake fixture, never a real question file.
@@ -15,6 +16,7 @@ import { parseQuestionBankWorkbook, validateQuestionBankSheets } from '../../src
 import { buildQuestionBankDraftSavePlan } from '../../src/lib/questionBankDraftSave.ts';
 import { loadQuestionBankPage, loadQuestionBankVersionPreview } from '../../src/lib/questionBankDraftRepository.ts';
 import { loadPublicationPlan } from '../../src/lib/questionBankPublicationWorkflow.ts';
+import { verifyManualQuestionBrowser } from './manual-entry.acceptance.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 assert.equal(process.cwd(),root.replace(/\/$/,''),'Run only from the repository root');
@@ -120,7 +122,7 @@ try {
     CREATE TABLE public.subjects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text,category text,order_index int);
     CREATE TABLE public.team_members(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_index int);
     ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'has_role')}
-    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')}
+    ${fn(read('supabase/migrations/20260920000000_content_admin_roles.sql'),'is_super_admin')} ${legacyFixtureAccessSql()}
     ${fn(read('supabase/migrations/20250910020036_7f5646ab-55d4-4412-823b-b244048be7ba.sql'),'update_updated_at_column')}
     ${taxonomy.slice(taxonomy.indexOf('CREATE TABLE public.curriculum_frameworks'),taxonomy.indexOf('-- Reuse the two existing AP Calculus course records'))}`);
   for(const migration of ['20260926000000_question_bank_foundation','20261004000000_question_bank_draft_import','20261018000000_question_bank_draft_management','20261019000000_question_bank_unpublished_status','20261019010000_question_bank_publication'])await db.query('BEGIN;'+read('supabase/migrations/'+migration+'.sql')+'COMMIT;');
@@ -188,12 +190,13 @@ try {
   await context.route('**/*',route=>{
     const u=new URL(route.request().url());if(!['127.0.0.1','localhost'].includes(u.hostname)){if(u.hostname.includes('supabase'))remoteRequests.push(u.hostname);return route.abort();}
     if(u.origin===api&&u.pathname==='/rest/v1/rpc/save_question_bank_drafts'&&route.request().method()==='POST')draftSaveRequests.push(route.request().postDataJSON()._items);
-    if(u.origin===api&&u.pathname.startsWith('/rest/v1/rpc/')&&!['has_role','is_super_admin','get_question_bank_draft','get_question_publication_state','precheck_question_publication'].includes(u.pathname.split('/').at(-1)))writeRequests.push(u.pathname.split('/').at(-1));
+    if(u.origin===api&&u.pathname.startsWith('/rest/v1/rpc/')&&!['has_role','is_super_admin','get_admin_access','has_admin_module','get_question_bank_draft','get_question_publication_state','precheck_question_publication'].includes(u.pathname.split('/').at(-1)))writeRequests.push(u.pathname.split('/').at(-1));
     return route.continue();
   });
   page=await context.newPage();await page.goto(app+'/auth');await page.locator('input[name="email"]').first().fill(accounts[0].email);await page.locator('input[name="password"]').first().fill(testPassword);
   await page.getByRole('button',{name:'Sign In',exact:true}).click();await page.waitForURL(app+'/');await openBank();assert.deepEqual(remoteRequests,[]);check('Real local .test admin login; browser uses loopback Supabase only');
   // Full lifecycle on synthetic content, not fictional confirmations about real source questions.
+  await verifyManualQuestionBrowser({page,context,api,db,state,selectFixture,synthetic,writeRequests,check,output});
   let before=await state();await selectFixture(synthetic);await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(await state(),before);check('Upload preview and Cancel cause zero question-bank writes');
   assert.equal(syntheticReport.questions[0].calculatorPolicy,'','Regression fixture must start with a blank calculator policy');
   for(const policy of ['calculator_allowed','calculator_required']){
@@ -311,7 +314,7 @@ try {
     const label=await target.getAttribute('aria-label');if(!['Publication target SYNTHETIC-BATCH-A','Publication target SYNTHETIC-BATCH-B'].includes(label))await target.getByRole('checkbox').first().uncheck();
   }
   await fillReview();
-  await dialog().evaluate(el=>{el.scrollTop=0;});await shot('04-batch-review');
+  await dialog().locator('[data-dialog-body]').evaluate(el=>{el.scrollTop=0;});await shot('04-batch-review');
   await db.query(`CREATE FUNCTION public.local_4d_fail_second() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN IF EXISTS(SELECT 1 FROM public.question_publication_events e JOIN public.questions q ON q.id=e.question_id WHERE q.external_id IN ('SYNTHETIC-BATCH-A','SYNTHETIC-BATCH-B')) THEN RAISE EXCEPTION 'Synthetic injected event failure'; END IF; RETURN NEW; END$$;
     CREATE TRIGGER local_4d_batch_failure BEFORE INSERT ON public.question_publication_events FOR EACH ROW EXECUTE FUNCTION public.local_4d_fail_second();`);
   await dialog().getByRole('button',{name:'Publish 2 problems',exact:true}).click();await dialog().getByText('Publication could not be confirmed.',{exact:false}).waitFor();
@@ -341,6 +344,7 @@ try {
   const visitor=createClient(api,anon,{auth:{persistSession:false,autoRefreshToken:false}});assert.ok((await visitor.from('questions').select('id')).error || !(await visitor.from('questions').select('id')).data.length);
   assert.ok((await student.rpc('precheck_question_publication',{_question_id:stale.question_id,_version_id:stale.id,_action:'publish'})).error);check('Actual REST student/anonymous draft and answer isolation; unauthorized management RPC rejected');
   await openBank();await page.setViewportSize({width:390,height:844});await card('SYNTHETIC-BATCH-A','Published problems').scrollIntoViewIfNeeded();await shot('05-narrow');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));check('Narrow layout has no horizontal page overflow');
+  if(process.env.O2I_LEGACY_ARENA_PRIVATE_DIR)await (await import('../arena/legacy/browser.acceptance.mjs')).verifyLegacyBrowser({db,admin,page,context,openBank,card,dialog,closeEditor,check,read});
   assert.deepEqual(remoteRequests,[]);assert.ok(writeRequests.includes('publish_question_versions'));check('All tested lifecycle buttons use real local RPCs, with no remote Supabase request');
   check('Repeated Publish clicks send only one publication RPC');
 } catch(error) {

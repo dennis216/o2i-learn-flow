@@ -1,0 +1,52 @@
+{
+  "recorded_at": "2026-11-05T16:48:18.890Z",
+  "project_ref": "lxoaeaewcrshjkigzyqe",
+  "production": {
+    "catalog_query_at": "2026-11-05T16:38:56.35817+00:00",
+    "read_only": true,
+    "writes_performed": false,
+    "preflight": {
+      "checks": [
+        {
+          "ok": true,
+          "name": "administrator_history_matches"
+        },
+        {
+          "ok": true,
+          "name": "arena_catalog_matches"
+        },
+        {
+          "ok": true,
+          "name": "course_functions_are_known_baseline"
+        },
+        {
+          "ok": true,
+          "name": "course_security_dependencies_match"
+        },
+        {
+          "ok": true,
+          "name": "target_records_absent"
+        }
+      ],
+      "all_checks_pass": true
+    },
+    "arena_catalog_matches_local_execution": true,
+    "administrator_ledger": {
+      "md5": "d11ccb83ad64a84db35645599c39f9eb",
+      "name": "admin_user_deletion",
+      "parts": 1,
+      "version": "20261103020000"
+    },
+    "course_login_installed": false
+  },
+  "local": {
+    "npm run test:migrations": "PASS: 4 tests",
+    "npm run test:courses": "PASS: 8 tests",
+    "npm run test:migrations:db": "PASS: actual repair, 15 drift refusals, late-failure rollback, repeat refusal, unchanged full synthetic game/content/admin rows, Unit 3/4 role and shared-asset acceptance"
+  },
+  "package_md5": {
+    "00_preflight_readonly.sql": "0c1e2fed5852de7e718f41576e19c4fc",
+    "10_reconcile.sql": "8a8a2f12e3dd16207fadbda48d4fddbf",
+    "20_verify_readonly.sql": "8c17e276eb5632e6fc1473a3e64f98da"
+  }
+}

@@ -1,0 +1,7 @@
+Actual React UI; synthetic account/network fixtures, not live production acceptance.
+PASS deletion UI: protected owner, blocked content, email confirmation, failed request preserves user, success removes user
+PASS super_admin: exact tabs, default page and no unauthorized module fetch
+PASS admin: exact tabs, default page and no unauthorized module fetch
+PASS course_admin: exact tabs, default page and no unauthorized module fetch
+PASS question_admin: exact tabs, default page and no unauthorized module fetch
+PASS student denied admin route

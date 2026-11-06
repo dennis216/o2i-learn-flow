@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { QUESTION_HEADERS, OPTION_HEADERS, validateQuestionBankSheets } from './questionBankImport.ts';
+import { QUESTION_HEADERS, WORKFLOW_QUESTION_HEADERS, OPTION_HEADERS, hasQuestionBankHeaders, validateQuestionBankSheets } from './questionBankImport.ts';
 import { buildQuestionBankDraftSavePlan, getPublicationReviewTasks } from './questionBankDraftSave.ts';
 import { saveQuestionBankDrafts } from './questionBankDraftRepository.ts';
 import { analyzeQuestionBankMath } from './questionBankMath.ts';
+import { applyQuestionFieldEdit } from './questionBankPreviewEdits.ts';
+import { buildQuestionBankImportPlan } from './questionBankImportPlan.ts';
 
 const row = (headers, values) => headers.map((header) => values[header] ?? null);
 const question = (overrides = {}) => ({
@@ -37,6 +39,48 @@ const planFor = (input, refs = references()) => {
   });
   return buildQuestionBankDraftSavePlan(report, refs);
 };
+
+const reviewedWorkbook = (overrides = {}) => {
+  const input = sheets([question({ source_question_number: '6', calculator_policy: 'no_calculator',
+    human_review_status: 'reviewed', math_review_status: 'reviewed', source_rights_status: 'reviewed',
+    taxonomy_review_status: 'reviewed', render_review_status: 'reviewed',
+    reviewed_by: 'Synthetic reviewer', reviewed_at: '2026-10-22T09:30:00-07:00', ...overrides })]);
+  input[0].data = input[0].data.map(cells => WORKFLOW_QUESTION_HEADERS.map(key => cells[QUESTION_HEADERS.indexOf(key)]));
+  return input;
+};
+
+test('the 26-column reviewed workflow preserves human decisions and edits while saving only a draft', () => {
+  const input = reviewedWorkbook();
+  assert.equal(hasQuestionBankHeaders(input[0].data[0]), true);
+  assert.equal(hasQuestionBankHeaders([...input[0].data[0], 'unexpected']), false);
+  const edited = applyQuestionFieldEdit(input, 2, 'difficulty', 'hard');
+  const plan = planFor(edited);
+  assert.equal(plan.canSave, true, JSON.stringify(plan.batchReasons));
+  const item = plan.payload[0];
+  assert.equal(item.difficulty, 'hard');
+  assert.equal(item.source_locator, null);
+  assert.deepEqual(item.import_evidence.ai_flags, []);
+  assert.equal(item.import_evidence.human_review_status, 'reviewed');
+  assert.equal(item.import_evidence.reviewed_by_text, 'Synthetic reviewer');
+  assert.equal(item.import_evidence.reviewed_at_text, '2026-10-22T09:30:00-07:00');
+  assert.ok(Object.values(item.import_evidence.review_gates).every(value => value === 'reviewed'));
+  assert.equal(item.status, undefined);
+  const refs = references();
+  const report = validateQuestionBankSheets(edited, { topicCodes: new Set(['2.1']), practiceSkillCodes: new Set(['1.A']) });
+  assert.equal(report.questions[0].readiness, 'pending');
+  assert.equal(buildQuestionBankImportPlan(report, refs).items[0].status, 'pending');
+});
+
+test('reviewed exports require calculator policy, reviewer, a real timestamp and completed reviews', () => {
+  for (const overrides of [{ reviewed_by: '' }, { reviewed_at: '' },
+    { reviewed_at: '2026-02-30T09:00:00Z' }, { calculator_policy: '' }, { math_review_status: 'pending' },
+    { source_question_number: '' }, { primary_topic_code: '99.9' }]) {
+    assert.equal(planFor(reviewedWorkbook(overrides)).canSave, false, JSON.stringify(overrides));
+  }
+  const reordered = reviewedWorkbook();
+  [reordered[0].data[0][0], reordered[0].data[0][1]] = [reordered[0].data[0][1], reordered[0].data[0][0]];
+  assert.equal(planFor(reordered).canSave, false);
+});
 
 test('pending and XLSX-approved rows both become draft-save payload without invented policy or rights', () => {
   for (const status of ['pending', 'approved']) {

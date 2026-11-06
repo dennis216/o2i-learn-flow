@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { QuestionBankListItem } from "@/lib/questionBankDraftRepository";
 import { loadQuestionPublicationState, unpublishQuestion, archiveQuestion, QuestionPublicationError,
@@ -47,16 +47,15 @@ export function QuestionBankLifecycleDialog({ item, action, onClose, onChanged, 
     } finally { writing.current = false; setBusy(false); }
   };
   return <Dialog open onOpenChange={open => { if (!open && !writing.current) onClose(); }}>
-    <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto"><DialogHeader>
-      <DialogTitle>{action === "unpublish" ? "Unpublish problem?" : "Archive problem?"}</DialogTitle>
-      <DialogDescription>{action === "unpublish" ? "Students will no longer be able to fetch this problem. The current approved version and all history remain available for republication. Any working revision is retained."
-        : "Archive this previously published problem. All history is retained, but restoring an archived problem is not supported. This is not permanent deletion."}</DialogDescription>
-    </DialogHeader><p className="break-all text-sm">{item.externalId} · Current approved version {current?.version_number ?? "…"}</p>
+    <DialogContent scrollable className="max-h-[85vh] max-w-xl"><DialogHeader><DialogTitle>{action === "unpublish" ? "Unpublish problem?" : "Archive problem?"}</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>{action === "unpublish" ? "Students will no longer be able to fetch this problem. The current approved version and all history remain available for republication. Any working revision is retained."
+        : "Archive this previously published problem. All history is retained, but restoring an archived problem is not supported. This is not permanent deletion."}</DialogDescription><p className="break-all text-sm">{item.externalId} · Current approved version {current?.version_number ?? "…"}</p>
       {busy && <p role="status">{writing.current ? "Applying confirmed operation…" : "Reading current publication state…"}</p>}
       {error && <div role="alert" className="space-y-2 text-sm"><p>{error}</p><Button type="button" variant="outline" disabled={busy} onClick={() => setRetry(value => value + 1)}>Reload state</Button></div>}
       {blocked && <p role="alert" className="text-sm">A working revision exists. Delete or otherwise handle that explicit revision before archiving; it will not be silently removed.</p>}
       <div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={writing.current} onClick={onClose}>Cancel</Button>
         <Button type="button" variant="destructive" disabled={busy || !!error || !current || !!blocked || needsReload} onClick={() => void confirm()}>{action === "unpublish" ? "Confirm unpublish" : "Confirm archive"}</Button></div>
+    </DialogBody>
     </DialogContent>
   </Dialog>;
 }

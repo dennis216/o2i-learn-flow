@@ -1,246 +1,69 @@
-import { useState, useEffect } from 'react';
-import { DollarSign, User, PlayCircle, ChevronDown, BookOpen } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { loadCustomOutline } from '@/lib/courseOutline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { VideoPlayerWithTutor } from './VideoPlayerWithTutor';
-import type { Course, CourseVideo } from './types';
+import type { Course } from './types';
+const Editor = lazy(() => import('@/components/admin/CourseOutlineManagement').then(m => ({ default: m.CourseOutlineManagement })));
+const TopicLesson = lazy(() => import('./TopicLesson'));
+interface Props { course: Course; onClose: () => void; supabaseUrl: string; topicId?: string | null; entryId?: string | null; onEntryChange: (id: string | null) => void; resumeTime?: number | null; initialVideoId?: string }
+export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entryId, onEntryChange, resumeTime, initialVideoId }: Props) {
+  const { user, adminAccess, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const requestedUnit = new URLSearchParams(location.search).get('unit');
+  const isAdmin = adminAccess.courses;
+  const [editing, setEditing] = useState<string | null>(null);
 
-interface CourseDetailModalProps {
-  course: Course;
-  onClose: () => void;
-  supabaseUrl: string;
-  autoSelectVideoId?: string | null;
-  resumeTime?: number | null;
-}
+  const client = useQueryClient();
+  const account = user?.id ?? 'visitor';
+  const outline = useQuery({ queryKey: ['course-outline', account, course.id], queryFn: () => loadCustomOutline(supabase, course.id), retry: false });
+  useEffect(() => () => {
+    client.removeQueries({ queryKey: ['course-outline', account, course.id] });
+    client.removeQueries({ queryKey: ['course-topic', account, course.id] });
+  }, [client, account, course.id]);
+  const resolved = outline.data?.units.flatMap(u => u.topics).find(e => entryId ? e.id === entryId : !initialVideoId && e.cb_topics.some(t => t.id === topicId) && (isAdmin || e.is_published));
+  const activeEntryId = resolved?.id;
+  useEffect(() => { if (!entryId && resolved) onEntryChange(resolved.id); }, [entryId, resolved, onEntryChange]);
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent scrollable className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none rounded-none p-3 pt-[max(1rem,env(safe-area-inset-top))] sm:rounded-none sm:p-5">
+    <DialogHeader><DialogTitle className="text-3xl">{course.title}</DialogTitle></DialogHeader>
+      <DialogBody><DialogDescription>{course.description}</DialogDescription>
+    <div className="flex gap-2"><Badge variant="secondary" className={course.level === 'advanced' ? 'bg-red-100 text-red-800' : undefined}>{course.level}</Badge><Badge variant="outline">{course.subject}</Badge></div>
+    {outline.isPending ? <p role="status">Loading course outline…</p> : outline.isError ? <div role="alert"><p>{outline.error.message}</p><Button onClick={() => void outline.refetch()}>Retry outline</Button></div> : <div className="space-y-4">{outline.data.units.map(unit => {
+      const locked = !user && unit.unit_number >= 4;
+      const returnParams = new URLSearchParams(location.search);
+      returnParams.set('unit', String(unit.unit_number));
+      const loginUrl = '/auth?' + new URLSearchParams({ returnTo: location.pathname + '?' + returnParams });
+      const isBC = course.practice_course_scope === 'BC';
+      const weightMin = isBC ? unit.bc_exam_weight_min : unit.ab_exam_weight_min;
+      const weightMax = isBC ? unit.bc_exam_weight_max : unit.ab_exam_weight_max;
+      return <Collapsible key={unit.id} defaultOpen={String(unit.unit_number) === requestedUnit || unit.unit_number === 1 || unit.topics.some(t => t.id === entryId || !entryId && t.cb_topics.some(cb => cb.id === topicId) && (!initialVideoId || t.is_published))} className="rounded-lg border">
+        <CollapsibleTrigger className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[#4A90E2]/10">
+          <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-0.5 whitespace-nowrap">Unit {unit.unit_number}</Badge><div>
+            <h2 aria-label={`Unit ${unit.unit_number}: ${unit.title}`} className="text-lg font-semibold text-[#4A90E2]">{unit.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{unit.topics.length} lessons{weightMin != null && weightMax != null ? ` · ${weightMin}–${weightMax}% of the ${isBC ? 'BC' : 'AB'} exam` : ''}</p>
+          </div></div><ChevronDown className="ml-4 h-5 w-5 shrink-0" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="px-4 pb-4">{authLoading ? <p role="status">Checking login…</p> : locked ? <div className="flex flex-col items-center gap-3 rounded-md border bg-muted/30 p-6 text-center"><p className="font-medium">Log in to access more</p><Button asChild><Link to={loginUrl}>Log in</Link></Button></div> : <div className="divide-y rounded-md border">{unit.topics.map((topic, index) => {
+          const lessonNumber = `${unit.unit_number}.${index + 1}`;
+          const label = <><span className="w-16 shrink-0 whitespace-nowrap font-mono text-sm font-semibold text-primary">{lessonNumber}</span><div className="min-w-0 flex-1"><p className="text-sm font-medium text-foreground">{topic.title}</p><div className="mt-1.5 flex flex-wrap gap-2">{topic.cb_topics.map(cb => <Badge key={cb.id} variant="outline" className="text-xs">CB {cb.code}</Badge>)}{topic.cb_topics.some(cb => cb.is_bc_only) && <Badge variant="secondary" className="text-xs">BC only</Badge>}</div></div></>;
+          const editButton = isAdmin && <div className="flex items-center gap-2 px-4 py-2"><Badge variant="outline">{topic.is_published ? 'Published' : topic.content_id ? 'Draft' : 'No content'}</Badge><Button size="sm" variant="outline" onClick={() => setEditing(topic.id)}>Edit {lessonNumber}</Button></div>;
+          return topic.is_published || isAdmin ? <Collapsible key={topic.id} open={activeEntryId === topic.id} onOpenChange={open => onEntryChange(open ? topic.id : null)}>
+            <CollapsibleTrigger aria-label={`${lessonNumber} · ${topic.title}`} className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30">{label}<ChevronDown aria-hidden className={`mt-0.5 h-4 w-4 shrink-0 ${activeEntryId === topic.id ? 'rotate-180' : ''}`} /></CollapsibleTrigger>
+            {editButton}
+            <CollapsibleContent className="px-3 pb-3 sm:px-4">{activeEntryId === topic.id && <Suspense fallback={<p role="status">Loading lesson…</p>}><TopicLesson key={topic.id} course={course} entry={topic} supabaseUrl={supabaseUrl} resumeTime={resumeTime ?? undefined} initialVideoId={initialVideoId} /></Suspense>}</CollapsibleContent>
+          </Collapsible> : <div key={topic.id} className="flex items-start gap-3 px-4 py-3">{label}</div>;
+        })}</div>}</CollapsibleContent>
+      </Collapsible>;
+    })}</div>}
+    {entryId && outline.isSuccess && !resolved && <p role="alert">This lesson is no longer available in the course outline.</p>}
+    {isAdmin && editing && <Suspense fallback={<p>Loading editor…</p>}><Editor key={editing} courseId={course.id} initialEntryId={editing} onClose={() => setEditing(null)} onSaved={() => { void client.invalidateQueries({ queryKey: ['course-outline'] }); void client.invalidateQueries({ queryKey: ['course-topic'] }); void client.invalidateQueries({ queryKey: ['course-practice-counts'] }); }} /></Suspense>}
 
-const getLevelColor = (level: string) => {
-  switch (level) {
-    case 'beginner':
-      return 'bg-green-100 text-green-800';
-    case 'intermediate':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'advanced':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-export function CourseDetailModal({ course, onClose, supabaseUrl, autoSelectVideoId, resumeTime }: CourseDetailModalProps) {
-  const [selectedVideo, setSelectedVideo] = useState<CourseVideo | null>(null);
-  const isBCCourse = course.title === 'AP Calculus BC';
-
-  // Auto-select video if provided
-  useEffect(() => {
-    if (autoSelectVideoId && course.course_videos) {
-      const videoToSelect = course.course_videos.find(v => v.id === autoSelectVideoId);
-      if (videoToSelect) {
-        setSelectedVideo(videoToSelect);
-      }
-    }
-  }, [autoSelectVideoId, course.course_videos]);
-
-  // Group videos by unit (flat structure - no nested parts)
-  const groupedVideos = (() => {
-    if (!course.course_videos?.length) return {} as Record<string, CourseVideo[]>;
-    const sorted = [...course.course_videos].sort((a, b) => a.order_index - b.order_index);
-    
-    const unitGroups: Record<string, CourseVideo[]> = {};
-    
-    sorted.forEach(video => {
-      const unit = video.unit || 'Other Videos';
-      if (!unitGroups[unit]) unitGroups[unit] = [];
-      unitGroups[unit].push(video);
-    });
-    
-    return unitGroups;
-  })();
-
-  const curriculumUnits = [...(course.course_curriculum_units || [])]
-    .sort((a, b) => a.order_index - b.order_index)
-    .map((mapping) => ({
-      ...mapping.curriculum_units,
-      curriculum_topics: mapping.curriculum_units.curriculum_topics
-        .filter((topic) => isBCCourse || !topic.is_bc_only)
-        .sort((a, b) => a.order_index - b.order_index),
-    }));
-
-  return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
-              <CardDescription>{course.description}</CardDescription>
-            </div>
-            <Button variant="ghost" onClick={onClose}>
-              ✕
-            </Button>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <Badge className={getLevelColor(course.level)} variant="secondary">
-              {course.level}
-            </Badge>
-            <Badge variant="outline">{course.subject}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="framework" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="videos">Videos</TabsTrigger>
-              <TabsTrigger value="framework">Course Framework</TabsTrigger>
-              <TabsTrigger value="details">Details</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="videos" className="space-y-4 mt-4">
-              {selectedVideo ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-lg">{selectedVideo.title}</h3>
-                      {selectedVideo.description && (
-                        <p className="text-muted-foreground text-sm">{selectedVideo.description}</p>
-                      )}
-                    </div>
-                    <Button variant="outline" onClick={() => setSelectedVideo(null)}>
-                      Back to List
-                    </Button>
-                  </div>
-                  <VideoPlayerWithTutor video={selectedVideo} supabaseUrl={supabaseUrl} courseSubject={course.subject} initialTime={resumeTime || undefined} />
-                </div>
-              ) : course.course_videos && course.course_videos.length > 0 ? (
-              Object.entries(groupedVideos).map(([unit, videos]) => {
-                  return (
-                    <Collapsible key={unit} defaultOpen className="border rounded-lg overflow-hidden">
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-[#4A90E2]/10 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="secondary" className="font-semibold">
-                            {videos.length} lesson{videos.length > 1 ? 's' : ''}
-                          </Badge>
-                          <h3 className="font-semibold text-lg text-[#4A90E2]">{unit}</h3>
-                        </div>
-                        <ChevronDown className="h-5 w-5 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="px-4 pb-4 space-y-2">
-                        {videos.map((video) => (
-                          <Card
-                            key={video.id}
-                            className={`cursor-pointer transition-all duration-200 ${
-                              selectedVideo?.id === video.id
-                                ? 'border-l-4 border-l-accent border-accent/50 bg-accent/5 shadow-[0_0_12px_hsl(43,96%,56%,0.15)]'
-                                : 'border-muted hover:border-primary/50'
-                            }`}
-                            onClick={() => setSelectedVideo(video)}
-                          >
-                            <CardHeader className="py-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <PlayCircle className="h-5 w-5 text-primary" />
-                                  <div>
-                                    <CardTitle className="text-base">{video.title}</CardTitle>
-                                    {video.description && (
-                                      <CardDescription className="text-sm mt-1">
-                                        {video.description}
-                                      </CardDescription>
-                                    )}
-                                  </div>
-                                </div>
-                                {video.duration && (
-                                  <Badge variant="outline">
-                                    {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-                                  </Badge>
-                                )}
-                              </div>
-                            </CardHeader>
-                          </Card>
-                        ))}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                })
-              ) : (
-                <div className="text-center py-12">
-                  <PlayCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No videos available for this course yet.</p>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="framework" className="space-y-4 mt-4">
-              {curriculumUnits.length > 0 ? (
-                curriculumUnits.map((unit) => {
-                  const weightMin = isBCCourse ? unit.bc_exam_weight_min : unit.ab_exam_weight_min;
-                  const weightMax = isBCCourse ? unit.bc_exam_weight_max : unit.ab_exam_weight_max;
-
-                  return (
-                    <Collapsible key={unit.id} defaultOpen={unit.unit_number === 1} className="border rounded-lg overflow-hidden">
-                      <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-[#4A90E2]/10 transition-colors text-left">
-                        <div className="flex items-start gap-3">
-                          <Badge variant="secondary" className="mt-0.5 whitespace-nowrap">
-                            Unit {unit.unit_number}
-                          </Badge>
-                          <div>
-                            <h3 className="font-semibold text-lg text-[#4A90E2]">{unit.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {unit.curriculum_topics.length} topics
-                              {weightMin !== null && weightMax !== null ? ` · ${weightMin}–${weightMax}% of the ${isBCCourse ? 'BC' : 'AB'} exam` : ''}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronDown className="h-5 w-5 shrink-0 ml-4" />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="px-4 pb-4">
-                        <div className="divide-y rounded-md border">
-                          {unit.curriculum_topics.map((topic) => (
-                            <div key={topic.id} className="flex items-start gap-3 px-4 py-3">
-                              <span className="font-mono text-sm font-semibold text-primary min-w-12">{topic.topic_code}</span>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium">{topic.title}</p>
-                                <div className="flex gap-2 mt-1.5">
-                                  <Badge variant="outline" className="text-xs">{topic.big_idea}</Badge>
-                                  {topic.is_bc_only && <Badge variant="secondary" className="text-xs">BC only</Badge>}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  );
-                })
-              ) : (
-                <div className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Course framework is not available yet.</p>
-                </div>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="details" className="space-y-4 mt-4">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Instructor</h3>
-                  <div className="flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    {course.public_profiles?.full_name || 'Unknown Instructor'}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Price</h3>
-                  <div className="flex items-center">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {course.price === 0 ? 'Free' : `$${course.price}`}
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  </DialogBody>
+    </DialogContent></Dialog>;
 }

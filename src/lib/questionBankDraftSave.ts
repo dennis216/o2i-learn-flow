@@ -1,4 +1,4 @@
-import type { QuestionBankReport, PreviewQuestion, ValidationIssue } from "./questionBankImport.ts";
+import { legacyArenaSource, type QuestionBankReport, type PreviewQuestion, type ValidationIssue } from "./questionBankImport.ts";
 import type { QuestionBankReferences } from "./questionBankImportPlan.ts";
 import type { QuestionEditChange } from "./questionBankPreviewEdits.ts";
 
@@ -53,11 +53,12 @@ export function buildQuestionBankDraftSavePlan(
   };
   for (const question of report.questions) {
     for (const field of requiredForStoredDraft) {
+      if (field === "sourcePage" && legacyArenaSource(question.legacyArena, question.externalId)) continue;
       if (!String(question[field] ?? "").trim()) addIssue(question, storedFields[field] ?? field, "Required to save a draft");
     }
     if (question.requiresFigure === null) addIssue(question, "requires_figure", "Must be TRUE or FALSE");
-    if (question.sourceDocument !== question.sourceDocument.trim()) addIssue(question, "source_document", "Filename has leading or trailing spaces; check the XLSX");
-    if (question.sourcePage !== question.sourcePage.trim()) addIssue(question, "source_page", "Physical page has leading or trailing spaces; check the XLSX");
+    if (question.sourceDocument !== question.sourceDocument.trim()) addIssue(question, "source_document", "Filename has leading or trailing spaces; check the input");
+    if (question.sourcePage !== question.sourcePage.trim()) addIssue(question, "source_page", "Physical page has leading or trailing spaces; check the input");
     if (!question.practiceSkillCodes.length) addIssue(question, "practice_skill_codes", "At least one canonical Practice Skill is required");
     // Unavailable references are a single batch-level problem, never evidence that codes do not exist.
     if (references) {
@@ -103,12 +104,13 @@ export function buildQuestionBankDraftSavePlan(
         representation_type: question.representationType,
         calculator_policy: question.calculatorPolicy || null,
         source_document: question.sourceDocument,
-        source_page: question.sourcePage,
+        source_page: question.legacyArena ? null : question.sourcePage,
         source_question_number: question.sourceQuestionNumber || null,
         source_locator: question.sourceLocator || null,
         requires_figure: question.requiresFigure,
         image_url: question.imageUrl || null,
         import_evidence: {
+          ...(question.legacyArena ? { legacy_arena: question.legacyArena } : {}),
           original_source_page: originalValue("source_page", question.sourcePage),
           original_source_question_number: question.sourceQuestionNumber,
           original_source_locator: originalValue("source_locator", question.sourceLocator),
