@@ -1,11 +1,12 @@
 // Actual frozen pilot content is draft-only, in disposable Auth/REST/PostgreSQL. No production calls.
 import assert from 'node:assert/strict';
-import { readFileSync, mkdirSync, chmodSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, chmodSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { privateDirectory, verifySnapshot, sha256 } from './snapshot.mjs';
 import { runImport } from './import-batch.mjs';
 import { loadQuestionBankPage, loadQuestionBankVersionPreview } from '../../../src/lib/questionBankDraftRepository.ts';
 import { loadPublicationPlan } from '../../../src/lib/questionBankPublicationWorkflow.ts';
+import { browserBatch } from './browser-batch.mjs';
 
 export async function verifyLegacyBrowser({db,admin,page,context,openBank,card,dialog,closeEditor,check,read}) {
  const base=privateDirectory(process.env.O2I_LEGACY_ARENA_PRIVATE_DIR);verifySnapshot(base);
@@ -74,4 +75,47 @@ export async function verifyLegacyBrowser({db,admin,page,context,openBank,card,d
  assert.equal((await db.query("SELECT count(*)::int n FROM public.question_version_reviews r JOIN public.question_versions v ON v.id=r.question_version_id JOIN public.questions q ON q.id=v.question_id WHERE q.external_id LIKE 'arena_legacy_%'")).rows[0].n,0);
  assert.equal((await db.query("SELECT count(*)::int n FROM public.questions WHERE external_id LIKE 'arena_legacy_%' AND (status<>'draft' OR current_version_id IS NOT NULL)")).rows[0].n,0);
  check('All 18 actual pilot previews render on mobile with local checked graph images; zero reviews or publications created for real questions');
+ const prepared=JSON.parse(readFileSync(resolve(base,'review-graph-u1-1-svg-v1-0f2356a45d6a-37102041/prepared-batch.json'),'utf8'));
+ const q=prepared.questions[0],source=prepared.sources.find(s=>'arena_legacy_'+s.source_id===q.external_id);
+ const asset=prepared.assets.find(a=>q.image_url.endsWith('/'+a.path));assert.ok(asset);
+ const one={...prepared,questions:[q],options:prepared.options.filter(o=>o.question_external_id===q.external_id),sources:[source],assets:[asset]};
+ const native=await browserBatch(base,one),publicBase=admin.storage.from('practice-images').getPublicUrl('').data.publicUrl;
+ native.questions[0].image_url=publicBase+asset.path;
+ const upload=resolve(output,'native-intake.json');writeFileSync(upload,JSON.stringify(native),{mode:0o600});
+ let storageWrites=0,stored=null;
+ const api=new URL(publicBase).origin;
+ await context.route(api+'/storage/v1/object/**',async route=>{
+  const request=route.request();assert.ok(request.headers().authorization?.startsWith('Bearer '));
+  if(request.method()==='POST'){
+   storageWrites++;assert.equal(request.headers()['x-upsert'],'false');
+   const body=request.postDataBuffer(),contentType=request.headers()['content-type'];
+   let bytes=body;
+   if(contentType.includes('multipart/form-data')) {
+    const form=await new Request(request.url(),{method:'POST',headers:{'content-type':contentType},body}).formData();
+    const file=[...form.values()].find(value=>typeof value!=='string');assert.ok(file);bytes=Buffer.from(await file.arrayBuffer());
+   }
+   assert.equal(sha256(bytes),asset.sha256);stored=bytes;
+   return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({Key:'practice-images/'+asset.path})});
+  }
+  assert.equal(request.method(),'GET');
+  return stored?route.fulfill({status:200,contentType:'image/png',body:stored}):route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({statusCode:'404',error:'not_found',message:'not found'})});
+ });
+ await openBank();
+ const countBefore=(await db.query('SELECT count(*)::int n FROM public.questions')).rows[0].n;
+ const choose=async()=>{await page.getByLabel('Choose question bank XLSX or Arena JSON',{exact:true}).setInputFiles(upload);await page.getByRole('button',{name:'Save 1 drafts',exact:true}).waitFor();await page.getByText('Reference data: verified',{exact:true}).waitFor();};
+ await choose();assert.equal(storageWrites,0);
+ assert.ok((await page.getByRole('region',{name:'Preview and adjust'}).locator('img').getAttribute('src')).startsWith('data:image/png;base64,'));
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(storageWrites,0);
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.questions')).rows[0].n,countBefore);
+ await choose();await page.getByRole('button',{name:'Save 1 drafts',exact:true}).evaluate(button=>{button.click();button.click();});
+ await page.getByText('Saved 1 unpublished drafts. Nothing was approved or published.',{exact:true}).waitFor();
+ assert.equal(storageWrites,1);assert.equal((await db.query('SELECT count(*)::int n FROM public.questions')).rows[0].n,countBefore+1);
+ const saved=(await db.query('SELECT v.* FROM public.questions q JOIN public.question_versions v ON v.question_id=q.id WHERE q.external_id=$1',[q.external_id])).rows[0];
+ assert.equal(saved.image_url,native.questions[0].image_url);assert.equal(saved.source_page,null);assert.equal(saved.status,'draft');
+ assert.equal(saved.import_evidence.human_review_status,'pending');
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await choose();await page.getByText(/external_id already exists in the database/).first().waitFor();
+ assert.equal(await page.getByRole('button',{name:'Save 1 drafts',exact:true}).isEnabled(),false);assert.equal(storageWrites,1);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ check('Signed-in native JSON intake previews checked local PNG without writes; confirmed save uploads once, saves one real draft, reads back and blocks duplicate retry');
 }

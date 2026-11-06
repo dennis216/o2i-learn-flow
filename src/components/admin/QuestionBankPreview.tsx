@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { parseQuestionBankWorkbook, validateQuestionBankSheets, hasQuestionBankHeaders, type WorkbookSheet } from "@/lib/questionBankImport";
+import { parseQuestionBankWorkbook, validateQuestionBankSheets, hasQuestionBankHeaders, type WorkbookSheet, type LegacyArenaSource } from "@/lib/questionBankImport";
+import { parseLegacyArenaBatch, uploadLegacyArenaAssets, type LegacyBatchAsset } from "@/lib/questionBankLegacyBatch";
 import { loadQuestionBankReferences } from "@/lib/questionBankReferences";
 import { buildQuestionBankDraftSavePlan, describeQuestionBankIssue, getPublicationReviewTasks, isPublicationReviewIssue } from "@/lib/questionBankDraftSave";
 import { DraftSaveResultError, loadSavedQuestionBankDrafts, saveQuestionBankDrafts } from "@/lib/questionBankDraftRepository";
@@ -34,11 +35,13 @@ export function QuestionBankPreview() {
   const [busy, setBusy] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualMessage, setManualMessage] = useState("");
+  const [legacySources, setLegacySources] = useState<ReadonlyMap<string, LegacyArenaSource>>(new Map());
+  const [legacyAssets, setLegacyAssets] = useState<LegacyBatchAsset[]>([]);
 
   const report = useMemo(() => workingSheets ? validateQuestionBankSheets(workingSheets, references ? {
     topicCodes: new Set(references.topics.map((topic) => topic.topic_code)),
     practiceSkillCodes: new Set(references.skills.map((skill) => skill.skill_code)),
-  } : undefined) : null, [workingSheets, references]);
+  } : undefined, legacySources) : null, [workingSheets, references, legacySources]);
   const edits = useMemo(() => originalSheets && workingSheets
     ? getQuestionEditChanges(originalSheets, workingSheets) : [], [originalSheets, workingSheets]);
   const draftPlan = useMemo(() => report
@@ -84,6 +87,7 @@ export function QuestionBankPreview() {
     setFileName(file?.name ?? "");
     setOriginalSheets(null);
     setWorkingSheets(null);
+    setLegacySources(new Map()); setLegacyAssets([]);
     setReferences(null);
     setReferenceError("");
     setReferenceBusy(false);
@@ -93,8 +97,8 @@ export function QuestionBankPreview() {
     setSaved(false);
     setBusy(false);
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      setFileError("Choose an .xlsx file. This file has not been uploaded.");
+    if (!/\.(xlsx|json)$/i.test(file.name)) {
+      setFileError("Choose an XLSX or prepared Arena JSON file. This file has not been uploaded.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -103,13 +107,16 @@ export function QuestionBankPreview() {
     }
     setBusy(true);
     try {
-      const parsed = await parseQuestionBankWorkbook(await file.arrayBuffer());
+      const native = file.name.toLowerCase().endsWith(".json") ? await parseLegacyArenaBatch(JSON.parse(await file.text()),
+        supabase.storage.from("practice-images").getPublicUrl("").data.publicUrl) : null;
+      const parsed = native?.sheets ?? await parseQuestionBankWorkbook(await file.arrayBuffer());
       if (currentRequest !== requestId.current) return;
+      if (native) { setLegacySources(native.legacySources); setLegacyAssets(native.assets); }
       setOriginalSheets(parsed);
       setWorkingSheets(parsed);
       await refreshReferences(currentRequest);
     } catch (error) {
-      if (currentRequest === requestId.current) setFileError(`Could not read XLSX: ${error instanceof Error ? error.message : String(error)}`);
+      if (currentRequest === requestId.current) setFileError(`Could not read import file: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       if (currentRequest === requestId.current) setBusy(false);
     }
@@ -122,6 +129,7 @@ export function QuestionBankPreview() {
     setFileName("");
     setOriginalSheets(null);
     setWorkingSheets(null);
+    setLegacySources(new Map()); setLegacyAssets([]);
     setReferences(null);
     setFileError("");
     setReferenceError("");
@@ -139,6 +147,7 @@ export function QuestionBankPreview() {
     setSaveError("");
     setSaveMessage("");
     try {
+      await uploadLegacyArenaAssets(supabase, legacyAssets);
       const ids = await saveQuestionBankDrafts(supabase, draftPlan);
       setSaved(true);
       setLibraryRefresh(value => value + 1);
@@ -155,6 +164,7 @@ export function QuestionBankPreview() {
         setSaveError(error.message);
       } else {
         setSaveError(`Save could not be confirmed: ${error instanceof Error ? error.message : String(error)}. Database rejection rolls back the entire batch. After a network interruption, check the question bank before submitting again.`);
+        if (legacySources.size) await refreshReferences();
       }
     } finally {
       savingRef.current = false;
@@ -165,7 +175,7 @@ export function QuestionBankPreview() {
   return (
     <div className="space-y-6 pb-40" aria-label="Question bank">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Create one question or import XLSX. Both save to the same question bank.</p>
+        <p className="text-sm text-muted-foreground">Create one question, import XLSX or load a prepared Arena batch. All save to the same question bank.</p>
         <Button type="button" disabled={saving} onClick={() => { setManualMessage(""); setManualOpen(true); }}>New question</Button>
       </div>
       {manualMessage && <p role="status" className="text-sm text-green-700">{manualMessage}</p>}
@@ -174,12 +184,12 @@ export function QuestionBankPreview() {
       }} />}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />Import XLSX</CardTitle>
-          <CardDescription>Import XLSX → Preview &amp; adjust → Save drafts. Edits affect this browser work copy only; the original XLSX stays unchanged.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" />Import XLSX or Arena batch</CardTitle>
+          <CardDescription>Import XLSX or Arena batch → Preview &amp; adjust → Save drafts. Edits affect this browser work copy only; the original XLSX stays unchanged. Saving does not publish.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input ref={fileInputRef} aria-label="Choose question bank XLSX" type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" disabled={saving}
+          <Input ref={fileInputRef} aria-label="Choose question bank XLSX or Arena JSON" type="file"
+            accept=".xlsx,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json" disabled={saving}
             onChange={(event) => void handleFile(event.target.files?.[0])} />
           {fileName && <p className="break-all text-sm text-muted-foreground">File: {fileName}</p>}
           {busy && !report && <p role="status" className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" />Reading workbook…</p>}
@@ -245,7 +255,7 @@ export function QuestionBankPreview() {
               {question.requiresFigure && <div className="space-y-1">
                 <p>Figure source: {question.figureReference || "not provided"}</p>
                 {errors("figure_reference")}{errors("image_url")}
-                {question.imageUrl && <img src={question.imageUrl} alt={`Source figure for ${question.externalId}`} className="max-h-96 max-w-full rounded border object-contain" />}
+                {question.imageUrl && <img src={legacyAssets.find(asset => question.imageUrl.endsWith('/' + asset.path))?.previewUrl ?? question.imageUrl} alt={`Source figure for ${question.externalId}`} className="max-h-96 max-w-full rounded border object-contain" />}
               </div>}
               {errors("requires_figure")}
               {!question.requiresFigure && <>{errors("image_url")}{errors("figure_reference")}</>}
@@ -257,8 +267,8 @@ export function QuestionBankPreview() {
                 </div>)}
               </details>
               <div className="grid gap-2 border-t pt-3 sm:grid-cols-2">
-                <div><p>Source: {question.sourceDocument || "not provided"} · Physical PDF page: {question.sourcePage || "not provided"}</p>{errors("source_document")}</div>
-                <div><p>{question.sourceQuestionNumber ? `Printed question number: ${question.sourceQuestionNumber}` : `Source locator: ${question.sourceLocator || "not provided"}`}</p>{errors("source_question_number")}</div>
+                <div><p>Source: {question.sourceDocument || "not provided"}{!question.legacyArena && ` · Physical PDF page: ${question.sourcePage || "not provided"}`}</p>{errors("source_document")}</div>
+                <div><p>{question.legacyArena ? `Original ID: ${question.legacyArena.source_id} · Batch: ${question.legacyArena.batch_id}` : question.sourceQuestionNumber ? `Printed question number: ${question.sourceQuestionNumber}` : `Source locator: ${question.sourceLocator || "not provided"}`}</p>{errors("source_question_number")}</div>
                 <p>CED Topic: {question.primaryTopicCode || "not provided"} · {references ? topicKnown ? "verified" : "invalid" : "unverified"}</p>
                 <p>Practice Skills: {question.practiceSkillCodes.join(" | ") || "not provided"} · {references ? question.practiceSkillCodes.length && !unknownSkills.length ? "verified" : "invalid" : "unverified"}</p>
                 <p>Difficulty: {question.difficulty || "not provided"} · Course: {question.courseScope || "not provided"}</p>
