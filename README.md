@@ -1,73 +1,34 @@
-# Welcome to your Lovable project
+# O2I Institute
 
-## Project info
+Website: https://www.o2iinstitute.org
 
-**URL**: https://lovable.dev/projects/123bdb07-efdf-4028-9989-370c7d8150fb
+Built with Vite, TypeScript, React, shadcn-ui and Tailwind CSS. Data, auth and edge functions live in our own Supabase project (`supabase/`).
 
-## How can I edit this code?
+## Local development
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/123bdb07-efdf-4028-9989-370c7d8150fb) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires Node.js and npm.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install
+npm run dev     # http://localhost:8080
+npm run build   # production build into dist/
 ```
 
-**Edit a file directly in GitHub**
+## Deployment (Cloudflare Pages)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Cloudflare Pages is connected to this GitHub repository and builds on every push.
 
-**Use GitHub Codespaces**
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Production branch | `main` → https://www.o2iinstitute.org |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Every other branch gets its own preview URL, e.g. `test-work` → `test-work.<project>.pages.dev`.
+- Preview sites use the **same Supabase database** as production. Use test accounts there and avoid deleting or publishing real content.
+- Rollback: Cloudflare dashboard → the Pages project → Deployments → pick a previous deployment → Rollback.
+- New site URLs must be added to Supabase → Authentication → URL Configuration → Redirect URLs, or sign-up confirmation and password reset links will fail.
 
-## What technologies are used for this project?
+## Domain
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/123bdb07-efdf-4028-9989-370c7d8150fb) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+`o2iinstitute.org` is registered at Hostinger and expires 2027-01-27. Keep auto-renew on.
