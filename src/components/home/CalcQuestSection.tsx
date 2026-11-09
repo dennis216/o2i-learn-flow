@@ -33,7 +33,7 @@ export default function CalcQuestSection() {
                 <Link to="/arena">{t('Play Limit Arena', '进入极限竞技场')}</Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="rounded-none border-2 border-[#FFF1E8] bg-transparent text-[#FFF1E8] hover:bg-[#FFF1E8]/10 hover:text-[#FFF1E8] focus-visible:ring-[#FFF1E8]">
-                <a href={EPISODE_URL} target="_blank" rel="noopener noreferrer">{t('Watch on YouTube', '去 YouTube 看视频')}</a>
+                <Link to="/courses">{t('Browse the lessons', '去看更多课程')}</Link>
               </Button>
             </div>
           </Reveal>

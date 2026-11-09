@@ -66,7 +66,7 @@ export default function Index() {
           <Reveal>
             <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/70 px-4 py-1.5 text-sm font-medium text-primary">
               <span aria-hidden="true" className="font-semibold">1 → ∞</span>
-              {t('O2I means One to Infinity', 'O2I 的意思是 One to Infinity：从 1 到无穷')}
+              {t('One to Infinity', 'One to Infinity，从 1 到无穷')}
             </p>
             <h1 className="mx-auto mb-6 max-w-4xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
               {language === 'zh'
