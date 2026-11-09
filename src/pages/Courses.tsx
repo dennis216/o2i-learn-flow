@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { supabase, SUPABASE_URL } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { CourseCard } from '@/components/courses/CourseCard';
 import { CourseDetailModal } from '@/components/courses/CourseDetailModal';
 import { CourseFilters, type Category, type Subject } from '@/components/courses/CourseFilters';
@@ -16,6 +17,7 @@ export default function Courses() {
   const requestedEntryId = params.get('lesson');
   const requestedCourseId = params.get('course'), requestedTopicId = params.get('topic'), requestedVideoId = params.get('video');
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [retry, setRetry] = useState(0);
   const [category, setCategory] = useState<Category>('High School'), [subject, setSubject] = useState<Subject>('AP Calc');
@@ -41,17 +43,17 @@ export default function Courses() {
       if (!active) return;
       const mapping = data as { course_id?: string; topic_id?: string; entry_id?: string } | null;
       setParams(!error && mapping?.course_id && mapping.entry_id ? { course: mapping.course_id, lesson: mapping.entry_id, video: videoId } : {}, { replace: true });
-    }).catch(() => { if (active) setError('Could not resolve this course video. Retry the course.'); });
+    }).catch(() => { if (active) setError(t('Could not resolve this course video. Retry the course.', '无法定位这个课程视频，请重新打开课程。')); });
     return () => { active = false; };
   }, [requestedVideoId, requestedCourseId, requestedTopicId, requestedEntryId, setParams]);
   const changeEntry = useCallback((entryId: string | null) => { if (requestedCourseId) setParams({ course: requestedCourseId, ...(entryId ? { lesson: entryId } : {}), ...(entryId && requestedVideoId ? { video: requestedVideoId } : {}) }, { replace: true }); }, [requestedCourseId, requestedVideoId, setParams]);
   const selected = courses.find(c => c.id === requestedCourseId);
   const select = (course: Course) => setParams({ course: course.id });
   return <div className="container mx-auto min-h-screen px-4 py-10">
-    <div className="mb-8 text-center"><h1 className="text-4xl font-bold">Math Courses</h1><p className="mt-3 text-muted-foreground">Explore mathematics by Unit and Topic.</p></div>
+    <div className="mb-8 text-center"><h1 className="text-4xl font-bold">{t('Math Courses', '数学课程')}</h1><p className="mt-3 text-muted-foreground">{t('Explore mathematics by Unit and Topic.', '按 Unit 和 Topic 学习数学。')}</p></div>
     <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
-    {loading ? <p role="status" className="py-8">Loading courses…</p> : error ? <div role="alert" className="space-y-3 py-8"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry</Button></div> : <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{courses.map(course => <CourseCard key={course.id} course={course} thumbnail={course.subject === 'AP Calc' ? apCalculusThumbnail : undefined} onSelect={select} />)}</div>}
-    {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">No published courses in this category.</p>}
+    {loading ? <p role="status" className="py-8">{t('Loading courses…', '课程加载中…')}</p> : error ? <div role="alert" className="space-y-3 py-8"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div> : <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{courses.map(course => <CourseCard key={course.id} course={course} thumbnail={course.subject === 'AP Calc' ? apCalculusThumbnail : undefined} onSelect={select} />)}</div>}
+    {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">{t('No published courses in this category.', '这个分类下还没有已发布的课程。')}</p>}
     {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={requestedTopicId} entryId={requestedEntryId} initialVideoId={requestedVideoId ?? undefined} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onEntryChange={changeEntry} onClose={() => setParams({})} />}
   </div>;
 }

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Maximize2, FlaskConical, ExternalLink } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Lazily load the GeoGebra viewer component using React.lazy.
 const GeoGebraViewer = React.lazy(() => import('@/components/GeoGebraViewer'));
@@ -25,6 +26,7 @@ function toGeoGebraEmbed(url: string): string {
 
 export default function Playground() {
   const [entries, setEntries] = useState<PlaygroundEntry[]>([]);
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<PlaygroundEntry | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -113,10 +115,10 @@ export default function Playground() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold flex items-center gap-3">
           <FlaskConical className="h-10 w-10 text-primary" />
-          GeoGebra Playground
+          {t('GeoGebra Playground', 'GeoGebra 互动工具')}
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Interactive math models — visualize and explore concepts
+          {t('Interactive math models — visualize and explore concepts', '交互式数学模型：把概念画出来、动手探索')}
         </p>
       </div>
 
@@ -124,8 +126,8 @@ export default function Playground() {
         <Card className="text-center py-12">
           <CardContent>
             <FlaskConical className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Interactive Models Yet</h3>
-            <p className="text-muted-foreground">Check back soon!</p>
+            <h3 className="text-xl font-semibold mb-2">{t('No Interactive Models Yet', '还没有互动模型')}</h3>
+            <p className="text-muted-foreground">{t('Check back soon!', '敬请期待！')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -133,7 +135,7 @@ export default function Playground() {
           <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
             <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
               <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                All ({entries.length})
+                {t('All', '全部')} ({entries.length})
               </TabsTrigger>
               {groups.map(g => (
                 <TabsTrigger key={g} value={g} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
@@ -192,6 +194,7 @@ export default function Playground() {
 }
 
 function PlaygroundCard({ entry, onOpen }: { entry: PlaygroundEntry; onOpen: () => void }) {
+  const { t } = useLanguage();
   return (
     <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50">
       <CardHeader className="pb-3">
@@ -213,9 +216,9 @@ function PlaygroundCard({ entry, onOpen }: { entry: PlaygroundEntry; onOpen: () 
         <div className="flex gap-2">
           <Button className="flex-1 gap-2" onClick={onOpen}>
             <Maximize2 className="h-4 w-4" />
-            Launch Lab
+            {t('Launch Lab', '打开')}
           </Button>
-          <Button variant="outline" size="icon" onClick={() => window.open(toGeoGebraEmbed(entry.playground_url), '_blank')}>
+          <Button variant="outline" size="icon" aria-label={t('Open in new tab', '在新标签页打开')} onClick={() => window.open(toGeoGebraEmbed(entry.playground_url), '_blank')}>
             <ExternalLink className="h-4 w-4" />
           </Button>
         </div>

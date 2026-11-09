@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { groupTeamMembers, loadTeamMembers, type TeamMember } from "@/lib/teamDepartments";
 import { Badge } from "@/components/ui/badge";
 import { Users, Crown, Shield } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const TeamMemberCard = ({ member }: { member: TeamMember }) => (
+const TeamMemberCard = ({ member }: { member: TeamMember }) => {
+  const { t } = useLanguage();
+  return (
   <Card className="overflow-hidden group hover:shadow-lg transition-shadow duration-300">
     <div className="flex justify-center pt-8 pb-4">
       {member.photo_url ? (
@@ -27,9 +30,9 @@ const TeamMemberCard = ({ member }: { member: TeamMember }) => (
     <CardContent className="p-6 text-center">
       <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
       <p className="text-sm font-medium mb-2" style={{ color: "#4A90E2" }}>
-        {member.roles.join(" · ") || 'Role not specified'}
+        {member.roles.join(" · ") || t('Role not specified', '未注明职位')}
       </p>
-      <p className="text-xs text-muted-foreground mb-2">{member.departments.join(' · ') || 'Group not specified'}</p>
+      <p className="text-xs text-muted-foreground mb-2">{member.departments.join(' · ') || t('Group not specified', '未注明组别')}</p>
       <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3">
         {member.roles.filter(role => role === "Founder" || role === "Co-founder").map(role => (
           <Badge key={role} className="bg-amber-500/15 text-amber-700 border-amber-300 hover:bg-amber-500/20 text-xs gap-1">
@@ -40,7 +43,7 @@ const TeamMemberCard = ({ member }: { member: TeamMember }) => (
         {member.roles.includes("Team Leader") && (
           <Badge className="bg-[#4A90E2]/15 text-[#4A90E2] border-[#4A90E2]/30 hover:bg-[#4A90E2]/20 text-xs gap-1">
             <Shield className="w-3 h-3" />
-            Team Leader
+            {t('Team Leader', '组长')}
           </Badge>
         )}
       </div>
@@ -51,12 +54,14 @@ const TeamMemberCard = ({ member }: { member: TeamMember }) => (
       )}
     </CardContent>
   </Card>
-);
+  );
+};
 
 const Team = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     fetchTeamMembers();
@@ -108,26 +113,26 @@ const Team = () => {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
           <Users className="w-8 h-8 text-primary" />
         </div>
-        <h1 className="text-4xl font-bold mb-4">Meet the Team</h1>
+        <h1 className="text-4xl font-bold mb-4">{t('Meet the Team', '认识我们的团队')}</h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Our dedicated team of educators and math enthusiasts are here to help you succeed in your mathematical journey.
+          {t('Our dedicated team of educators and math enthusiasts are here to help you succeed in your mathematical journey.', '我们是一群热爱数学的老师和同学，陪你在数学路上不断进步。')}
         </p>
       </div>
 
       {/* Grouped by Department */}
       {error ? (
         <div role="alert" className="space-y-3 py-16 text-center">
-          <p>Could not load team members. Please try again.</p>
-          <Button type="button" onClick={() => void fetchTeamMembers()}>Retry</Button>
+          <p>{t('Could not load team members. Please try again.', '无法加载团队成员，请重试。')}</p>
+          <Button type="button" onClick={() => void fetchTeamMembers()}>{t('Retry', '重试')}</Button>
         </div>
       ) : teamMembers.length === 0 ? (
         <div className="text-center py-16">
           <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
           <h2 className="text-xl font-semibold text-muted-foreground mb-2">
-            Team information coming soon
+            {t('Team information coming soon', '团队信息即将上线')}
           </h2>
           <p className="text-muted-foreground">
-            Check back later to meet our amazing team!
+            {t('Check back later to meet our amazing team!', '稍后再来认识我们的团队吧！')}
           </p>
         </div>
       ) : (
@@ -138,7 +143,7 @@ const Team = () => {
                 className="text-2xl font-bold mb-6 pb-2 border-b-2"
                 style={{ color: "#B87503", borderColor: "#E8B94C" }}
               >
-                Leadership
+                {t('Leadership', '负责人')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {groupedMembers.leadership.map(member => <TeamMemberCard key={member.id} member={member} />)}
@@ -146,7 +151,7 @@ const Team = () => {
             </section>
           )}
           {groupedMembers.fallback.length > 0 && <section>
-            <h2 className="text-2xl font-bold mb-6">Team Members</h2>
+            <h2 className="text-2xl font-bold mb-6">{t('Team Members', '团队成员')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {groupedMembers.fallback.map(member => <TeamMemberCard key={member.id} member={member} />)}
             </div>

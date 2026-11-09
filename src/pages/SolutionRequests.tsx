@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Image as ImageIcon, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
 
@@ -32,15 +33,17 @@ interface SolutionRequest {
 }
 
 const problemTypes = [
-  { value: 'geometry', label: 'Geometry' },
-  { value: 'algebra', label: 'Algebra' },
-  { value: 'calculus', label: 'Calculus' },
-  { value: 'number_theory', label: 'Number Theory' },
-  { value: 'combinatorics', label: 'Combinatorics' },
-  { value: 'pre_calculus', label: 'Pre-Calculus' },
-  { value: 'statistics', label: 'Statistics' },
-  { value: 'other', label: 'Other' }
+  { value: 'geometry', label: 'Geometry', zh: '几何' },
+  { value: 'algebra', label: 'Algebra', zh: '代数' },
+  { value: 'calculus', label: 'Calculus', zh: '微积分' },
+  { value: 'number_theory', label: 'Number Theory', zh: '数论' },
+  { value: 'combinatorics', label: 'Combinatorics', zh: '组合' },
+  { value: 'pre_calculus', label: 'Pre-Calculus', zh: '预备微积分' },
+  { value: 'statistics', label: 'Statistics', zh: '统计' },
+  { value: 'other', label: 'Other', zh: '其他' }
 ];
+
+const STATUS_ZH: Record<string, string> = { pending: '待处理', in_progress: '处理中', completed: '已完成', solved: '已解答' };
 
 export default function SolutionRequests() {
   const [requests, setRequests] = useState<SolutionRequest[]>([]);
@@ -51,6 +54,7 @@ export default function SolutionRequests() {
   const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const { user } = useAuth();
   const { toast } = useToast();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     fetchRequests();
@@ -156,8 +160,8 @@ export default function SolutionRequests() {
     } catch (error) {
       console.error('Error uploading image:', error);
       toast({
-        title: "Upload failed",
-        description: "Failed to upload image. Please try again.",
+        title: t('Upload failed', '上传失败'),
+        description: t('Failed to upload image. Please try again.', '图片上传失败，请重试。'),
         variant: "destructive",
       });
       return null;
@@ -177,7 +181,7 @@ const imageFile = formData.get('image') as File;
 
 // Validate dropdown selections
 if (!problemTypeValue) {
-  toast({ title: 'Select a problem type', variant: 'destructive' });
+  toast({ title: t('Select a problem type', '请选择题目类型'), variant: 'destructive' });
   return;
 }
 const isPublic = visibility === 'public';
@@ -211,8 +215,8 @@ try {
       }
 
       toast({
-        title: "Request submitted!",
-        description: "Your solution request has been posted successfully.",
+        title: t('Request submitted!', '已提交！'),
+        description: t('Your solution request has been posted successfully.', '你的求解请求已成功提交。'),
       });
 
       setIsDialogOpen(false);
@@ -221,8 +225,8 @@ try {
     } catch (error) {
       console.error('Error submitting request:', error);
       toast({
-        title: "Error",
-        description: "Failed to submit request. Please try again.",
+        title: t('Error', '出错了'),
+        description: t('Failed to submit request. Please try again.', '提交失败，请重试。'),
         variant: "destructive",
       });
     }
@@ -287,9 +291,9 @@ case 'completed':
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">Solution Requests</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-4">{t('Solution Requests', '求解请求')}</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Upload math problems and get help from our expert tutors
+            {t('Upload math problems and get help from our expert tutors', '上传数学题，获得老师的帮助')}
           </p>
           
           {user && (
@@ -297,37 +301,37 @@ case 'completed':
               <DialogTrigger asChild>
                 <Button size="lg">
                   <Plus className="h-5 w-5 mr-2" />
-                  Request Solution
+                  {t('Request Solution', '提交求解请求')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Submit Solution Request</DialogTitle>
+                  <DialogTitle>{t('Submit Solution Request', '提交求解请求')}</DialogTitle>
                   <DialogDescription>
-                    Upload an image of your math problem and describe what you need help with.
+                    {t('Upload an image of your math problem and describe what you need help with.', '上传题目图片，并说明你需要哪方面的帮助。')}
                   </DialogDescription>
                 </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Problem Title</Label>
+                      <Label htmlFor="title">{t('Problem Title', '题目标题')}</Label>
                       <Input
                         id="title"
                         name="title"
-                        placeholder="e.g., Calculus Integration Problem"
+                        placeholder={t('e.g., Calculus Integration Problem', '例如：微积分积分题')}
                         required
                       />
                     </div>
 
 <div className="space-y-2">
-  <Label htmlFor="problemType">Problem Type</Label>
+  <Label htmlFor="problemType">{t('Problem Type', '题目类型')}</Label>
   <Select value={problemTypeValue} onValueChange={setProblemTypeValue}>
     <SelectTrigger>
-      <SelectValue placeholder="Select problem type" />
+      <SelectValue placeholder={t('Select problem type', '选择题目类型')} />
     </SelectTrigger>
     <SelectContent>
       {problemTypes.map((type) => (
         <SelectItem key={type.value} value={type.value}>
-          {type.label}
+          {language === 'zh' ? type.zh : type.label}
         </SelectItem>
       ))}
     </SelectContent>
@@ -335,17 +339,17 @@ case 'completed':
 </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                      <Label htmlFor="description">{t('Description', '描述')}</Label>
                       <Textarea
                         id="description"
                         name="description"
-                        placeholder="Describe what you're struggling with or what specific help you need..."
+                        placeholder={t("Describe what you're struggling with or what specific help you need...", '说说你卡在哪里，或者需要什么具体帮助…')}
                         rows={3}
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="image">Upload Problem Image</Label>
+                      <Label htmlFor="image">{t('Upload Problem Image', '上传题目图片')}</Label>
                       <Input
                         id="image"
                         name="image"
@@ -354,19 +358,19 @@ case 'completed':
                         className="cursor-pointer"
                       />
                       <p className="text-sm text-muted-foreground">
-                        Upload a clear image of your math problem
+                        {t('Upload a clear image of your math problem', '请上传清晰的题目图片')}
                       </p>
                     </div>
 
 <div className="space-y-2">
-  <Label>Visibility</Label>
+  <Label>{t('Visibility', '公开范围')}</Label>
   <Select value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'private')}>
     <SelectTrigger>
-      <SelectValue placeholder="Choose public or private" />
+      <SelectValue placeholder={t('Choose public or private', '选择公开或私密')} />
     </SelectTrigger>
     <SelectContent>
-      <SelectItem value="private">Private (only you can see the solution)</SelectItem>
-      <SelectItem value="public">Public (shown as anonymous to others)</SelectItem>
+      <SelectItem value="private">{t('Private (only you can see the solution)', '私密（只有你能看到解答）')}</SelectItem>
+      <SelectItem value="public">{t('Public (shown as anonymous to others)', '公开（对其他人匿名显示）')}</SelectItem>
     </SelectContent>
   </Select>
 </div>
@@ -375,12 +379,12 @@ case 'completed':
                     {uploading ? (
                       <>
                         <Upload className="h-4 w-4 mr-2 animate-spin" />
-                        Uploading...
+                        {t('Uploading...', '上传中…')}
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Submit Request
+                        {t('Submit Request', '提交请求')}
                       </>
                     )}
                   </Button>
@@ -393,9 +397,9 @@ case 'completed':
         {requests.length === 0 ? (
           <div className="text-center py-12">
             <ImageIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">No solution requests yet</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">{t('No solution requests yet', '还没有求解请求')}</h3>
             <p className="text-muted-foreground">
-              {user ? "Be the first to submit a math problem for help!" : "Sign in to submit solution requests"}
+              {user ? t('Be the first to submit a math problem for help!', '来提交第一道求助的题吧！') : t('Sign in to submit solution requests', '登录后提交求解请求')}
             </p>
           </div>
         ) : (
@@ -407,13 +411,13 @@ case 'completed':
                     <Badge className={getStatusColor(request.status)} variant="secondary">
                       <span className="flex items-center gap-1">
                         {getStatusIcon(request.status)}
-                        {request.status.replace('_', ' ')}
+                        {language === 'zh' ? STATUS_ZH[request.status] ?? request.status : request.status.replace('_', ' ')}
                       </span>
                     </Badge>
                   </div>
                   <CardTitle className="line-clamp-2">{request.title}</CardTitle>
 <CardDescription className="line-clamp-2">
-  {request.is_public ? 'By Anonymous' : (user?.id === request.user_id ? 'By You' : 'Private request')}
+  {request.is_public ? t('By Anonymous', '匿名') : (user?.id === request.user_id ? t('By You', '我的请求') : t('Private request', '私密请求'))}
 </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -421,7 +425,7 @@ case 'completed':
                     <div className="mb-4">
                       <img
                         src={request.image_url}
-                        alt="Problem"
+                        alt={t('Problem', '题目')}
                         className="w-full h-32 object-cover rounded-md bg-muted"
                       />
                     </div>
@@ -435,7 +439,7 @@ case 'completed':
                   
 {request.solution_text && (request.is_public || user?.id === request.user_id) && (
   <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-    <h4 className="font-semibold text-green-800 mb-1">Solution:</h4>
+    <h4 className="font-semibold text-green-800 mb-1">{t('Solution:', '解答：')}</h4>
     <p className="text-sm text-green-700 line-clamp-3">
       {request.solution_text}
     </p>
@@ -443,7 +447,7 @@ case 'completed':
 )}
                   
                   <div className="text-xs text-muted-foreground">
-                    Submitted {new Date(request.created_at).toLocaleDateString()}
+                    {t('Submitted', '提交于')} {new Date(request.created_at).toLocaleDateString()}
                   </div>
                 </CardContent>
               </Card>
