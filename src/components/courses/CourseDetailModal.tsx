@@ -11,12 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { Course } from './types';
+import { LEVEL_ZH } from './CourseCard';
 const Editor = lazy(() => import('@/components/admin/CourseOutlineManagement').then(m => ({ default: m.CourseOutlineManagement })));
 const TopicLesson = lazy(() => import('./TopicLesson'));
 interface Props { course: Course; onClose: () => void; supabaseUrl: string; topicId?: string | null; entryId?: string | null; onEntryChange: (id: string | null) => void; resumeTime?: number | null; initialVideoId?: string }
 export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entryId, onEntryChange, resumeTime, initialVideoId }: Props) {
   const { user, adminAccess, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const location = useLocation();
   const requestedUnit = new URLSearchParams(location.search).get('unit');
   const isAdmin = adminAccess.courses;
@@ -35,7 +36,7 @@ export function CourseDetailModal({ course, onClose, supabaseUrl, topicId, entry
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent scrollable className="data-[state=open]:animate-none data-[state=closed]:animate-none inset-0 left-0 top-0 h-[100dvh] max-h-[100dvh] w-full max-w-none translate-x-0 translate-y-0 transform-none rounded-none p-3 pt-[max(1rem,env(safe-area-inset-top))] sm:rounded-none sm:p-5">
     <DialogHeader><DialogTitle className="text-3xl">{course.title}</DialogTitle></DialogHeader>
       <DialogBody><DialogDescription>{course.description}</DialogDescription>
-    <div className="flex gap-2"><Badge variant="secondary" className={course.level === 'advanced' ? 'bg-red-100 text-red-800' : undefined}>{course.level}</Badge><Badge variant="outline">{course.subject}</Badge></div>
+    <div className="flex gap-2"><Badge variant="secondary" className={course.level === 'advanced' ? 'bg-red-100 text-red-800' : undefined}>{language === 'zh' ? LEVEL_ZH[course.level] ?? course.level : course.level}</Badge><Badge variant="outline">{course.subject}</Badge></div>
     {outline.isPending ? <p role="status">{t('Loading course outline…', '课程大纲加载中…')}</p> : outline.isError ? <div role="alert"><p>{outline.error.message}</p><Button onClick={() => void outline.refetch()}>{t('Retry outline', '重新加载大纲')}</Button></div> : <div className="space-y-4">{outline.data.units.map(unit => {
       const locked = !user && unit.unit_number >= 4;
       const returnParams = new URLSearchParams(location.search);
