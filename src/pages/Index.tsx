@@ -1,37 +1,19 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Book, MessageCircleQuestion, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Reveal from '@/components/Reveal';
 import ScholarCounter from '@/components/home/ScholarCounter';
+import CalcQuestSection from '@/components/home/CalcQuestSection';
 
-// Fades and lifts its content in the first time it scrolls into view; shown immediately under reduced motion.
-function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !('IntersectionObserver' in window)) { setShown(true); return; }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setShown(true); observer.disconnect(); }
-    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-[opacity,transform] duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'} ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+// The brand in the headline: primary blue on a yellow highlighter stroke, like the key terms in our videos.
+const Brand = () => (
+  <span className="whitespace-nowrap bg-[linear-gradient(transparent_58%,hsl(var(--accent)/0.6)_58%,hsl(var(--accent)/0.6)_92%,transparent_92%)] px-1 text-primary [box-decoration-break:clone]">
+    O2I Institute
+  </span>
+);
 
 const features = [
   {
@@ -63,7 +45,7 @@ const features = [
 
 export default function Index() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
 
   return (
     <main className="min-h-screen bg-background">
@@ -72,14 +54,24 @@ export default function Index() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 [background-image:linear-gradient(hsl(var(--primary)/0.06)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.06)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
         {/* soft fade into the next section instead of a hard edge */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background" />
-        <svg aria-hidden="true" viewBox="0 0 240 140" fill="none" stroke="currentColor" className="pointer-events-none absolute bottom-10 right-6 hidden h-36 w-60 text-primary/20 md:block">
-          <path d="M0 70H240M20 0V140" strokeWidth="1" />
-          <path d="M20 70Q60 -10 100 70T180 70T260 70" strokeWidth="2" />
+        {/* "One to Infinity": a curve that starts at 1 and runs off to ∞ */}
+        <svg aria-hidden="true" viewBox="0 0 240 160" fill="none" stroke="currentColor" className="pointer-events-none absolute bottom-10 right-6 hidden h-40 w-60 text-primary/25 md:block">
+          <path d="M10 140H236M24 152V6" strokeWidth="1" />
+          <path d="M20 120H28" strokeWidth="1.5" />
+          <path d="M24 120C110 118 168 98 210 16M200 20l10-4 1 11" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <text x="6" y="125" fill="currentColor" stroke="none" fontSize="14" fontWeight="600">1</text>
+          <text x="216" y="22" fill="currentColor" stroke="none" fontSize="26" fontWeight="600">∞</text>
         </svg>
         <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <Reveal>
-            <h1 className="mx-auto mb-6 max-w-3xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-              {t('Understand the math, not just the answer.', '弄懂思路，而不只是答案。')}
+            <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-background/70 px-4 py-1.5 text-sm font-medium text-primary">
+              <span aria-hidden="true" className="font-semibold">1 → ∞</span>
+              {t('O2I means One to Infinity', 'O2I 的意思是 One to Infinity：从 1 到无穷')}
+            </p>
+            <h1 className="mx-auto mb-6 max-w-4xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              {language === 'zh'
+                ? <>在 <Brand />，弄懂思路，而不只是答案。</>
+                : <>At <Brand />, you understand the math, not just the answer.</>}
             </h1>
           </Reveal>
           <Reveal delay={120}>
@@ -131,6 +123,8 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      <CalcQuestSection />
 
       <section className="bg-gradient-to-b from-background via-primary/5 to-accent/10 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
