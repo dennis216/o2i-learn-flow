@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
-import { Bot, FlaskConical, Gamepad2, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
+import { Bot, FlaskConical, Gamepad2, Languages, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -45,7 +45,7 @@ export default function Navbar() {
 
   const LanguageToggle = () => (
     <Button variant="ghost" size="sm" onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} aria-label={language === 'en' ? 'Switch to Chinese' : '切换到英文'}>
-      {language === 'en' ? '中文' : 'EN'}
+      <Languages className="mr-2 h-4 w-4" />{language === 'en' ? '中文' : 'EN'}
     </Button>
   );
 
