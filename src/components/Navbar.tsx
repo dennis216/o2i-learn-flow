@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
-import { Bot, FlaskConical, Gamepad2, Languages, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
+import { Book, Bot, FlaskConical, Gamepad2, Info, Languages, LogOut, Menu, MessageCircleQuestion, Shield, Target, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -30,14 +30,14 @@ export default function Navbar() {
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>{t('Courses', '课程')}</Button></Link>
+      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Book className="mr-2 h-4 w-4" />{t('Courses', '课程')}</Button></Link>
       <Link to="/practice" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Target className="mr-2 h-4 w-4" />{t('Practice', '练习')}</Button></Link>
       {AI_TUTOR_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
       <Link to="/arena" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Gamepad2 className="mr-2 h-4 w-4" />{t('Arena', '竞技场')}</Button></Link>
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
-      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>{t('Solution Requests', '答疑')}</Button></Link>
+      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="mr-2 h-4 w-4" />{t('Solution Requests', '答疑')}</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
-      <Button variant="ghost" asChild className={mobile ? 'w-full justify-start' : ''}><Link to="/about" onClick={closeMobileMenu}>{t('About Us', '关于我们')}</Link></Button>
+      <Button variant="ghost" asChild className={mobile ? 'w-full justify-start' : ''}><Link to="/about" onClick={closeMobileMenu}><Info className="mr-2 h-4 w-4" />{t('About Us', '关于我们')}</Link></Button>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>{t('Retry permissions', '重新加载权限')}</Button>}
     </>

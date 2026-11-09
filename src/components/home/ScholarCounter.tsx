@@ -112,7 +112,7 @@ const ScholarCounter = () => {
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
       {/* Scholar Counter - Main Trust Badge; hidden if the count failed to load rather than showing "Join 0" */}
-      {count !== null && <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-lg hover:shadow-xl transition-shadow duration-300">
+      {count !== null && <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-sm">
         <Users className="h-7 w-7 text-primary" />
         <span className="text-xl sm:text-2xl font-bold text-foreground">
           {t('Join', '和')}{' '}

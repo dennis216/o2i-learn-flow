@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Book, Image, Target } from 'lucide-react';
+import { Book, MessageCircleQuestion, Target } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -35,21 +35,28 @@ function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; 
 
 const features = [
   {
-    icon: <Book className="h-8 w-8 text-primary" />,
-    title: ['Expert Courses', '精品课程'],
-    description: ['Comprehensive math courses from beginner to advanced levels taught by experienced instructors.', '从入门到进阶的系统数学课程，由经验丰富的老师讲授。'],
+    icon: Book,
+    tile: 'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white shadow-[hsl(var(--education-blue)/0.3)]',
+    title: ['Courses', '课程'],
+    description: ['Video lessons organized by unit and topic, from AP Calculus to contest math.', '按单元和知识点整理的视频课，从 AP 微积分到竞赛数学。'],
+    action: ['Browse courses', '浏览课程'],
     link: '/courses',
   },
   {
-    icon: <Image className="h-8 w-8 text-accent" />,
+    icon: MessageCircleQuestion,
+    // dark icon on amber: white on yellow would fail contrast
+    tile: 'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950 shadow-[hsl(var(--education-orange)/0.35)]',
     title: ['Solution Requests', '答疑'],
-    description: ['Upload math problems and get step-by-step solutions from our expert tutors.', '上传数学题，由我们的老师给出分步解答。'],
+    description: ['Upload a photo of a problem and a tutor sends back a step-by-step solution.', '拍照上传题目，老师给你分步解答。'],
+    action: ['Ask a question', '去提问'],
     link: '/solution-requests',
   },
   {
-    icon: <Target className="h-8 w-8 text-primary" />,
+    icon: Target,
+    tile: 'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white shadow-[hsl(var(--education-teal)/0.3)]',
     title: ['Quick Practice', '快速练习'],
-    description: ['Build confidence with focused practice that responds to your progress.', '题目会根据你的进度调整，越练越有底。'],
+    description: ['Questions that adjust to your progress. Your answers are saved so you can review them.', '题目会按你的进度调整，作答会保存下来，方便复习。'],
+    action: ['Start practicing', '开始练习'],
     link: '/practice',
   },
 ] as const;
@@ -71,13 +78,13 @@ export default function Index() {
         </svg>
         <div className="relative mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <Reveal>
-            <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-              {t('Welcome to ', '欢迎来到 ')}<span className="text-primary">O2I Institute</span>
+            <h1 className="mx-auto mb-6 max-w-3xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+              {t('Understand the math, not just the answer.', '弄懂思路，而不只是答案。')}
             </h1>
           </Reveal>
           <Reveal delay={120}>
-            <p className="mx-auto mb-8 max-w-3xl text-lg text-muted-foreground sm:text-xl">
-              {t('Master mathematics with our comprehensive tutoring platform. Get expert help, connect with peers, and unlock your potential with personalized learning experiences.', '在这里学数学：有老师答疑，有同学一起交流，学习内容也会按你的情况调整。')}
+            <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground sm:text-xl">
+              {t('Courses, practice and tutor help for AP Calculus, AP Statistics, Precalculus, SAT Math and AMC 10/12.', 'AP 微积分、AP 统计、Precalculus、SAT 数学和 AMC 10/12 的课程、练习和老师答疑，都在这里。')}
             </p>
           </Reveal>
 
@@ -102,20 +109,23 @@ export default function Index() {
       <section className="bg-background pb-14 pt-4 sm:pb-20 sm:pt-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal className="mb-10 text-center sm:mb-12">
-            <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Everything You Need to Excel in Math', '学数学需要的，这里都有')}</h2>
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">{t('Our comprehensive platform provides all the tools and support you need for mathematical success.', '课程、练习、答疑，都在一个地方。')}</p>
+            <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Learn it, practice it, ask about it', '学、练、问，一站搞定')}</h2>
+            <p className="mx-auto max-w-2xl text-lg text-muted-foreground">{t("Watch a lesson, try the questions, and send us anything you're stuck on.", '先看课，再做题，卡住了就来问。')}</p>
           </Reveal>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-8">
             {features.map((feature, i) => (
-              <Reveal key={feature.link} delay={i * 120}>
-              <Card className="relative h-full rounded-2xl border-0 bg-transparent shadow-none transition-colors duration-200 hover:bg-muted/60">
-                <CardHeader className="text-center">
-                  <div className="mx-auto mb-4 w-fit rounded-full bg-accent/10 p-3">{feature.icon}</div>
-                  <CardTitle className="mb-2 text-xl">{t(feature.title[0], feature.title[1])}</CardTitle>
-                  <CardDescription className="text-base">{t(feature.description[0], feature.description[1])}</CardDescription>
-                </CardHeader>
-                <CardContent className="text-center"><Button variant="outline" asChild><Link to={feature.link} className="after:absolute after:inset-0">{t('Learn More', '了解更多')}</Link></Button></CardContent>
-              </Card>
+              <Reveal key={feature.link} delay={i * 120} className="h-full">
+                <Card className="group relative flex h-full flex-col rounded-2xl border-0 bg-transparent shadow-none transition-colors duration-200 hover:bg-muted/60">
+                  <CardHeader className="text-center">
+                    <div className={`mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br shadow-lg ring-4 ring-background transition-transform duration-200 group-hover:-translate-y-1 group-hover:rotate-3 motion-reduce:transform-none ${feature.tile}`}>
+                      <feature.icon aria-hidden="true" strokeWidth={2.25} className="h-8 w-8" />
+                    </div>
+                    <CardTitle className="mb-2 text-xl">{t(feature.title[0], feature.title[1])}</CardTitle>
+                    <CardDescription className="text-base">{t(feature.description[0], feature.description[1])}</CardDescription>
+                  </CardHeader>
+                  {/* mt-auto pins the button to the bottom so all three line up */}
+                  <CardContent className="mt-auto text-center"><Button variant="outline" asChild><Link to={feature.link} className="after:absolute after:inset-0">{t(feature.action[0], feature.action[1])}</Link></Button></CardContent>
+                </Card>
               </Reveal>
             ))}
           </div>
@@ -124,9 +134,9 @@ export default function Index() {
 
       <section className="bg-gradient-to-b from-background via-primary/5 to-accent/10 py-14 sm:py-20">
         <Reveal className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Ready to Transform Your Math Skills?', '想把数学学得更扎实？')}</h2>
-          <p className="mb-8 text-lg text-muted-foreground">{t('Join thousands of students who have improved their mathematical understanding with O2I Institute.', '已经有几千名同学在 O2I Institute 学数学。')}</p>
-          {!user && <div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><Button size="lg" asChild><Link to="/auth">{t('Sign Up Today', '立即注册')}</Link></Button><Button size="lg" variant="outline" asChild><Link to="/auth">{t('Sign In', '登录')}</Link></Button></div>}
+          <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Ready when you are', '准备好了就开始吧')}</h2>
+          <p className="mb-8 text-lg text-muted-foreground">{t('Create an account to save your progress and send questions to tutors.', '注册账号后，练习记录会保存下来，也可以向老师提问。')}</p>
+          {!user && <div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><Button size="lg" asChild><Link to="/auth?tab=signup">{t('Create account', '注册账号')}</Link></Button><Button size="lg" variant="outline" asChild><Link to="/auth">{t('Sign In', '登录')}</Link></Button></div>}
         </Reveal>
       </section>
     </main>
