@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
-import { Bot, FlaskConical, Gamepad2, Languages, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
+import { Bot, FlaskConical, Gamepad2, LogOut, Menu, Shield, Target, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -45,7 +45,7 @@ export default function Navbar() {
 
   const LanguageToggle = () => (
     <Button variant="ghost" size="sm" onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} aria-label={language === 'en' ? 'Switch to Chinese' : '切换到英文'}>
-      <Languages className="mr-2 h-4 w-4" />{language === 'en' ? '中文' : 'EN'}
+      {language === 'en' ? '中文' : 'EN'}
     </Button>
   );
 
@@ -60,7 +60,7 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-border bg-background shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-screen-2xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
@@ -69,14 +69,14 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center gap-4 xl:flex">
+          <div className="hidden min-w-0 flex-1 items-center gap-4 min-[1400px]:flex">
             <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0"><NavLinks /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1"><LanguageToggle /><AuthButtons /></div>
           </div>
 
-          <div className="flex items-center gap-1 xl:hidden">
+          <div className="flex items-center gap-1 min-[1400px]:hidden">
             <LanguageToggle />
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-6 w-6" /><span className="sr-only">{t('Open menu', '打开菜单')}</span></Button></SheetTrigger>
