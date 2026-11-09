@@ -10,6 +10,8 @@
 - 不要直接推送到 `main`。如果有人直接改了 `main`，记得把它同步回 `test-work`。
 - 尽量少量多次提交、每次一件事，并让 `test-work` 保持能正常运行（别把做到一半的东西推上去）。
 - 需要好几天的大改动，或多人同时改同一块文件时，可以临时开分支；合并后及时删除。
+- 合并 PR 时选 "Create a merge commit"（不要 squash）。合并后 `main` 和 `test-work` 应指向同一个提交：把 `test-work` 快进到 `main`。
+- 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-07`），方便回溯；备份分支和 `feature/calc-quest-world` 先保留，不要清理。
 
 ## 注意
 
