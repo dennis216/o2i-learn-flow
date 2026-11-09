@@ -68,6 +68,10 @@ const ScholarCounter = () => {
   // Animated counter effect (odometer)
   useEffect(() => {
     if (count === null) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplayCount(count);
+      return;
+    }
 
     const duration = 1800;
     const startTime = performance.now();
@@ -98,16 +102,17 @@ const ScholarCounter = () => {
   if (loading) {
     return (
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-pulse">
-        <div className="h-14 w-64 bg-muted rounded-full" />
-        <div className="h-10 w-72 bg-muted rounded-full" />
+        {/* heights match the loaded badges so the buttons below don't jump */}
+        <div className="h-[72px] sm:h-[77px] w-64 bg-muted rounded-full" />
+        <div className="h-20 sm:h-[52px] w-72 max-w-full bg-muted rounded-full" />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-      {/* Scholar Counter - Main Trust Badge */}
-      <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-lg hover:shadow-xl transition-shadow duration-300">
+      {/* Scholar Counter - Main Trust Badge; hidden if the count failed to load rather than showing "Join 0" */}
+      {count !== null && <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <Users className="h-7 w-7 text-primary" />
         <span className="text-xl sm:text-2xl font-bold text-foreground">
           {t('Join', '和')}{' '}
@@ -116,12 +121,12 @@ const ScholarCounter = () => {
           </span>{' '}
           {t('Scholars', '名同学一起学')}
         </span>
-      </div>
+      </div>}
 
       {/* Expert Tutors Badge */}
       <Badge 
         variant="secondary" 
-        className="flex items-center gap-2 px-5 py-3 text-base font-semibold bg-gradient-to-r from-accent/20 to-accent/10 border-2 border-accent/40 text-foreground hover:bg-accent/30 transition-colors duration-300"
+        className="flex flex-wrap items-center justify-center gap-2 px-5 py-3 text-center text-base font-semibold bg-gradient-to-r from-accent/20 to-accent/10 border-2 border-accent/40 text-foreground hover:bg-accent/30 transition-colors duration-300"
       >
         <Award className="h-5 w-5 text-accent" />
         <span>{t('10+ Expert Tutors', '10+ 位资深导师')}</span>
