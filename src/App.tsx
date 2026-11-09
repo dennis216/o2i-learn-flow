@@ -9,6 +9,7 @@ import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
 import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import DeskPet from '@/components/DeskPet';
 import Index from '@/pages/Index';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
@@ -82,6 +83,7 @@ export default function App() {
                 </Routes>
               </Suspense>
               <Footer />
+              <DeskPet />
             </BrowserRouter>
           </TooltipProvider>
       </AuthProvider>
