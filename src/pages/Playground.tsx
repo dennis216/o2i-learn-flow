@@ -118,7 +118,7 @@ export default function Playground() {
           {t('GeoGebra Playground', 'GeoGebra 互动工具')}
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          {t('Interactive math models — visualize and explore concepts', '交互式数学模型：把概念画出来、动手探索')}
+          {t('Interactive math models — visualize and explore concepts', '可以拖动、调整的数学模型，帮你直观看懂概念')}
         </p>
       </div>
 

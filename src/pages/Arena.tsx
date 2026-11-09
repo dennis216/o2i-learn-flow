@@ -60,10 +60,10 @@ export default function Arena() {
     <main className="container mx-auto max-w-xl px-4 py-16">
       <h1 className="mb-4 text-3xl font-bold">{t('Limit Arena', '极限竞技场')}</h1>
       {loading
-        ? <p role="status">{t('Checking your account…', '正在检查账号…')}</p>
+        ? <p role="status">{t('Checking your account…', '正在确认登录状态…')}</p>
         : (
           <div className="space-y-4">
-            <p>{t('Sign in to play.', '登录后开始游戏。')}</p>
+            <p>{t('Sign in to play.', '登录后就能开玩。')}</p>
             <Button asChild><Link to="/auth">{t('Sign in', '登录')}</Link></Button>
           </div>
         )}

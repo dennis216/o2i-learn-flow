@@ -215,8 +215,8 @@ try {
       }
 
       toast({
-        title: t('Request submitted!', '已提交！'),
-        description: t('Your solution request has been posted successfully.', '你的求解请求已成功提交。'),
+        title: t('Request submitted!', '提交成功'),
+        description: t('Your solution request has been posted successfully.', '你的问题已提交。'),
       });
 
       setIsDialogOpen(false);
@@ -291,7 +291,7 @@ case 'completed':
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">{t('Solution Requests', '求解请求')}</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-4">{t('Solution Requests', '答疑')}</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             {t('Upload math problems and get help from our expert tutors', '上传数学题，获得老师的帮助')}
           </p>
@@ -301,23 +301,23 @@ case 'completed':
               <DialogTrigger asChild>
                 <Button size="lg">
                   <Plus className="h-5 w-5 mr-2" />
-                  {t('Request Solution', '提交求解请求')}
+                  {t('Request Solution', '我要提问')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>{t('Submit Solution Request', '提交求解请求')}</DialogTitle>
+                  <DialogTitle>{t('Submit Solution Request', '我要提问')}</DialogTitle>
                   <DialogDescription>
-                    {t('Upload an image of your math problem and describe what you need help with.', '上传题目图片，并说明你需要哪方面的帮助。')}
+                    {t('Upload an image of your math problem and describe what you need help with.', '上传题目图片，说说哪里不会。')}
                   </DialogDescription>
                 </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">{t('Problem Title', '题目标题')}</Label>
+                      <Label htmlFor="title">{t('Problem Title', '标题')}</Label>
                       <Input
                         id="title"
                         name="title"
-                        placeholder={t('e.g., Calculus Integration Problem', '例如：微积分积分题')}
+                        placeholder={t('e.g., Calculus Integration Problem', '例如：一道积分题')}
                         required
                       />
                     </div>
@@ -339,7 +339,7 @@ case 'completed':
 </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="description">{t('Description', '描述')}</Label>
+                      <Label htmlFor="description">{t('Description', '问题描述')}</Label>
                       <Textarea
                         id="description"
                         name="description"
@@ -363,14 +363,14 @@ case 'completed':
                     </div>
 
 <div className="space-y-2">
-  <Label>{t('Visibility', '公开范围')}</Label>
+  <Label>{t('Visibility', '谁能看到')}</Label>
   <Select value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'private')}>
     <SelectTrigger>
       <SelectValue placeholder={t('Choose public or private', '选择公开或私密')} />
     </SelectTrigger>
     <SelectContent>
       <SelectItem value="private">{t('Private (only you can see the solution)', '私密（只有你能看到解答）')}</SelectItem>
-      <SelectItem value="public">{t('Public (shown as anonymous to others)', '公开（对其他人匿名显示）')}</SelectItem>
+      <SelectItem value="public">{t('Public (shown as anonymous to others)', '公开（其他人看到的是匿名）')}</SelectItem>
     </SelectContent>
   </Select>
 </div>
@@ -384,7 +384,7 @@ case 'completed':
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        {t('Submit Request', '提交请求')}
+                        {t('Submit Request', '提交')}
                       </>
                     )}
                   </Button>
@@ -397,9 +397,9 @@ case 'completed':
         {requests.length === 0 ? (
           <div className="text-center py-12">
             <ImageIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">{t('No solution requests yet', '还没有求解请求')}</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2">{t('No solution requests yet', '还没有人提问')}</h3>
             <p className="text-muted-foreground">
-              {user ? t('Be the first to submit a math problem for help!', '来提交第一道求助的题吧！') : t('Sign in to submit solution requests', '登录后提交求解请求')}
+              {user ? t('Be the first to submit a math problem for help!', '来提第一个问题吧！') : t('Sign in to submit solution requests', '登录后就能提问')}
             </p>
           </div>
         ) : (
@@ -417,7 +417,7 @@ case 'completed':
                   </div>
                   <CardTitle className="line-clamp-2">{request.title}</CardTitle>
 <CardDescription className="line-clamp-2">
-  {request.is_public ? t('By Anonymous', '匿名') : (user?.id === request.user_id ? t('By You', '我的请求') : t('Private request', '私密请求'))}
+  {request.is_public ? t('By Anonymous', '匿名') : (user?.id === request.user_id ? t('By You', '我提的问题') : t('Private request', '私密问题'))}
 </CardDescription>
                 </CardHeader>
                 <CardContent>

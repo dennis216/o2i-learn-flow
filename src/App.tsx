@@ -36,7 +36,7 @@ function PageLoader() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="space-y-4 text-center">
         <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
-        <p className="text-sm text-muted-foreground">{t('Loading page...', '页面加载中…')}</p>
+        <p className="text-sm text-muted-foreground">{t('Loading page...', '加载中…')}</p>
       </div>
     </div>
   );

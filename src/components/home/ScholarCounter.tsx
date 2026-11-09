@@ -110,11 +110,11 @@ const ScholarCounter = () => {
       <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-lg hover:shadow-xl transition-shadow duration-300">
         <Users className="h-7 w-7 text-primary" />
         <span className="text-xl sm:text-2xl font-bold text-foreground">
-          {t('Join', '加入')}{' '}
+          {t('Join', '和')}{' '}
           <span className="text-3xl sm:text-4xl font-extrabold text-primary tabular-nums">
             {displayCount.toLocaleString()}
           </span>{' '}
-          {t('Scholars', '位学员的行列')}
+          {t('Scholars', '名同学一起学')}
         </span>
       </div>
 
@@ -124,7 +124,7 @@ const ScholarCounter = () => {
         className="flex items-center gap-2 px-5 py-3 text-base font-semibold bg-gradient-to-r from-accent/20 to-accent/10 border-2 border-accent/40 text-foreground hover:bg-accent/30 transition-colors duration-300"
       >
         <Award className="h-5 w-5 text-accent" />
-        <span>{t('10+ Expert Tutors', '10+ 位优秀导师')}</span>
+        <span>{t('10+ Expert Tutors', '10+ 位资深导师')}</span>
         <span className="text-muted-foreground">•</span>
         <span className="text-sm font-medium text-muted-foreground">{t('Euclid Honor Roll & AMC Top 1%', 'Euclid 荣誉榜 & AMC 前 1%')}</span>
       </Badge>

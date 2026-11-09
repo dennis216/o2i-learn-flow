@@ -35,7 +35,7 @@ export default function Navbar() {
       {AI_TUTOR_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
       <Link to="/arena" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Gamepad2 className="mr-2 h-4 w-4" />{t('Arena', '竞技场')}</Button></Link>
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
-      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>{t('Solution Requests', '求解请求')}</Button></Link>
+      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}>{t('Solution Requests', '答疑')}</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
       <Button variant="ghost" asChild className={mobile ? 'w-full justify-start' : ''}><Link to="/about" onClick={closeMobileMenu}>{t('About Us', '关于我们')}</Link></Button>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}

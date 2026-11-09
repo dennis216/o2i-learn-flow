@@ -19,7 +19,7 @@ export default function ResetPassword() {
   const { toast } = useToast();
   const { t } = useLanguage();
   const getErrorMessage = (error: unknown) =>
-    error instanceof Error ? error.message : t('An unexpected error occurred. Please try again.', '发生意外错误，请重试。');
+    error instanceof Error ? error.message : t('An unexpected error occurred. Please try again.', '出了点问题，请重试。');
 
   useEffect(() => {
     const trySessionFromUrl = async () => {
@@ -97,7 +97,7 @@ export default function ResetPassword() {
       const redirectTo = `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      toast({ title: t('Check your email', '请查收邮件'), description: t('We sent a password reset link.', '我们已发送重置密码链接。') });
+      toast({ title: t('Check your email', '请查收邮件'), description: t('We sent a password reset link.', '重置链接已发到你的邮箱。') });
     } catch (error: unknown) {
       toast({ title: t('Reset failed', '重置失败'), description: getErrorMessage(error), variant: 'destructive' });
     } finally {
@@ -146,7 +146,7 @@ export default function ResetPassword() {
           <CardHeader>
             <CardTitle>{t('Password reset', '重置密码')}</CardTitle>
             <CardDescription>
-              {mode === 'request' ? t('Request a password reset link', '申请重置密码链接') : t('Set a new password', '设置新密码')}
+              {mode === 'request' ? t('Request a password reset link', '获取重置密码链接') : t('Set a new password', '设置新密码')}
             </CardDescription>
           </CardHeader>
           <CardContent>

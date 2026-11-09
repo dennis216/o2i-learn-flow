@@ -122,7 +122,7 @@ const Team = () => {
       {/* Grouped by Department */}
       {error ? (
         <div role="alert" className="space-y-3 py-16 text-center">
-          <p>{t('Could not load team members. Please try again.', '无法加载团队成员，请重试。')}</p>
+          <p>{t('Could not load team members. Please try again.', '团队成员加载失败，请重试。')}</p>
           <Button type="button" onClick={() => void fetchTeamMembers()}>{t('Retry', '重试')}</Button>
         </div>
       ) : teamMembers.length === 0 ? (

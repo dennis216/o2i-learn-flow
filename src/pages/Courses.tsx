@@ -43,17 +43,17 @@ export default function Courses() {
       if (!active) return;
       const mapping = data as { course_id?: string; topic_id?: string; entry_id?: string } | null;
       setParams(!error && mapping?.course_id && mapping.entry_id ? { course: mapping.course_id, lesson: mapping.entry_id, video: videoId } : {}, { replace: true });
-    }).catch(() => { if (active) setError(t('Could not resolve this course video. Retry the course.', '无法定位这个课程视频，请重新打开课程。')); });
+    }).catch(() => { if (active) setError(t('Could not resolve this course video. Retry the course.', '找不到这个课程视频，请重新打开课程。')); });
     return () => { active = false; };
   }, [requestedVideoId, requestedCourseId, requestedTopicId, requestedEntryId, setParams]);
   const changeEntry = useCallback((entryId: string | null) => { if (requestedCourseId) setParams({ course: requestedCourseId, ...(entryId ? { lesson: entryId } : {}), ...(entryId && requestedVideoId ? { video: requestedVideoId } : {}) }, { replace: true }); }, [requestedCourseId, requestedVideoId, setParams]);
   const selected = courses.find(c => c.id === requestedCourseId);
   const select = (course: Course) => setParams({ course: course.id });
   return <div className="container mx-auto min-h-screen px-4 py-10">
-    <div className="mb-8 text-center"><h1 className="text-4xl font-bold">{t('Math Courses', '数学课程')}</h1><p className="mt-3 text-muted-foreground">{t('Explore mathematics by Unit and Topic.', '按 Unit 和 Topic 学习数学。')}</p></div>
+    <div className="mb-8 text-center"><h1 className="text-4xl font-bold">{t('Math Courses', '数学课程')}</h1><p className="mt-3 text-muted-foreground">{t('Explore mathematics by Unit and Topic.', '按 Unit 和 Topic 循序学习。')}</p></div>
     <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
     {loading ? <p role="status" className="py-8">{t('Loading courses…', '课程加载中…')}</p> : error ? <div role="alert" className="space-y-3 py-8"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div> : <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{courses.map(course => <CourseCard key={course.id} course={course} thumbnail={course.subject === 'AP Calc' ? apCalculusThumbnail : undefined} onSelect={select} />)}</div>}
-    {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">{t('No published courses in this category.', '这个分类下还没有已发布的课程。')}</p>}
+    {!loading && !error && !courses.length && <p className="py-8 text-center text-muted-foreground">{t('No published courses in this category.', '这个分类下还没有课程。')}</p>}
     {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={requestedTopicId} entryId={requestedEntryId} initialVideoId={requestedVideoId ?? undefined} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onEntryChange={changeEntry} onClose={() => setParams({})} />}
   </div>;
 }

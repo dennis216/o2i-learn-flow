@@ -31,16 +31,16 @@ function LearningStatistics({ userId }: { userId: string }) {
   return <Card>
     <CardHeader>
       <CardTitle>{t('Learning Statistics', '学习统计')}</CardTitle>
-      <CardDescription>{t('Saved Practice and Arena answers for your account. Each Arena run counts as one learning session after its first question is issued. Sessions include partially completed practice; accuracy counts submitted answers only.', '你账号里保存的练习和竞技场作答。竞技场每局在出第一题后算一次学习。学习次数包括没做完的练习；正确率只统计已提交的作答。')}</CardDescription>
+      <CardDescription>{t('Saved Practice and Arena answers for your account. Each Arena run counts as one learning session after its first question is issued. Sessions include partially completed practice; accuracy counts submitted answers only.', '统计你在练习和竞技场里的答题。竞技场每局出了第一题就算一次；没做完的练习也计入次数，正确率只算已提交的答案。')}</CardDescription>
     </CardHeader>
     <CardContent>
       {busy ? <p role="status">{t('Loading your practice statistics…', '学习统计加载中…')}</p> : error ? (
-        <div role="alert" className="space-y-3"><p>{t('Could not load your practice statistics.', '无法加载学习统计。')} {error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div>
+        <div role="alert" className="space-y-3"><p>{t('Could not load your practice statistics.', '学习统计加载失败。')} {error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div>
       ) : statistics && <>
         <dl aria-label={t('Practice statistics', '练习统计')} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             [t('Learning Sessions', '学习次数'), statistics.sessionCount],
-            [t('Submitted Answers', '已提交作答'), statistics.attemptCount],
+            [t('Submitted Answers', '答题数'), statistics.attemptCount],
             [t('Accuracy', '正确率'), statistics.attemptCount ? `${(statistics.correctCount / statistics.attemptCount * 100).toFixed(1)}%` : '—'],
           ].map(([label, value]) => <div key={label} className="text-center p-4 border rounded-lg">
             <dt className="text-sm text-muted-foreground">{label}</dt>
@@ -49,11 +49,11 @@ function LearningStatistics({ userId }: { userId: string }) {
         </dl>
         <table className="mt-5 w-full text-left text-sm">
           <caption className="mb-2 text-left font-medium">{t('Answers by source', '按来源统计')}</caption>
-          <thead><tr><th scope="col">{t('Source', '来源')}</th><th scope="col">{t('Sessions', '次数')}</th><th scope="col">{t('Answers', '作答')}</th><th scope="col">{t('Accuracy', '正确率')}</th></tr></thead>
+          <thead><tr><th scope="col">{t('Source', '来源')}</th><th scope="col">{t('Sessions', '练习次数')}</th><th scope="col">{t('Answers', '答题数')}</th><th scope="col">{t('Accuracy', '正确率')}</th></tr></thead>
           <tbody>{statistics.sources.map(row => <tr key={row.source}><th scope="row">{row.source === 'arena' ? t('Arena', '竞技场') : t('Practice', '练习')}</th><td>{row.sessionCount}</td><td>{row.attemptCount}</td><td>{row.attemptCount ? `${(row.correctCount / row.attemptCount * 100).toFixed(1)}%` : '—'}</td></tr>)}</tbody>
         </table>
-        <p className="mt-3 text-sm text-muted-foreground">{t('Arena answers appear in Review. They do not change normal practice difficulty, Topic status or speed analysis.', '竞技场作答会出现在复习里，但不影响普通练习的难度、Topic 状态和速度分析。')}</p>
-        {statistics.attemptCount === 0 && <div className="mt-4 space-y-3"><p>{t('No submitted answers yet. Your accuracy will appear after you submit an answer.', '还没有提交过作答。提交后会显示正确率。')}</p><Button asChild><Link to="/practice">{t('Start practice', '开始练习')}</Link></Button></div>}
+        <p className="mt-3 text-sm text-muted-foreground">{t('Arena answers appear in Review. They do not change normal practice difficulty, Topic status or speed analysis.', '竞技场的答题会出现在复习里，但不会影响普通练习的难度、Topic 掌握情况和速度分析。')}</p>
+        {statistics.attemptCount === 0 && <div className="mt-4 space-y-3"><p>{t('No submitted answers yet. Your accuracy will appear after you submit an answer.', '还没有答过题，答题后这里会显示正确率。')}</p><Button asChild><Link to="/practice">{t('Start practice', '开始练习')}</Link></Button></div>}
       </>}
     </CardContent>
   </Card>;
@@ -64,14 +64,14 @@ export default function Profile() {
   const isProtectedAccount = isSuperAdmin;
   const { t } = useLanguage();
 
-  if (loading) return <p role="status" className="p-8">{t('Checking your account…', '正在检查账号…')}</p>;
+  if (loading) return <p role="status" className="p-8">{t('Checking your account…', '正在确认登录状态…')}</p>;
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>{t('Access Denied', '无法访问')}</CardTitle>
+            <CardTitle>{t('Access Denied', '请先登录')}</CardTitle>
             <CardDescription>
               {t('You need to be logged in to view your profile.', '登录后才能查看个人资料。')}
             </CardDescription>
@@ -118,7 +118,7 @@ export default function Profile() {
               <CardDescription>
                 {isProtectedAccount 
                   ? t('Your account information is protected and cannot be modified', '你的账号信息受保护，不能修改')
-                  : t('Your account information is read-only', '账号信息为只读')}
+                  : t('Your account information is read-only', '账号信息暂不支持修改')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

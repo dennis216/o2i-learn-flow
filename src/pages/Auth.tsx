@@ -95,7 +95,7 @@ export default function Auth() {
     } catch (error) {
       toast({
         title: t('Error', '出错了'),
-        description: t('An unexpected error occurred. Please try again.', '发生意外错误，请重试。'),
+        description: t('An unexpected error occurred. Please try again.', '出了点问题，请重试。'),
         variant: "destructive",
       });
     } finally {
@@ -137,7 +137,7 @@ export default function Auth() {
         if (error.message.includes('already registered')) {
           errorMessage = t('This email is already registered. Please sign in instead.', '这个邮箱已经注册过了，请直接登录。');
         } else if (error.message.includes('rate limit')) {
-          errorMessage = t('Too many signup attempts. Please wait a few minutes and try again.', '注册尝试次数过多，请等几分钟再试。');
+          errorMessage = t('Too many signup attempts. Please wait a few minutes and try again.', '注册太频繁了，请过几分钟再试。');
         }
         
         toast({
@@ -157,7 +157,7 @@ export default function Auth() {
     } catch (error) {
       toast({
         title: t('Error', '出错了'),
-        description: t('An unexpected error occurred. Please try again.', '发生意外错误，请重试。'),
+        description: t('An unexpected error occurred. Please try again.', '出了点问题，请重试。'),
         variant: "destructive",
       });
     } finally {
@@ -173,15 +173,15 @@ export default function Auth() {
             <Book className="h-10 w-10 text-primary" />
             <span className="text-2xl font-bold text-primary">O2I Institute</span>
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">{t('Welcome to Math Tutoring', '欢迎来到数学辅导')}</h1>
-          <p className="text-muted-foreground mt-2">{t('Sign in to your account or create a new one', '登录你的账号，或注册一个新账号')}</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('Welcome to Math Tutoring', '欢迎来学数学')}</h1>
+          <p className="text-muted-foreground mt-2">{t('Sign in to your account or create a new one', '登录，或注册一个新账号')}</p>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>{t('Authentication', '账号登录')}</CardTitle>
             <CardDescription>
-              {t('Access your learning dashboard and math tutoring resources', '进入你的学习主页和数学辅导资源')}
+              {t('Access your learning dashboard and math tutoring resources', '登录后进入学习主页，使用课程和练习')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -209,7 +209,7 @@ export default function Auth() {
                       id="signin-password"
                       name="password"
                       type="password"
-                      placeholder={t('Your password', '你的密码')}
+                      placeholder={t('Your password', '输入密码')}
                       required
                     />
                   </div>
@@ -225,7 +225,7 @@ export default function Auth() {
               <TabsContent value="signup">
                 <div className="mb-4 p-3 bg-muted rounded-md">
                   <p className="text-sm text-muted-foreground">
-                    {t("📧 After signing up, you'll receive a confirmation email. Please verify your email address to complete registration.", '📧 注册后你会收到一封确认邮件，请验证邮箱以完成注册。')}
+                    {t("📧 After signing up, you'll receive a confirmation email. Please verify your email address to complete registration.", '📧 注册后会收到一封确认邮件，验证邮箱后即可完成注册。')}
                   </p>
                 </div>
                 <form onSubmit={handleSignUp} className="space-y-4">
@@ -235,7 +235,7 @@ export default function Auth() {
                       id="signup-name"
                       name="fullName"
                       type="text"
-                      placeholder={t('Your full name', '你的姓名')}
+                      placeholder={t('Your full name', '输入姓名')}
                       required
                     />
                   </div>

@@ -34,19 +34,19 @@ export function selectionRationale(summary?: SelectionSummary | null, language: 
   const zh = language === 'zh';
   if (summary.rule_version === 'practice-adaptation-v2') {
     const reasons = summary.items.filter(i => i.kind !== 'regular').map(i => zh
-      ? `根据你最近 ${i.signal_count} 次${i.kind === 'error' ? '答错' : '答对但较慢'}的作答，加入了 Topic ${i.topic_code} 中关于 ${i.skill_description} 的 ${i.representation_type} 练习。`
+      ? `你最近有 ${i.signal_count} 次${i.kind === 'error' ? '答错' : '答对但较慢'}，所以加了 Topic ${i.topic_code} 里 ${i.skill_description} 的 ${i.representation_type} 练习。`
       : `Added ${i.representation_type} practice in Topic ${i.topic_code} for ${i.skill_description}, based on ${i.signal_count} recent ${i.kind === 'error' ? 'incorrect' : 'correct but slow'} ${i.signal_count === 1 ? 'answer' : 'answers'}.`);
-    if (!reasons.length) reasons.push(zh ? '正在积累你的练习记录，先出常规题，优先没做过的题。' : 'Building your practice history with regular questions, prioritizing those you have not seen.');
+    if (!reasons.length) reasons.push(zh ? '你的练习记录还不多，先出常规题，优先出没做过的。' : 'Building your practice history with regular questions, prioritizing those you have not seen.');
     if (summary.error_count + summary.slow_count < 2) reasons.push(zh ? '与最近错题或慢题匹配的新题不够时，会加入其他题目。' : 'Other questions are included when there are not enough new matches for recent incorrect or slow answers.');
-    if (summary.fallback_count) reasons.push(zh ? '为优先出没做过的题或凑满这一组，加入了其他难度的题。' : 'Other difficulties are included to prioritize unseen questions or fill this set.');
+    if (summary.fallback_count) reasons.push(zh ? '为了优先出没做过的题，或者凑满这一组，也加入了其他难度的题。' : 'Other difficulties are included to prioritize unseen questions or fill this set.');
     return reasons.join(zh ? '' : ' ');
   }
-  if (summary.target_difficulty === null) return zh ? '在已发布的 Topic 中随机练习，优先没做过的题。' : 'Random practice across published Topics, prioritizing questions you have not seen.';
+  if (summary.target_difficulty === null) return zh ? '从所有 Topic 里随机出题，优先出没做过的。' : 'Random practice across published Topics, prioritizing questions you have not seen.';
   const basis = summary.sample_count < 5
-    ? (zh ? '正在积累你的练习记录，先从中等难度开始。' : 'Building your practice history. Starting with medium difficulty.')
+    ? (zh ? '你的练习记录还不多，先从中等难度开始。' : 'Building your practice history. Starting with medium difficulty.')
     : zh ? `你在这个 Topic 最近做过的不同题目中答对 ${summary.correct_count}/${summary.sample_count}。目标难度：${summary.target_difficulty}。`
       : `${summary.correct_count}/${summary.sample_count} correct on your most recently answered distinct questions in this Topic. Target difficulty: ${summary.target_difficulty}.`;
-  return basis + (summary.fallback_count ? (zh ? '为优先出没做过的题或凑满这一组，加入了其他难度的题。' : ' Other difficulties are included to prioritize unseen questions or fill this set.') : '');
+  return basis + (summary.fallback_count ? (zh ? '为了优先出没做过的题，或者凑满这一组，也加入了其他难度的题。' : ' Other difficulties are included to prioritize unseen questions or fill this set.') : '');
 }
 export type TopicStatus = 'insufficient' | 'needs_practice' | 'stable';
 export interface ContinuousReason {
@@ -79,15 +79,15 @@ const reasonTextZh: Record<ContinuousReason['kind'], (r: ContinuousReason) => st
   start: r => `从 Topic ${r.topic_code} 的${difficultyZh[r.target_difficulty]}难度开始。`,
   new_topic: r => r.topic_status === 'needs_practice' ? `Topic ${r.topic_code} 还需要多练。` : `Topic ${r.topic_code} 还有你没做过的题。`,
   easier_after_error: r => `上一题答错了，换一道 Topic ${r.topic_code} 的${difficultyZh[r.target_difficulty]}题。`,
-  step_up: r => `连对三题：难度升到${difficultyZh[r.target_difficulty]}。`,
+  step_up: r => `连对三题，难度升到${difficultyZh[r.target_difficulty]}。`,
   continue: r => `继续 Topic ${r.topic_code}，${difficultyZh[r.target_difficulty]}难度。`,
-  review: r => `隔几天复查一下 Topic ${r.topic_code} 是否还记得。`,
+  review: r => `过了几天，回头检查一下 Topic ${r.topic_code} 还记不记得。`,
 };
 export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' = 'en'): string | null { return reason ? (language === 'zh' ? reasonTextZh : reasonText)[reason.kind]?.(reason) ?? null : null; }
 export const topicStatusLabel: Record<TopicStatus, string> = { insufficient: 'Too few questions to tell yet', needs_practice: 'Needs more practice', stable: 'Fairly steady' };
-export const topicStatusLabelZh: Record<TopicStatus, string> = { insufficient: '题量太少，暂时无法判断', needs_practice: '还需要多练', stable: '比较稳定' };
+export const topicStatusLabelZh: Record<TopicStatus, string> = { insufficient: '做的题还太少，暂时看不出来', needs_practice: '还需要多练', stable: '比较稳定' };
 export function topicStatusBasis(t: PracticeRecapTopic, language: 'en' | 'zh' = 'en'): string {
-  if (language === 'zh') return t.sample_count ? `最近 ${t.sample_count} 道新题中，第一次就答对 ${t.correct_count} 道。` : '还没有首次作答记录。';
+  if (language === 'zh') return t.sample_count ? `最近 ${t.sample_count} 道新题中，第一次就答对 ${t.correct_count} 道。` : '还没有第一次答题的记录。';
   return t.sample_count ? `${t.correct_count} of your last ${t.sample_count} new ${t.sample_count === 1 ? 'question' : 'questions'} correct on the first try.` : 'No first-try answers yet.';
 }
 export interface RecentPracticeAnswer {
