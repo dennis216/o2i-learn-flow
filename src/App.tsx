@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
 import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import Index from '@/pages/Index';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
@@ -80,6 +81,7 @@ export default function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              <Footer />
             </BrowserRouter>
           </TooltipProvider>
       </AuthProvider>
