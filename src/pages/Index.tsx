@@ -48,7 +48,8 @@ export default function Index() {
   const { language, t } = useLanguage();
 
   return (
-    <main className="min-h-screen bg-background">
+    // Chinese: wrap only at punctuation and spaces so words like 微积分 aren't split; anywhere-wrap is the fallback for a clause too long for the line.
+    <main className={`min-h-screen bg-background ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-accent/5 py-14 sm:py-20">
         {/* graph-paper backdrop, faded toward the edges */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 [background-image:linear-gradient(hsl(var(--primary)/0.06)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.06)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]" />
@@ -68,7 +69,7 @@ export default function Index() {
               <span aria-hidden="true" className="font-semibold">1 → ∞</span>
               {t('One to Infinity', 'One to Infinity，从 1 到无穷')}
             </p>
-            <h1 className="mx-auto mb-6 max-w-4xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+            <h1 className={`mx-auto mb-6 max-w-4xl break-keep text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl ${language === 'zh' ? 'leading-[1.35] sm:leading-[1.3]' : 'leading-tight sm:leading-[1.1]'}`}>
               {language === 'zh'
                 ? <>在 <Brand />，弄懂思路，而不只是答案。</>
                 : <>At <Brand />, you understand the math, not just the answer.</>}
