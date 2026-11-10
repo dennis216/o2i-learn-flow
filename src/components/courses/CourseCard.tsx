@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Course } from './types';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+export const LEVEL_ZH: Record<string, string> = { beginner: '入门', intermediate: '中级', advanced: '高级' };
 
 interface CourseCardProps {
   course: Course;
@@ -24,6 +27,7 @@ const getLevelColor = (level: string) => {
 };
 
 export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
+  const { language, t } = useLanguage();
   const imageUrl = thumbnail || course.image_url;
   const videoCount = course.course_videos?.length || 0;
 
@@ -48,7 +52,7 @@ export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
         {/* Badges positioned on image */}
         <div className="absolute top-3 left-3 flex gap-2">
           <Badge className={`${getLevelColor(course.level)} border backdrop-blur-sm`} variant="outline">
-            {course.level}
+            {language === 'zh' ? LEVEL_ZH[course.level] ?? course.level : course.level}
           </Badge>
         </div>
         <div className="absolute top-3 right-3">
@@ -61,7 +65,7 @@ export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
         {videoCount > 0 && (
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-white text-sm">
             <PlayCircle className="h-4 w-4" />
-            <span className="font-medium">{videoCount} video{videoCount > 1 ? 's' : ''}</span>
+            <span className="font-medium">{t(`${videoCount} video${videoCount > 1 ? 's' : ''}`, `${videoCount} 个视频`)}</span>
           </div>
         )}
       </div>
@@ -76,17 +80,17 @@ export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
           <div className="flex items-center gap-1">
             <User className="h-4 w-4" />
             <span className="truncate max-w-[120px]">
-              {course.public_profiles?.full_name || 'Instructor'}
+              {course.public_profiles?.full_name || t('Instructor', '讲师')}
             </span>
           </div>
           <div className="flex items-center gap-1 font-medium">
             <DollarSign className="h-4 w-4" />
-            <span>{course.price === 0 ? 'Free' : `${course.price}`}</span>
+            <span>{course.price === 0 ? t('Free', '免费') : `${course.price}`}</span>
           </div>
         </div>
         <Button className="w-full bg-primary hover:bg-primary/90" onClick={() => onSelect(course)}>
           <BookOpen className="h-4 w-4 mr-2" />
-          View Course
+          {t('View Course', '查看课程')}
         </Button>
       </CardContent>
     </Card>

@@ -6,9 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function ResetPassword() {
   const [mode, setMode] = useState<'request' | 'reset'>('request');
@@ -19,6 +17,9 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : t('An unexpected error occurred. Please try again.', '出了点问题，请重试。');
 
   useEffect(() => {
     const trySessionFromUrl = async () => {
@@ -68,8 +69,8 @@ export default function ResetPassword() {
         }
       } catch (error) {
         if (hasRecoveryCredentials) {
-          const description = error instanceof Error ? error.message : 'Request a new password reset link.';
-          toast({ title: 'Reset link is invalid or expired', description, variant: 'destructive' });
+          const description = error instanceof Error ? error.message : t('Request a new password reset link.', '请重新申请重置密码链接。');
+          toast({ title: t('Reset link is invalid or expired', '重置链接无效或已过期'), description, variant: 'destructive' });
         }
       } finally {
         setIsCheckingSession(false);
@@ -96,9 +97,9 @@ export default function ResetPassword() {
       const redirectTo = `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
-      toast({ title: 'Check your email', description: 'We sent a password reset link.' });
+      toast({ title: t('Check your email', '请查收邮件'), description: t('We sent a password reset link.', '重置链接已发到你的邮箱。') });
     } catch (error: unknown) {
-      toast({ title: 'Reset failed', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: t('Reset failed', '重置失败'), description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -115,24 +116,24 @@ export default function ResetPassword() {
     ];
     if (passwordRequirements.some((requirement) => !requirement)) {
       toast({
-        title: 'Weak password',
-        description: 'Use 8+ characters with uppercase, lowercase, number, and special character.',
+        title: t('Weak password', '密码强度不够'),
+        description: t('Use 8+ characters with uppercase, lowercase, number, and special character.', '请使用至少 8 位，包含大写字母、小写字母、数字和特殊字符的密码。'),
         variant: 'destructive',
       });
       return;
     }
     if (password !== confirm) {
-      toast({ title: "Passwords don't match", variant: 'destructive' });
+      toast({ title: t("Passwords don't match", '两次输入的密码不一致'), variant: 'destructive' });
       return;
     }
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      toast({ title: 'Password updated', description: 'You can now sign in.' });
+      toast({ title: t('Password updated', '密码已更新'), description: t('You can now sign in.', '现在可以登录了。') });
       navigate('/auth');
     } catch (error: unknown) {
-      toast({ title: 'Update failed', description: getErrorMessage(error), variant: 'destructive' });
+      toast({ title: t('Update failed', '更新失败'), description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -143,39 +144,39 @@ export default function ResetPassword() {
       <div className="w-full max-w-md">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Password reset</CardTitle>
+            <CardTitle>{t('Password reset', '重置密码')}</CardTitle>
             <CardDescription>
-              {mode === 'request' ? 'Request a password reset link' : 'Set a new password'}
+              {mode === 'request' ? t('Request a password reset link', '获取重置密码链接') : t('Set a new password', '设置新密码')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isCheckingSession ? (
-              <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+              <p className="text-sm text-muted-foreground">{t('Verifying reset link...', '正在验证重置链接…')}</p>
             ) : mode === 'request' ? (
               <form onSubmit={handleRequest} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('Email', '邮箱')}</Label>
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send reset link'}
+                  {isLoading ? t('Sending...', '发送中…') : t('Send reset link', '发送重置链接')}
                 </Button>
               </form>
             ) : (
               <form onSubmit={handleReset} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">New password</Label>
+                  <Label htmlFor="password">{t('New password', '新密码')}</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   <p className="text-xs text-muted-foreground">
-                    Must be 8+ characters with uppercase, lowercase, number, and special character
+                    {t('Must be 8+ characters with uppercase, lowercase, number, and special character', '至少 8 位，需包含大写字母、小写字母、数字和特殊字符')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm">Confirm password</Label>
+                  <Label htmlFor="confirm">{t('Confirm password', '确认密码')}</Label>
                   <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Updating...' : 'Update password'}
+                  {isLoading ? t('Updating...', '更新中…') : t('Update password', '更新密码')}
                 </Button>
               </form>
             )}

@@ -1,6 +1,7 @@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export type Category = 'High School' | 'Contest';
 
@@ -39,6 +40,7 @@ export function CourseFilters({
   onCategoryChange,
   onSubjectChange,
 }: CourseFiltersProps) {
+  const { t } = useLanguage();
   const subjects = category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
 
   const handleCategoryChange = (newCategory: string) => {
@@ -61,13 +63,13 @@ export function CourseFilters({
             value="High School" 
             className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            High School
+            {t('High School', '高中')}
           </TabsTrigger>
           <TabsTrigger 
             value="Contest" 
             className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
           >
-            Contest
+            {t('Contest', '竞赛')}
           </TabsTrigger>
         </TabsList>
       </Tabs>

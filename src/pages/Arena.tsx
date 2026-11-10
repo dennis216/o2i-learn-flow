@@ -2,14 +2,19 @@ import { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import katexStyles from 'katex/dist/katex.min.css?inline';
 import { arenaQuestionContent } from '@/components/courses/ArenaQuestionContent';
 import { isArenaRequest, replyToArenaRequest, type ArenaRpc } from '@/lib/arenaBridge';
+import PixelOwl from '@/components/PixelOwl';
+import { HudTag, NameTag, Stars, pixelButton, pixelPanel } from '@/components/PixelUi';
 
 const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never);
 
-function ArenaGame() {
+// The game reads its own same-origin language key on load; keep it on the site's choice.
+function ArenaGame({ language }: { language: Language }) {
+  try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
   const frame = useRef<HTMLIFrameElement>(null);
 
   // Layout effect: the listener must exist before the iframe's first message.
@@ -51,18 +56,30 @@ function ArenaGame() {
 
 export default function Arena() {
   const { user, loading } = useAuth();
-  if (user) return <ArenaGame key={user.id} />;
+  const { language, t } = useLanguage();
+  if (user) return <ArenaGame key={user.id + language} language={language} />;
   return (
-    <main className="container mx-auto max-w-xl px-4 py-16">
-      <h1 className="mb-4 text-3xl font-bold">Limit Arena</h1>
-      {loading
-        ? <p role="status">Checking your account…</p>
-        : (
-          <div className="space-y-4">
-            <p>Sign in to play.</p>
-            <Button asChild><Link to="/auth">Sign in</Link></Button>
+    <main className="text-[#FFF1E8]">
+      <Stars className="grid min-h-[calc(100dvh-4rem)] place-items-center px-4 py-16">
+        <div className={`w-full max-w-lg p-6 sm:p-8 ${pixelPanel}`}>
+          <HudTag title="LIMIT ARENA" />
+          <h1 className="mt-5 text-3xl font-bold tracking-tight">{t('Limit Arena', '极限竞技场')}</h1>
+          <div className="mt-6 flex items-start gap-3">
+            <div className="shrink-0 border-2 border-[#83769C] bg-[#1D2B53] p-1"><PixelOwl scale={2} /></div>
+            <div>
+              <NameTag>Dr. Owler</NameTag>
+              {loading
+                ? <p role="status" className="mt-1.5">{t('Checking your account…', '正在确认登录状态…')}</p>
+                : <p className="mt-1.5 leading-relaxed">{t('Dodge attacks and collect XP. When your XP bar fills, answer a limit question to pick an upgrade. Sign in to start.', '躲开攻击、收集经验。经验条满了就答一道极限题，答对可以选升级。登录就能开始。')}</p>}
+            </div>
           </div>
-        )}
+          {!loading && (
+            <Button asChild size="lg" className={`mt-8 w-full sm:w-auto ${pixelButton}`}>
+              <Link to={`/auth?returnTo=${encodeURIComponent('/arena')}`}>{t('Sign in to play', '登录开玩')}</Link>
+            </Button>
+          )}
+        </div>
+      </Stars>
     </main>
   );
 }

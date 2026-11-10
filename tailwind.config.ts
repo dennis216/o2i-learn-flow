@@ -13,6 +13,12 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        // Latin text uses IBM Plex Sans; Chinese falls through to the system CJK fonts.
+        sans: ['"IBM Plex Sans"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+        // Pixel accents only (labels in the CALC QUEST style); Latin glyphs only.
+        pixel: ['Silkscreen', 'ui-monospace', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

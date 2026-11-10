@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { gameDocument, MAX_GAME_BYTES } from '@/lib/courseGame';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 export default function CourseGame({ path }: { path: string }) {
+  const { t } = useLanguage();
   const container = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
@@ -30,10 +32,10 @@ export default function CourseGame({ path }: { path: string }) {
     }).catch(e => { if (active) setError(e.message ?? 'Could not load game.'); });
     return () => { active = false; };
   }, [path, retry]);
-  if (error) return <div role="alert" className="space-y-2"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>Retry game</Button></div>;
-  if (html === null) return <p role="status">Loading game…</p>;
-  return <div ref={container} role={expanded ? 'dialog' : undefined} aria-label={expanded ? 'Expanded lesson game' : undefined} className={expanded ? '!m-0 fixed inset-0 z-[60] flex h-[100dvh] flex-col gap-2 bg-background p-2 pt-[max(.5rem,env(safe-area-inset-top))]' : 'space-y-2'}>
-    <div className="flex shrink-0 flex-wrap gap-2"><Button variant="outline" onClick={async () => { if (nativeFullscreen) await document.exitFullscreen(); setExpanded(v => !v); }}>{expanded ? 'Exit expanded game' : 'Expand game'}</Button>{expanded && document.fullscreenEnabled && <Button variant="outline" onClick={async () => { try { if (nativeFullscreen) await document.exitFullscreen(); else await container.current?.requestFullscreen(); } catch { /* Web expansion remains available when native fullscreen is denied. */ } }}>{nativeFullscreen ? 'Exit device fullscreen' : 'Device fullscreen'}</Button>}</div>
-    <iframe title="Lesson game" className={expanded ? 'min-h-0 w-full flex-1 rounded border bg-white' : 'h-[65dvh] min-h-80 w-full rounded border bg-white'} sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={html} />
+  if (error) return <div role="alert" className="space-y-2"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry game', '重新加载游戏')}</Button></div>;
+  if (html === null) return <p role="status">{t('Loading game…', '游戏加载中…')}</p>;
+  return <div ref={container} role={expanded ? 'dialog' : undefined} aria-label={expanded ? t('Expanded lesson game', '全屏课节游戏') : undefined} className={expanded ? '!m-0 fixed inset-0 z-[60] flex h-[100dvh] flex-col gap-2 bg-background p-2 pt-[max(.5rem,env(safe-area-inset-top))]' : 'space-y-2'}>
+    <div className="flex shrink-0 flex-wrap gap-2"><Button variant="outline" onClick={async () => { if (nativeFullscreen) await document.exitFullscreen(); setExpanded(v => !v); }}>{expanded ? t('Exit expanded game', '退出放大') : t('Expand game', '放大游戏')}</Button>{expanded && document.fullscreenEnabled && <Button variant="outline" onClick={async () => { try { if (nativeFullscreen) await document.exitFullscreen(); else await container.current?.requestFullscreen(); } catch { /* Web expansion remains available when native fullscreen is denied. */ } }}>{nativeFullscreen ? t('Exit device fullscreen', '退出全屏') : t('Device fullscreen', '全屏')}</Button>}</div>
+    <iframe title={t('Lesson game', '课节游戏')} className={expanded ? 'min-h-0 w-full flex-1 rounded border bg-white' : 'h-[65dvh] min-h-80 w-full rounded border bg-white'} sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={html} />
   </div>;
 }

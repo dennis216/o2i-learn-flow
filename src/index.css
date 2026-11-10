@@ -211,3 +211,18 @@ p > span {
   white-space: nowrap !important;
   display: inline !important;
 }
+
+/* Desk pet idle bob: two-frame pixel step, not a smooth float */
+@keyframes owl-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

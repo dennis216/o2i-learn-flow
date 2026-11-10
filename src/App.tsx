@@ -5,8 +5,11 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext';
 import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import DeskPet from '@/components/DeskPet';
 import Index from '@/pages/Index';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
@@ -30,11 +33,12 @@ const NotFound = lazy(() => import('@/pages/NotFound'));
 const queryClient = new QueryClient();
 
 function PageLoader() {
+  const { t } = useLanguage();
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="space-y-4 text-center">
         <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
-        <p className="text-sm text-muted-foreground">Loading page...</p>
+        <p className="text-sm text-muted-foreground">{t('Loading page...', '加载中…')}</p>
       </div>
     </div>
   );
@@ -48,6 +52,7 @@ function AppNavigation() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
       <AuthProvider>
           <TooltipProvider>
             <Toaster />
@@ -77,9 +82,12 @@ export default function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              <Footer />
+              <DeskPet />
             </BrowserRouter>
           </TooltipProvider>
       </AuthProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
