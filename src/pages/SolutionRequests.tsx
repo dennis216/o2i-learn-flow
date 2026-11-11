@@ -1,469 +1,171 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, Clock, CheckCircle, AlertCircle, MessageCircleQuestion, Plus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Loader2, MessageCircleQuestion, Plus } from 'lucide-react';
 import SignInPrompt from '@/components/SignInPrompt';
+import RequestCard from '@/components/solution-requests/RequestCard';
+import RequestForm from '@/components/solution-requests/RequestForm';
+import { useBilingual } from '@/components/solution-requests/hooks';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  errorText, PROBLEM_TYPES, quotaLeft, srList, srQuota, STATUS_LABELS, STATUSES,
+  type Bilingual, type ProblemType, type SrQuota, type SrStatus, type SrSummary,
+} from '@/lib/solutionRequests';
 
-interface SolutionRequest {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  image_url: string;
-  status: string;
-  solution_text: string;
-  solution_image_url: string;
-  created_at: string;
-  problem_type: string;
-  is_public: boolean;
-  profiles: {
-    full_name: string;
-  };
-}
-
-const problemTypes = [
-  { value: 'geometry', label: 'Geometry', zh: '几何' },
-  { value: 'algebra', label: 'Algebra', zh: '代数' },
-  { value: 'calculus', label: 'Calculus', zh: '微积分' },
-  { value: 'number_theory', label: 'Number Theory', zh: '数论' },
-  { value: 'combinatorics', label: 'Combinatorics', zh: '组合' },
-  { value: 'pre_calculus', label: 'Pre-Calculus', zh: '预备微积分' },
-  { value: 'statistics', label: 'Statistics', zh: '统计' },
-  { value: 'other', label: 'Other', zh: '其他' }
-];
-
-const STATUS_ZH: Record<string, string> = { pending: '待处理', in_progress: '处理中', completed: '已完成', solved: '已解答' };
+const PAGE = 20;
+type Tab = 'public' | 'mine';
 
 export default function SolutionRequests() {
-  const [requests, setRequests] = useState<SolutionRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [problemTypeValue, setProblemTypeValue] = useState<string>('');
-  const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const { user } = useAuth();
-  const { toast } = useToast();
-  const { language, t } = useLanguage();
+  const { tt } = useBilingual();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab: Tab = params.get('tab') === 'mine' ? 'mine' : 'public';
+  const [status, setStatus] = useState<SrStatus | 'all'>('all');
+  const [type, setType] = useState<ProblemType | 'all'>('all');
+  const [includeClosed, setIncludeClosed] = useState(true);
+  const [items, setItems] = useState<SrSummary[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<Bilingual | null>(null);
+  const [quota, setQuota] = useState<SrQuota | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [reload, setReload] = useState(0);
+
+  const fetchPage = useCallback((offset: number) => srList(supabase, {
+    scope: tab, status: status === 'all' ? null : status, problemType: type === 'all' ? null : type,
+    includeClosed, offset, limit: PAGE,
+  }), [tab, status, type, includeClosed]);
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    if (tab === 'mine' && !user) { setLoading(false); setItems([]); return; }
+    let live = true;
+    setLoading(true); setError(null);
+    fetchPage(0)
+      .then(page => { if (live) { setItems(page.items); setHasMore(page.has_more); } })
+      .catch(e => { if (live) setError(errorText(e)); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [fetchPage, tab, user, reload]);
 
-  // Helper to extract path from a storage URL
-  const extractPathFromUrl = (url: string): string => {
-    // URL format: https://<project>.supabase.co/storage/v1/object/public/solution-images/<path>
-    // We need to extract just the path part after the bucket name
-    const match = url.match(/solution-images\/(.+)$/);
-    return match ? match[1] : url;
-  };
+  const refreshQuota = useCallback(() => {
+    if (!user) { setQuota(null); return; }
+    srQuota(supabase).then(setQuota).catch(() => setQuota(null));
+  }, [user]);
+  useEffect(refreshQuota, [refreshQuota]);
 
-  const fetchRequests = async () => {
+  const more = async () => {
+    setLoadingMore(true);
     try {
-      const { data, error } = await supabase
-        .from('solution_requests')
-        .select(`
-          *,
-          profiles:user_id (full_name)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching requests:', error);
-      } else {
-        const reqs = data || [];
-        
-        // Generate signed URLs for images in the private bucket
-        const reqsWithSignedUrls = await Promise.all(
-          reqs.map(async (request: any) => {
-            // Only generate signed URLs for requests the user can view
-            if (request.image_url) {
-              const path = extractPathFromUrl(request.image_url);
-              const { data: signedData } = await supabase.storage
-                .from('solution-images')
-                .createSignedUrl(path, 3600); // 1 hour expiry
-              if (signedData?.signedUrl) {
-                request.image_url = signedData.signedUrl;
-              }
-            }
-            if (request.solution_image_url) {
-              const path = extractPathFromUrl(request.solution_image_url);
-              const { data: signedData } = await supabase.storage
-                .from('solution-images')
-                .createSignedUrl(path, 3600);
-              if (signedData?.signedUrl) {
-                request.solution_image_url = signedData.signedUrl;
-              }
-            }
-            return request;
-          })
-        );
-        
-        setRequests(reqsWithSignedUrls);
-        
-        // Auto-mark solved if a solution exists
-        const toSolve = reqsWithSignedUrls.filter((r: any) => (r.solution_text || r.solution_image_url) && r.status !== 'solved');
-        if (toSolve.length > 0) {
-          try {
-            await Promise.all(
-              toSolve.map((r: any) =>
-                supabase.from('solution_requests').update({ status: 'solved' }).eq('id', r.id)
-              )
-            );
-            // Re-fetch to get updated status (signed URLs will be regenerated)
-            fetchRequests();
-            return; // Exit early since we're re-fetching
-          } catch (e) {
-            // silently ignore if user lacks permission per RLS
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
+      const page = await fetchPage(items.length);
+      setItems(list => [...list, ...page.items.filter(item => !list.some(old => old.id === item.id))]);
+      setHasMore(page.has_more);
+    } catch (e) { setError(errorText(e)); }
+    finally { setLoadingMore(false); }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('solution-images')
-        .upload(fileName, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('solution-images')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast({
-        title: t('Upload failed', '上传失败'),
-        description: t('Failed to upload image. Please try again.', '图片上传失败，请重试。'),
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!user) return;
-
-const formData = new FormData(e.currentTarget);
-const title = formData.get('title') as string;
-const description = formData.get('description') as string;
-const imageFile = formData.get('image') as File;
-
-// Validate dropdown selections
-if (!problemTypeValue) {
-  toast({ title: t('Select a problem type', '请选择题目类型'), variant: 'destructive' });
-  return;
-}
-const isPublic = visibility === 'public';
-
-    let imageUrl = null;
-    if (imageFile && imageFile.size > 0) {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.files = new DataTransfer().files;
-      const dt = new DataTransfer();
-      dt.items.add(imageFile);
-      const changeEvent = new Event('change', { bubbles: true });
-      Object.defineProperty(changeEvent, 'target', { value: { files: dt.files }, enumerable: true });
-      imageUrl = await handleImageUpload(changeEvent as any);
-    }
-
-try {
-  const { error } = await supabase
-    .from('solution_requests')
-    .insert({
-      user_id: user.id,
-      title,
-      description,
-      problem_type: problemTypeValue as any,
-      is_public: isPublic,
-      image_url: imageUrl
-    });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: t('Request submitted!', '提交成功'),
-        description: t('Your solution request has been posted successfully.', '你的问题已提交。'),
-      });
-
-      setIsDialogOpen(false);
-      fetchRequests();
-      (e.target as HTMLFormElement).reset();
-    } catch (error) {
-      console.error('Error submitting request:', error);
-      toast({
-        title: t('Error', '出错了'),
-        description: t('Failed to submit request. Please try again.', '提交失败，请重试。'),
-        variant: "destructive",
-      });
-    }
-  };
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'in_progress':
-      return 'bg-blue-100 text-blue-800';
-    case 'completed':
-    case 'solved':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-4 w-4" />;
-      case 'in_progress':
-        return <AlertCircle className="h-4 w-4" />;
-case 'completed':
-      case 'solved':
-        return <CheckCircle className="h-4 w-4" />;
-      default:
-        return <Clock className="h-4 w-4" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-12">
-            <Skeleton className="h-10 w-64 mx-auto mb-4" />
-            <Skeleton className="h-6 w-96 mx-auto" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const left = quotaLeft(quota);
+  const filtered = status !== 'all' || type !== 'all' || !includeClosed;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">{t('Solution Requests', '答疑')}</h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            {t('Upload math problems and get help from our expert tutors', '上传数学题，获得老师的帮助')}
-          </p>
-          
-          {user && (
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="lg">
-                  <Plus className="h-5 w-5 mr-2" />
-                  {t('Request Solution', '我要提问')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>{t('Submit Solution Request', '我要提问')}</DialogTitle>
-                  <DialogDescription>
-                    {t('Upload an image of your math problem and describe what you need help with.', '上传题目图片，说说哪里不会。')}
-                  </DialogDescription>
-                </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">{t('Problem Title', '标题')}</Label>
-                      <Input
-                        id="title"
-                        name="title"
-                        placeholder={t('e.g., Calculus Integration Problem', '例如：一道积分题')}
-                        required
-                      />
-                    </div>
-
-<div className="space-y-2">
-  <Label htmlFor="problemType">{t('Problem Type', '题目类型')}</Label>
-  <Select value={problemTypeValue} onValueChange={setProblemTypeValue}>
-    <SelectTrigger>
-      <SelectValue placeholder={t('Select problem type', '选择题目类型')} />
-    </SelectTrigger>
-    <SelectContent>
-      {problemTypes.map((type) => (
-        <SelectItem key={type.value} value={type.value}>
-          {language === 'zh' ? type.zh : type.label}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="description">{t('Description', '问题描述')}</Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        placeholder={t("Describe what you're struggling with or what specific help you need...", '说说你卡在哪里，或者需要什么具体帮助…')}
-                        rows={3}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="image">{t('Upload Problem Image', '上传题目图片')}</Label>
-                      <Input
-                        id="image"
-                        name="image"
-                        type="file"
-                        accept="image/*"
-                        className="cursor-pointer"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t('Upload a clear image of your math problem', '请上传清晰的题目图片')}
-                      </p>
-                    </div>
-
-<div className="space-y-2">
-  <Label>{t('Visibility', '谁能看到')}</Label>
-  <Select value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'private')}>
-    <SelectTrigger>
-      <SelectValue placeholder={t('Choose public or private', '选择公开或私密')} />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="private">{t('Private (only you can see the solution)', '私密（只有你能看到解答）')}</SelectItem>
-      <SelectItem value="public">{t('Public (shown as anonymous to others)', '公开（其他人看到的是匿名）')}</SelectItem>
-    </SelectContent>
-  </Select>
-</div>
-                  
-                  <Button type="submit" className="w-full" disabled={uploading}>
-                    {uploading ? (
-                      <>
-                        <Upload className="h-4 w-4 mr-2 animate-spin" />
-                        {t('Uploading...', '上传中…')}
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        {t('Submit Request', '提交')}
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
-          {!user && requests.length > 0 && (
-            <Button size="lg" asChild><Link to="/auth?returnTo=%2Fsolution-requests">{t('Sign in to ask a question', '登录后提问')}</Link></Button>
-          )}
-        </div>
-
-        {requests.length === 0 ? (
-          user ? (
-            <div className="text-center py-12">
-              <MessageCircleQuestion className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-foreground mb-2">{t('No questions yet', '还没有人提问')}</h3>
-              <p className="text-muted-foreground">{t('Be the first to submit a math problem for help!', '来提第一个问题吧！')}</p>
-            </div>
-          ) : (
-            <SignInPrompt icon={MessageCircleQuestion} tile="amber" returnTo="/solution-requests"
-              title={t('Stuck on a problem?', '有题不会？')}
-              description={t('Upload a photo of it and a tutor sends back a step-by-step solution. Sign in to ask your first question.', '拍照上传题目，老师会给你分步解答。登录后就能提问。')} />
-          )
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {requests.map((request) => (
-              <Card key={request.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge className={getStatusColor(request.status)} variant="secondary">
-                      <span className="flex items-center gap-1">
-                        {getStatusIcon(request.status)}
-                        {language === 'zh' ? STATUS_ZH[request.status] ?? request.status : request.status.replace('_', ' ')}
-                      </span>
-                    </Badge>
-                  </div>
-                  <CardTitle className="line-clamp-2">{request.title}</CardTitle>
-<CardDescription className="line-clamp-2">
-  {request.is_public ? t('By Anonymous', '匿名') : (user?.id === request.user_id ? t('By You', '我提的问题') : t('Private request', '私密问题'))}
-</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {request.image_url && (
-                    <div className="mb-4">
-                      <img
-                        src={request.image_url}
-                        alt={t('Problem', '题目')}
-                        className="w-full h-32 object-cover rounded-md bg-muted"
-                      />
-                    </div>
-                  )}
-                  
-                  {request.description && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                      {request.description}
-                    </p>
-                  )}
-                  
-{request.solution_text && (request.is_public || user?.id === request.user_id) && (
-  <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
-    <h4 className="font-semibold text-green-800 mb-1">{t('Solution:', '解答：')}</h4>
-    <p className="text-sm text-green-700 line-clamp-3">
-      {request.solution_text}
-    </p>
-  </div>
-)}
-                  
-                  <div className="text-xs text-muted-foreground">
-                    {t('Submitted', '提交于')} {new Date(request.created_at).toLocaleDateString()}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+      <div className="mx-auto max-w-5xl break-keep px-4 py-12 [overflow-wrap:anywhere] sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold leading-[1.35] tracking-tight sm:text-5xl">{tt(['Solution Requests', '答疑区'])}</h1>
+            <p className="mt-3 max-w-2xl text-lg text-muted-foreground">
+              {tt(['Stuck on a problem? Post it publicly so classmates can help, or only to O2I teachers. Official answers are marked.',
+                '有题不会？可以公开提问让同学一起帮忙，也可以只给 O2I 老师看。老师的回复会标"官方"。'])}
+            </p>
           </div>
+          <div className="flex flex-col items-end gap-1">
+            {user
+              ? <Button size="lg" onClick={() => setAsking(true)} disabled={left === 0}><Plus aria-hidden="true" className="mr-2 h-5 w-5" />{tt(['Ask a question', '我要提问'])}</Button>
+              : <Button size="lg" asChild><Link to={`/auth?returnTo=${encodeURIComponent('/solution-requests')}`}>{tt(['Sign in to ask', '登录后提问'])}</Link></Button>}
+            {left !== null && <span className="text-xs text-muted-foreground">{left === 0
+              ? tt(['5 questions per 24 hours used up', '24 小时内的 5 个提问名额已用完'])
+              : tt([`${left} of 5 questions left in 24 hours`, `24 小时内还能提 ${left} 个问题`])}</span>}
+          </div>
+        </header>
+
+        <Tabs value={tab} onValueChange={value => setParams(value === 'mine' ? { tab: 'mine' } : {}, { replace: true })}>
+          <TabsList>
+            <TabsTrigger value="public">{tt(['Public questions', '公开问答'])}</TabsTrigger>
+            <TabsTrigger value="mine">{tt(['My questions', '我的问题'])}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {tab === 'mine' && !user ? (
+          <SignInPrompt icon={MessageCircleQuestion} tile="amber" returnTo="/solution-requests"
+            title={tt(['Stuck on a problem?', '有题不会？'])}
+            description={tt(['Sign in to ask and to find your questions here.', '登录后就能提问，你提过的问题都会在这里。'])} />
+        ) : (
+          <>
+            <div className="mt-4 flex flex-wrap items-end gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="sr-filter-status" className="text-xs">{tt(['Status', '状态'])}</Label>
+                <Select value={status} onValueChange={value => setStatus(value as SrStatus | 'all')}>
+                  <SelectTrigger id="sr-filter-status" className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{tt(['All', '全部'])}</SelectItem>
+                    {STATUSES.map(s => <SelectItem key={s} value={s}>{tt(STATUS_LABELS[s])}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="sr-filter-type" className="text-xs">{tt(['Type', '题型'])}</Label>
+                <Select value={type} onValueChange={value => setType(value as ProblemType | 'all')}>
+                  <SelectTrigger id="sr-filter-type" className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{tt(['All', '全部'])}</SelectItem>
+                    {PROBLEM_TYPES.map(p => <SelectItem key={p.value} value={p.value}>{tt(p.label)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2 pb-2">
+                <Switch id="sr-filter-closed" checked={includeClosed} onCheckedChange={setIncludeClosed} />
+                <Label htmlFor="sr-filter-closed" className="font-normal">{tt(['Show closed', '显示已关闭'])}</Label>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              {loading ? (
+                <div className="grid gap-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}</div>
+              ) : error ? (
+                <div className="py-12 text-center">
+                  <p className="mb-4 text-muted-foreground">{tt(error)}</p>
+                  <Button variant="outline" onClick={() => setReload(n => n + 1)}>{tt(['Try again', '重试'])}</Button>
+                </div>
+              ) : items.length === 0 ? (
+                <div className="py-12 text-center">
+                  <MessageCircleQuestion aria-hidden="true" className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                  <p className="mb-2 text-lg font-semibold">{tt(filtered ? ['No questions match these filters.', '没有符合筛选条件的问题。']
+                    : tab === 'mine' ? ['You have not asked anything yet.', '你还没有提过问题。'] : ['No public questions yet.', '还没有公开的问题。'])}</p>
+                  {user && !filtered && <Button className="mt-2" onClick={() => setAsking(true)} disabled={left === 0}>{tt(['Ask the first one', '来提第一个问题'])}</Button>}
+                </div>
+              ) : (
+                <div className="grid gap-1">
+                  {items.map(item => <RequestCard key={item.id} item={item} to={`/solution-requests/${item.id}`} />)}
+                  {hasMore && (
+                    <Button variant="outline" className="mt-4 justify-self-center" disabled={loadingMore} onClick={() => void more()}>
+                      {loadingMore && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}{tt(['Load more', '加载更多'])}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+      <RequestForm open={asking} onOpenChange={setAsking} quotaLeft={left}
+        onSaved={id => { refreshQuota(); navigate(`/solution-requests/${id}`); }} />
     </div>
   );
 }
