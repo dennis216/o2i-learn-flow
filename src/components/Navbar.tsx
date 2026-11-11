@@ -43,13 +43,6 @@ export default function Navbar() {
     </>
   );
 
-  // Page links in a row that scrolls sideways if it ever runs out of room.
-  const scrollNav = (buttons: string) => (
-    <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      <div className={`mx-auto flex w-max items-center px-1 py-2 [&_svg]:mr-0 ${buttons}`}><NavLinks /></div>
-    </div>
-  );
-
   const LanguageToggle = () => (
     <Button variant="ghost" size="sm" onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')} aria-label={language === 'en' ? 'Switch to Chinese' : '切换到英文'}>
       <Languages className="mr-2 h-4 w-4" />{language === 'en' ? '中文' : 'EN'}
@@ -76,13 +69,13 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center gap-4 min-[1400px]:flex">
-            {scrollNav('gap-1 [&_button]:px-3')}
+          {/* iPad and up: one row; the links scroll sideways when they don't fit (right edge fades as a hint). */}
+          <div className="hidden min-w-0 flex-1 items-center gap-4 min-[740px]:flex">
+            <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[1399px]:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
+              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0 max-[1399px]:pr-8"><NavLinks /></div>
+            </div>
             <div className="flex shrink-0 items-center gap-1"><LanguageToggle /><AuthButtons /></div>
           </div>
-
-          {/* Tablets (iPad full screen): account buttons stay up here, page links get their own row below. */}
-          <div className="hidden shrink-0 items-center gap-1 min-[740px]:flex min-[1400px]:hidden"><LanguageToggle /><AuthButtons /></div>
 
           <div className="flex items-center gap-1 min-[740px]:hidden">
             <LanguageToggle />
@@ -100,7 +93,6 @@ export default function Navbar() {
             </Sheet>
           </div>
         </div>
-        <div className="-mt-2 hidden pb-1 min-[740px]:flex min-[1400px]:hidden">{scrollNav('[&_button]:h-9 [&_button]:gap-1.5 [&_button]:px-1.5')}</div>
       </div>
     </nav>
   );
