@@ -37,7 +37,7 @@ export function auditRow(row) {
     practice_correct_key: correct.length === 1 ? options[correct[0]].key : null,
     requires_figure: row.requires_figure, image_url: row.image_url ?? null, has_inline_table: hasTable,
     figure_language: figurePhrase, source_has_graph: row.source_has_graph ?? null, source_has_table: row.source_has_table ?? null,
-    issues,
+    attempts: row.attempts ?? { practice: 0, practice_correct: 0, arena: 0, arena_correct: 0 }, issues,
   };
 }
 
@@ -45,8 +45,9 @@ export function summarize(items) {
   const groups = {};
   for (const item of items) {
     const name = (item.legacy ? 'legacy' : 'other') + ':' + item.status;
-    const g = groups[name] ??= { questions: 0, practice_correct_position: {}, issues: {} };
+    const g = groups[name] ??= { questions: 0, practice_correct_position: {}, issues: {}, attempts: {} };
     g.questions++;
+    for (const [k, n] of Object.entries(item.attempts)) g.attempts[k] = (g.attempts[k] ?? 0) + n;
     const p = item.practice_correct_position ?? 'invalid';
     g.practice_correct_position[p] = (g.practice_correct_position[p] ?? 0) + 1;
     for (const issue of item.issues) g.issues[issue] = (g.issues[issue] ?? 0) + 1;
@@ -66,7 +67,12 @@ SELECT coalesce(jsonb_agg(to_jsonb(r) ORDER BY r.external_id),'[]'::jsonb) AS ro
     (SELECT jsonb_agg(jsonb_build_object('key',o.option_key,'is_correct',o.is_correct) ORDER BY o.order_index,o.id)
        FROM public.question_options o WHERE o.question_version_id=v.id) AS options,
     CASE WHEN a.id IS NULL THEN NULL ELSE a.graph IS NOT NULL END AS source_has_graph,
-    CASE WHEN a.id IS NULL THEN NULL ELSE a.table_html IS NOT NULL END AS source_has_table
+    CASE WHEN a.id IS NULL THEN NULL ELSE a.table_html IS NOT NULL END AS source_has_table,
+    (SELECT jsonb_build_object(
+       'practice',count(*) FILTER(WHERE s.source='practice'),'practice_correct',count(*) FILTER(WHERE s.source='practice' AND t.is_correct),
+       'arena',count(*) FILTER(WHERE s.source='arena'),'arena_correct',count(*) FILTER(WHERE s.source='arena' AND t.is_correct))
+       FROM public.question_practice_attempts t JOIN public.question_practice_sessions s ON s.id=t.session_id
+       WHERE t.question_id=q.id) AS attempts
   FROM public.questions q
   JOIN LATERAL (SELECT * FROM public.question_versions x WHERE x.question_id=q.id
     ORDER BY (x.id=q.current_version_id) DESC,x.version_number DESC LIMIT 1) v ON true

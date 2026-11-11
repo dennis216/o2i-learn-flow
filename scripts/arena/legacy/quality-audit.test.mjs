@@ -31,6 +31,9 @@ test('summary separates legacy and other questions by status and records whether
   assert.deepEqual(summary['legacy:approved'].practice_correct_position, { A: 2 });
   assert.equal(summary['legacy:approved'].issues.figure_missing_source_had_no_graph, 1);
   assert.deepEqual(summary['other:draft'].practice_correct_position, { B: 1 });
+  assert.deepEqual(summary['legacy:approved'].attempts, { practice: 0, practice_correct: 0, arena: 0, arena_correct: 0 });
+  const answered = summarize([auditRow(row({ attempts: { practice: 5, practice_correct: 4, arena: 2, arena_correct: 1 } }))]);
+  assert.deepEqual(answered['legacy:approved'].attempts, { practice: 5, practice_correct: 4, arena: 2, arena_correct: 1 });
 });
 
 test('query is a read-only transaction that never writes', () => {
