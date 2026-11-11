@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Mail, Calendar, Lock, Shield } from 'lucide-react';
+import SignInPrompt from '@/components/SignInPrompt';
 import { Badge } from '@/components/ui/badge';
 
 function LearningStatistics({ userId }: { userId: string }) {
@@ -66,20 +67,9 @@ export default function Profile() {
 
   if (loading) return <p role="status" className="p-8">{t('Checking your account…', '正在确认登录状态…')}</p>;
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>{t('Access Denied', '请先登录')}</CardTitle>
-            <CardDescription>
-              {t('You need to be logged in to view your profile.', '登录后才能查看个人资料。')}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  if (!user) return <div className="min-h-[70vh]"><SignInPrompt icon={User} tile="blue" returnTo="/profile"
+    title={t('Your profile', '个人资料')}
+    description={t('Sign in to see and edit your profile.', '登录后就能查看和修改个人资料。')} /></div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted py-8">

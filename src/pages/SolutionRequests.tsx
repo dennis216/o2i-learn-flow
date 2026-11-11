@@ -13,7 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Image as ImageIcon, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { Upload, Clock, CheckCircle, AlertCircle, MessageCircleQuestion, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import SignInPrompt from '@/components/SignInPrompt';
 
 interface SolutionRequest {
   id: string;
@@ -392,16 +394,23 @@ case 'completed':
               </DialogContent>
             </Dialog>
           )}
+          {!user && requests.length > 0 && (
+            <Button size="lg" asChild><Link to="/auth?returnTo=%2Fsolution-requests">{t('Sign in to ask a question', '登录后提问')}</Link></Button>
+          )}
         </div>
 
         {requests.length === 0 ? (
-          <div className="text-center py-12">
-            <ImageIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">{t('No solution requests yet', '还没有人提问')}</h3>
-            <p className="text-muted-foreground">
-              {user ? t('Be the first to submit a math problem for help!', '来提第一个问题吧！') : t('Sign in to submit solution requests', '登录后就能提问')}
-            </p>
-          </div>
+          user ? (
+            <div className="text-center py-12">
+              <MessageCircleQuestion className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">{t('No questions yet', '还没有人提问')}</h3>
+              <p className="text-muted-foreground">{t('Be the first to submit a math problem for help!', '来提第一个问题吧！')}</p>
+            </div>
+          ) : (
+            <SignInPrompt icon={MessageCircleQuestion} tile="amber" returnTo="/solution-requests"
+              title={t('Stuck on a problem?', '有题不会？')}
+              description={t('Upload a photo of it and a tutor sends back a step-by-step solution. Sign in to ask your first question.', '拍照上传题目，老师会给你分步解答。登录后就能提问。')} />
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {requests.map((request) => (

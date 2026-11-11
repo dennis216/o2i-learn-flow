@@ -225,7 +225,7 @@ export default function Auth() {
               <TabsContent value="signup">
                 <div className="mb-4 p-3 bg-muted rounded-md">
                   <p className="text-sm text-muted-foreground">
-                    {t("📧 After signing up, you'll receive a confirmation email. Please verify your email address to complete registration.", '📧 注册后会收到一封确认邮件，验证邮箱后即可完成注册。')}
+                    {t('After signing up, you can sign in right away.', '注册成功后即可直接登录。')}
                   </p>
                 </div>
                 <form onSubmit={handleSignUp} className="space-y-4">

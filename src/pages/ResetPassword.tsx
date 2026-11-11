@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, INITIAL_URL_HASH } from '@/integrations/supabase/client';
+import { parseRecoveryLink } from '@/lib/recoveryLink';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,52 +24,38 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const trySessionFromUrl = async () => {
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get('code');
-      const authError = url.searchParams.get('error_description');
-      const hash = url.hash.startsWith('#') ? url.hash.substring(1) : '';
-      const hashParams = new URLSearchParams(hash);
-      const type = hashParams.get('type');
-      const access_token = hashParams.get('access_token');
-      const refresh_token = hashParams.get('refresh_token');
-      const hasRecoveryCredentials = Boolean(code || type === 'recovery' || authError);
+      const link = parseRecoveryLink(window.location.search, INITIAL_URL_HASH);
 
       try {
-        if (authError) {
-          throw new Error(authError);
+        if (link.error) {
+          throw new Error(link.error);
         }
 
         // Supabase PKCE recovery links provide a one-time code, not a full URL.
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        if (link.code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(link.code);
           if (error) throw error;
           if (data.session) {
             setMode('reset');
-            window.history.replaceState({}, document.title, url.pathname);
+            window.history.replaceState({}, document.title, window.location.pathname);
             return;
           }
         }
 
-        // Support legacy recovery links that return tokens in the URL hash.
-        if (type === 'recovery') {
-          if (access_token && refresh_token) {
-            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+        // Legacy recovery links return tokens in the URL hash; supabase-js has usually already restored them.
+        // Only a link that said "recovery" may turn an existing session into the set-new-password form.
+        if (link.isRecovery) {
+          if (link.accessToken && link.refreshToken) {
+            const { error } = await supabase.auth.setSession({ access_token: link.accessToken, refresh_token: link.refreshToken });
             if (error) throw error;
-            if (data.session) {
-              setMode('reset');
-              window.history.replaceState({}, document.title, url.pathname);
-              return;
-            }
           }
-        }
-
-        // A recovery session may already have been restored by the auth client.
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) throw new Error(t('Request a new password reset link.', '请重新申请重置密码链接。'));
           setMode('reset');
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
       } catch (error) {
-        if (hasRecoveryCredentials) {
+        if (link.hasCredentials) {
           const description = error instanceof Error ? error.message : t('Request a new password reset link.', '请重新申请重置密码链接。');
           toast({ title: t('Reset link is invalid or expired', '重置链接无效或已过期'), description, variant: 'destructive' });
         }
@@ -79,8 +66,8 @@ export default function ResetPassword() {
 
     trySessionFromUrl();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
         setMode('reset');
       }
     });

@@ -13,6 +13,10 @@ const clientConfig = resolveSupabaseClientConfig(
 );
 export const SUPABASE_URL = clientConfig.url;
 
+// supabase-js strips the auth hash (e.g. #type=recovery) from the URL as soon as the client is created,
+// so remember it first; the reset-password page needs it to tell a real reset link from a plain visit.
+export const INITIAL_URL_HASH = typeof window === 'undefined' ? '' : window.location.hash;
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
