@@ -8,6 +8,11 @@ test('permissions fail closed and unknown tabs cannot mount',()=>{
  assert.equal(canAccessAdminTab({...NO_ADMIN_ACCESS,questions:true},'course-content'),false);
  assert.equal(canAccessAdminTab({...NO_ADMIN_ACCESS,users:true},'unknown'),false);
 });
+test('answers module has its own tab and default page',()=>{
+ assert.equal(canAccessAdminTab({...NO_ADMIN_ACCESS,answers:true},'answers'),true);
+ assert.equal(canAccessAdminTab({...NO_ADMIN_ACCESS,questions:true},'answers'),false);
+ assert.equal(defaultAdminTab({...NO_ADMIN_ACCESS,answers:true,playground:true}),'answers');
+});
 test('scoped admin default pages and course-only nested entries',()=>{
  const course={...NO_ADMIN_ACCESS,courses:true,playground:true},question={...NO_ADMIN_ACCESS,questions:true,playground:true};
  assert.equal(defaultAdminTab(course),'manage-courses');assert.equal(defaultAdminTab(question),'question-bank');

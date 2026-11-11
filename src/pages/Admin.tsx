@@ -3,7 +3,7 @@ import { outlineRpc } from '@/lib/courseOutline';
 import { CourseOutlineManagement } from '@/components/admin/CourseOutlineManagement';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
 import { CURRICULUM_GROUPS, TEAM_DEPARTMENTS, TEAM_ROLES, loadTeamMembers, TEAM_LEGACY_READ_ONLY, type TeamMember } from "@/lib/teamDepartments";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,8 @@ import { PlaygroundManagement } from "@/components/admin/PlaygroundManagement";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { SubjectManagement } from "@/components/admin/SubjectManagement";
 import { QuestionBankPreview } from "@/components/admin/QuestionBankPreview";
+import SolutionRequestInbox from "@/components/admin/SolutionRequestInbox";
+import { srAdminSummary } from "@/lib/solutionRequests";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Users, UserCog } from "lucide-react";
@@ -157,6 +159,12 @@ const Admin = () => {
     if (adminAccess.courses) { void fetchCourses(); void fetchSubjects(); }
     if (adminAccess.team) void fetchTeamMembers();
   }, [loading, adminAccess]);
+  const [answersSummary, setAnswersSummary] = useState<{ needs_answer: number; open_reports: number } | null>(null);
+  const refreshAnswersSummary = useCallback(() => {
+    // Fails quietly until the Solution Requests migration is deployed.
+    if (adminAccess.answers) srAdminSummary(supabase).then(setAnswersSummary).catch(() => setAnswersSummary(null));
+  }, [adminAccess.answers]);
+  useEffect(refreshAnswersSummary, [refreshAnswersSummary]);
   useEffect(() => { if (!loading && adminAccess.courses) void fetchVideos(); }, [loading, adminAccess.courses, managedCourseId, videoFilter]);
 
   // Helper: sanitize transcript JSON to {s, t} format
@@ -654,12 +662,13 @@ const Admin = () => {
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
-      <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, and content</p>
+      <p className="text-muted-foreground mb-8">Manage courses, videos, the question bank, student questions and content</p>
 
       <Tabs value={adminTab} onValueChange={value => { if (canAccessAdminTab(adminAccess, value) && canLeaveContent()) setAdminTab(value); }} className="space-y-6">
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
           {adminAccess.courses && (<TabsTrigger value={['courses', 'course-content', 'subjects', 'manage', 'videos'].includes(adminTab) ? adminTab : 'manage-courses'} onClick={() => { if (canLeaveContent()) setAdminTab('manage-courses'); }}>Courses</TabsTrigger>)}
           {adminAccess.questions && (<TabsTrigger value="question-bank">Question Bank</TabsTrigger>)}
+          {adminAccess.answers && (<TabsTrigger value="answers">Answers{answersSummary && answersSummary.needs_answer + answersSummary.open_reports > 0 ? ` (${answersSummary.needs_answer + answersSummary.open_reports})` : ""}</TabsTrigger>)}
           {adminAccess.playground && (<TabsTrigger value="playground">Playground</TabsTrigger>)}
           {adminAccess.team && (<TabsTrigger value="team">Team</TabsTrigger>)}
           {isSuperAdmin && (
@@ -1443,6 +1452,10 @@ const Admin = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>)}
+
+        {canAccessAdminTab(adminAccess, 'answers') && (<TabsContent value="answers">
+          <SolutionRequestInbox summary={answersSummary} onChanged={refreshAnswersSummary} />
         </TabsContent>)}
 
         {/* Playground Management Tab */}
