@@ -49,7 +49,7 @@ export default function About() {
           <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-primary">{t('About Us', '关于我们')}</p>
           <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{t('One to Infinity, and beyond.', '从 1 到无穷，再往前一步。')}</h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-            {t('O2I Institute bridges the gap from the basics to higher education. Based in Vancouver, we teach STEM with tutors from across the globe, and bring lessons, focused practice, and peer support into one place so students understand the reasoning behind an answer, not just the answer.', 'O2I Institute 帮学生从基础一路走到大学阶段的学习。我们在温哥华，和来自世界各地的老师一起教理工科，把课程、针对性练习和同学互助放在一起，让学生不只知道答案，还弄懂背后的思路。')}
+            {t('O2I Institute takes students from the basics all the way to university-level STEM. Our tutors teach from around the world, and every lesson comes with practice and a place to ask questions, so you learn why an answer works, not just what it is.', 'O2I Institute 帮学生把理工科从基础学到大学水平。我们的老师来自世界各地，每节课都配有练习和答疑，让你不只知道答案，还明白为什么。')}
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button size="lg" asChild><Link to="/courses">{t('Explore courses', '浏览课程')}<ArrowRight aria-hidden="true" /></Link></Button>
