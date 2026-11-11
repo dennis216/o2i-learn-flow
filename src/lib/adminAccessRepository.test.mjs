@@ -26,11 +26,19 @@ test('new permission response is authoritative, including denial and scoped role
   assert.equal(await hasAdminModule({ rpc: async () => ({ data: false, error: null }) }, 'questions', 'signed-in-user'), false);
 });
 
+test('a server deployed before the answers module may omit it; it then counts as denied', async () => {
+  const { answers, ...older } = { ...NO_ADMIN_ACCESS, questions: true };
+  assert.equal(answers, false);
+  const client = { rpc: async () => ({ data: older, error: null }) };
+  assert.deepEqual(await loadAdminAccess(client, 'signed-in-user'), { access: { ...NO_ADMIN_ACCESS, questions: true }, legacy: false });
+  await assert.rejects(loadAdminAccess({ rpc: async () => ({ data: { ...older, answers: 'yes' }, error: null }) }, 'signed-in-user'), /Invalid/);
+});
+
 test('missing new RPC uses current signed-in user server checks; only Super Admin gets Users', async () => {
   for (const role of ['super_admin', 'admin', 'student', 'instructor']) {
     const client = legacyClient(role);
     const content = ['super_admin', 'admin'].includes(role);
-    assert.deepEqual(await loadAdminAccess(client, 'signed-in-user'), { access: { courses: content, questions: content, playground: content, team: content, users: role === 'super_admin' }, legacy: true });
+    assert.deepEqual(await loadAdminAccess(client, 'signed-in-user'), { access: { courses: content, questions: content, playground: content, team: content, users: role === 'super_admin', answers: content }, legacy: true });
     assert.equal(await hasAdminModule(client, 'questions', 'signed-in-user'), content);
     assert.equal(await hasAdminModule(client, 'users', 'signed-in-user'), role === 'super_admin');
   }
