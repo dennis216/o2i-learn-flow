@@ -21,10 +21,8 @@ const RECTS = [0.06, 0.16, 0.26, 0.36, 0.46].map(t => ({ x: X(t), y: Y(t + 0.05)
 const T0 = 0.685, DX = 26, DY = (DX / 220) * 100 * df(T0);
 const TANGENT = { x1: X(T0) - DX, y1: Y(T0) + DY, x2: X(T0) + DX, y2: Y(T0) - DY };
 
-// BC art (Unit 10, BC only): sin x and its Taylor polynomials T3, T5 peeling away from it.
-const plot = (g: (x: number) => number) => 'M' + Array.from({ length: 61 }, (_, i) => { const x = -3.6 + 0.12 * i; return `${(120 + 32 * x).toFixed(1)} ${(70 - 36 * g(x)).toFixed(1)}`; }).join('L');
-const SINE = plot(Math.sin);
-const TAYLOR = [3, 5].map(n => plot(x => [1, 3, 5].filter(k => k <= n).reduce((s, k) => s + (k % 4 === 1 ? 1 : -1) * x ** k / [1, 1, 2, 6, 24, 120][k], 0)));
+// BC art (polar, BC only): the three-petal rose r = cos 3θ, centred at (140, 70).
+const ROSE = 'M' + Array.from({ length: 181 }, (_, i) => { const th = (Math.PI * i) / 180, r = 62 * Math.cos(3 * th); return `${(140 + r * Math.cos(th)).toFixed(1)} ${(70 - r * Math.sin(th)).toFixed(1)}`; }).join('L') + 'Z';
 
 interface CourseCardProps {
   course: Course;
@@ -43,10 +41,9 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
         <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-10" />
         <svg viewBox="0 0 240 140" fill="none" stroke="currentColor" className="absolute bottom-0 right-0 h-[88%] w-[64%] transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
           {mark === 'BC' ? <>
-            <path d="M4 70H236M120 4V136" strokeWidth="1" strokeOpacity="0.4" />
-            {TAYLOR.map((d, i) => <path key={d} d={d} strokeWidth="1.5" strokeDasharray="4 4" strokeOpacity={0.45 + 0.2 * i} />)}
-            <path d={SINE} strokeWidth="2.5" strokeLinecap="round" />
-            <text x="128" y="132" fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">sin x ≈ Σ aₙxⁿ</text>
+            <path d="M60 70H230M140 8V132" strokeWidth="1" strokeOpacity="0.4" />
+            <path d={ROSE} fill="currentColor" fillOpacity="0.16" strokeWidth="2.5" strokeLinejoin="round" />
+            <text x="164" y="128" fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">r = cos 3θ</text>
           </> : <>
             <path d="M6 128H236" strokeWidth="1" strokeOpacity="0.4" />
             {RECTS.map(r => <rect key={r.x} x={r.x} y={r.y} width={r.w} height={r.h} fill="currentColor" fillOpacity="0.16" strokeOpacity="0.4" strokeWidth="1" />)}
