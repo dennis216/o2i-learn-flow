@@ -23,7 +23,7 @@
 | 题库内容 | `█████░░░░░` 50% | 已发布约 145 道（原有 65 + Arena 转录 80）；Arena 转录还有 306 道草稿待发布 |
 | Limit Arena 游戏 | `████████░░` 80% | 已接正式题库并上线；发布后学生端验收待做 |
 | 课程系统（大纲/视频/游戏） | `███████░░░` 70% | 功能已上线；**Unit 4 登录限制的数据库部分未部署**；Unit 1–3 视频是否已全部录入发布未核实 |
-| 上线周其他事项 | `████░░░░░░` 40% | About Us 已加；Solution Requests 楼层式答疑的代码已完成（在 `claude/affectionate-cray-oxc8o5` 分支，**数据库未部署**）；Contact、付款页还没做 |
+| 上线周其他事项 | `████░░░░░░` 40% | About Us 已加；Solution Requests 楼层式答疑的代码已完成（数据库 2026-11-11 已部署，前端已合进 `test-work` 待验收）；Contact、付款页还没做 |
 | 文档与工程卫生 | `██████░░░░` 60% | 记录详尽；`main` 与 `test-work` 分叉，迁移编号曾冲突 |
 
 ## 3. 近期大修改（11-01 至 11-06）
@@ -128,7 +128,7 @@ Course → Unit → Topic 大纲，支持自定义课节标题（保留规范 To
 ### P1：上线周计划内
 
 5. **Arena 转录题还有 306 道草稿。** 按每批 20 道的流程继续发布，每批回读核验。
-6. **Solution Requests**：楼层式答疑的代码已完成，在 `claude/affectionate-cray-oxc8o5` 分支，还没合进 `test-work`。上线顺序：先在 Supabase 执行 `docs/solution-requests/` 部署包 → 合进 `test-work` 测试 → 合进 `main` → 再做一个迁移，关掉旧页面用的直接读表。详见 `docs/solution-requests/README_ZH.md`。
+6. **Solution Requests**：楼层式答疑已完成，数据库 2026-11-11 已部署，前端已合进 `test-work`。剩下的上线顺序：测试站验收 → 合进 `main` → 再做一个迁移，关掉旧页面用的直接读表。详见 `docs/solution-requests/README_ZH.md`。
 7. **课程小游戏窗口适配**（backlog P1）：近期没有提交，状态未知。
 8. **一节课合并多个 CB Topic、Super Admin 细化课程管理**（backlog P1）：还在设计阶段。
 
