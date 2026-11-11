@@ -45,7 +45,7 @@ const EMAIL = 'o2i.institute@gmail.com';
 // Platform brand colours (not site tokens) so each account is recognisable at a glance.
 // WeChat Channels has no web profile page, so it lists the name to search for.
 const socials = [
-  { icon: XiaohongshuIcon, size: 'h-10 w-10', tile: 'bg-[#FF2442] text-white', name: ['Xiaohongshu (RED)', '小红书'], handle: 'o2i education', href: 'https://www.xiaohongshu.com/user/profile/64d82484000000000100e118' },
+  { icon: XiaohongshuIcon, size: 'h-10 w-10', tile: 'bg-[#FF2442] text-white', name: ['REDnote', '小红书'], handle: 'o2i education', href: 'https://www.xiaohongshu.com/user/profile/64d82484000000000100e118' },
   { icon: Instagram, tile: 'bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF] text-white', name: ['Instagram', 'Instagram'], handle: '@o2i.institute', href: 'https://www.instagram.com/o2i.institute/' },
   { icon: Youtube, tile: 'bg-[#FF0000] text-white', name: ['YouTube', 'YouTube'], handle: '@o2iinstitute', href: 'https://www.youtube.com/@o2iinstitute' },
   { icon: DouyinIcon, tile: 'bg-[#111111] text-white', name: ['Douyin', '抖音'], handle: 'o2i math', href: 'https://www.douyin.com/user/MS4wLjABAAAALdk18h6vnp0nxLRyGsFKCJC36yrU6bdMU3s7vZ6rxFuLmUESOWdznpcjU4v0S85V' },
@@ -156,7 +156,12 @@ export default function About() {
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               {socials.map(({ icon: Icon, tile, name, handle, ...rest }) => (
                 <li key={name[0]} className="group relative flex flex-col items-center rounded-2xl p-4 text-center transition-colors hover:bg-background/80">
-                  <div className={`mb-3 grid h-12 w-12 place-items-center rounded-xl shadow-md transition-transform motion-safe:group-hover:-translate-y-1 ${tile}`}><Icon className={'size' in rest ? rest.size : 'h-6 w-6'} aria-hidden="true" /></div>
+                  <div className={`mb-3 grid h-12 w-12 place-items-center rounded-xl shadow-md transition-transform motion-safe:group-hover:-translate-y-1 ${tile}`}>
+                    {/* the Xiaohongshu mark is the Chinese wordmark; English pages show its English name instead */}
+                    {Icon === XiaohongshuIcon && language === 'en'
+                      ? <span aria-hidden="true" className="text-base font-extrabold tracking-tight">RED</span>
+                      : <Icon className={'size' in rest ? rest.size : 'h-6 w-6'} aria-hidden="true" />}
+                  </div>
                   {'href' in rest
                     ? <a href={rest.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(name[0], name[1])}</a>
                     : <p className="font-medium text-foreground">{t(name[0], name[1])}</p>}
