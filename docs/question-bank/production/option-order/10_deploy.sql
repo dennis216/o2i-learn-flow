@@ -67,10 +67,10 @@ $$;
 $option_order$;
 BEGIN
  LOCK TABLE supabase_migrations.schema_migrations IN SHARE ROW EXCLUSIVE MODE;
- IF NOT (NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261111000000') AND NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='question_practice_items' AND column_name='option_order') AND to_regprocedure('public.question_practice_items_shuffle_options()') IS NULL AND to_regprocedure('public.question_practice_items_arena_order()') IS NULL) THEN RAISE EXCEPTION 'Option order already recorded or partially present; stop without replay.'; END IF;
+ IF NOT (NOT EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261111010000') AND NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='question_practice_items' AND column_name='option_order') AND to_regprocedure('public.question_practice_items_shuffle_options()') IS NULL AND to_regprocedure('public.question_practice_items_arena_order()') IS NULL) THEN RAISE EXCEPTION 'Option order already recorded or partially present; stop without replay.'; END IF;
  IF NOT (EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261026000000' AND name='question_practice_adaptation_v2' AND cardinality(statements)=1 AND md5(statements[1])='354934137b8be264f4b1b2cf58d36b2e') AND EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261028000000' AND name='course_topic_practice' AND cardinality(statements)=1 AND md5(statements[1])='f8d0fd626747b1dd42fd6f03cf285591') AND EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261105000000' AND name='arena_practice_integration' AND cardinality(statements)=1 AND md5(statements[1])='436e441fb7a6b67212e0ae29144a8fd3')) OR NOT coalesce((SELECT md5(prosrc)='1162f028c31bdeab0a9fdd0e77b48089' FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_snapshot_questions(uuid)')),false) THEN RAISE EXCEPTION 'Practice prerequisite mismatch; stop without replaying migrations.'; END IF;
  EXECUTE migration_sql;
- INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261111000000','question_practice_option_order',ARRAY[migration_sql]);
+ INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261111010000','question_practice_option_order',ARRAY[migration_sql]);
 END;
 $deploy$;
 COMMIT;

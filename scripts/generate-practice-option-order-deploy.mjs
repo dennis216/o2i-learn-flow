@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const md5 = s => createHash('md5').update(s).digest('hex');
-const version = '20261111000000', name = 'question_practice_option_order';
+const version = '20261111010000', name = 'question_practice_option_order';
 const source = read(`supabase/migrations/${version}_${name}.sql`);
 const dir = new URL('../docs/question-bank/production/option-order/', import.meta.url); mkdirSync(dir, { recursive: true });
 const prerequisites = [['20261026000000', 'question_practice_adaptation_v2'], ['20261028000000', 'course_topic_practice'], ['20261105000000', 'arena_practice_integration']];

@@ -1,6 +1,6 @@
 -- Exact function-body checks plus ledger, column, triggers and permissions.
 WITH checks(name,ok) AS (
- SELECT 'ledger',EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261111000000' AND name='question_practice_option_order' AND cardinality(statements)=1 AND md5(statements[1])='8e115580c1dc373968f8a465c4537429')
+ SELECT 'ledger',EXISTS(SELECT 1 FROM supabase_migrations.schema_migrations WHERE version='20261111010000' AND name='question_practice_option_order' AND cardinality(statements)=1 AND md5(statements[1])='8e115580c1dc373968f8a465c4537429')
  UNION ALL SELECT 'question_practice_items_shuffle_options',coalesce((SELECT md5(prosrc)='86a865a35b92a287662e11ad712c9748' AND prosecdef=false AND proconfig=ARRAY['search_path=public, extensions'] FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_items_shuffle_options()')),false)
  UNION ALL SELECT 'question_practice_items_arena_order',coalesce((SELECT md5(prosrc)='029aa247b217c893ef5f0b4361a715b8' AND prosecdef=false AND proconfig=ARRAY['search_path=public, extensions'] FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_items_arena_order()')),false)
  UNION ALL SELECT 'question_practice_snapshot_questions',coalesce((SELECT md5(prosrc)='e8ea3e7c5d57dd02a30bb90425be8de6' AND prosecdef=true AND proconfig=ARRAY['search_path=public, extensions'] FROM pg_proc WHERE oid=to_regprocedure('public.question_practice_snapshot_questions(uuid)')),false)

@@ -112,7 +112,7 @@ node scripts/arena/legacy/snapshot.mjs verify /已有私有目录
 **只读审计**：`node scripts/arena/legacy/quality-audit.mjs <仓库外私有目录>`。只读事务读取每题当前（已发布）或最新（草稿）版本，按 Practice 实际顺序统计正确项位置，标出题干提到图/表却无图片或表格、`requires_figure` 不一致、图片下载失败，并记录旧源是否有 `graph`。逐题清单只写入私有目录（0600、不覆盖），终端只输出按“legacy/其他 × 状态”汇总的计数。
 
 **修复方案（用户已确认思路）**
-1. 答案位置：Practice 发题时服务器随机打乱并冻结选项顺序，迁移 `20261111000000_question_practice_option_order`，发布包与步骤见 [option-order](../../question-bank/production/option-order/README_ZH.md)。不改题目和版本，旧会话不变。本地一次性数据库验收通过；生产部署待用户授权执行。
+1. 答案位置：Practice 发题时服务器随机打乱并冻结选项顺序，迁移 `20261111010000_question_practice_option_order`，发布包与步骤见 [option-order](../../question-bank/production/option-order/README_ZH.md)。不改题目和版本，旧会话不变。本地一次性数据库验收通过；生产部署待用户授权执行。
 2. 缺图：源题本来没有图的题不补图、不猜图。按审计清单在后台 Unpublish 已发布的这类题（可恢复，答题记录保留），草稿中的这类题不发布。
 3. 以后发布余下草稿前先跑审计，凡 `figure_language_without_image`、`table_language_without_table`、`requires_figure_without_image`、图片加载失败的题都不发布。
 
