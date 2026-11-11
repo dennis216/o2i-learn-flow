@@ -87,23 +87,6 @@ export default function About() {
         </Reveal>
       </section>
 
-      {/* Verified on the organiser's results page; team members' names intentionally left out. */}
-      <section aria-label={t('Awards', '获奖')} className="mx-auto max-w-3xl px-4 pb-6 sm:px-6">
-        <Reveal>
-          <div className="flex flex-col items-center gap-4 rounded-2xl bg-muted/50 p-5 text-center sm:flex-row sm:text-left">
-            {/* silver medal colours, not site tokens */}
-            <div aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800 shadow-md"><Medal className="h-7 w-7" /></div>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-foreground">{t('Silver Medal, International AI Innovation Olympiad 2026', '2026 国际人工智能创新奥林匹克（IAI²O）银牌')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t('O2I itself was the competition project: it won silver in the AI for Business track (remote session) at the inaugural IAI²O Global Finals, September 2026.', 'O2I 平台本身就是参赛项目，在首届 IAI²O 全球总决赛 AI for Business 赛道（线上组）获得银牌，2026 年 9 月。')}</p>
-            </div>
-            <a href="https://iai2o-official.org/past-events/iai2o-2026/final-results" target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline">
-              {t('Official results', '查看官方结果')}<ExternalLink aria-hidden="true" className="h-4 w-4" />
-            </a>
-          </div>
-        </Reveal>
-      </section>
-
       <section aria-labelledby="path-heading" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <Reveal className="mx-auto mb-12 max-w-2xl text-center">
           <h2 id="path-heading" className="text-2xl font-bold tracking-tight sm:text-3xl">{t('Why “One to Infinity”', '为什么叫 One to Infinity')}</h2>
@@ -129,6 +112,23 @@ export default function About() {
           ))}
         </ol>
         </div>
+      </section>
+
+      {/* Verified on the organiser's results page; team members' names intentionally left out. */}
+      <section aria-label={t('Awards', '获奖')} className="mx-auto -mt-4 max-w-3xl px-4 pb-14 sm:-mt-8 sm:px-6 sm:pb-20">
+        <Reveal>
+          <div className="flex flex-col items-center gap-4 rounded-2xl bg-muted/50 p-5 text-center sm:flex-row sm:text-left">
+            {/* silver medal colours, not site tokens */}
+            <div aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800 shadow-md"><Medal className="h-7 w-7" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">{t('Silver Medal, International AI Innovation Olympiad 2026', '2026 国际人工智能创新奥林匹克（IAI²O）银牌')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('Awarded to O2I in the AI for Business track (remote session) at the inaugural IAI²O Global Finals, September 2026.', '首届 IAI²O 全球总决赛 AI for Business 赛道（线上组）颁给 O2I 的银牌，2026 年 9 月。')}</p>
+            </div>
+            <a href="https://iai2o-official.org/past-events/iai2o-2026/final-results" target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline">
+              {t('Official results', '查看官方结果')}<ExternalLink aria-hidden="true" className="h-4 w-4" />
+            </a>
+          </div>
+        </Reveal>
       </section>
 
       <section aria-labelledby="contact-heading" className="bg-gradient-to-b from-background via-primary/5 to-accent/10 py-14 sm:py-20">
