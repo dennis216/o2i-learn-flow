@@ -40,7 +40,33 @@
 
 出问题时：这个迁移只加东西、不删数据，旧页面照常能用。不要重跑，先用第 3 步的结果定位。
 
+## 前端
+
+| 位置 | 内容 |
+|---|---|
+| `src/pages/SolutionRequests.tsx` | 列表：公开问答 / 我的问题，按状态、题型、是否关闭筛选，加载更多；右上角显示 24 小时内还能提几个问题 |
+| `src/pages/SolutionRequestThread.tsx` | `/solution-requests/:id`：一个问题和全部楼层；未登录能看公开问题，不能回复 |
+| `src/components/solution-requests/` | 共用组件：帖子视图、楼层操作、回复框（预览公式、引用、传图、匿名）、提问 / 修改表单、举报框 |
+| `src/components/admin/SolutionRequestInbox.tsx` | 后台 Answers 标签：待解答（awaiting + replied、未关闭，等得最久的在前）、全部问题、举报 |
+| `src/lib/solutionRequests.ts` | `sr_*` 调用、校验、中英文文案、错误码、图片上传 / 签名 / 删除 |
+
+用户写的内容按 Markdown + 公式渲染，不渲染 HTML，也不加载外部图片。
+
+## 还没做
+
+- 界面按 `docs/DESIGN.md` 美化（这一版只用了现有组件和 token 颜色）。
+- 新前端上正式站之后的收紧迁移（见上文）。
+- 通知（邮件 / 站内），这一版按约定不做。
+- 撤回时，别人回复里的图片文件留在 Storage 里，但已经没人能读到（管理员除外），以后可以统一清理。
+- 发过问题或回复的学生，删除账号时会被"有关联内容"挡住，和以前提问的处理方式一样。
+
 ## 测试
 
 - `npm run test:solution-requests:db`：本地一次性 PostgreSQL（只允许 localhost），需要 `SR_TEST_DATABASE_URL`。
   - 覆盖：权限矩阵、匿名不泄露、状态流转、关闭、楼层和引用、修改、可见范围切换、限额、撤回、图片权限、举报、列表和翻页，以及部署包的整个流程。
+- `npm run test:solution-requests`：前端数据层的单元测试。
+- `npm run test:solution-requests:browser`：真实迁移 + 本地模拟的 Supabase 接口 + Vite + Playwright，走一遍完整流程，同时截桌面和手机宽度的图：
+  - 学生 A 匿名公开提问（带图）→ 学生 B 看不到 A 的名字、回复（replied）→ 管理员在 Answers 里看到真名、官方回复（answered）→ A 采纳 B 的回复（solved）、关闭帖子 → B 不能再回复；
+  - A 提一个仅管理员可见的问题，B 看不到也打不开 → A 撤回；
+  - 未登录访客用手机宽度、中文界面浏览，页面没有横向滚动。
+  - 需要 `SR_TEST_DATABASE_URL`（另一个一次性本地库）；Playwright 不在本项目依赖里时，用 `O2I_PLAYWRIGHT_MODULE` 指定位置。

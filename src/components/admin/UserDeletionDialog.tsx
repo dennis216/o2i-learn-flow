@@ -13,7 +13,8 @@ const labels: Record<string, string> = {
   questions: 'Authored questions', question_versions: 'Question versions', question_version_reviews: 'Question reviews',
   question_publication_events: 'Publication history', 'storage.objects': 'Uploaded files', question_practice_sessions: 'Practice sessions',
   question_practice_attempts: 'Practice attempts', enrollments: 'Enrollments', user_progress: 'Learning progress',
-  solution_requests: 'Solution requests', forum_posts: 'Forum posts', post_replies: 'Forum replies',
+  solution_requests: 'Solution requests', solution_request_replies: 'Solution request replies', solution_request_reports: 'Solution request reports',
+  solution_request_quota: 'Solution request history', forum_posts: 'Forum posts', post_replies: 'Forum replies',
 };
 async function requestDeletion(userId: string, action: 'preview' | 'delete', email?: string) {
   const { data, error } = await supabase.auth.getSession();
