@@ -1511,43 +1511,82 @@ export type Database = {
       }
       solution_requests: {
         Row: {
+          accepted_reply_id: string | null
+          closed_at: string | null
+          closed_by: string | null
           created_at: string
           description: string | null
+          edited_at: string | null
+          hidden_at: string | null
+          hidden_by: string | null
           id: string
+          image_paths: string[]
           image_url: string | null
-          is_public: boolean | null
+          is_anonymous: boolean
+          is_public: boolean
+          last_activity_at: string
           problem_type: Database["public"]["Enums"]["problem_type"] | null
+          reply_count: number
+          reply_floor_seq: number
           solution_image_url: string | null
           solution_text: string | null
-          status: string | null
+          solved_at: string | null
+          solved_by: string | null
+          status: string
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          accepted_reply_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           description?: string | null
+          edited_at?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
+          image_paths?: string[]
           image_url?: string | null
-          is_public?: boolean | null
+          is_anonymous?: boolean
+          is_public?: boolean
+          last_activity_at?: string
           problem_type?: Database["public"]["Enums"]["problem_type"] | null
+          reply_count?: number
+          reply_floor_seq?: number
           solution_image_url?: string | null
           solution_text?: string | null
-          status?: string | null
+          solved_at?: string | null
+          solved_by?: string | null
+          status?: string
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          accepted_reply_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           created_at?: string
           description?: string | null
+          edited_at?: string | null
+          hidden_at?: string | null
+          hidden_by?: string | null
           id?: string
+          image_paths?: string[]
           image_url?: string | null
-          is_public?: boolean | null
+          is_anonymous?: boolean
+          is_public?: boolean
+          last_activity_at?: string
           problem_type?: Database["public"]["Enums"]["problem_type"] | null
+          reply_count?: number
+          reply_floor_seq?: number
           solution_image_url?: string | null
           solution_text?: string | null
-          status?: string | null
+          solved_at?: string | null
+          solved_by?: string | null
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -2007,6 +2046,23 @@ export type Database = {
       count_real_users: { Args: never; Returns: number }
       get_admin_access: { Args: Record<PropertyKey, never>; Returns: Json }
       has_admin_module: { Args: { _module: string }; Returns: boolean }
+      sr_list: { Args: { _scope: string; _status?: string | null; _problem_type?: Database["public"]["Enums"]["problem_type"] | null; _include_closed?: boolean; _visibility?: string | null; _offset?: number; _limit?: number }; Returns: Json }
+      sr_get: { Args: { _id: string }; Returns: Json }
+      sr_quota: { Args: Record<PropertyKey, never>; Returns: Json }
+      sr_admin_summary: { Args: Record<PropertyKey, never>; Returns: Json }
+      sr_list_reports: { Args: Record<PropertyKey, never>; Returns: Json }
+      sr_create: { Args: { _title: string; _description: string; _problem_type: Database["public"]["Enums"]["problem_type"]; _image_paths: string[]; _is_public: boolean; _is_anonymous: boolean }; Returns: string }
+      sr_update: { Args: { _id: string; _title: string; _description: string; _problem_type: Database["public"]["Enums"]["problem_type"]; _image_paths: string[]; _is_public: boolean; _is_anonymous: boolean }; Returns: Json }
+      sr_withdraw: { Args: { _id: string }; Returns: Json }
+      sr_set_solved: { Args: { _id: string; _solved: boolean; _accepted_reply?: string | null }; Returns: undefined }
+      sr_set_closed: { Args: { _id: string; _closed: boolean }; Returns: undefined }
+      sr_hide_request: { Args: { _id: string; _hidden: boolean }; Returns: undefined }
+      sr_reply: { Args: { _request: string; _body: string; _image_path?: string | null; _is_anonymous?: boolean; _quoted_reply?: string | null }; Returns: string }
+      sr_edit_reply: { Args: { _reply: string; _body: string; _image_path?: string | null; _is_anonymous?: boolean | null }; Returns: Json }
+      sr_delete_reply: { Args: { _reply: string }; Returns: Json }
+      sr_hide_reply: { Args: { _reply: string; _hidden: boolean }; Returns: undefined }
+      sr_report: { Args: { _request: string; _reply: string | null; _reason: string }; Returns: Json }
+      sr_resolve_report: { Args: { _report: string }; Returns: undefined }
       set_account_role: { Args: { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }; Returns: undefined }
       has_role: {
         Args: {

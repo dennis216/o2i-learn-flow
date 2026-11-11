@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../integrations/supabase/types.ts';
-import { NO_ADMIN_ACCESS, parseAdminAccess, type AdminAccess } from './adminAccess.ts';
+import { NO_ADMIN_ACCESS, OPTIONAL_ADMIN_MODULES, parseAdminAccess, type AdminAccess } from './adminAccess.ts';
 
 function missingRpc(error: { code?: string; message: string } | null, name: string): boolean {
   return error?.code === 'PGRST202' && error.message.includes(`public.${name}(`);
@@ -15,7 +15,7 @@ async function loadLegacyAccess(client: SupabaseClient<Database>, userId: string
   if (admin.error) throw new Error(admin.error.message);
   if (typeof owner.data !== 'boolean' || typeof admin.data !== 'boolean') throw new Error('Invalid administrator permission response');
   const content = owner.data || admin.data;
-  return { courses: content, questions: content, playground: content, team: content, users: owner.data };
+  return { courses: content, questions: content, playground: content, team: content, users: owner.data, answers: content };
 }
 
 export async function loadAdminAccess(client: SupabaseClient<Database>, userId: string) {
@@ -23,7 +23,9 @@ export async function loadAdminAccess(client: SupabaseClient<Database>, userId: 
   // Only a missing new RPC may use the old server-side checks; other failures must remain visible.
   if (missingRpc(error, 'get_admin_access')) return { access: await loadLegacyAccess(client, userId), legacy: true };
   if (error) throw new Error(error.message);
-  if (!data || typeof data !== 'object' || Object.keys(NO_ADMIN_ACCESS).some(key => typeof (data as Record<string, unknown>)[key] !== 'boolean')) {
+  const fields = data && typeof data === 'object' ? data as Record<string, unknown> : null;
+  if (!fields || Object.keys(NO_ADMIN_ACCESS).some(key => typeof fields[key] !== 'boolean'
+    && !(OPTIONAL_ADMIN_MODULES.includes(key as keyof AdminAccess) && fields[key] === undefined))) {
     throw new Error('Invalid administrator permission response');
   }
   return { access: parseAdminAccess(data), legacy: false };
