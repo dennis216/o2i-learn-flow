@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { continuousPracticePath, endContinuousPractice, loadOpenContinuousPractice, loadPracticeHome, type OpenContinuousPractice, type PracticeTopic, type RecentPracticeAnswer } from '@/lib/studentPractice';
 import { practiceTopicCards } from '@/lib/practiceTopics';
+import SignInPrompt from '@/components/SignInPrompt';
 
 function AccountPractice() {
   const [topics, setTopics] = useState<PracticeTopic[]>([]);
@@ -70,7 +71,10 @@ function AccountPractice() {
 export default function Practice() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
-  return <div className="mx-auto min-h-[70vh] max-w-6xl space-y-6 px-4 py-10"><header><h1 className="flex items-center gap-3 text-4xl font-bold"><Target />{t('Quick Practice', '快速练习')}</h1><p className="mt-3 text-muted-foreground">{t('Practice published questions. Answers are graded and saved to your account by the server.', '做完题系统自动判分，记录保存在你的账号里。')}</p></header>
-    {loading ? <p role="status">{t('Checking your account…', '正在确认登录状态…')}</p> : user ? <AccountPractice key={user.id} /> : <div className="space-y-4"><p>{t('Sign in to start practice and read your saved answers.', '登录后就能开始练习，也能看到之前的答题记录。')}</p><Button asChild><Link to="/auth">{t('Sign in', '登录')}</Link></Button></div>}
+  if (!loading && !user) return <div className="min-h-[70vh]"><SignInPrompt icon={Target} tile="teal" returnTo="/practice"
+    title={t('Quick Practice', '快速练习')}
+    description={t('Pick a topic and answer questions that adjust to your progress. Your answers are saved so you can review them later. Sign in to start.', '选一个知识点开始做题，题目会按你的进度调整，作答会保存下来方便复习。登录后就能开始。')} /></div>;
+  return <div className="mx-auto min-h-[70vh] max-w-6xl space-y-6 px-4 py-10"><header><h1 className="flex items-center gap-3 text-4xl font-bold"><Target />{t('Quick Practice', '快速练习')}</h1><p className="mt-3 text-muted-foreground">{t('Your answers are graded right away and saved to your account.', '做完题系统自动判分，记录保存在你的账号里。')}</p></header>
+    {loading || !user ? <p role="status">{t('Checking your account…', '正在确认登录状态…')}</p> : <AccountPractice key={user.id} />}
   </div>;
 }
