@@ -144,6 +144,16 @@ export function excerpt(text: string | null | undefined, max = 140): string {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 }
 
+/** Short preview that is still valid Markdown math: never ends inside an open $...$. */
+export function mathSafeExcerpt(text: string | null | undefined, max = 160): string {
+  const flat = (text ?? '').replace(/\$\$/g, '$').replace(/\s+/g, ' ').trim();
+  if (flat.length <= max) return flat;
+  let cut = flat.slice(0, max);
+  const dollars = cut.match(/(?<!\\)\$/g)?.length ?? 0;
+  if (dollars % 2) cut = cut.slice(0, cut.lastIndexOf('$'));
+  return `${cut.trimEnd()}…`;
+}
+
 // ---- Database calls ----
 
 async function rpc<T>(promise: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T> {

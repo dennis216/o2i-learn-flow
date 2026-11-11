@@ -113,7 +113,7 @@ try {
     await new Promise(r => setTimeout(r, 200));
   }
   browser = await chromium.launch();
-  const open = async (uid, viewport = { width: 1280, height: 900 }, language = 'en') => {
+  const open = async (uid, viewport = { width: 1440, height: 900 }, language = 'en') => {
     const context = await browser.newContext({ viewport });
     if (uid) {
       const token = `${anonKey.split('.')[0]}.${Buffer.from(JSON.stringify({ sub: uid, role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.synthetic`;
@@ -209,11 +209,16 @@ try {
   await alice.getByRole('link', { name: /Why is sin x/ }).waitFor();
   assert.equal(await alice.getByRole('link', { name: /Private homework/ }).count(), 0);
   await alice.getByText('3 of 5 questions left in 24 hours').waitFor();
+  await alice.getByRole('tab', { name: 'Public questions' }).click();
+  await alice.getByRole('link', { name: /Why is sin x/ }).waitFor();
+  await alice.waitForTimeout(1000); // let the hero fade in
+  await alice.screenshot({ path: `${shots}/list-desktop.png`, fullPage: true });
 
   // Signed-out visitors can read but not reply; phone width, Chinese.
   const visitor = await open(null, { width: 390, height: 844 }, 'zh');
   await visitor.goto(`${app}/solution-requests`);
   await visitor.getByRole('link', { name: /Why is sin x/ }).waitFor();
+  await visitor.waitForTimeout(1000);
   await visitor.screenshot({ path: `${shots}/list-phone-zh.png`, fullPage: true });
   await visitor.goto(threadUrl);
   await visitor.getByRole('link', { name: '登录后回复' }).waitFor();

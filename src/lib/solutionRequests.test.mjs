@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  authorLabel, errorCode, errorText, excerpt, newImagePath, problemTypeLabel, quotaLeft, uploadImages,
+  authorLabel, errorCode, errorText, excerpt, mathSafeExcerpt, newImagePath, problemTypeLabel, quotaLeft, uploadImages,
   validateImage, validateQuestion, validateReply, LIMITS,
 } from './solutionRequests.ts';
 
@@ -69,4 +69,12 @@ test('a failed upload removes the files already uploaded', async () => {
   await assert.rejects(uploadImages(client, [file, file]), /quota/);
   assert.deepEqual(removed, uploaded);
   await assert.rejects(uploadImages(client, [{ type: 'image/heic', size: 1 }]), /JPG/);
+});
+
+test('list previews never cut a formula in half', () => {
+  assert.equal(mathSafeExcerpt('Find $x$'), 'Find $x$');
+  assert.equal(mathSafeExcerpt('ab $\\frac{1}{2}$ cd', 8), 'ab…');
+  assert.equal(mathSafeExcerpt('$$x^2$$\n\nnext'), '$x^2$ next');
+  const long = mathSafeExcerpt(`${'word '.repeat(40)}$y=1$`, 50);
+  assert.ok(long.endsWith('…') && !long.includes('$'));
 });
