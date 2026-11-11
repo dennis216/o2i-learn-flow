@@ -26,9 +26,19 @@ test('preflight, upgrade and verify succeed once; a second upgrade is refused', 
   run(['-c', 'CREATE SCHEMA supabase_migrations; CREATE TABLE supabase_migrations.schema_migrations(version text PRIMARY KEY, name text, statements text[]);']);
   const preflight = JSON.parse(sqlFile('00_preflight_readonly.sql').split('\n')[0]);
   assert.equal(preflight.baseline_ok, true);
-  sqlFile('10_upgrade.sql');
+  // As pasted from a Windows clipboard: CRLF line ends and stray trailing spaces must still pass the fingerprint.
+  run(['-f', '-'], files['10_upgrade.sql'].replaceAll('\n', ' \r\n'));
   const verify = JSON.parse(sqlFile('20_verify_readonly.sql'));
   assert.equal(verify.all_checks_pass, true, JSON.stringify(verify.checks));
   assert.equal(JSON.parse(sqlFile('00_preflight_readonly.sql').split('\n')[0]).baseline_ok, false);
   assert.throws(() => sqlFile('10_upgrade.sql'), e => /already registered/.test(String(e.stderr)));
+});
+
+test('a truncated paste is refused with the length it got, and changes nothing', () => {
+  run(['-c', 'DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS auth CASCADE; DROP SCHEMA IF EXISTS storage CASCADE; DROP SCHEMA IF EXISTS supabase_migrations CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;']);
+  run(['-f', new URL('./fixtures/solution_requests_baseline.sql', import.meta.url).pathname]);
+  run(['-c', 'CREATE SCHEMA supabase_migrations; CREATE TABLE supabase_migrations.schema_migrations(version text PRIMARY KEY, name text, statements text[]);']);
+  const broken = files['10_upgrade.sql'].replace("NOTIFY pgrst,'reload schema';", '');
+  assert.throws(() => run(['-f', '-'], broken), e => /does not match the repository migration \(got \d+ characters/.test(String(e.stderr)));
+  assert.equal(JSON.parse(sqlFile('00_preflight_readonly.sql').split('\n')[0]).baseline_ok, true);
 });

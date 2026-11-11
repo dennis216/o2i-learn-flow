@@ -621,7 +621,12 @@ BEGIN
   IF to_regclass('public.solution_request_replies') IS NOT NULL THEN
     RAISE EXCEPTION 'solution_request_replies already exists without a ledger entry. Stop and investigate.';
   END IF;
-  IF md5(migration_sql) <> '00aab0a4fabf0cd06f69ba4aa497063d' THEN RAISE EXCEPTION 'Package text does not match the repository migration.'; END IF;
+  -- Pasting through an editor or clipboard can turn line ends into CRLF or add trailing spaces; undo that first.
+  migration_sql := regexp_replace(replace(migration_sql, E'\r', ''), '[ \t]+\n', E'\n', 'g');
+  IF md5(migration_sql) <> '00aab0a4fabf0cd06f69ba4aa497063d' THEN
+    RAISE EXCEPTION 'Package text does not match the repository migration (got % characters, md5 %; expected 38743 characters).',
+      length(migration_sql), md5(migration_sql);
+  END IF;
   EXECUTE migration_sql;
   INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('20261111000000','solution_request_threads',ARRAY[migration_sql]);
 END;

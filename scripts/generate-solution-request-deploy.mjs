@@ -9,6 +9,7 @@ const dir = new URL('../docs/solution-requests/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const sql = readFileSync(new URL(`../supabase/migrations/${VERSION}_${NAME}.sql`, import.meta.url), 'utf8');
 if (sql.includes('$sr_sql$')) throw new Error('Migration text must not contain the wrapper tag.');
+if (/[ \t]\n|\r/.test(sql)) throw new Error('Migration must use LF line ends without trailing spaces (the package normalizes pasted text).');
 const hash = createHash('md5').update(sql).digest('hex');
 
 export const files = {
@@ -49,7 +50,12 @@ BEGIN
   IF to_regclass('public.solution_request_replies') IS NOT NULL THEN
     RAISE EXCEPTION 'solution_request_replies already exists without a ledger entry. Stop and investigate.';
   END IF;
-  IF md5(migration_sql) <> '${hash}' THEN RAISE EXCEPTION 'Package text does not match the repository migration.'; END IF;
+  -- Pasting through an editor or clipboard can turn line ends into CRLF or add trailing spaces; undo that first.
+  migration_sql := regexp_replace(replace(migration_sql, E'\\r', ''), '[ \\t]+\\n', E'\\n', 'g');
+  IF md5(migration_sql) <> '${hash}' THEN
+    RAISE EXCEPTION 'Package text does not match the repository migration (got % characters, md5 %; expected ${sql.length} characters).',
+      length(migration_sql), md5(migration_sql);
+  END IF;
   EXECUTE migration_sql;
   INSERT INTO supabase_migrations.schema_migrations(version,name,statements) VALUES('${VERSION}','${NAME}',ARRAY[migration_sql]);
 END;
