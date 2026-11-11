@@ -54,8 +54,8 @@ const socials = [
 ] as const;
 
 const contacts = [
-  { icon: Mail, tile: TILE.blue, title: ['Email us', '发邮件'], text: [EMAIL, EMAIL], href: `mailto:${EMAIL}` },
-  { icon: MessageSquareHeart, tile: TILE.teal, title: ['Send feedback', '提意见'], text: ['Tell us what helped, what confused you, or what you want next.', '哪里有用、哪里看不懂、还想要什么内容，都告诉我们。'], href: `mailto:${EMAIL}?subject=${encodeURIComponent('Website feedback')}` },
+  { icon: Mail, tile: TILE.blue, title: ['Email us', '发邮件'], text: [EMAIL, EMAIL], subject: '' },
+  { icon: MessageSquareHeart, tile: TILE.teal, title: ['Send feedback', '提意见'], text: ['Tell us what helped, what confused you, or what you want next.', '哪里有用、哪里看不懂、还想要什么内容，都告诉我们。'], subject: 'Website feedback' },
 ] as const;
 
 // Yellow highlighter stroke, same as the brand in the homepage headline.
@@ -65,10 +65,13 @@ const Highlight = ({ children }: { children: string }) => (
 
 export default function About() {
   const { language, t } = useLanguage();
-  // mailto does nothing visible when no mail app is set up (common with web Gmail), so also copy the address.
-  const copyEmail = () => {
-    const copied = () => toast.success(t('Email address copied', '邮箱地址已复制'), { description: t(`If no mail app opened, paste ${EMAIL} into your email.`, `如果没有弹出邮件 App，把 ${EMAIL} 粘贴到你的邮箱里发就行。`) });
-    const shown = () => toast(t(`Our email: ${EMAIL}`, `我们的邮箱：${EMAIL}`), { description: t('If no mail app opened, send to this address from your email.', '如果没有弹出邮件 App，用你的邮箱发到这个地址就行。') });
+  // The tiles open Gmail in a new tab (mailto often does nothing in Chrome); the toast copies the address
+  // for other mailboxes (Gmail is blocked in mainland China) and offers the mail app as a fallback.
+  const gmail = (subject: string) => `https://mail.google.com/mail/?view=cm&fs=1&to=${EMAIL}${subject ? `&su=${encodeURIComponent(subject)}` : ''}`;
+  const copyEmail = (subject: string) => {
+    const action = { label: t('Use mail app', '用邮件 App'), onClick: () => { window.location.href = `mailto:${EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`; } };
+    const copied = () => toast.success(t('Email address copied', '邮箱地址已复制'), { action, description: t(`Not using Gmail? Paste ${EMAIL} into your own mailbox.`, `不用 Gmail？把 ${EMAIL} 粘贴到你自己的邮箱里发就行。`) });
+    const shown = () => toast(t(`Our email: ${EMAIL}`, `我们的邮箱：${EMAIL}`), { action, description: t('Not using Gmail? Send to this address from your own mailbox.', '不用 Gmail？用你自己的邮箱发到这个地址就行。') });
     if (navigator.clipboard) navigator.clipboard.writeText(EMAIL).then(copied, shown); else shown();
   };
   return (
@@ -145,12 +148,12 @@ export default function About() {
             <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{t('Questions about courses, ideas for the site, or something that is not working: write to us and a team member will reply.', '课程问题、对网站的建议，或者哪里用不了，都可以写信给我们，团队成员会回复。')}</p>
           </Reveal>
           <div className="mx-auto grid max-w-3xl gap-2 sm:grid-cols-2 sm:gap-4">
-            {contacts.map(({ icon: Icon, tile, title, text, href }) => (
-              <Reveal key={href}>
+            {contacts.map(({ icon: Icon, tile, title, text, subject }) => (
+              <Reveal key={title[0]}>
                 <div className="group relative flex items-start gap-4 rounded-2xl p-5 transition-colors hover:bg-background/80">
                   <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br shadow-md ${tile}`}><Icon className="h-6 w-6" aria-hidden="true" /></div>
                   <div className="min-w-0">
-                    <a href={href} onClick={copyEmail} className="text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</a>
+                    <a href={gmail(subject)} target="_blank" rel="noopener noreferrer" onClick={() => copyEmail(subject)} className="text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</a>
                     <p className="mt-1 break-words text-muted-foreground">{t(text[0], text[1])}</p>
                   </div>
                 </div>
