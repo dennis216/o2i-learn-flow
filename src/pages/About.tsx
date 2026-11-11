@@ -65,13 +65,11 @@ const Highlight = ({ children }: { children: string }) => (
 
 export default function About() {
   const { language, t } = useLanguage();
-  // The tiles open Gmail in a new tab (mailto often does nothing in Chrome); the toast copies the address
-  // for other mailboxes (Gmail is blocked in mainland China) and offers the mail app as a fallback.
-  const gmail = (subject: string) => `https://mail.google.com/mail/?view=cm&fs=1&to=${EMAIL}${subject ? `&su=${encodeURIComponent(subject)}` : ''}`;
+  // The tiles copy the address (mailto often does nothing in Chrome); the toast offers the mail app as an option.
   const copyEmail = (subject: string) => {
     const action = { label: t('Use mail app', '用邮件 App'), onClick: () => { window.location.href = `mailto:${EMAIL}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`; } };
-    const copied = () => toast.success(t('Email address copied', '邮箱地址已复制'), { action, description: t(`Not using Gmail? Paste ${EMAIL} into your own mailbox.`, `不用 Gmail？把 ${EMAIL} 粘贴到你自己的邮箱里发就行。`) });
-    const shown = () => toast(t(`Our email: ${EMAIL}`, `我们的邮箱：${EMAIL}`), { action, description: t('Not using Gmail? Send to this address from your own mailbox.', '不用 Gmail？用你自己的邮箱发到这个地址就行。') });
+    const copied = () => toast.success(t('Email address copied', '邮箱地址已复制'), { action, description: t(`Paste ${EMAIL} into your mailbox to write to us.`, `把 ${EMAIL} 粘贴到你的邮箱里就能给我们写信。`) });
+    const shown = () => toast(t(`Our email: ${EMAIL}`, `我们的邮箱：${EMAIL}`), { action, description: t('Send to this address from your mailbox.', '用你的邮箱发到这个地址就行。') });
     if (navigator.clipboard) navigator.clipboard.writeText(EMAIL).then(copied, shown); else shown();
   };
   return (
@@ -153,7 +151,7 @@ export default function About() {
                 <div className="group relative flex items-start gap-4 rounded-2xl p-5 transition-colors hover:bg-background/80">
                   <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br shadow-md ${tile}`}><Icon className="h-6 w-6" aria-hidden="true" /></div>
                   <div className="min-w-0">
-                    <a href={gmail(subject)} target="_blank" rel="noopener noreferrer" onClick={() => copyEmail(subject)} className="text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</a>
+                    <button type="button" onClick={() => copyEmail(subject)} className="text-left text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</button>
                     <p className="mt-1 break-words text-muted-foreground">{t(text[0], text[1])}</p>
                   </div>
                 </div>
