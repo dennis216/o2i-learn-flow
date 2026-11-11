@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, Instagram, Mail, MessageSquare, MessageSquareHeart, Search, Target, Youtube } from 'lucide-react';
+import { ArrowRight, BookOpen, Instagram, Mail, MessageSquare, MessageSquareHeart, Search, Target, Video, Youtube } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,12 +31,12 @@ const learningPaths = [
 
 const EMAIL = 'o2i.institute@gmail.com';
 
-// Xiaohongshu, Douyin and WeChat Channels profile links need an in-app ID, so those list the name to search for.
+// Xiaohongshu and WeChat Channels have no profile link yet, so those list the name to search for.
 const socials = [
   { icon: Instagram, name: ['Instagram', 'Instagram'], handle: '@o2i.institute', href: 'https://www.instagram.com/o2i.institute/' },
   { icon: Youtube, name: ['YouTube', 'YouTube'], handle: '@o2iinstitute', href: 'https://www.youtube.com/@o2iinstitute' },
   { icon: Search, name: ['Xiaohongshu (RED)', '小红书'], handle: 'o2i math' },
-  { icon: Search, name: ['Douyin', '抖音'], handle: 'o2i math' },
+  { icon: Video, name: ['Douyin', '抖音'], handle: 'o2i math', href: 'https://www.douyin.com/user/MS4wLjABAAAALdk18h6vnp0nxLRyGsFKCJC36yrU6bdMU3s7vZ6rxFuLmUESOWdznpcjU4v0S85V' },
   { icon: Search, name: ['WeChat Channels', '微信视频号'], handle: 'o2i教育' },
 ] as const;
 
