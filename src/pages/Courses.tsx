@@ -50,7 +50,7 @@ export default function Courses() {
   const selected = courses.find(c => c.id === requestedCourseId);
   const select = (course: Course) => setParams({ course: course.id });
   return <div className={`mx-auto min-h-screen max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
-    <div className="mb-8 text-center"><h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{t('Math Courses', '数学课程')}</h1><p className="mt-3 text-lg text-muted-foreground">{t('Free video lessons that follow the official syllabus, one unit at a time.', '免费视频课，按官方大纲一个单元一个单元学。')}</p></div>
+    <div className="mb-8 text-center"><h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{t('Courses', '课程')}</h1><p className="mt-3 text-lg text-muted-foreground">{t('Free video lessons that follow the official syllabus, one unit at a time.', '免费视频课，按官方大纲一个单元一个单元学。')}</p></div>
     <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
     {loading ? <p role="status" className="py-12 text-center text-muted-foreground">{t('Loading courses…', '课程加载中…')}</p> : error ? <div role="alert" className="space-y-3 py-12 text-center"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div> : <div className="mt-10 grid justify-center gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),24rem))]">{courses.map((course, i) => <CourseCard key={course.id} course={course} index={i} onSelect={select} />)}</div>}
     {!loading && !error && !courses.length && <div className="mx-auto flex max-w-xl flex-col items-center py-12 text-center">

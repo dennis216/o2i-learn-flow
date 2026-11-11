@@ -18,6 +18,7 @@ export const CONTEST_SUBJECTS = [
 ] as const;
 
 const SUBJECT_LABELS: Record<string, string> = {
+  'AP Calc': 'AP Calculus',
   'AP Stats': 'Stats',
   'Pre-Calculus 12': 'Precalc',
   SAT: 'SAT Math',

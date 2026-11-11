@@ -11,6 +11,16 @@ const TONES = [
   'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950',
 ];
 
+// Tile art in a 240×140 box: a wavy f with Riemann rectangles (integral) and a tangent line (derivative, flat at the minimum).
+const f = (t: number) => 0.3 + 0.45 * t + 0.18 * Math.sin(2 * Math.PI * t);
+const df = (t: number) => 0.45 + 0.36 * Math.PI * Math.cos(2 * Math.PI * t);
+const X = (t: number) => 12 + 220 * t;
+const Y = (t: number) => 128 - 100 * f(t);
+const CURVE = 'M' + Array.from({ length: 41 }, (_, i) => `${X(i / 40).toFixed(1)} ${Y(i / 40).toFixed(1)}`).join('L');
+const RECTS = [0.06, 0.16, 0.26, 0.36, 0.46].map(t => ({ x: X(t), y: Y(t + 0.05), w: X(0.1) - X(0), h: 128 - Y(t + 0.05) }));
+const T0 = 0.685, DX = 26, DY = (DX / 220) * 100 * df(T0);
+const TANGENT = { x1: X(T0) - DX, y1: Y(T0) + DY, x2: X(T0) + DX, y2: Y(T0) - DY };
+
 interface CourseCardProps {
   course: Course;
   index: number;
@@ -26,10 +36,16 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
     <article className="group relative rounded-2xl p-3 transition-colors hover:bg-muted/60">
       <div aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ${TONES[index % TONES.length]}`}>
         <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-10" />
-        <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" className="absolute -right-2 bottom-0 h-32 w-52 opacity-40 transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
-          <path d="M8 112C70 110 120 92 150 50S186 8 196 6" strokeWidth="3" strokeLinecap="round" />
+        <svg viewBox="0 0 240 140" fill="none" stroke="currentColor" className="absolute bottom-0 right-0 h-[88%] w-[64%] transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
+          <path d="M6 128H236" strokeWidth="1" strokeOpacity="0.4" />
+          {RECTS.map(r => <rect key={r.x} x={r.x} y={r.y} width={r.w} height={r.h} fill="currentColor" fillOpacity="0.16" strokeOpacity="0.4" strokeWidth="1" />)}
+          <path d={CURVE} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.8" />
+          <line {...TANGENT} strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+          <circle cx={X(T0)} cy={Y(T0)} r="4" fill="currentColor" stroke="none" />
+          <text x={X(0.18)} y="120" fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">∫ f(x) dx</text>
+          <text x={X(T0) - 24} y={Y(T0) + 18} fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">f′(x) = 0</text>
         </svg>
-        <span className="absolute left-5 top-4 text-sm font-semibold opacity-80">{course.subject}</span>
+        <span className="absolute left-5 top-4 text-sm font-semibold opacity-80">{course.subject === 'AP Calc' ? 'AP Calculus' : course.subject}</span>
         <span className="absolute bottom-3 left-5 text-6xl font-bold tracking-tight">{mark}</span>
       </div>
       <div className="px-2 pb-2 pt-4">
