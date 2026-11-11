@@ -1,98 +1,56 @@
-import { BookOpen, DollarSign, PlayCircle, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight } from 'lucide-react';
 import { Course } from './types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LEVEL_ZH: Record<string, string> = { beginner: '入门', intermediate: '中级', advanced: '高级' };
 
+// Same colours as the homepage feature tiles; cards cycle through them so neighbours differ.
+const TONES = [
+  'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white',
+  'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white',
+  'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950',
+];
+
 interface CourseCardProps {
   course: Course;
-  thumbnail?: string;
+  index: number;
   onSelect: (course: Course) => void;
 }
 
-const getLevelColor = (level: string) => {
-  switch (level) {
-    case 'beginner':
-      return 'bg-green-500/10 text-green-600 border-green-500/20';
-    case 'intermediate':
-      return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-    case 'advanced':
-      return 'bg-red-500/10 text-red-600 border-red-500/20';
-    default:
-      return 'bg-muted text-muted-foreground border-border';
-  }
-};
-
-export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
-  const { language, t } = useLanguage();
-  const imageUrl = thumbnail || course.image_url;
-  const videoCount = course.course_videos?.length || 0;
+export function CourseCard({ course, index, onSelect }: CourseCardProps) {
+  const { t } = useLanguage();
+  // "AP Calculus AB" -> "AB"; titles without a short code show the subject instead.
+  const mark = course.title.match(/\s([A-Z0-9]{2,3})$/)?.[1] ?? course.subject;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-      {/* Gradient Background Image */}
-      <div className="h-48 relative overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/80 via-primary to-accent/80 flex items-center justify-center">
-            <BookOpen className="h-16 w-16 text-primary-foreground/80" />
-          </div>
-        )}
-        {/* Gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        
-        {/* Badges positioned on image */}
-        <div className="absolute top-3 left-3 flex gap-2">
-          <Badge className={`${getLevelColor(course.level)} border backdrop-blur-sm`} variant="outline">
-            {language === 'zh' ? LEVEL_ZH[course.level] ?? course.level : course.level}
-          </Badge>
-        </div>
-        <div className="absolute top-3 right-3">
-          <Badge variant="secondary" className="bg-white/90 text-foreground backdrop-blur-sm">
-            {course.subject}
-          </Badge>
-        </div>
-        
-        {/* Video count on bottom of image */}
-        {videoCount > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-white text-sm">
-            <PlayCircle className="h-4 w-4" />
-            <span className="font-medium">{t(`${videoCount} video${videoCount > 1 ? 's' : ''}`, `${videoCount} 个视频`)}</span>
-          </div>
-        )}
+    <article className="group relative rounded-2xl p-3 transition-colors hover:bg-muted/60">
+      <div aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ${TONES[index % TONES.length]}`}>
+        <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-10" />
+        <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" className="absolute -right-2 bottom-0 h-32 w-52 opacity-40 transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
+          <path d="M8 112C70 110 120 92 150 50S186 8 196 6" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        <span className="absolute left-5 top-4 text-sm font-semibold opacity-80">{course.subject}</span>
+        <span className="absolute bottom-3 left-5 text-6xl font-bold tracking-tight">{mark}</span>
       </div>
-      
-      <CardHeader className="pb-2">
-        <CardTitle className="line-clamp-2 text-lg">{course.title}</CardTitle>
-        <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-          <div className="flex items-center gap-1">
-            <User className="h-4 w-4" />
-            <span className="truncate max-w-[120px]">
-              {course.public_profiles?.full_name || t('Instructor', '讲师')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 font-medium">
-            <DollarSign className="h-4 w-4" />
-            <span>{course.price === 0 ? t('Free', '免费') : `${course.price}`}</span>
-          </div>
+      <div className="px-2 pb-2 pt-4">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          <button
+            type="button"
+            onClick={() => onSelect(course)}
+            className="text-left after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+          >
+            {course.title}
+          </button>
+        </h2>
+        <p className="mt-2 line-clamp-2 text-muted-foreground">{course.description}</p>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <span className="font-medium text-muted-foreground">{course.price === 0 ? t('Free', '免费') : `$${course.price}`}</span>
+          <span className="flex items-center gap-1 font-semibold text-primary">
+            {t('Open course', '打开课程')}
+            <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1" />
+          </span>
         </div>
-        <Button className="w-full bg-primary hover:bg-primary/90" onClick={() => onSelect(course)}>
-          <BookOpen className="h-4 w-4 mr-2" />
-          {t('View Course', '查看课程')}
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 }
