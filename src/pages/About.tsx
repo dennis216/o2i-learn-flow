@@ -95,7 +95,7 @@ export default function About() {
             <div aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800 shadow-md"><Medal className="h-7 w-7" /></div>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-foreground">{t('Silver Medal, International AI Innovation Olympiad 2026', '2026 国际人工智能创新奥林匹克（IAI²O）银牌')}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t('The O2I team took silver in the AI for Business track (remote session) at the inaugural IAI²O Global Finals, September 2026.', 'O2I 团队在首届 IAI²O 全球总决赛 AI for Business 赛道（线上组）获得银牌，2026 年 9 月。')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('O2I itself was the competition project: it won silver in the AI for Business track (remote session) at the inaugural IAI²O Global Finals, September 2026.', 'O2I 平台本身就是参赛项目，在首届 IAI²O 全球总决赛 AI for Business 赛道（线上组）获得银牌，2026 年 9 月。')}</p>
             </div>
             <a href="https://iai2o-official.org/past-events/iai2o-2026/final-results" target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-primary hover:underline">
               {t('Official results', '查看官方结果')}<ExternalLink aria-hidden="true" className="h-4 w-4" />
