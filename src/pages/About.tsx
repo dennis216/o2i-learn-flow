@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, MessageSquare, Target } from 'lucide-react';
+import { ArrowRight, BookOpen, Instagram, Mail, MessageSquare, MessageSquareHeart, Search, Target, Youtube } from 'lucide-react';
+import Reveal from '@/components/Reveal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -28,6 +29,17 @@ const learningPaths = [
   },
 ] as const;
 
+const EMAIL = 'o2i.institute@gmail.com';
+
+// Xiaohongshu, Douyin and WeChat Channels profile links need an in-app ID, so those list the name to search for.
+const socials = [
+  { icon: Instagram, name: ['Instagram', 'Instagram'], handle: '@o2i.institute', href: 'https://www.instagram.com/o2i.institute/' },
+  { icon: Youtube, name: ['YouTube', 'YouTube'], handle: '@o2iinstitute', href: 'https://www.youtube.com/@o2iinstitute' },
+  { icon: Search, name: ['Xiaohongshu (RED)', '小红书'], handle: 'o2i math' },
+  { icon: Search, name: ['Douyin', '抖音'], handle: 'o2i math' },
+  { icon: Search, name: ['WeChat Channels', '微信视频号'], handle: 'o2i教育' },
+] as const;
+
 export default function About() {
   const { t } = useLanguage();
   return (
@@ -35,9 +47,9 @@ export default function About() {
       <section className="border-b bg-gradient-to-br from-primary/5 to-accent/5 px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl text-center">
           <p className="mb-4 text-sm font-semibold uppercase tracking-widest text-primary">{t('About Us', '关于我们')}</p>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{t('Math makes more sense together.', '一起学，数学更好懂。')}</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{t('One to Infinity, and beyond.', '从 1 到无穷，再往前一步。')}</h1>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-            {t('O2I Institute brings math lessons, focused practice, and peer support into one place. Our goal is to help students understand the reasoning behind an answer and build the confidence to try the next problem.', 'O2I Institute 把数学课程、针对性练习和同学互助放在一起。我们希望学生不只知道答案，还能弄懂背后的思路，有底气去做下一道题。')}
+            {t('O2I Institute bridges the gap from the basics to higher education. Based in Vancouver, we teach STEM with tutors from across the globe, and bring lessons, focused practice, and peer support into one place so students understand the reasoning behind an answer, not just the answer.', 'O2I Institute 帮学生从基础一路走到大学阶段的学习。我们在温哥华，和来自世界各地的老师一起教理工科，把课程、针对性练习和同学互助放在一起，让学生不只知道答案，还弄懂背后的思路。')}
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button size="lg" asChild><Link to="/courses">{t('Explore courses', '浏览课程')}<ArrowRight aria-hidden="true" /></Link></Button>
@@ -77,6 +89,44 @@ export default function About() {
           </p>
           <Button className="mt-6" variant="outline" asChild><Link to="/team">{t('Meet the people behind O2I', '认识 O2I 背后的人')}<ArrowRight aria-hidden="true" /></Link></Button>
         </div>
+      </section>
+      <section aria-labelledby="contact-heading" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+        <Reveal className="mx-auto mb-10 max-w-2xl text-center">
+          <h2 id="contact-heading" className="text-2xl font-bold tracking-tight sm:text-3xl">{t('Get in touch', '联系我们')}</h2>
+          <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{t('Questions about courses, ideas for the site, or something that is not working: write to us and a team member will reply.', '课程问题、对网站的建议，或者哪里用不了，都可以写信给我们，团队成员会回复。')}</p>
+        </Reveal>
+        <div className="grid gap-2 md:grid-cols-2 md:gap-6">
+          {[
+            { icon: Mail, title: ['Email us', '发邮件'], text: [EMAIL, EMAIL], href: `mailto:${EMAIL}` },
+            { icon: MessageSquareHeart, title: ['Send feedback', '提意见'], text: ['Tell us what helped, what confused you, or what you want next.', '哪里有用、哪里看不懂、还想要什么内容，都告诉我们。'], href: `mailto:${EMAIL}?subject=${encodeURIComponent('Website feedback')}` },
+          ].map(({ icon: Icon, title, text, href }) => (
+            <Reveal key={href}>
+              <div className="relative flex items-start gap-4 rounded-2xl p-6 transition-colors hover:bg-muted/60">
+                <div className="rounded-xl bg-primary/10 p-3 text-primary"><Icon className="h-6 w-6" aria-hidden="true" /></div>
+                <div className="min-w-0">
+                  <a href={href} className="text-lg font-semibold text-foreground after:absolute after:inset-0">{t(title[0], title[1])}</a>
+                  <p className="mt-1 break-words text-muted-foreground">{t(text[0], text[1])}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal className="mt-12">
+          <h3 className="mb-4 text-center text-lg font-semibold">{t('Follow O2I', '关注 O2I')}</h3>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {socials.map(({ icon: Icon, name, handle, ...rest }) => (
+              <li key={name[0]} className="relative flex items-center gap-3 rounded-2xl p-4 transition-colors hover:bg-muted/60">
+                <Icon className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                <div className="min-w-0">
+                  {'href' in rest
+                    ? <a href={rest.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground after:absolute after:inset-0">{t(name[0], name[1])}</a>
+                    : <p className="font-medium text-foreground">{t(name[0], name[1])}</p>}
+                  <p className="truncate text-sm text-muted-foreground">{'href' in rest ? handle : t(`Search “${handle}”`, `搜索“${handle}”`)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Reveal>
       </section>
     </main>
   );
