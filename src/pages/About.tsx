@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { ArrowRight, ExternalLink, Instagram, Mail, Medal, MessageSquareHeart, Youtube } from 'lucide-react';
 import { DouyinIcon, WechatChannelsIcon, XiaohongshuIcon } from '@/components/BrandIcons';
 import Reveal from '@/components/Reveal';
@@ -64,6 +65,12 @@ const Highlight = ({ children }: { children: string }) => (
 
 export default function About() {
   const { language, t } = useLanguage();
+  // mailto does nothing visible when no mail app is set up (common with web Gmail), so also copy the address.
+  const copyEmail = () => {
+    const copied = () => toast.success(t('Email address copied', '邮箱地址已复制'), { description: t(`If no mail app opened, paste ${EMAIL} into your email.`, `如果没有弹出邮件 App，把 ${EMAIL} 粘贴到你的邮箱里发就行。`) });
+    const shown = () => toast(t(`Our email: ${EMAIL}`, `我们的邮箱：${EMAIL}`), { description: t('If no mail app opened, send to this address from your email.', '如果没有弹出邮件 App，用你的邮箱发到这个地址就行。') });
+    if (navigator.clipboard) navigator.clipboard.writeText(EMAIL).then(copied, shown); else shown();
+  };
   return (
     <main className={`min-h-screen bg-background ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-accent/5 py-14 sm:py-20">
@@ -143,7 +150,7 @@ export default function About() {
                 <div className="group relative flex items-start gap-4 rounded-2xl p-5 transition-colors hover:bg-background/80">
                   <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br shadow-md ${tile}`}><Icon className="h-6 w-6" aria-hidden="true" /></div>
                   <div className="min-w-0">
-                    <a href={href} className="text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</a>
+                    <a href={href} onClick={copyEmail} className="text-lg font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(title[0], title[1])}</a>
                     <p className="mt-1 break-words text-muted-foreground">{t(text[0], text[1])}</p>
                   </div>
                 </div>
