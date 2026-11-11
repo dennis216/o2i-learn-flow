@@ -13,6 +13,10 @@
 - 合并 PR 时选 "Create a merge commit"（不要 squash）。合并后 `main` 和 `test-work` 应指向同一个提交：把 `test-work` 快进到 `main`。
 - 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-09`），方便回溯。备份分支只保留最近两个：新建第三个时，删掉日期最早的那个。`feature/calc-quest-world` 先保留，不要清理。
 
+## 界面风格
+
+- 新页面和界面改动按 [docs/DESIGN.md](docs/DESIGN.md) 做（颜色、字体、版式、像素风组件都在里面），样板是首页。
+
 ## 注意
 
 - 测试站和正式站共用同一个 Supabase 数据库。在测试站上的删除、发布、改数据都会直接影响学生；测试用测试账号。
