@@ -128,7 +128,7 @@ Course → Unit → Topic 大纲，支持自定义课节标题（保留规范 To
 ### P1：上线周计划内
 
 5. **Arena 转录题还有 306 道草稿。** 按每批 20 道的流程继续发布，每批回读核验。
-6. **Solution Requests**：楼层式答疑已完成，数据库 2026-11-11 已部署，前端已合进 `test-work`。剩下的上线顺序：测试站验收 → 合进 `main` → 再做一个迁移，关掉旧页面用的直接读表。详见 `docs/solution-requests/README_ZH.md`。
+6. **Solution Requests**：楼层式答疑已完成，数据库 2026-11-11 已部署，前端已通过 PR #22 合进 `main`。还剩一步：在正式库执行 `docs/solution-requests/close-direct-access/` 部署包，关掉旧页面用的直接读表。详见 `docs/solution-requests/README_ZH.md`。
 7. **课程小游戏窗口适配**（backlog P1）：近期没有提交，状态未知。
 8. **一节课合并多个 CB Topic、Super Admin 细化课程管理**（backlog P1）：还在设计阶段。
 
