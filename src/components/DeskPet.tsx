@@ -10,7 +10,7 @@ type Pos = { x: number; y: number };
 
 function DraggableOwl() {
   const drag = useRef<{ dx: number; dy: number } | null>(null);
-  const [scale] = useState(() => (window.innerWidth < 640 ? 2 : 3));
+  const [scale] = useState(() => (window.innerWidth < 640 ? 2 : 4));
   const width = OWL_COLS * scale;
   const height = OWL_ROWS * scale;
 

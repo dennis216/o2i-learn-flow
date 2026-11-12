@@ -23,7 +23,7 @@
 | 题库内容 | `█████░░░░░` 50% | 已发布约 145 道（原有 65 + Arena 转录 80）；Arena 转录还有 306 道草稿待发布 |
 | Limit Arena 游戏 | `████████░░` 80% | 已接正式题库并上线；发布后学生端验收待做 |
 | 课程系统（大纲/视频/游戏） | `███████░░░` 70% | 功能已上线；**Unit 4 登录限制的数据库部分未部署**；Unit 1–3 视频是否已全部录入发布未核实 |
-| 上线周其他事项 | `███░░░░░░░` 30% | About Us 已加；Contact、Solution Requests 闭环、付款页都还没做 |
+| 上线周其他事项 | `████░░░░░░` 40% | About Us 已加；Solution Requests 楼层式答疑的代码已完成（数据库 2026-11-11 已部署，前端已合进 `test-work` 待验收）；Contact、付款页还没做 |
 | 文档与工程卫生 | `██████░░░░` 60% | 记录详尽；`main` 与 `test-work` 分叉，迁移编号曾冲突 |
 
 ## 3. 近期大修改（11-01 至 11-06）
@@ -46,7 +46,7 @@
 ```text
 浏览器（React SPA，Cloudflare Pages 发布）
  ├─ 学生端：Courses / Practice / Quiz / Review / Arena / Playground / Solution Requests / Team / About / Profile
- └─ Admin：Courses / Question Bank / Playground / Team / Users（按模块权限显示）
+ └─ Admin：Courses / Question Bank / Answers / Playground / Team / Users（按模块权限显示）
         │  supabase-js（Auth、RPC、表读写、Storage）
         ▼
 Supabase
@@ -80,7 +80,7 @@ npm run dev -- --host 127.0.0.1 --port 8080
 | `/review` | 作答历史，可只看错题，显示来源（Practice / Arena） |
 | `/arena` | Limit Arena 游戏，必须登录；游戏本体在 `public/games/limit-arena.html`，通过 postMessage 由宿主页取题判分 |
 | `/playground` | GeoGebra 工具库 |
-| `/solution-requests` | 学生提交求解请求 |
+| `/solution-requests`、`/solution-requests/:id` | 答疑区：公开问答 / 我的问题；每个问题一页，楼层回复，管理员回复带官方标记。规则见 `docs/solution-requests/README_ZH.md` |
 | `/team`、`/about` | 团队、关于我们 |
 | `/ai-tutor` | 隐藏（`AI_TUTOR_ENABLED = false`），访问会跳到 `/courses` |
 | `/learn*`、`/practice/:videoId` | 旧入口，重定向 |
@@ -112,7 +112,8 @@ Course → Unit → Topic 大纲，支持自定义课节标题（保留规范 To
 | 题库 | `questions`、`question_versions`、`question_options`、`question_topics`、`question_course_videos`、`question_version_reviews`、`question_publication_events`、`misconceptions`、`option_misconceptions` |
 | 练习 | `question_practice_sessions / items / attempts / skills`、`arena_practice_issues` |
 | 旧 Arena | `arena_questions`、`arena_question_issues`（保留，不再出题） |
-| 其他 | `playground_links`、`team_members`、`solution_requests` |
+| 答疑 | `solution_requests`、`solution_request_replies / reports / quota`（读写都走 `sr_*` 函数） |
+| 其他 | `playground_links`、`team_members` |
 | 遗留 | `practice_problems`、AI 三表、Roadmap/Forum 各表、zombie 三表 |
 
 ## 10. 还缺什么 / 待修改
@@ -127,7 +128,7 @@ Course → Unit → Topic 大纲，支持自定义课节标题（保留规范 To
 ### P1：上线周计划内
 
 5. **Arena 转录题还有 306 道草稿。** 按每批 20 道的流程继续发布，每批回读核验。
-6. **Solution Requests 最小闭环**：学生提问 → 管理员答复 → 学生看到答复。11-01 之后这块没有改动。
+6. **Solution Requests**：楼层式答疑已完成，数据库 2026-11-11 已部署，前端已合进 `test-work`。剩下的上线顺序：测试站验收 → 合进 `main` → 再做一个迁移，关掉旧页面用的直接读表。详见 `docs/solution-requests/README_ZH.md`。
 7. **课程小游戏窗口适配**（backlog P1）：近期没有提交，状态未知。
 8. **一节课合并多个 CB Topic、Super Admin 细化课程管理**（backlog P1）：还在设计阶段。
 

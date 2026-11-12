@@ -94,6 +94,28 @@ node scripts/arena/legacy/snapshot.mjs verify /已有私有目录
 - 只有 Save drafts 才上传图片；禁止覆盖，下载核验后调用原草稿 RPC。图片失败不创建草稿；中断后重新加载 existing IDs，已保存身份阻止重复写入。
 - 96 项题库单测、类型检查、改动文件 lint、build 通过。一次性真实 Auth/REST/数据库/Chrome 共 39 项验收通过，新增原生 JSON 的预览取消零写入、配图只上传一次、双击只保存一个真实草稿、回读及重复阻断。生产 Storage 和真实入库尚未执行。
 
+## 2026-11-11 质量问题排查（暂停发布余下 286 道草稿）
+
+用户报告两项问题：正确答案大量为 A；部分题干写 “shown below” 等却没有图。本轮只做代码核对和只读审计工具，未改题、未发布、未撤回。
+
+**答案位置（代码已证实，影响全部 386 道）**
+- `prepare-reviewed.mjs` 固定 `correct_option_key:'A'`，选项保持旧表顺序（旧表设计 `options[0]` 即正确项），`is_correct:index===0`。
+- `save_question_bank_drafts` 按数组顺序写 `order_index`；Practice 的 `question_practice_snapshot_questions`（20261026 定义、20261028 改名，此后未再改）按 `order_index,id` 返回并显示 `option_key`。所以这批题在 Practice/课程练习里正确项一律显示为 A。
+- 正式 Arena 入口 `arena_practice_next_question` 每题随机保存 `option_order` 并按其判分，学生在 Arena 里看到的位置是随机的，不受影响。
+- 之前“与准备包一致”的验收检查的是存储一致，不涉及展示位置分布。
+
+**缺图（代码路径已证实，具体题数待只读审计）**
+- 原游戏 `limit-arena.html` 只在 `graph` 字段存在时画 canvas，表格只来自 `table_html`；`convert.py` 遇到 `<img>`、非公式 SVG 一律排除。因此入库题如果源 `graph` 为空，**原游戏本来也不显示任何图**——这类题没有原图可截。
+- `prepare-reviewed.mjs` 仅凭 `graph_svg` 是否存在设置 `requires_figure`，没有检查题干语义，所以这类题通过了全部门槛。
+- 源有 `graph` 的题（21 道源题）现用 `convert.py` 按同一份绘图数据重画；如需“原游戏画面”，可在浏览器里用原游戏自带的 canvas 绘图函数渲染同一 `graph` 数据后截图，不需要猜图。
+
+**只读审计**：`node scripts/arena/legacy/quality-audit.mjs <仓库外私有目录>`。只读事务读取每题当前（已发布）或最新（草稿）版本，按 Practice 实际顺序统计正确项位置，标出题干提到图/表却无图片或表格、`requires_figure` 不一致、图片下载失败，并记录旧源是否有 `graph`。逐题清单只写入私有目录（0600、不覆盖），终端只输出按“legacy/其他 × 状态”汇总的计数。
+
+**修复方案（用户已确认思路）**
+1. 答案位置：Practice 发题时服务器随机打乱并冻结选项顺序，迁移 `20261111010000_question_practice_option_order`，发布包与步骤见 [option-order](../../question-bank/production/option-order/README_ZH.md)。不改题目和版本，旧会话不变。本地一次性数据库验收通过；生产部署待用户授权执行。
+2. 缺图：源题本来没有图的题不补图、不猜图。按审计清单在后台 Unpublish 已发布的这类题（可恢复，答题记录保留），草稿中的这类题不发布。
+3. 以后发布余下草稿前先跑审计，凡 `figure_language_without_image`、`table_language_without_table`、`requires_figure_without_image`、图片加载失败的题都不发布。
+
 ## T7/T8：全部内容准备与只读对账
 
 ### 2026-11-06：累计 100 道后暂停

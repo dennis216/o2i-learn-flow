@@ -20,6 +20,7 @@ const Auth = lazy(() => import('@/pages/Auth'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const Courses = lazy(() => import('@/pages/Courses'));
 const SolutionRequests = lazy(() => import('@/pages/SolutionRequests'));
+const SolutionRequestThread = lazy(() => import('@/pages/SolutionRequestThread'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const LegacyVideoRedirect = lazy(() => import('@/components/courses/LegacyVideoRedirect'));
@@ -70,6 +71,7 @@ export default function App() {
                   <Route path="/ai-tutor" element={AI_TUTOR_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
                   <Route path="/playground" element={<Playground />} />
                   <Route path="/solution-requests" element={<SolutionRequests />} />
+                  <Route path="/solution-requests/:id" element={<SolutionRequestThread />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/team" element={<Team />} />

@@ -1,98 +1,81 @@
-import { BookOpen, DollarSign, PlayCircle, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowRight } from 'lucide-react';
 import { Course } from './types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LEVEL_ZH: Record<string, string> = { beginner: '入门', intermediate: '中级', advanced: '高级' };
 
+// Same colours as the homepage feature tiles; cards cycle through them so neighbours differ.
+const TONES = [
+  'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white',
+  'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white',
+  'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950',
+];
+
+// Tile art in a 240×140 box: a wavy f with Riemann rectangles (integral) and a tangent line (derivative, flat at the minimum).
+const f = (t: number) => 0.3 + 0.45 * t + 0.18 * Math.sin(2 * Math.PI * t);
+const df = (t: number) => 0.45 + 0.36 * Math.PI * Math.cos(2 * Math.PI * t);
+const X = (t: number) => 12 + 220 * t;
+const Y = (t: number) => 128 - 100 * f(t);
+const CURVE = 'M' + Array.from({ length: 41 }, (_, i) => `${X(i / 40).toFixed(1)} ${Y(i / 40).toFixed(1)}`).join('L');
+const RECTS = [0.06, 0.16, 0.26, 0.36, 0.46].map(t => ({ x: X(t), y: Y(t + 0.05), w: X(0.1) - X(0), h: 128 - Y(t + 0.05) }));
+const T0 = 0.685, DX = 26, DY = (DX / 220) * 100 * df(T0);
+const TANGENT = { x1: X(T0) - DX, y1: Y(T0) + DY, x2: X(T0) + DX, y2: Y(T0) - DY };
+
+// BC art (polar, BC only): the three-petal rose r = cos 3θ, centred at (140, 70).
+const ROSE = 'M' + Array.from({ length: 181 }, (_, i) => { const th = (Math.PI * i) / 180, r = 62 * Math.cos(3 * th); return `${(140 + r * Math.cos(th)).toFixed(1)} ${(70 - r * Math.sin(th)).toFixed(1)}`; }).join('L') + 'Z';
+
 interface CourseCardProps {
   course: Course;
-  thumbnail?: string;
+  index: number;
   onSelect: (course: Course) => void;
 }
 
-const getLevelColor = (level: string) => {
-  switch (level) {
-    case 'beginner':
-      return 'bg-green-500/10 text-green-600 border-green-500/20';
-    case 'intermediate':
-      return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-    case 'advanced':
-      return 'bg-red-500/10 text-red-600 border-red-500/20';
-    default:
-      return 'bg-muted text-muted-foreground border-border';
-  }
-};
-
-export function CourseCard({ course, thumbnail, onSelect }: CourseCardProps) {
-  const { language, t } = useLanguage();
-  const imageUrl = thumbnail || course.image_url;
-  const videoCount = course.course_videos?.length || 0;
+export function CourseCard({ course, index, onSelect }: CourseCardProps) {
+  const { t } = useLanguage();
+  // "AP Calculus AB" -> "AB"; titles without a short code show the subject instead.
+  const mark = course.title.match(/\s([A-Z0-9]{2,3})$/)?.[1] ?? course.subject;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-      {/* Gradient Background Image */}
-      <div className="h-48 relative overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={course.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/80 via-primary to-accent/80 flex items-center justify-center">
-            <BookOpen className="h-16 w-16 text-primary-foreground/80" />
-          </div>
-        )}
-        {/* Gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        
-        {/* Badges positioned on image */}
-        <div className="absolute top-3 left-3 flex gap-2">
-          <Badge className={`${getLevelColor(course.level)} border backdrop-blur-sm`} variant="outline">
-            {language === 'zh' ? LEVEL_ZH[course.level] ?? course.level : course.level}
-          </Badge>
-        </div>
-        <div className="absolute top-3 right-3">
-          <Badge variant="secondary" className="bg-white/90 text-foreground backdrop-blur-sm">
-            {course.subject}
-          </Badge>
-        </div>
-        
-        {/* Video count on bottom of image */}
-        {videoCount > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-white text-sm">
-            <PlayCircle className="h-4 w-4" />
-            <span className="font-medium">{t(`${videoCount} video${videoCount > 1 ? 's' : ''}`, `${videoCount} 个视频`)}</span>
-          </div>
-        )}
+    <article className="group relative rounded-2xl p-3 transition-colors hover:bg-muted/60">
+      <div aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ${TONES[index % TONES.length]}`}>
+        <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-10" />
+        <svg viewBox="0 0 240 140" fill="none" stroke="currentColor" className="absolute bottom-0 right-0 h-[88%] w-[64%] transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
+          {mark === 'BC' ? <>
+            <path d="M60 70H230M140 8V132" strokeWidth="1" strokeOpacity="0.4" />
+            <path d={ROSE} fill="currentColor" fillOpacity="0.16" strokeWidth="2.5" strokeLinejoin="round" />
+            <text x="164" y="128" fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">r = cos 3θ</text>
+          </> : <>
+            <path d="M6 128H236" strokeWidth="1" strokeOpacity="0.4" />
+            {RECTS.map(r => <rect key={r.x} x={r.x} y={r.y} width={r.w} height={r.h} fill="currentColor" fillOpacity="0.16" strokeOpacity="0.4" strokeWidth="1" />)}
+            <path d={CURVE} strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.8" />
+            <line {...TANGENT} strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+            <circle cx={X(T0)} cy={Y(T0)} r="4" fill="currentColor" stroke="none" />
+            <text x={X(0.18)} y="120" fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">∫ f(x) dx</text>
+            <text x={X(T0) - 24} y={Y(T0) + 18} fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">f′(x) = 0</text>
+          </>}
+        </svg>
+        <span className="absolute left-5 top-4 text-sm font-semibold opacity-80">{course.subject === 'AP Calc' ? 'AP Calculus' : course.subject}</span>
+        <span className="absolute bottom-3 left-5 text-6xl font-bold tracking-tight">{mark}</span>
       </div>
-      
-      <CardHeader className="pb-2">
-        <CardTitle className="line-clamp-2 text-lg">{course.title}</CardTitle>
-        <CardDescription className="line-clamp-2">{course.description}</CardDescription>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-          <div className="flex items-center gap-1">
-            <User className="h-4 w-4" />
-            <span className="truncate max-w-[120px]">
-              {course.public_profiles?.full_name || t('Instructor', '讲师')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 font-medium">
-            <DollarSign className="h-4 w-4" />
-            <span>{course.price === 0 ? t('Free', '免费') : `${course.price}`}</span>
-          </div>
+      <div className="px-2 pb-2 pt-4">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          <button
+            type="button"
+            onClick={() => onSelect(course)}
+            className="text-left after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+          >
+            {course.title}
+          </button>
+        </h2>
+        <p className="mt-2 line-clamp-2 text-muted-foreground">{course.description}</p>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <span className="font-medium text-muted-foreground">{course.price === 0 ? t('Free', '免费') : `$${course.price}`}</span>
+          <span className="flex items-center gap-1 font-semibold text-primary">
+            {t('Open course', '打开课程')}
+            <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1" />
+          </span>
         </div>
-        <Button className="w-full bg-primary hover:bg-primary/90" onClick={() => onSelect(course)}>
-          <BookOpen className="h-4 w-4 mr-2" />
-          {t('View Course', '查看课程')}
-        </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 }

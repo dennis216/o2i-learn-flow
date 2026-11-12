@@ -37,7 +37,7 @@ export default function Navbar() {
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
       <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="mr-2 h-4 w-4" />{t('Solution Requests', '答疑')}</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
-      <Button variant="ghost" asChild className={mobile ? 'w-full justify-start' : ''}><Link to="/about" onClick={closeMobileMenu}><Info className="mr-2 h-4 w-4" />{t('About Us', '关于我们')}</Link></Button>
+      <Link to="/about" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Info className="mr-2 h-4 w-4" />{t('About Us', '关于我们')}</Button></Link>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>{t('Retry permissions', '重新加载权限')}</Button>}
     </>
@@ -69,14 +69,15 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center gap-4 min-[1400px]:flex">
-            <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0"><NavLinks /></div>
+          {/* iPad and up: one row; the links scroll sideways when they don't fit (right edge fades as a hint). */}
+          <div className="hidden min-w-0 flex-1 items-center gap-4 min-[740px]:flex">
+            <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[1399px]:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
+              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0 max-[1399px]:pr-8"><NavLinks /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1"><LanguageToggle /><AuthButtons /></div>
           </div>
 
-          <div className="flex items-center gap-1 min-[1400px]:hidden">
+          <div className="flex items-center gap-1 min-[740px]:hidden">
             <LanguageToggle />
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-6 w-6" /><span className="sr-only">{t('Open menu', '打开菜单')}</span></Button></SheetTrigger>
