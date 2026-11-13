@@ -29,9 +29,10 @@ export default function SignInPrompt({ icon: Icon, tile, title, description, ret
       </div>
       <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h2>
       <p className="mt-3 text-lg text-muted-foreground">{description}</p>
-      <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-        <Button size="lg" asChild><Link to={`/auth?${query}`}>{t('Sign in', '登录')}</Link></Button>
-        <Button size="lg" variant="outline" asChild><Link to={`/auth?tab=signup&${query}`}>{t('Create account', '注册账号')}</Link></Button>
+      {/* one main button; creating an account is the quieter second choice */}
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+        <Button size="lg" asChild className="h-12 px-8 text-base font-semibold"><Link to={`/auth?${query}`}>{t('Sign in', '登录')}</Link></Button>
+        <Link to={`/auth?tab=signup&${query}`} className="rounded-sm py-2 font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('Create account', '注册账号')}</Link>
       </div>
     </div>
   );
