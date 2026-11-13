@@ -3,10 +3,18 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
-import { Book, Bot, FlaskConical, Gamepad2, Info, Languages, LogOut, Menu, MessageCircleQuestion, Shield, Target, User, Users } from 'lucide-react';
+import { Book, Bot, ChevronDown, FlaskConical, Gamepad2, Languages, LogOut, Menu, MessageCircleQuestion, Shield, Target, User, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+// Quick Practice and Arena share one menu entry so the header stays short.
+const PRACTICE_LINKS = [
+  { to: '/practice', icon: Target, label: ['Quick Practice', '快速练习'] },
+  { to: '/arena', icon: Gamepad2, label: ['Arena', '竞技场'] },
+] as const;
 
 export default function Navbar() {
   const { user, signOut, isAdmin, accessError, accessLoading, retryAdminAccess } = useAuth();
@@ -28,16 +36,39 @@ export default function Navbar() {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  // Desktop: a dropdown. Phone menu: a section that folds open in place.
+  const PracticeMenu = ({ mobile = false }: { mobile?: boolean }) => mobile ? (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" className="group w-full justify-start"><Target className="mr-2 h-4 w-4" />{t('Practice', '练习')}<ChevronDown aria-hidden="true" className="ml-auto h-4 w-4 transition-transform group-data-[state=open]:rotate-180" /></Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1 pl-6 pt-1">
+        {PRACTICE_LINKS.map(({ to, icon: Icon, label }) => (
+          <Link key={to} to={to} onClick={closeMobileMenu}><Button variant="ghost" className="w-full justify-start"><Icon className="mr-2 h-4 w-4" />{t(label[0], label[1])}</Button></Link>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  ) : (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="group"><Target className="mr-2 h-4 w-4" />{t('Practice', '练习')}<ChevronDown aria-hidden="true" className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" /></Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[11rem]">
+        {PRACTICE_LINKS.map(({ to, icon: Icon, label }) => (
+          <DropdownMenuItem key={to} asChild className="cursor-pointer"><Link to={to}><Icon className="mr-2 h-4 w-4" />{t(label[0], label[1])}</Link></DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
       <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Book className="mr-2 h-4 w-4" />{t('Courses', '课程')}</Button></Link>
-      <Link to="/practice" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Target className="mr-2 h-4 w-4" />{t('Practice', '练习')}</Button></Link>
+      <PracticeMenu mobile={mobile} />
       {AI_TUTOR_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
-      <Link to="/arena" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Gamepad2 className="mr-2 h-4 w-4" />{t('Arena', '竞技场')}</Button></Link>
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
       <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="mr-2 h-4 w-4" />{t('Solution Requests', '答疑')}</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
-      <Link to="/about" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Info className="mr-2 h-4 w-4" />{t('About Us', '关于我们')}</Button></Link>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>{t('Retry permissions', '重新加载权限')}</Button>}
     </>

@@ -6,7 +6,6 @@ const links = [
   { to: '/practice', label: ['Practice', '练习'] },
   { to: '/solution-requests', label: ['Solution Requests', '答疑'] },
   { to: '/team', label: ['Team', '团队'] },
-  { to: '/about', label: ['About Us', '关于我们'] },
 ] as const;
 
 export default function Footer() {
