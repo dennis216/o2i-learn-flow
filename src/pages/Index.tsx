@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Book, MessageCircleQuestion, Target } from 'lucide-react';
+import { Gamepad2, TrendingUp, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -10,32 +10,35 @@ import AwardsSection from '@/components/home/AwardsSection';
 import TeamLeadersSection from '@/components/home/TeamLeadersSection';
 import ContactSection from '@/components/home/ContactSection';
 
-// Courses, practice, questions: the order a student uses them in. Each panel is tinted with its own colour and is one big link.
-const features = [
+// What sets O2I apart, each with the concrete thing behind it and where to try it.
+const traits = [
   {
-    icon: Book,
-    tile: 'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white',
-    panel: 'bg-[hsl(var(--education-blue)/0.07)] hover:bg-[hsl(var(--education-blue)/0.13)]',
-    title: ['Courses', '课程'],
-    description: ['Video lessons by unit and topic.', '按单元和知识点整理的视频课。'],
-    link: '/courses',
-  },
-  {
-    icon: Target,
+    icon: TrendingUp,
     tile: 'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white',
     panel: 'bg-[hsl(var(--education-teal)/0.08)] hover:bg-[hsl(var(--education-teal)/0.15)]',
-    title: ['Quick Practice', '快速练习'],
-    description: ['Graded right away, saved for review.', '做完马上判分，记录留着复习。'],
+    title: ['Adaptive', '自适应'],
+    description: ['Miss a question and the next one is easier. Three right in a row and it steps up.', '答错了，下一题换简单的；连对三题，难度往上升。'],
+    action: ['Start practicing', '去练习'],
     link: '/practice',
   },
   {
-    icon: MessageCircleQuestion,
+    icon: UserRound,
     // dark icon on amber: white on yellow would fail contrast
     tile: 'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950',
     panel: 'bg-[hsl(var(--education-orange)/0.14)] hover:bg-[hsl(var(--education-orange)/0.24)]',
-    title: ['Solution Requests', '答疑'],
-    description: ['Send a photo of a problem, get the steps back.', '拍照上传题目，老师给你分步解答。'],
+    title: ['Personal', '个人化'],
+    description: ['See which topics still need practice, and send your own problems to a tutor.', '哪些知识点还要多练，一眼看到；自己的题不会，拍照问老师。'],
+    action: ['Ask a tutor', '去提问'],
     link: '/solution-requests',
+  },
+  {
+    icon: Gamepad2,
+    tile: 'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white',
+    panel: 'bg-[hsl(var(--education-blue)/0.07)] hover:bg-[hsl(var(--education-blue)/0.13)]',
+    title: ['Learn by playing', '玩中学'],
+    description: ['Lessons are a pixel adventure with Dr. Owler, and Limit Arena turns limits into a game.', '视频课是欧鸮博士的像素冒险，极限竞技场把极限题变成游戏。'],
+    action: ['Play Limit Arena', '进入极限竞技场'],
+    link: '/arena',
   },
 ] as const;
 
@@ -56,7 +59,7 @@ export default function Index() {
                 {t('Understand the math, not just the answer.', '弄懂思路，而不只是答案。')}
               </h1>
               <p className="mt-5 max-w-xl text-lg text-primary-foreground/80 sm:text-xl">
-                {t('Lessons, practice and tutor help for AP, SAT and AMC math.', 'AP、SAT、AMC 数学的课程、练习和答疑。')}
+                {t('Adaptive practice, personal help and learn-by-playing lessons for AP, SAT and AMC math.', 'AP、SAT、AMC 数学：自适应练习、个人化辅导、玩中学。')}
               </p>
             </Reveal>
             <Reveal delay={120} className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -82,26 +85,26 @@ export default function Index() {
         </div>
       </section>
 
-      <AwardsSection />
-
-      <section aria-labelledby="features-heading" className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 sm:pb-20 lg:px-8">
-        <Reveal><h2 id="features-heading" className="mb-8 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('Learn it, practice it, ask about it', '学、练、问，一站搞定')}</h2></Reveal>
+      <section aria-labelledby="traits-heading" className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 sm:pt-20 lg:px-8">
+        <Reveal><h2 id="traits-heading" className="mb-8 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('How learning works here', '在 O2I 怎么学')}</h2></Reveal>
         <div className="grid gap-4 md:grid-cols-3">
-          {features.map((feature, i) => (
-            <Reveal key={feature.link} delay={i * 100} className="h-full">
-              <Link to={feature.link} className={`group flex h-full items-center gap-4 rounded-2xl p-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:flex-col md:items-start md:p-6 ${feature.panel}`}>
-                <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br shadow-md transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none ${feature.tile}`}>
-                  <feature.icon aria-hidden="true" strokeWidth={2.25} className="h-7 w-7" />
+          {traits.map((trait, i) => (
+            <Reveal key={trait.link} delay={i * 100} className="h-full">
+              <div className={`group relative flex h-full flex-col rounded-2xl p-6 transition-colors ${trait.panel}`}>
+                <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br shadow-md transition-transform duration-200 group-hover:-translate-y-0.5 motion-reduce:transform-none ${trait.tile}`}>
+                  <trait.icon aria-hidden="true" strokeWidth={2.25} className="h-7 w-7" />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-xl font-semibold text-foreground">{t(feature.title[0], feature.title[1])}</h3>
-                  <p className="mt-1 text-muted-foreground">{t(feature.description[0], feature.description[1])}</p>
-                </div>
-              </Link>
+                <h3 className="mt-5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t(trait.title[0], trait.title[1])}</h3>
+                <p className="mt-2 text-lg text-muted-foreground">{t(trait.description[0], trait.description[1])}</p>
+                {/* mt-auto lines the three links up; the whole panel is the link */}
+                <p className="mt-auto pt-5"><Link to={trait.link} className="rounded-sm font-semibold text-primary underline decoration-primary/30 underline-offset-4 after:absolute after:inset-0 after:rounded-2xl group-hover:decoration-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring">{t(trait.action[0], trait.action[1])}</Link></p>
+              </div>
             </Reveal>
           ))}
         </div>
       </section>
+
+      <AwardsSection />
 
       <CalcQuestSection />
 

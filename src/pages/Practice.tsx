@@ -105,9 +105,9 @@ export default function Practice() {
   const { language, t } = useLanguage();
   if (!loading && !user) return <div className="min-h-[70vh]"><SignInPrompt icon={Target} tile="teal" returnTo="/practice"
     title={t('Quick Practice', '快速练习')}
-    description={t('Sign in to practice. Your answers are graded right away and saved for review.', '登录后就能做题，做完马上判分，记录留着复习。')} /></div>;
+    description={t('Questions get easier or harder as you answer, and your results are saved for review. Sign in to start.', '题目难度会跟着你的作答调整，记录留着复习。登录后就能开始。')} /></div>;
   return <div className={`mx-auto min-h-[70vh] max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
-    <PageHeader icon={Target} tone="teal" title={t('Quick Practice', '快速练习')} description={t('Graded right away and saved to your account.', '做完马上判分，记录保存在你的账号里。')} />
+    <PageHeader icon={Target} tone="teal" title={t('Quick Practice', '快速练习')} description={t('Questions get easier or harder as you answer, graded right away.', '题目难度跟着你的作答调整，做完马上判分。')} />
     {loading || !user ? <p role="status">{t('Checking your account…', '正在确认登录状态…')}</p> : <AccountPractice key={user.id} />}
   </div>;
 }
