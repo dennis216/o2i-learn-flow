@@ -4,16 +4,10 @@ import Reveal from '@/components/Reveal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { loadTeamMembers, type TeamMember } from '@/lib/teamDepartments';
+import { loadTeamMembers, teamLabel, type TeamMember } from '@/lib/teamDepartments';
 
 // Homepage shows leaders only; everyone else stays on /team.
 const LEADER_ROLES = ['Founder', 'Co-founder', 'Team Leader'] as const;
-const ROLE_ZH: Record<string, string> = { Founder: '创始人', 'Co-founder': '联合创始人', 'Team Leader': '组长' };
-const DEPARTMENT_EN: Record<string, string> = { 'Web Development & Management': 'Website Group' };
-const DEPARTMENT_ZH: Record<string, string> = {
-  'Publicity & Marketing': '宣传与推广', 'Web Development & Management': '网站组', 'Curriculum Content & Media Production': '课程内容与视频制作',
-  'Math Group': '数学组', 'Chemistry Group': '化学组', 'Physics Group': '物理组', 'Biology Group': '生物组',
-};
 const rank = (member: TeamMember) => LEADER_ROLES.findIndex(role => member.roles.includes(role));
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(word => [...word][0]).join('').toUpperCase();
 
@@ -57,11 +51,11 @@ export default function TeamLeadersSection() {
                     {LEADER_ROLES.filter(role => member.roles.includes(role)).map(role => (
                       <span key={role} className="inline-flex items-center gap-1 rounded-full bg-accent/25 px-2 py-0.5 text-xs font-semibold text-foreground">
                         {role === 'Team Leader' ? <Shield aria-hidden="true" className="h-3 w-3" /> : <Crown aria-hidden="true" className="h-3 w-3" />}
-                        {language === 'zh' ? ROLE_ZH[role] : role}
+                        {teamLabel(role, language)}
                       </span>
                     ))}
                   </p>
-                  {member.departments.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{member.departments.map(d => (language === 'zh' ? DEPARTMENT_ZH[d] : DEPARTMENT_EN[d]) || d).join(sep)}</p>}
+                  {member.departments.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{member.departments.map(d => teamLabel(d, language)).join(sep)}</p>}
                 </div>
               </li>
             ))}
