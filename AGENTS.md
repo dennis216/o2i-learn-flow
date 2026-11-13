@@ -24,18 +24,20 @@
 reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR──▶  main（正式站）  ──▶  backup-YYYY-MM-DD
 ```
 
-- 每个人只在**自己的分支**上改。每天开工前先把 `test-work` 合进自己的分支：`git checkout <自己的分支> && git pull && git merge origin/test-work`。
+- 每个人只在**自己的分支**上改。每天开工前先把 `test-work` 合进自己的分支：`git checkout <自己的分支> && git pull && git merge origin/test-work`，再 `git push`。
+- 让 AI 干活时，告诉它"在 `<自己的分支>` 上改"。AI 自己开的临时分支（如 `claude/…`、worktree 分支）先合回自己的分支，不要直接合进 `test-work`；合完删掉临时分支。
 - 自己分支推上去后，Cloudflare 会生成个人预览站：`https://<分支名>.o2i-website.pages.dev`，先在这里看效果。
-- 做完一件事（最多一两天）就开 PR 合进 `test-work`，别攒很多再合，攒得越久冲突越多。别把做到一半、跑不起来的东西合进 `test-work`。
+- 做完一件事（最多一两天）就开 PR 合进 `test-work`（base 选 `test-work`，不是 `main`），别攒很多再合，攒得越久冲突越多。别把做到一半、跑不起来的东西合进 `test-work`。
+- 合进 `test-work` 的 PR 可以自己合：在个人预览站上看过、能正常运行就行。动到别人负责的板块、或者有数据库改动的，请对方或 Reeva 看一眼再合。合完 PR 不删个人分支，继续在上面做下一件事。
 - `test-work` 的测试站：https://test-work.o2i-website.pages.dev 。大家都合进来以后在这里一起验收。
-- 定期统一上线：开 PR 把 `test-work` 合进 `main`，`main` 更新后约 1 分钟正式站 https://www.o2iinstitute.org 自动上线。
+- 统一上线由 **Reeva** 负责：在测试站验收后，开 PR 把 `test-work` 合进 `main`，`main` 更新后约 1 分钟正式站 https://www.o2iinstitute.org 自动上线。上线前在群里说一声，没合进 `test-work` 的东西这次就不上。
 - 合并 PR 都选 "Create a merge commit"（不要 squash）。合进 `main` 后把 `test-work` 快进到 `main`，让两者指向同一个提交。
 - 不要直接推送到 `main` 或 `test-work`，都走 PR。如果有人直接改了 `main`，记得同步回 `test-work`。
 - 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-09`）。备份分支只保留最近两个：新建第三个时，删掉日期最早的那个。`feature/calc-quest-world` 先保留，不要清理。
 
 ## 数据库
 
-- **只有 Reeva 写生产库**（执行迁移、部署包、改 Supabase 设置）。其他人和他们的 AI 只写迁移文件和部署包，交给 Reeva 执行，不要自己连生产库写入。
+- **只有 Reeva 改生产库的结构和设置**（执行迁移、部署包、改 Supabase 后台设置）。在网站后台正常录入、发布课程和题目不算，大家照常做，但记住学生会马上看到。其他人和他们的 AI 只写迁移文件和部署包，交给 Reeva 执行，不要自己连生产库写入。
 - 新迁移开工前先在 Issue 里占好版本号（`supabase/migrations/` 的文件名时间戳），避免两个人用同一个号。
 - 部署沿用"只读预检 → 单事务部署 → 只读验收"，部署记录（时间、执行人、验收结果）写进对应的 `docs/` 目录。
 - 依赖新数据库函数的前端，要等数据库部署完再合进 `test-work`。
