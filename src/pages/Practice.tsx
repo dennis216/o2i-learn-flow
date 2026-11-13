@@ -7,8 +7,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { continuousPracticePath, endContinuousPractice, loadOpenContinuousPractice, loadPracticeHome, type OpenContinuousPractice, type PracticeTopic, type RecentPracticeAnswer } from '@/lib/studentPractice';
-import { practiceTopicCards } from '@/lib/practiceTopics';
+import { practiceTopicCards, practiceTopicGroups } from '@/lib/practiceTopics';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import SignInPrompt from '@/components/SignInPrompt';
+
+function TopicCards({ topics }: { topics: PracticeTopic[] }) {
+  const { t } = useLanguage();
+  return <div className="grid gap-4 md:grid-cols-2">{topics.map(topic =>
+    <Link className="min-w-0" key={topic.id} to={continuousPracticePath({ topicId: topic.id })}><Card className="h-full hover:border-primary"><CardHeader><BookOpen className="h-5 w-5 text-primary" /><CardTitle className="break-words text-lg">{topic.code} · {topic.title}</CardTitle></CardHeader><CardContent>{t(`${topic.question_count} published ${topic.question_count === 1 ? 'question' : 'questions'}`, `${topic.question_count} 道题`)}</CardContent></Card></Link>
+  )}</div>;
+}
 
 function AccountPractice() {
   const [topics, setTopics] = useState<PracticeTopic[]>([]);
@@ -59,9 +67,22 @@ function AccountPractice() {
           <Button variant={unit === null ? 'default' : 'outline'} aria-pressed={unit === null} onClick={() => setUnit(null)}>{t('All', '全部')}</Button>
           {units.map(value => <Button key={value} variant={unit === value ? 'default' : 'outline'} aria-pressed={unit === value} onClick={() => setUnit(value)}>Unit {value}</Button>)}
         </div>
-        <div className="grid gap-4 md:grid-cols-2">{cards.map(topic =>
-        <Link className="min-w-0" key={topic.id} to={continuousPracticePath({ topicId: topic.id })}><Card className="h-full hover:border-primary"><CardHeader><BookOpen className="h-5 w-5 text-primary" /><CardTitle className="break-words text-lg">{topic.code} · {topic.title}</CardTitle></CardHeader><CardContent>{t(`${topic.question_count} published ${topic.question_count === 1 ? 'question' : 'questions'}`, `${topic.question_count} 道题`)}</CardContent></Card></Link>
-      )}</div></section>
+        {unit === null ? (
+          // All: one foldable row per Unit; opening a Unit shows the same cards as its own filter.
+          <Accordion type="multiple" className="overflow-hidden rounded-2xl border">
+            {practiceTopicGroups(topics).map(group => {
+              const questions = group.topics.reduce((sum, topic) => sum + topic.question_count, 0);
+              return <AccordionItem key={group.unit ?? 'other'} value={String(group.unit ?? 'other')} className="last:border-b-0">
+                <AccordionTrigger className="px-5 text-left text-lg font-semibold hover:no-underline hover:bg-muted/60">
+                  <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">{group.unit === null ? t('Other topics', '其他 Topic') : `Unit ${group.unit}`}
+                    <span className="text-sm font-normal text-muted-foreground">{t(`${group.topics.length} ${group.topics.length === 1 ? 'Topic' : 'Topics'} · ${questions} ${questions === 1 ? 'question' : 'questions'}`, `${group.topics.length} 个 Topic · ${questions} 道题`)}</span></span>
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pt-2"><TopicCards topics={group.topics} /></AccordionContent>
+              </AccordionItem>;
+            })}
+          </Accordion>
+        ) : <TopicCards topics={cards} />}
+      </section>
       <section><h2 className="mb-5 flex items-center gap-2 text-xl font-semibold"><History className="h-5 w-5" />{t('Recent account answers', '最近答题')}</h2><Card><CardContent className="space-y-3 p-5">{history.length ? history.map(answer =>
         <Link key={answer.id} to={`/quiz?session=${answer.session_id}&question=${answer.question_id}`} className="block rounded border p-3"><p className="text-sm font-medium">{answer.topic_code} · {answer.topic_title}</p><p className="text-xs text-muted-foreground">{answer.source === 'arena' ? t('Arena', '竞技场') : t('Practice', '练习')}</p><p className={answer.is_correct ? 'text-green-700' : 'text-destructive'}>{answer.is_correct ? t('Correct', '正确') : t('Incorrect', '错误')} · {t('Saved', '已保存')}</p><p className="text-xs text-muted-foreground">{new Date(answer.submitted_at).toLocaleString()}</p></Link>
       ) : <p>{t('Your saved answers will appear here after you submit a published question.', '提交答案后，记录会显示在这里。')}</p>}</CardContent></Card></section>

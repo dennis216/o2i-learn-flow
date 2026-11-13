@@ -17,7 +17,7 @@ try {
     if (n > 100) throw new Error('Vite startup timeout');
     await new Promise(r => setTimeout(r, 200));
   }
-  browser = await chromium.launch({ headless: true, executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
+  browser = await chromium.launch({ headless: true, executablePath: process.env.O2I_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
   const context = await browser.newContext({ viewport: { width: 1280, height: 960 } });
   const calls = [], errors = [];
   await context.route('**/*', route => {
@@ -40,10 +40,16 @@ try {
   const page = await context.newPage(); page.setDefaultTimeout(15000); page.on('pageerror', e => errors.push(e.message));
   const cards = page.locator('a[href*="&topic="]');
   const codes = async () => (await cards.allTextContents()).map(text => text.split(' · ')[0]);
+  // All shows one folded row per Unit (h3 > button); open every closed one.
+  const closed = page.locator('h3 > button[aria-expanded="false"]');
+  const expandAll = async () => { while (await closed.count()) await closed.first().click(); };
   await page.goto(app + '/practice');
   await page.getByRole('button', { name: 'Unit 10', exact: true }).waitFor();
+  assert.equal(await cards.count(), 0, 'All starts with every Unit folded');
+  assert.deepEqual(await page.locator('h3 > button').allInnerTexts(), ['Unit 1\n3 Topics · 3 questions', 'Unit 2\n1 Topic · 1 question', 'Unit 10\n1 Topic · 1 question']);
+  await expandAll();
   assert.deepEqual(await codes(), ['1.5', '1.6', '1.15', '2.1', '10.1']);
-  const quick = page.getByRole('link', { name: /Start up to 5/ });
+  const quick = page.getByRole('link', { name: /Start 5 questions/ });
   const quickHref = await quick.getAttribute('href');
   const history = page.getByRole('link', { name: /Synthetic saved history/ });
   const historyText = await history.innerText(), historyHref = await history.getAttribute('href');
@@ -53,19 +59,19 @@ try {
   assert.equal(await unit1.getAttribute('aria-pressed'), 'true');
   assert.deepEqual(await codes(), ['1.5', '1.6', '1.15']);
   assert.equal(await quick.getAttribute('href'), quickHref);
-  assert.equal(await cards.first().getAttribute('href'), `/quiz?subject=calculus&topic=${topics[4].id}&source=quick`);
+  assert.equal(await cards.first().getAttribute('href'), `/quiz?subject=calculus&mode=continuous&topic=${topics[4].id}`);
   assert.equal(await history.innerText(), historyText); assert.equal(await history.getAttribute('href'), historyHref);
   assert.equal(calls.length, before, 'Filtering must not call APIs');
   const all = page.getByRole('button', { name: 'All', exact: true });
-  await all.click(); assert.equal(await cards.count(), 5);
+  await all.click(); await expandAll(); assert.equal(await cards.count(), 5);
   topics = topics.map(t => t.code === '1.15' ? { ...t, question_count: 7 } : t);
   topics.push({ id: uid, code: '3.2', title: 'Synthetic newly published ' + 'LongTitle'.repeat(12), question_count: 2 });
   await page.reload(); await page.getByRole('button', { name: 'Unit 3', exact: true }).waitFor();
-  assert.equal(await cards.count(), 6);
+  await expandAll(); assert.equal(await cards.count(), 6);
   assert.match(await cards.filter({ hasText: '1.15 ·' }).innerText(), /7 published questions/);
   await page.getByRole('button', { name: 'Unit 3', exact: true }).click();
   assert.deepEqual(await codes(), ['3.2']); assert.match(await cards.innerText(), /2 published questions/);
-  await all.click();
+  await all.click(); await expandAll();
   const out = resolve('outputs/practice-topics'); mkdirSync(out, { recursive: true });
   await page.screenshot({ path: resolve(out, 'desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
@@ -74,7 +80,7 @@ try {
   assert.ok(boxes.every(box => box.x === boxes[0].x && box.width <= 375));
   assert.ok(boxes[1].y > boxes[0].y);
   await page.getByRole('button', { name: 'Unit 10', exact: true }).click(); assert.deepEqual(await codes(), ['10.1']);
-  await all.click(); await page.screenshot({ path: resolve(out, 'mobile.png'), fullPage: true });
+  await all.click(); await expandAll(); await page.screenshot({ path: resolve(out, 'mobile.png'), fullPage: true });
   topics = []; await page.reload(); await page.getByText('No published questions are available yet.').waitFor();
   assert.equal(await cards.count(), 0); assert.equal(await all.getAttribute('aria-pressed'), 'true');
   assert.deepEqual(errors, []);

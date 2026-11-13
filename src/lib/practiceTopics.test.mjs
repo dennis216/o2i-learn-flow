@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { practiceTopicCards } from './practiceTopics.ts';
+import { practiceTopicCards, practiceTopicGroups } from './practiceTopics.ts';
 
 const topics = ['10.1', '1.15', '2.1', '1.6', '1.5', 'unknown'].map((code, id) => Object.freeze({ id: String(id), code, title: code, question_count: id + 1 }));
 Object.freeze(topics);
@@ -27,4 +27,13 @@ test('newly loaded published topics, Units, and counts are derived afresh', () =
   assert.deepEqual(units, [1, 3]);
   assert.equal(cards[0].question_count, 9);
   assert.equal(practiceTopicCards(updated, 3).cards[0].id, 'new');
+});
+
+test('All groups topics by Unit in order, with unknown codes last', () => {
+  const groups = practiceTopicGroups(topics);
+  assert.deepEqual(groups.map(g => g.unit), [1, 2, 10, null]);
+  assert.deepEqual(groups.map(g => g.topics.map(t => t.code)), [['1.5', '1.6', '1.15'], ['2.1'], ['10.1'], ['unknown']]);
+  assert.equal(groups[0].topics[2], topics[1]);
+  assert.deepEqual(practiceTopicGroups([]), []);
+  assert.deepEqual(practiceTopicGroups([topics[1]]).map(g => g.unit), [1]);
 });
