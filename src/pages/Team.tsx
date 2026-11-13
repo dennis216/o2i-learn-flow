@@ -22,9 +22,11 @@ type Tone = keyof typeof TONE;
 const ZH: Record<string, string> = {
   Leadership: '负责人', 'Team Members': '团队成员',
   Founder: '创始人', 'Co-founder': '联合创始人', 'Team Leader': '组长', 'Team Member': '成员', 'Website Developer': '网站开发',
-  'Publicity & Marketing': '宣传与推广', 'Web Development & Management': '网站开发与管理', 'Curriculum Content & Media Production': '课程内容与视频制作',
+  'Publicity & Marketing': '宣传与推广', 'Web Development & Management': '网站组', 'Curriculum Content & Media Production': '课程内容与视频制作',
   'Math Group': '数学组', 'Chemistry Group': '化学组', 'Physics Group': '物理组', 'Biology Group': '生物组',
 };
+// The stored department name stays the same (the admin form and the live site use it); readers see "Website Group".
+const EN: Record<string, string> = { 'Web Development & Management': 'Website Group' };
 const SECTION_TONE: Record<string, Tone> = {
   Leadership: 'amber', 'Publicity & Marketing': 'amber', 'Web Development & Management': 'blue', 'Curriculum Content & Media Production': 'teal',
   'Math Group': 'blue', 'Chemistry Group': 'teal', 'Physics Group': 'purple', 'Biology Group': 'green',
@@ -47,7 +49,7 @@ const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(word
 const TeamMemberCard = ({ member, tone, showGroups = false }: { member: TeamMember; tone: Tone; showGroups?: boolean }) => {
   const { language } = useLanguage();
   const sep = language === 'zh' ? '、' : ', ';
-  const label = (value: string) => (language === 'zh' && ZH[value]) || value;
+  const label = (value: string) => (language === 'zh' ? ZH[value] : EN[value]) || value;
   const keyRoles = KEY_ROLES.filter(role => member.roles.includes(role));
   // "Team Member" says nothing extra next to a founder or leader badge.
   const otherRoles = member.roles.filter(role => !KEY_ROLES.includes(role) && !(keyRoles.length > 0 && role === 'Team Member'));
@@ -83,7 +85,7 @@ const Team = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { language, t } = useLanguage();
-  const label = (value: string) => (language === 'zh' && ZH[value]) || value;
+  const label = (value: string) => (language === 'zh' ? ZH[value] : EN[value]) || value;
 
   useEffect(() => {
     fetchTeamMembers();

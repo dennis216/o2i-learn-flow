@@ -9,8 +9,9 @@ import { loadTeamMembers, type TeamMember } from '@/lib/teamDepartments';
 // Homepage shows leaders only; everyone else stays on /team.
 const LEADER_ROLES = ['Founder', 'Co-founder', 'Team Leader'] as const;
 const ROLE_ZH: Record<string, string> = { Founder: '创始人', 'Co-founder': '联合创始人', 'Team Leader': '组长' };
+const DEPARTMENT_EN: Record<string, string> = { 'Web Development & Management': 'Website Group' };
 const DEPARTMENT_ZH: Record<string, string> = {
-  'Publicity & Marketing': '宣传与推广', 'Web Development & Management': '网站开发与管理', 'Curriculum Content & Media Production': '课程内容与视频制作',
+  'Publicity & Marketing': '宣传与推广', 'Web Development & Management': '网站组', 'Curriculum Content & Media Production': '课程内容与视频制作',
   'Math Group': '数学组', 'Chemistry Group': '化学组', 'Physics Group': '物理组', 'Biology Group': '生物组',
 };
 const rank = (member: TeamMember) => LEADER_ROLES.findIndex(role => member.roles.includes(role));
@@ -60,7 +61,7 @@ export default function TeamLeadersSection() {
                       </span>
                     ))}
                   </p>
-                  {member.departments.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{member.departments.map(d => (language === 'zh' && DEPARTMENT_ZH[d]) || d).join(sep)}</p>}
+                  {member.departments.length > 0 && <p className="mt-1 text-sm text-muted-foreground">{member.departments.map(d => (language === 'zh' ? DEPARTMENT_ZH[d] : DEPARTMENT_EN[d]) || d).join(sep)}</p>}
                 </div>
               </li>
             ))}
