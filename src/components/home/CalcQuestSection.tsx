@@ -23,18 +23,13 @@ export default function CalcQuestSection() {
               {t('Learn calculus through games', '在游戏里学微积分')}
             </h2>
             <p className="mt-4 max-w-xl text-lg text-[#C2C3C7]">
-              {t(
-                'Our AP Calculus videos are a pixel adventure: Redred gets stuck, Dr. Owler explains why. Then take what you learned into Limit Arena and put it to the test.',
-                '我们的 AP 微积分视频是一场像素冒险：Redred 卡住了，欧鸮博士讲清楚为什么。学完再去极限竞技场实战一把。',
-              )}
+              {t('Every AP Calculus topic is a pixel-adventure video with Dr. Owler.', '每个 AP 微积分知识点，都是一集欧鸮博士的像素冒险视频。')}
             </p>
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Button asChild size="lg" className={pixelButton}>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <Button asChild size="lg" className={`h-12 px-8 text-base ${pixelButton}`}>
                 <Link to="/arena">{t('Play Limit Arena', '进入极限竞技场')}</Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-none border-2 border-[#FFF1E8] bg-transparent text-[#FFF1E8] hover:bg-[#FFF1E8]/10 hover:text-[#FFF1E8] focus-visible:ring-[#FFF1E8]">
-                <Link to="/courses">{t('Browse the lessons', '去看更多课程')}</Link>
-              </Button>
+              <Link to="/courses" className="py-2 text-base font-medium text-[#FFF1E8] underline decoration-[#FFF1E8]/40 underline-offset-4 hover:decoration-[#FFF1E8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFF1E8]">{t('Browse the lessons', '去看课程')}</Link>
             </div>
           </Reveal>
 
@@ -56,7 +51,7 @@ export default function CalcQuestSection() {
                 <div>
                   <NameTag>Dr. Owler</NameTag>
                   <p className="mt-1.5 text-sm leading-relaxed sm:text-base">
-                    {t('Every topic is a level. Clear it in the video, then prove it in the Arena.', '每个知识点都是一关。视频里学懂了，就去竞技场证明给我看。')}
+                    {t('Clear it in the video, then prove it in the Arena.', '视频里学懂了，就去竞技场证明给我看。')}
                   </p>
                 </div>
               </div>

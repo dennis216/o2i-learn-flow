@@ -1,7 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Award } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const ScholarCounter = () => {
@@ -99,41 +97,22 @@ const ScholarCounter = () => {
     };
   }, [count]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-pulse">
-        {/* heights match the loaded badges so the buttons below don't jump */}
-        <div className="h-[72px] sm:h-[77px] w-64 bg-muted rounded-full" />
-        <div className="h-20 sm:h-[52px] w-72 max-w-full bg-muted rounded-full" />
-      </div>
-    );
-  }
+  // One quiet line on the blue hero: numbers in white, labels dimmed. The student count is left out if it failed to load.
+  if (loading) return <div aria-hidden="true" className="h-9 w-72 max-w-full animate-pulse rounded-md bg-white/15" />;
 
+  const stats = [
+    ...(count !== null ? [{ value: displayCount.toLocaleString(), label: t('students', '名同学') }] : []),
+    { value: '50+', label: t('experts', '位专家') },
+  ];
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-      {/* Scholar Counter - Main Trust Badge; hidden if the count failed to load rather than showing "Join 0" */}
-      {count !== null && <div className="flex items-center gap-3 bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 rounded-full px-8 py-4 border-2 border-primary/30 shadow-sm">
-        <Users className="h-7 w-7 text-primary" />
-        <span className="text-xl sm:text-2xl font-bold text-foreground">
-          {t('Join', '和')}{' '}
-          <span className="text-3xl sm:text-4xl font-extrabold text-primary tabular-nums">
-            {displayCount.toLocaleString()}
-          </span>{' '}
-          {t('Scholars', '名同学一起学')}
-        </span>
-      </div>}
-
-      {/* Expert Tutors Badge */}
-      <Badge 
-        variant="secondary" 
-        className="flex flex-wrap items-center justify-center gap-2 px-5 py-3 text-center text-base font-semibold bg-gradient-to-r from-accent/20 to-accent/10 border-2 border-accent/40 text-foreground hover:bg-accent/30 transition-colors duration-300"
-      >
-        <Award className="h-5 w-5 text-accent" />
-        <span>{t('50+ Experts', '50+ 位专家')}</span>
-        <span className="text-muted-foreground">•</span>
-        <span className="text-sm font-medium text-muted-foreground">{t('Euclid Honor Roll & AMC Top 1%', 'Euclid 荣誉榜 & AMC 前 1%')}</span>
-      </Badge>
-    </div>
+    <dl className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
+      {stats.map(stat => (
+        <div key={stat.label} className="flex items-baseline gap-2">
+          <dd className="text-2xl font-bold tabular-nums sm:text-3xl">{stat.value}</dd>
+          <dt className="text-base text-primary-foreground/75">{stat.label}</dt>
+        </div>
+      ))}
+    </dl>
   );
 };
 

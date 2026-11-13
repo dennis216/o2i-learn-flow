@@ -7,6 +7,7 @@
 - 名称 **O2I Institute**，口号 **One to Infinity**（1 → ∞）。
 - 吉祥物：猫头鹰 **Dr. Owler / 欧鸮博士**（像素形象，`src/components/PixelOwl.tsx`）。
 - 文案：说具体的事（教什么、点了去哪），不写 "comprehensive / unlock your potential" 这类套话。中英文都要写，用 `t('English', '中文')`。
+- 做减法：一个区块一个标题，说明最多一句；同一件事只说一次（按钮说了去哪，就不再配一段解释）。
 
 ## 颜色
 
@@ -14,8 +15,8 @@
 
 | 用途 | 类名 |
 |---|---|
-| 主色蓝（按钮、链接、品牌字） | `primary` |
-| 强调黄（高亮、点缀，不做大面积底色） | `accent` |
+| 主色蓝（按钮、链接、品牌字；首页主视觉整块蓝底） | `primary` |
+| 强调黄（蓝底上的主按钮、高亮、点缀，不做大面积底色） | `accent` |
 | 正文 / 次要文字 | `foreground` / `muted-foreground` |
 | 功能图标块 | `--education-blue` / `--education-orange` / `--education-teal` |
 
@@ -25,15 +26,16 @@
 
 - 正文和标题：`font-sans`（IBM Plex Sans，中文走系统字体）。
 - 像素小标签：`font-pixel`（Silkscreen，只有英文字符，只用于 `HudTag`、`NameTag` 这类短标签）。
-- 页面主标题：`text-4xl sm:text-5xl font-bold tracking-tight`；区块标题：`text-2xl sm:text-3xl font-bold`。
+- 页面主标题：`text-4xl sm:text-5xl font-bold tracking-tight`（首页主视觉可到 `lg:text-6xl`）；区块标题：`text-2xl sm:text-3xl font-bold`。
 - 中文标题行距要放宽（`leading-[1.35]`）；中文页面加 `break-keep [overflow-wrap:anywhere]`，只在标点处换行。
 
 ## 版式
 
 - 内容宽度 `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`；区块上下 `py-14 sm:py-20`。
-- 区块之间用渐变过渡，不要硬边和整条色带。
-- 卡片：默认无边框、透明底，悬停 `hover:bg-muted/60`，圆角 `rounded-2xl`；整张卡可点（链接加 `after:absolute after:inset-0`）。
-- 按钮写清楚去哪（"浏览课程"），不写 "了解更多"；一个区块只有一个主按钮，其余用 `variant="outline"`。
+- 整块纯色只有两处：首页主视觉（蓝底方格纸 + 黄色 1 → ∞ 曲线）和像素风区块。其余区块白底或 `bg-muted/60`，不加渐变装饰。
+- 标题和正文左对齐，和内容宽度的左边线对齐。
+- 卡片：无边框，圆角 `rounded-2xl`；入口卡片用自己功能色的浅底（见首页 `features`），整张卡就是链接，里面不再放按钮。
+- 按钮写清楚去哪（"浏览课程"），不写 "了解更多"。一个区块最多一个实心主按钮（白底上蓝色，蓝底上黄色，`h-12 px-8 text-base font-semibold`）；次要操作用带下划线的文字链接，不用第二个按钮。
 - 图标用 lucide，不用 emoji；功能图标放在彩色圆角方块里（见首页 `features`）。
 - 未登录 / 空状态 / 加载中：都要给一句说明和一个明确的按钮，不要只留一行字和大片空白。
 
