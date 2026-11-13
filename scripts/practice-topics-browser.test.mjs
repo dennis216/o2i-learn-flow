@@ -68,9 +68,9 @@ try {
   topics.push({ id: uid, code: '3.2', title: 'Synthetic newly published ' + 'LongTitle'.repeat(12), question_count: 2 });
   await page.reload(); await page.getByRole('button', { name: 'Unit 3', exact: true }).waitFor();
   await expandAll(); assert.equal(await cards.count(), 6);
-  assert.match(await cards.filter({ hasText: '1.15 ·' }).innerText(), /7 published questions/);
+  assert.match(await cards.filter({ hasText: '1.15 ·' }).innerText(), /7 questions/);
   await page.getByRole('button', { name: 'Unit 3', exact: true }).click();
-  assert.deepEqual(await codes(), ['3.2']); assert.match(await cards.innerText(), /2 published questions/);
+  assert.deepEqual(await codes(), ['3.2']); assert.match(await cards.innerText(), /2 questions/);
   await all.click(); await expandAll();
   const out = resolve('outputs/practice-topics'); mkdirSync(out, { recursive: true });
   await page.screenshot({ path: resolve(out, 'desktop.png'), fullPage: true });

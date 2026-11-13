@@ -263,7 +263,7 @@ try {
   if(!process.env.O2I_COURSE_ONLY_INTEGRATION){
   await page.goto(app+'/practice');await page.getByText('Sign in to start practice and read your saved answers.',{exact:true}).waitFor();await login(1);
   await page.evaluate(()=>localStorage.setItem('o2i-learning-prototype-v1',JSON.stringify({attempts:[{id:'FAKE_LOCALSTORAGE',correct:true,skillIds:[],misconceptionTags:[],overTarget:false}]})));
-  await page.goto(app+'/practice');await page.getByRole('heading',{name:'Choose a published Topic'}).waitFor();assert.equal(await page.getByText('FAKE_LOCALSTORAGE').count(),0);
+  await page.goto(app+'/practice');await page.getByRole('heading',{name:'Topics',exact:true}).waitFor();assert.equal(await page.getByText('FAKE_LOCALSTORAGE').count(),0);
   const browserSession=randomUUID();await page.goto(app+'/quiz?topic='+t2.id+'&session='+browserSession);await page.getByRole('heading',{name:'Question 1 of 2'}).waitFor();await page.getByLabel('Saved question labels').waitFor();assert.equal(await page.getByLabel('Saved answer',{exact:true}).count(),0);assert.equal(await page.getByText('Correct answer:',{exact:false}).count(),0);
   await wait(()=>safeResponses.length);safe(safeResponses.at(-1));assert.ok(await page.locator('.katex').count());await page.getByRole('img',{name:'Question figure',exact:true}).waitFor();assert.ok(await page.getByRole('img',{name:'Question figure',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0));await page.getByLabel('Selection rationale').filter({hasText:'Building your practice history'}).waitFor();await shot('01-safe-question');
   // The first failure is before the database request; do not display a saved result.
