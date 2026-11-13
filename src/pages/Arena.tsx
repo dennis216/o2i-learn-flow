@@ -70,7 +70,7 @@ export default function Arena() {
               <NameTag>Dr. Owler</NameTag>
               {loading
                 ? <p role="status" className="mt-1.5">{t('Checking your account…', '正在确认登录状态…')}</p>
-                : <p className="mt-1.5 leading-relaxed">{t('Dodge attacks and collect XP. When your XP bar fills, answer a limit question to pick an upgrade. Sign in to start.', '躲开攻击、收集经验。经验条满了就答一道极限题，答对可以选升级。登录就能开始。')}</p>}
+                : <p className="mt-1.5 leading-relaxed">{t('Dodge attacks, collect XP, and answer limit questions to pick upgrades.', '躲开攻击、收集经验，答对极限题就能选升级。')}</p>}
             </div>
           </div>
           {!loading && (
