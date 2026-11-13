@@ -7,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Reveal from '@/components/Reveal';
 import ScholarCounter from '@/components/home/ScholarCounter';
 import CalcQuestSection from '@/components/home/CalcQuestSection';
+import AwardsSection from '@/components/home/AwardsSection';
+import TeamLeadersSection from '@/components/home/TeamLeadersSection';
+import ContactSection from '@/components/home/ContactSection';
 
 // The brand in the headline: primary blue on a yellow highlighter stroke, like the key terms in our videos.
 const Brand = () => (
@@ -99,6 +102,8 @@ export default function Index() {
         </div>
       </section>
 
+      <AwardsSection />
+
       <section className="bg-background pb-14 pt-4 sm:pb-20 sm:pt-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal className="mb-10 text-center sm:mb-12">
@@ -127,13 +132,20 @@ export default function Index() {
 
       <CalcQuestSection />
 
-      <section className="bg-gradient-to-b from-background via-primary/5 to-accent/10 py-14 sm:py-20">
-        <Reveal className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Ready when you are', '准备好了就开始吧')}</h2>
-          <p className="mb-8 text-lg text-muted-foreground">{t('Create an account to save your progress and send questions to tutors.', '注册账号后，练习记录会保存下来，也可以向老师提问。')}</p>
-          {!user && <div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><Button size="lg" asChild><Link to="/auth?tab=signup">{t('Create account', '注册账号')}</Link></Button><Button size="lg" variant="outline" asChild><Link to="/auth">{t('Sign In', '登录')}</Link></Button></div>}
-        </Reveal>
-      </section>
+      <TeamLeadersSection />
+
+      <ContactSection />
+
+      {/* Sign-up prompt for guests only; signed-in students already have an account. */}
+      {!user && (
+        <section className="bg-gradient-to-b from-accent/10 to-background py-14 sm:py-20">
+          <Reveal className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <h2 className="mb-4 text-2xl font-bold text-foreground sm:text-3xl">{t('Ready when you are', '准备好了就开始吧')}</h2>
+            <p className="mb-8 text-lg text-muted-foreground">{t('Create an account to save your progress and send questions to tutors.', '注册账号后，练习记录会保存下来，也可以向老师提问。')}</p>
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><Button size="lg" asChild><Link to="/auth?tab=signup">{t('Create account', '注册账号')}</Link></Button><Button size="lg" variant="outline" asChild><Link to="/auth">{t('Sign In', '登录')}</Link></Button></div>
+          </Reveal>
+        </section>
+      )}
     </main>
   );
 }

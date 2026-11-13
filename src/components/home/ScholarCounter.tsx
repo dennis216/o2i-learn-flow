@@ -129,7 +129,7 @@ const ScholarCounter = () => {
         className="flex flex-wrap items-center justify-center gap-2 px-5 py-3 text-center text-base font-semibold bg-gradient-to-r from-accent/20 to-accent/10 border-2 border-accent/40 text-foreground hover:bg-accent/30 transition-colors duration-300"
       >
         <Award className="h-5 w-5 text-accent" />
-        <span>{t('10+ Expert Tutors', '10+ 位资深导师')}</span>
+        <span>{t('50+ Experts', '50+ 位专家')}</span>
         <span className="text-muted-foreground">•</span>
         <span className="text-sm font-medium text-muted-foreground">{t('Euclid Honor Roll & AMC Top 1%', 'Euclid 荣誉榜 & AMC 前 1%')}</span>
       </Badge>
