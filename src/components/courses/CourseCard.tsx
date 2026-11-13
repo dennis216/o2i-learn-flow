@@ -1,6 +1,4 @@
-import { ArrowRight } from 'lucide-react';
 import { Course } from './types';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LEVEL_ZH: Record<string, string> = { beginner: '入门', intermediate: '中级', advanced: '高级' };
 
@@ -31,7 +29,6 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course, index, onSelect }: CourseCardProps) {
-  const { t } = useLanguage();
   // "AP Calculus AB" -> "AB"; titles without a short code show the subject instead.
   const mark = course.title.match(/\s([A-Z0-9]{2,3})$/)?.[1] ?? course.subject;
 
@@ -68,13 +65,8 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
           </button>
         </h2>
         <p className="mt-2 line-clamp-2 text-muted-foreground">{course.description}</p>
-        <div className="mt-4 flex items-center justify-between text-sm">
-          <span className="font-medium text-muted-foreground">{course.price === 0 ? t('Free', '免费') : `$${course.price}`}</span>
-          <span className="flex items-center gap-1 font-semibold text-primary">
-            {t('Open course', '打开课程')}
-            <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1" />
-          </span>
-        </div>
+        {/* the whole card opens the course; only a paid course needs a price line */}
+        {course.price > 0 && <p className="mt-3 text-sm font-medium text-muted-foreground">${course.price}</p>}
       </div>
     </article>
   );
