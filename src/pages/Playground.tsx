@@ -1,10 +1,9 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Maximize2, FlaskConical, ExternalLink } from 'lucide-react';
+import { Loader2, FlaskConical, ExternalLink } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
+import FilterChips from '@/components/FilterChips';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 // Lazily load the GeoGebra viewer component using React.lazy.
@@ -26,7 +25,7 @@ function toGeoGebraEmbed(url: string): string {
 
 export default function Playground() {
   const [entries, setEntries] = useState<PlaygroundEntry[]>([]);
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<PlaygroundEntry | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -111,58 +110,30 @@ export default function Playground() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold flex items-center gap-3">
-          <FlaskConical className="h-10 w-10 text-primary" />
-          {t('GeoGebra Playground', 'GeoGebra 互动工具')}
-        </h1>
-        <p className="text-muted-foreground mt-2 text-lg">
-          {t('Interactive math models — visualize and explore concepts', '可以拖动、调整的数学模型，帮你直观看懂概念')}
-        </p>
-      </div>
+    <div className={`mx-auto min-h-[70vh] max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
+      <PageHeader icon={FlaskConical} tone="purple" title={t('Playground', '互动工具')} description={t('GeoGebra models you can drag and adjust.', '可以拖动、调整的 GeoGebra 数学模型。')} />
 
       {entries.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <FlaskConical className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">{t('No Interactive Models Yet', '还没有互动模型')}</h3>
-            <p className="text-muted-foreground">{t('Check back soon!', '敬请期待！')}</p>
-          </CardContent>
-        </Card>
+        <p className="py-10 text-lg text-muted-foreground">{t('No models yet. Check back soon.', '还没有互动模型，敬请期待。')}</p>
       ) : (
         <>
-          <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
-            <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-              <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                {t('All', '全部')} ({entries.length})
-              </TabsTrigger>
-              {groups.map(g => (
-                <TabsTrigger key={g} value={g} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  {g} ({entries.filter(e => e.group_label === g).length})
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          {groups.length > 1 && <FilterChips className="mb-8" label={t('Filter by unit', '按单元筛选')} value={activeFilter} onChange={setActiveFilter}
+            options={[{ value: 'all', label: t('All', '全部') }, ...groups.map(g => ({ value: g, label: g }))]} />}
 
           {Object.entries(grouped).map(([group, subTopics]) => (
-            <div key={group} className="mb-10">
-              <h2 className="text-2xl font-bold mb-6 px-4 py-2 rounded-lg bg-[hsl(217,50%,45%)] text-white inline-block">
-                {group}
-              </h2>
+            <section key={group} className="mb-12">
+              <h2 className="mb-5 text-2xl font-bold tracking-tight text-foreground">{group}</h2>
               {Object.entries(subTopics).map(([subTopic, items]) => (
-                <div key={subTopic} className="mb-6">
-                  {subTopic !== 'Other' && (
-                    <h3 className="text-lg font-semibold text-muted-foreground mb-3 ml-1">{subTopic}</h3>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div key={subTopic} className="mb-8">
+                  {subTopic !== 'Other' && <h3 className="mb-3 font-semibold text-muted-foreground">{subTopic}</h3>}
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map(entry => (
                       <PlaygroundCard key={entry.id} entry={entry} onOpen={() => { setSelectedEntry(entry); setModalOpen(true); }} />
                     ))}
                   </div>
                 </div>
               ))}
-            </div>
+            </section>
           ))}
         </>
       )}
@@ -170,11 +141,8 @@ export default function Playground() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-4 border-b flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FlaskConical className="h-5 w-5 text-primary" />
-              {selectedEntry?.title}
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground pt-1">{selectedEntry?.sub_topic}</p>
+            <DialogTitle>{selectedEntry?.title}</DialogTitle>
+            {selectedEntry && <a href={toGeoGebraEmbed(selectedEntry.playground_url)} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 pt-1 text-sm font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary">{t('Open in new tab', '在新标签页打开')}<ExternalLink aria-hidden="true" className="h-3.5 w-3.5" /></a>}
           </DialogHeader>
           <div className="flex-1 p-4">
             {selectedEntry && (
@@ -193,36 +161,17 @@ export default function Playground() {
   );
 }
 
+// The whole card opens the model; the preview underneath is not interactive.
 function PlaygroundCard({ entry, onOpen }: { entry: PlaygroundEntry; onOpen: () => void }) {
-  const { t } = useLanguage();
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">{entry.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="aspect-video bg-muted rounded-lg mb-4 overflow-hidden">
-          {/* Lightweight preview: GeoGebraViewer is dynamically imported with ssr:false and will only
-              load the heavy GeoGebra script when the preview actually enters the viewport.
-              We keep pointer events none here to avoid accidental interactions in the card preview. */}
-          <Suspense fallback={<div className="w-full h-full aspect-video bg-muted rounded-lg animate-pulse" />}>
-            <GeoGebraViewer
-              embedUrl={toGeoGebraEmbed(entry.playground_url)}
-              title={entry.title}
-              className="w-full h-full pointer-events-none"
-            />
-          </Suspense>
-        </div>
-        <div className="flex gap-2">
-          <Button className="flex-1 gap-2" onClick={onOpen}>
-            <Maximize2 className="h-4 w-4" />
-            {t('Launch Lab', '打开')}
-          </Button>
-          <Button variant="outline" size="icon" aria-label={t('Open in new tab', '在新标签页打开')} onClick={() => window.open(toGeoGebraEmbed(entry.playground_url), '_blank')}>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <button type="button" onClick={onOpen} className="group rounded-2xl p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <div className="aspect-video overflow-hidden rounded-xl bg-muted ring-1 ring-border transition-shadow group-hover:ring-primary/50">
+        {/* GeoGebraViewer only loads the heavy GeoGebra script once the preview scrolls into view. */}
+        <Suspense fallback={<div className="aspect-video h-full w-full animate-pulse bg-muted" />}>
+          <GeoGebraViewer embedUrl={toGeoGebraEmbed(entry.playground_url)} title={entry.title} className="pointer-events-none h-full w-full" />
+        </Suspense>
+      </div>
+      <p className="px-1 pb-1 pt-3 font-semibold text-foreground group-hover:text-primary">{entry.title}</p>
+    </button>
   );
 }
