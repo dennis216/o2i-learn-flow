@@ -51,7 +51,7 @@ export default function Navbar() {
   ) : (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="group"><Target className="mr-2 h-4 w-4" />{t('Practice', '练习')}<ChevronDown aria-hidden="true" className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" /></Button>
+        <Button variant="ghost" className="group">{t('Practice', '练习')}<ChevronDown aria-hidden="true" className="ml-1 h-4 w-4 transition-transform group-data-[state=open]:rotate-180" /></Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[11rem]">
         {PRACTICE_LINKS.map(({ to, icon: Icon, label }) => (
@@ -63,13 +63,13 @@ export default function Navbar() {
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Book className="mr-2 h-4 w-4" />{t('Courses', '课程')}</Button></Link>
+      <Link to="/courses" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Book className="nav-icon mr-2 h-4 w-4" />{t('Courses', '课程')}</Button></Link>
       <PracticeMenu mobile={mobile} />
-      {AI_TUTOR_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
-      <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
-      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="mr-2 h-4 w-4" />{t('Solution Requests', '答疑')}</Button></Link>
-      <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
-      {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="mr-2 h-4 w-4" />Admin</Button></Link>}
+      {AI_TUTOR_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="nav-icon mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
+      <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="nav-icon mr-2 h-4 w-4" />{t('Playground', '互动工具')}</Button></Link>
+      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="nav-icon mr-2 h-4 w-4" />{t('Solution Requests', '答疑')}</Button></Link>
+      <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="nav-icon mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
+      {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="nav-icon mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>{t('Retry permissions', '重新加载权限')}</Button>}
     </>
   );
@@ -103,7 +103,8 @@ export default function Navbar() {
           {/* iPad and up: one row; the links scroll sideways when they don't fit (right edge fades as a hint). */}
           <div className="hidden min-w-0 flex-1 items-center gap-4 min-[740px]:flex">
             <div role="region" aria-label={t('Scrollable navigation', '可滚动导航')} tabIndex={0} className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-[1399px]:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]">
-              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_button]:px-3 [&_svg]:mr-0 max-[1399px]:pr-8"><NavLinks /></div>
+              {/* words only on the desktop row; the phone menu keeps the icons */}
+              <div className="mx-auto flex w-max items-center gap-1 px-1 py-2 [&_.nav-icon]:hidden [&_button]:px-3 max-[1399px]:pr-8"><NavLinks /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1"><LanguageToggle /><AuthButtons /></div>
           </div>
