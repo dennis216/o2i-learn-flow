@@ -48,7 +48,8 @@ export function ContinuousPractice({ initial, returnTo }: { initial: PracticeSes
   const answered = session.questions.filter(q => q.attempt).length;
   const last = session.questions.at(-1);
   const scope = session.topic_id ? t(`Topic ${session.questions[0]?.topic.code ?? ''} practice`, `Topic ${session.questions[0]?.topic.code ?? ''} 练习`) : t('Free practice', '自由练习');
-  const reason = (id?: string) => continuousReasonText(session.continuous?.items.find(i => i.question_id === id)?.reason, language);
+  const reasonOf = (id?: string) => session.continuous?.items.find(i => i.question_id === id)?.reason;
+  const reason = (id?: string) => continuousReasonText(reasonOf(id), language);
   const exhausted = session.next_result && !['issued', 'ended'].includes(session.next_result) && !question;
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -59,7 +60,8 @@ export function ContinuousPractice({ initial, returnTo }: { initial: PracticeSes
     {busy && <p role="status">{t('Checking the server…', '请稍候…')}</p>}
     {question ? <>
       {reason(question.question_id) && <p aria-label={t('Why this question', '出这道题的原因')} className="text-sm text-muted-foreground">{reason(question.question_id)}</p>}
-      <div className="flex flex-wrap items-center gap-3 text-sm"><h2 className="font-semibold">{t(`Question ${session.questions.length}`, `第 ${session.questions.length} 题`)}</h2><p className="flex items-center gap-2"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · {t('Active device time', '用时（本设备）')}</p><Button variant="outline" size="sm" disabled={busy || !!saveError || tracking.capture.frozen} onClick={tracking.pause}>{tracking.capture.paused ? t('Resume', '继续') : t('Pause', '暂停')}</Button></div>
+      <div className="flex flex-wrap items-center gap-3 text-sm"><h2 className="font-semibold">{t(`Question ${session.questions.length}`, `第 ${session.questions.length} 题`)}</h2><p className="flex items-center gap-2"><Clock3 className="h-4 w-4" />{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} · {t('Active device time', '用时（本设备）')}</p><Button variant="outline" size="sm" disabled={busy || !!saveError || tracking.capture.frozen} onClick={tracking.pause}>{tracking.capture.paused ? t('Resume', '继续') : t('Pause', '暂停')}</Button>
+        {reasonOf(question.question_id)?.repeat && <span className="ml-auto rounded bg-[hsl(var(--education-orange)/0.15)] px-2 py-0.5 text-xs text-muted-foreground">Review</span>}</div>
       <Card><CardContent className="space-y-5 p-4 sm:p-7">
         <QuestionBody question={question} selected={selected} disabled={busy || !tracking.ready || !!saveError || tracking.capture.frozen || tracking.capture.paused} onSelect={tracking.select} />
         {saveError && <p role="alert">{saveError}</p>}

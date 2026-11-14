@@ -176,8 +176,8 @@ test('Continuous route, links and plain-language reasons', () => {
   assert.match(continuousReasonText(reason('easier_after_error')),/incorrect.*easy question on Topic 1\.2/);
   assert.match(continuousReasonText(reason('review')),/still sticks/);
   assert.equal(continuousReasonText(null),null);
-  assert.match(continuousReasonText({...reason('continue'),repeat:'incorrect'}),/incorrect last time/);
-  assert.equal(continuousReasonText({...reason('continue'),repeat:'oldest'},'zh'),'新题都做过了，复习一道很久没做的题。');
+  assert.equal(continuousReasonText({...reason('continue'),repeat:'incorrect'}),null);
+  assert.equal(continuousReasonText({...reason('continue'),repeat:'oldest'},'zh'),null);
   assert.equal(topicStatusBasis({sample_count:4,correct_count:1}),'1 of your last 4 new questions correct on the first try.');
   assert.doesNotMatch(Object.values({a:topicStatusBasis({sample_count:6,correct_count:6})}).join(),/%|mastery/i);
 });
