@@ -8,7 +8,7 @@
 |---|---|---|---|
 | Reeva | `ReevaYao` | 各板块都做；**唯一的数据库负责人** | `reeva` |
 | Dennis | `dennis216` | 游戏、课程（Courses），有时做全局改动；仓库管理员 | `dennis` |
-| Brian | 待补 | 游戏、练习（Practice） | `brian` |
+| Brian | `BriBribr1an` | 游戏、练习（Practice） | `brian` |
 
 游戏 Dennis 和 Brian 都会改：改之前在对应的 Issue 里说一声，避免两人同时改同一个文件。改别人负责的板块，也先在 Issue 里说。
 
