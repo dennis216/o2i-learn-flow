@@ -14,7 +14,7 @@
 ## 部署记录
 
 - 2026-11-14，Reeva 在 Supabase SQL Editor 执行：`00_preflight_readonly.sql` 通过 → `10_deploy.sql` 一次 → `20_verify_readonly.sql` 返回 `all_checks_pass=true`（12 项全部 ok）。
-- 测试账号验收（第 4 步）：待做。
+- 测试账号验收（第 4 步）：2026-11-14 Reeva 确认通过，选项顺序已随机。
 
 ## 发布步骤（必须另获明确生产授权）
 
