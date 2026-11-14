@@ -25,7 +25,7 @@ reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR─
 ```
 
 - 每个人只在**自己的分支**上改。每天开工前先把 `test-work` 合进自己的分支：`git checkout <自己的分支> && git pull && git merge origin/test-work`，再 `git push`。
-- 让 AI 干活时，告诉它"在 `<自己的分支>` 上改"。AI 自己开的临时分支（如 `claude/…`、worktree 分支）先合回自己的分支，不要直接合进 `test-work`；合完删掉临时分支。
+- 让 AI 干活时，告诉它"在 `<自己的分支>` 上改"。AI 不要把自己开的临时分支（如 `claude/…`、worktree 分支）推到 GitHub：直接提交并推到你的分支（Reeva 的小改动可直接推 `test-work`）。万一已经推上去了，合回你的分支后删掉。
 - 自己分支推上去后，Cloudflare 会生成个人预览站：`https://<分支名>.o2i-website.pages.dev`，先在这里看效果。
 - 做完一件事（最多一两天）就开 PR 合进 `test-work`（base 选 `test-work`，不是 `main`），别攒很多再合，攒得越久冲突越多。别把做到一半、跑不起来的东西合进 `test-work`。
 - 合进 `test-work` 的 PR 可以自己合：在个人预览站上看过、能正常运行就行。动到别人负责的板块、或者有数据库改动的，请对方或 Reeva 看一眼再合。合完 PR 不删个人分支，继续在上面做下一件事。
