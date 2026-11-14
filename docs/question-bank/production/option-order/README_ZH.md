@@ -11,6 +11,11 @@
 - 部署前已发出的题 `option_order` 为空，继续按原顺序显示，旧会话和 Review 历史完全不变。
 - 返回给前端的数据结构不变（`id`/`key`/`text`），正式站和测试站的现有前端都不需要改，也不需要重新发布前端。
 
+## 部署记录
+
+- 2026-11-14，Reeva 在 Supabase SQL Editor 执行：`00_preflight_readonly.sql` 通过 → `10_deploy.sql` 一次 → `20_verify_readonly.sql` 返回 `all_checks_pass=true`（12 项全部 ok）。
+- 测试账号验收（第 4 步）：待做。
+
 ## 发布步骤（必须另获明确生产授权）
 
 1. 只读执行 `00_preflight_readonly.sql`，要求三列都是 `t`：前置迁移账本匹配（adaptation-v2、course practice、Arena 接入）、当前快照函数正文与 20261026 版本一致、本包对象尚不存在。为 false 时先查差异，不要改账本强行通过。
