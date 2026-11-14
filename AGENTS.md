@@ -32,7 +32,7 @@ reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR─
 - `test-work` 的测试站：https://test-work.o2i-website.pages.dev 。大家都合进来以后在这里一起验收。
 - 统一上线由 **Reeva** 负责：在测试站验收后，开 PR 把 `test-work` 合进 `main`，`main` 更新后约 1 分钟正式站 https://www.o2iinstitute.org 自动上线。上线前在群里说一声，没合进 `test-work` 的东西这次就不上。
 - 合并 PR 都选 "Create a merge commit"（不要 squash）。合进 `main` 后把 `test-work` 快进到 `main`，让两者指向同一个提交。
-- 不要直接推送到 `main` 或 `test-work`，都走 PR。如果有人直接改了 `main`，记得同步回 `test-work`。
+- 不要直接推送到 `main` 或 `test-work`，都走 PR。例外：Reeva（及她的 AI）的小改动可以直接推 `test-work`；大改动在 `reeva` 分支上做再走 PR。如果有人直接改了 `main`，记得同步回 `test-work`。
 - 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-09`）。备份分支只保留最近两个：新建第三个时，删掉日期最早的那个。`feature/calc-quest-world` 先保留，不要清理。
 
 ## 数据库
