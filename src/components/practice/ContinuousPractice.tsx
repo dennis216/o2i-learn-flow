@@ -82,7 +82,7 @@ export function ContinuousPractice({ initial, returnTo }: { initial: PracticeSes
         </CardContent></Card>
           : last && <Button disabled={busy} onClick={next}>{t('Next question', '下一题')} <ArrowRight /></Button>}
       {last?.attempt && <Card><CardContent className="space-y-3 p-5"><MarkdownWithMath content={last.stem} strictMath className="overflow-x-auto" /><SavedAnswer question={last} courseId={session.course_id} /></CardContent></Card>}
-      {!last && <Button disabled={busy} onClick={next}>{t('Start', '开始')} <ArrowRight /></Button>}
+      {!last && !exhausted && <Button disabled={busy} onClick={next}>{t('Start', '开始')} <ArrowRight /></Button>}
     </>}
   </div>;
 }
