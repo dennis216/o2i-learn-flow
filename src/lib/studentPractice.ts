@@ -86,7 +86,7 @@ const reasonTextZh: Record<ContinuousReason['kind'], (r: ContinuousReason) => st
   review: r => `过了几天，回头检查一下 Topic ${r.topic_code} 还记不记得。`,
 };
 const repeatKinds = ['incorrect', 'oldest'];
-/** Repeats get no sentence, only a small Review tag (see ContinuousPractice). */
+/** Repeats show no reason sentence. */
 export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' = 'en'): string | null {
   if (!reason || reason.repeat) return null;
   return (language === 'zh' ? reasonTextZh : reasonText)[reason.kind]?.(reason) ?? null;
