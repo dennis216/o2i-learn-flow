@@ -160,10 +160,12 @@ test('Continuous records reject mismatched reasons, unknown kinds and impossible
     s=>{s.continuous.recap.new_count=1;},
     s=>{s.continuous.recap.topics=[{topic_id:id,topic_code:'1.2',topic_title:'T',status:'stable',sample_count:7,correct_count:7}];},
     s=>{s.next_result='random';},
+    s=>{s.continuous.items[0].reason.repeat='again';},
     s=>{delete s.continuous;},
   ];
   for(const change of bad){const s=structuredClone(ok);change(s);assert.throws(()=>readPracticeSession(s,id));}
   const legacy=structuredClone(ok);legacy.continuous.items[0].reason=null;assert.ok(readPracticeSession(legacy,id));
+  const repeated=structuredClone(ok);repeated.continuous.items[0].reason.repeat='incorrect';assert.ok(readPracticeSession(repeated,id));
 });
 test('Continuous route, links and plain-language reasons', () => {
   assert.equal(parsePracticeRoute(new URLSearchParams(`subject=calculus&mode=continuous&topic=${id}`)).continuous,true);
@@ -174,6 +176,8 @@ test('Continuous route, links and plain-language reasons', () => {
   assert.match(continuousReasonText(reason('easier_after_error')),/incorrect.*easy question on Topic 1\.2/);
   assert.match(continuousReasonText(reason('review')),/still sticks/);
   assert.equal(continuousReasonText(null),null);
+  assert.match(continuousReasonText({...reason('continue'),repeat:'incorrect'}),/incorrect last time/);
+  assert.equal(continuousReasonText({...reason('continue'),repeat:'oldest'},'zh'),'新题都做过了，复习一道很久没做的题。');
   assert.equal(topicStatusBasis({sample_count:4,correct_count:1}),'1 of your last 4 new questions correct on the first try.');
   assert.doesNotMatch(Object.values({a:topicStatusBasis({sample_count:6,correct_count:6})}).join(),/%|mastery/i);
 });

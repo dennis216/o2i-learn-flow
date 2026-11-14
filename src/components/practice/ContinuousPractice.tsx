@@ -67,8 +67,8 @@ export function ContinuousPractice({ initial, returnTo }: { initial: PracticeSes
       </CardContent></Card>
     </> : <>
       {exhausted ? <Card><CardContent className="space-y-4 p-5">
-        <h2 className="text-lg font-semibold">{session.next_result === 'topic_exhausted' ? t('You have tried every published question for this Topic.', '这个 Topic 的题你都做过了。')
-          : session.next_result === 'all_exhausted' ? t('You have tried every published question available here.', '这里的题你都做过了。') : t('This session reached 100 questions.', '这次已经做满 100 题了。')}</h2>
+        <h2 className="text-lg font-semibold">{session.next_result === 'topic_exhausted' ? t('This session has gone through every question in this Topic.', '这次练习已经把这个 Topic 的题都出过一遍了。')
+          : session.next_result === 'all_exhausted' ? t('This session has gone through every question available here.', '这次练习已经把这里的题都出过一遍了。') : t('This session reached 100 questions.', '这次已经做满 100 题了。')}</h2>
         <div className="flex flex-wrap gap-2">
           {session.next_result === 'topic_exhausted' && returnTo && <Button asChild variant="outline"><Link to={returnTo}>{t('Watch the lesson', '回去看课')}</Link></Button>}
           {session.next_result === 'topic_exhausted' && <Button asChild variant="outline"><Link to="/practice">{t('Choose another Topic', '换一个 Topic')}</Link></Button>}

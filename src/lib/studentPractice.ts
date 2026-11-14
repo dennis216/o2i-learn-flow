@@ -52,6 +52,8 @@ export type TopicStatus = 'insufficient' | 'needs_practice' | 'stable';
 export interface ContinuousReason {
   rule_version: 'continuous-v1'; kind: 'start' | 'new_topic' | 'easier_after_error' | 'step_up' | 'continue' | 'review';
   topic_code: string; target_difficulty: 'easy' | 'medium' | 'hard'; topic_status: TopicStatus;
+  /** Set once every question in scope has been answered before: repeat the last-incorrect, then the oldest. */
+  repeat?: 'incorrect' | 'oldest';
 }
 export interface PracticeRecapTopic { topic_id: string; topic_code: string; topic_title: string; status: TopicStatus; sample_count: number; correct_count: number }
 export interface PracticeRecap {
@@ -83,7 +85,13 @@ const reasonTextZh: Record<ContinuousReason['kind'], (r: ContinuousReason) => st
   continue: r => `继续 Topic ${r.topic_code}，${difficultyZh[r.target_difficulty]}难度。`,
   review: r => `过了几天，回头检查一下 Topic ${r.topic_code} 还记不记得。`,
 };
-export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' = 'en'): string | null { return reason ? (language === 'zh' ? reasonTextZh : reasonText)[reason.kind]?.(reason) ?? null : null; }
+const repeatText = { incorrect: 'You have tried every question here; this one was incorrect last time, so try it again.', oldest: 'You have tried every question here; reviewing one you have not seen for a while.' };
+const repeatTextZh = { incorrect: '新题都做过了。这道你上次做错了，再练一次。', oldest: '新题都做过了，复习一道很久没做的题。' };
+export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' = 'en'): string | null {
+  if (!reason) return null;
+  if (reason.repeat) return (language === 'zh' ? repeatTextZh : repeatText)[reason.repeat] ?? null;
+  return (language === 'zh' ? reasonTextZh : reasonText)[reason.kind]?.(reason) ?? null;
+}
 export const topicStatusLabel: Record<TopicStatus, string> = { insufficient: 'Too few questions to tell yet', needs_practice: 'Needs more practice', stable: 'Fairly steady' };
 export const topicStatusLabelZh: Record<TopicStatus, string> = { insufficient: '做的题还太少，暂时看不出来', needs_practice: '还需要多练', stable: '比较稳定' };
 export function topicStatusBasis(t: PracticeRecapTopic, language: 'en' | 'zh' = 'en'): string {
@@ -183,7 +191,8 @@ function verifyContinuous(s: PracticeSession) {
   const statuses = ['insufficient', 'needs_practice', 'stable'];
   if (!c || c.rule_version !== 'continuous-v1' || typeof c.stuck !== 'boolean' || !Array.isArray(c.items) || c.items.length !== s.questions.length
     || c.items.some((i, n) => i?.question_id !== s.questions[n].question_id || (i.reason !== null && (i.reason?.rule_version !== 'continuous-v1'
-      || !(i.reason.kind in reasonText) || !i.reason.topic_code || !['easy', 'medium', 'hard'].includes(i.reason.target_difficulty) || !statuses.includes(i.reason.topic_status))))
+      || !(i.reason.kind in reasonText) || !i.reason.topic_code || !['easy', 'medium', 'hard'].includes(i.reason.target_difficulty) || !statuses.includes(i.reason.topic_status)
+      || (i.reason.repeat !== undefined && !(i.reason.repeat in repeatText)))))
     || !r || !count(r.answered_count) || !count(r.new_count) || !count(r.new_correct_count) || r.new_count > r.answered_count || r.new_correct_count > r.new_count
     || (r.timed_seconds !== null && !count(r.timed_seconds, 8_640_000)) || !Array.isArray(r.topics)
     || r.topics.some(t => !uuid.test(t?.topic_id) || !t.topic_code || !t.topic_title || !statuses.includes(t.status) || !count(t.sample_count, 6) || !count(t.correct_count, t.sample_count))
