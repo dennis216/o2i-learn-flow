@@ -73,7 +73,7 @@ export default function Index() {
             <Reveal delay={240} className="mt-10"><ScholarCounter /></Reveal>
           </div>
           {/* "One to Infinity": a curve that starts at 1 and runs off to ∞ */}
-          <svg aria-hidden="true" viewBox="0 0 400 300" fill="none" className="hidden h-auto w-full lg:block">
+          <svg aria-hidden="true" viewBox="0 0 420 300" fill="none" className="hidden h-auto w-full lg:block">
             <path d="M28 272H392M52 292V12" stroke="hsl(0 0% 100% / 0.45)" strokeWidth="2" />
             <path d="M44 232H60" stroke="hsl(0 0% 100% / 0.7)" strokeWidth="2" />
             <text x="22" y="239" fill="hsl(0 0% 100% / 0.8)" fontSize="20" fontWeight="600">1</text>
