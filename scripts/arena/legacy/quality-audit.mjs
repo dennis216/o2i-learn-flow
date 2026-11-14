@@ -9,8 +9,9 @@ import { fileURLToPath } from 'node:url';
 import { privateDirectory } from './snapshot.mjs';
 
 // "shown below", "the graph of f' is shown", "in the figure", "the table above" ...
-const FIGURE_PHRASE = /\b(?:shown|pictured|depicted|illustrated|sketched|drawn|given)\s+(?:below|above|here|at (?:the )?(?:right|left))\b|\b(?:below|above)\s+is\b|\b(?:in|from|on|using)\s+the\s+(?:graph|figure|diagram|picture|table|sketch)\b|\bthe\s+(?:graph|figure|diagram|table)\s+(?:below|above)\b|\b(?:figure|diagram)\b/i;
-const TABLE_PHRASE = /\btable\b/i;
+// Also "the graph of f is shown.", "use the table", "the values below".
+const FIGURE_PHRASE = /\b(?:shown|pictured|depicted|illustrated|sketched|drawn|given)\s+(?:below|above|here|at (?:the )?(?:right|left))\b|\b(?:below|above)\s+is\b|\b(?:is|are)\s+(?:shown|pictured|depicted|sketched|drawn)\b|\b(?:in|from|on|using|use)\s+the\s+(?:graph|figure|diagram|picture|table|sketch)\b|\bthe\s+(?:graph|figure|diagram|table)\s+(?:below|above)\b|\bvalues?\s+(?:below|above)\b|\b(?:figure|diagram)\b/i;
+const TABLE_PHRASE = /\btable\b|\bvalues?\s+(?:below|above)\b/i;
 const GRAPH_PHRASE = /\b(?:graph|figure|diagram|picture|sketch|curve|plot)\b/i;
 const MARKDOWN_TABLE = /^\s*\|.*\|\s*$/m;
 
