@@ -16,3 +16,11 @@ The touch canvas fits the available frame height. On short landscape screens the
 - The local fixture used no production account or database. It injected test access only into an in-memory copy; the shipped game has no test hooks.
 
 Physical iPad/Safari multitouch and comfort still need Brian's acceptance on the personal preview. The production website and database are unchanged. New characters, balance changes, onboarding, and broader gameplay feedback are outside this update.
+
+## Fullscreen follow-up
+
+Touch players starting a run now request native fullscreen and, where supported, a landscape orientation lock. A localized Full / 全屏 button enters it manually, and Exit / 退出 remains reachable during pause, quizzes, and menus. The host iframe explicitly permits fullscreen.
+
+If native fullscreen is unavailable or denied, the iframe expands over the site navigation and fills the available browser viewport. A brief localized message explains that the browser UI cannot be hidden and recommends landscape orientation. This fallback does not claim to remove browser tabs or address bars. Leaving the mode restores the normal iframe size and document scrolling; native exit events are handled too.
+
+Additional synthetic checks passed for native fullscreen and a mocked unsupported-browser fallback in both English and Chinese: entry, controls inside the canvas, pause, exit, and restoration of page scrolling. TypeScript, the Arena page lint check, production build, and the existing 10 checks passed. Actual iOS/Safari fullscreen and orientation support still depend on the device/browser and require physical acceptance.
