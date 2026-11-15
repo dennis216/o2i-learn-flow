@@ -29,4 +29,4 @@ npm run test:student-practice
 ## 部署记录
 
 - 2026-11-15，Reeva 在 Supabase SQL Editor 执行：`00_preflight_readonly.sql` 通过 → `10_deploy.sql` 一次 → `20_verify_readonly.sql` 返回 `all_checks_pass=true`（5 项全部 ok）。
-- 测试账号验收（第 4 步）：待做。
+- 测试账号验收（第 4 步）：2026-11-15 Reeva 确认通过，答过全部题的测试账号开自由练习能继续出题。
