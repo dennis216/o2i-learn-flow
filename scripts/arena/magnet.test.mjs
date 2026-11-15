@@ -52,31 +52,4 @@ test('heart pickup keeps its healing behavior and maximum HP limit', () => {
   const f = fixture(); f.pickup('heart'); f.collect(0); assert.equal(f.a.p.hp, 100);
 });
 
-test('field magnets appear without kills and do not accumulate duplicates', () => {
-  const f = fixture(); f.a.t = 9; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.gems = Array.from({ length: 20 }, () => f.gem(100, 2));
-  f.a.t = 10; f.spawn(); assert.equal(f.a.picks.length, 1); assert.equal(f.a.picks[0].kind, 'magnet');
-  f.a.t = 100; f.spawn(); assert.equal(f.a.picks.length, 1);
-});
-
-test('no magnet appears when little XP is waiting on the ground', () => {
-  const f = fixture(); f.a.t = 30; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.gems = [f.gem(100, 1)]; f.a.t = 40; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.gems = Array.from({ length: 12 }, () => f.gem(100)); f.a.t = 50; f.spawn(); assert.equal(f.a.picks.length, 0);
-});
-
-test('active magnet and spawn cooldown suppress new magnets even with an XP backlog', () => {
-  const f = fixture(); f.a.gems = Array.from({ length: 20 }, () => f.gem(100, 3));
-  f.a.t = 30; f.a.magnetUntil = 38; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.t = 40; f.spawn(); assert.equal(f.a.picks.length, 1);
-  f.a.picks = []; f.a.t = 60; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.t = 115; f.spawn(); assert.equal(f.a.picks.length, 1);
-});
-
- test('half a level of ground XP qualifies and the shorter cooldown is enforced', () => {
-  const f = fixture(); f.a.need = 80; f.a.t = 10;
-  f.a.gems = Array.from({ length: 20 }, () => f.gem(100, 2));
-  f.spawn(); assert.equal(f.a.picks.length, 1);
-  f.a.picks = []; f.a.t = 39; f.spawn(); assert.equal(f.a.picks.length, 0);
-  f.a.t = 44; f.spawn(); assert.equal(f.a.picks.length, 1);
- });
+test('no independent field source inflates the configured magnet drop probability',()=>{const f=fixture();f.a.gems=Array.from({length:100},()=>f.gem(100,5));for(const t of [10,30,60,120]){f.a.t=t;f.spawn();}assert.equal(f.a.picks.length,0)});

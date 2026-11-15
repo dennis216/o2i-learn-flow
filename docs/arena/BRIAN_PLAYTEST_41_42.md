@@ -1,3 +1,5 @@
+> 最新版本规则与检查结果见 [BRIAN_BIOMES_SKILLS_41_42.md](BRIAN_BIOMES_SKILLS_41_42.md)，覆盖本文的历史实验参数。
+
 # Brian：Arena 体验与窗口适配记录（#41 / #42）
 
 本批只更新 `brian` 个人分支与预览站，不修改数据库，不合并 `test-work` 或 `main`。GitHub 上本轮的协作评论已改为中文。

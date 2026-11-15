@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const game=readFileSync(new URL('../../public/games/limit-arena.html',import.meta.url),'utf8');
 function fixture(){
  const a={t:1,p:{x:1000,y:800},cam:{x:680,y:620},enemies:[],spawnAcc:0,nextBossT:180,nextWave:60,nextElite:75,waveN:0};
- const spawned=[];const context=vm.createContext({a,A:640,D:360,et:2400,dt:1800,Math,q:(lo,hi)=>hi===undefined?lo*.3:(lo+hi)/2,Jt:()=>({spawn:1}),be:()=>2,ye:(type,x,y)=>{a.enemies.push({type,x,y});spawned.push({type,x,y})},oe(){},Qe(){},i:false,s:{}});
+ const spawned=[];const context=vm.createContext({I:"play",a,A:640,D:360,et:2400,dt:1800,Math,q:(lo,hi)=>hi===undefined?lo*.3:(lo+hi)/2,Jt:()=>({spawn:1}),be:()=>2,ye:(type,x,y)=>{a.enemies.push({type,x,y});spawned.push({type,x,y})},oe(){},Qe(){},i:false,s:{}});
  vm.runInContext(game.slice(game.indexOf('function ia('),game.indexOf('function pi(')),context);
  return{a,spawned,context};
 }
