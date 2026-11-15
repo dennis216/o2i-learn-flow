@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const game = readFileSync(new URL('../../public/games/limit-arena.html', import.meta.url), 'utf8');
 // Execute the actual pickup functions from the shipped game with isolated world state.
-const pickupSource = game.slice(game.indexOf('function spawnFieldMagnet()'), game.indexOf('function _t('));
+const pickupSource = game.slice(game.indexOf('function magnetBacklogReady()'), game.indexOf('function _t('));
 
 function fixture() {
   const collected = [];
@@ -54,6 +54,21 @@ test('heart pickup keeps its healing behavior and maximum HP limit', () => {
 
 test('field magnets appear without kills and do not accumulate duplicates', () => {
   const f = fixture(); f.a.t = 24; f.spawn(); assert.equal(f.a.picks.length, 0);
+  f.a.gems = Array.from({ length: 20 }, () => f.gem(100, 2));
   f.a.t = 25; f.spawn(); assert.equal(f.a.picks.length, 1); assert.equal(f.a.picks[0].kind, 'magnet');
   f.a.t = 100; f.spawn(); assert.equal(f.a.picks.length, 1);
+});
+
+test('no magnet appears when little XP is waiting on the ground', () => {
+  const f = fixture(); f.a.t = 30; f.spawn(); assert.equal(f.a.picks.length, 0);
+  f.a.gems = [f.gem(100, 100)]; f.a.t = 40; f.spawn(); assert.equal(f.a.picks.length, 0);
+  f.a.gems = Array.from({ length: 20 }, () => f.gem(100)); f.a.t = 50; f.spawn(); assert.equal(f.a.picks.length, 0);
+});
+
+test('active magnet and spawn cooldown suppress new magnets even with an XP backlog', () => {
+  const f = fixture(); f.a.gems = Array.from({ length: 20 }, () => f.gem(100, 3));
+  f.a.t = 30; f.a.magnetUntil = 38; f.spawn(); assert.equal(f.a.picks.length, 0);
+  f.a.t = 40; f.spawn(); assert.equal(f.a.picks.length, 1);
+  f.a.picks = []; f.a.t = 60; f.spawn(); assert.equal(f.a.picks.length, 0);
+  f.a.t = 115; f.spawn(); assert.equal(f.a.picks.length, 1);
 });
