@@ -1,6 +1,8 @@
 # Brian's Arena touch-control update (#41)
 
-Brian moved Dash, Skill, and Pause into the game viewport so iPad and phone players can use them without reaching below the canvas. Dash and Skill are round buttons on the right. Auto-lock remains available below the game, and the existing top-left ability indicators and keyboard bindings remain in place.
+Brian moved Dash, Skill, and Pause into the game viewport so iPad and phone players can use them without reaching below the canvas. Dash and Skill use translucent pixel-style buttons on the right (58% opacity, brighter when pressed). Pause is a quieter button in the upper-right corner (45% opacity), with the nearby HUD text shifted left to keep it readable. Auto-lock remains available below the game, and the existing top-left ability indicators and keyboard bindings remain in place.
+
+The controls follow the site language: Skill / 技能, Dash / 冲刺, and Pause / 暂停. Accessible names match the visible labels. Both English and Chinese were checked at all four viewport sizes below.
 
 Pressing either ability during its cooldown shows the remaining time next to the player for 1.1 seconds, with a short fade. Touch controls hide while quiz, pause, and other dialogs are open. Additional movement touches cannot replace the active movement pointer. Devices with touch plus a trackpad are recognized through touch capability rather than only their primary pointer type.
 
