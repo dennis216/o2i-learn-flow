@@ -1,3 +1,5 @@
+> 最新一轮试玩修订见 [BRIAN_PLAYTEST_REVISION_41_42.md](BRIAN_PLAYTEST_REVISION_41_42.md)。以下保留上一轮记录。
+
 > 最新版本规则与检查结果见 [BRIAN_BIOMES_SKILLS_41_42.md](BRIAN_BIOMES_SKILLS_41_42.md)，覆盖本文的历史实验参数。
 
 # Brian：Arena 体验与窗口适配记录（#41 / #42）

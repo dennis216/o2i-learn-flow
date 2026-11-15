@@ -1,3 +1,5 @@
+> 最新一轮试玩修订见 [BRIAN_PLAYTEST_REVISION_41_42.md](BRIAN_PLAYTEST_REVISION_41_42.md)。以下保留上一轮记录。
+
 # Brian：新世界、技能与窗口适配（#41 / #42）
 
 本轮继续昨天的本地检查点，仅修改 brian 个人分支；不写生产库，不合并 test-work/main。所有 GitHub 记录使用中文。

@@ -30,3 +30,9 @@ test('grove recovery and snow speed have finite durations',()=>{
 });
 
 test('existing benefits keep working in a boss fight, but new regions do not spawn',()=>{const f=fixture();f.a.boss={};f.a.regionBuff={kind:'desert',until:5};f.ctx.updateSpecialRegions(1);assert.equal(f.a.p.hp,44);assert.equal(f.a.regionState,undefined);f.ctx.I='pause';f.ctx.updateSpecialRegions(1);assert.equal(f.a.p.hp,44)});
+
+test('aurora starts its six-second countdown on exit, and its source still expires',()=>{
+ const f=fixture('snow');f.ctx.updateSpecialRegions(0);f.a.t=9;f.ctx.updateSpecialRegions(0);const source=f.a.regionState.active;f.a.p.x=source.x;f.a.p.y=source.y+7;f.ctx.updateSpecialRegions(0);assert.equal(f.a.regionBuff.inside,true);const expiry=source.expires;
+ f.a.t=17;f.ctx.updateSpecialRegions(0);assert.equal(f.ctx.terrainMoveFactor(),1.15);assert.equal(f.a.regionBuff.until,23);f.a.p.x+=60;f.a.t=18;f.ctx.updateSpecialRegions(0);assert.equal(f.a.regionBuff.until,24);f.a.t=20;f.ctx.updateSpecialRegions(0);assert.equal(f.a.regionBuff.until,24);
+ f.a.p.x=source.x;f.a.t=21;f.ctx.updateSpecialRegions(0);assert.equal(f.a.regionBuff.until,27);f.a.t=expiry;f.ctx.updateSpecialRegions(0);assert.equal(f.a.regionBuff.inside,false);assert.equal(f.a.regionBuff.until,expiry+6);f.a.t=expiry+7;f.ctx.updateSpecialRegions(0);assert.equal(f.ctx.terrainMoveFactor(),1);
+});

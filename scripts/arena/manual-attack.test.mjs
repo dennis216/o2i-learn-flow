@@ -13,6 +13,7 @@ function fixture(automatic = true, guns = ['rifle']) {
   const O = Object.fromEntries(guns.map(id => [id, { main: id !== 'bomb', cd: () => 1 }]));
   const bo = Object.fromEntries(guns.map(id => [id, () => { shots.push(id); return true; }]));
   const context = vm.createContext({ a, Tt, tt, O, bo, Qo: {}, H: () => 0, Ja: () => false, za: () => 1, oi: () => 1, ht: () => false });
+  vm.runInContext(game.slice(game.indexOf('function updateMathPulses()'),game.indexOf('function drawMathEffects(')),context);
   vm.runInContext(firingSource, context);
   return { a, Tt, tt, shots, tick: context.ai };
 }
