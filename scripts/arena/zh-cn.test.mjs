@@ -30,3 +30,12 @@ test('the font subset covers every Chinese character', () => {
     .filter(ch => ch.charCodeAt(0) > 0x2e7f && !chars.has(ch));
   assert.deepEqual(missing, []);
 });
+
+ test('the pixel font includes newly added Chinese UI labels in the shipped game', () => {
+  const html=readFileSync(new URL('../../public/games/limit-arena.html',import.meta.url),'utf8');
+  const decoded=html.replace(/\\u([0-9a-fA-F]{4})/g,(_,hex)=>String.fromCharCode(parseInt(hex,16)));
+  const chars=new Set(readFileSync(new URL('./fonts/cubic-zh-subset.chars.txt',import.meta.url),'utf8'));
+  assert.deepEqual([...new Set(decoded.match(/[\u4e00-\u9fff]/g))].filter(ch=>!chars.has(ch)),[]);
+  const embedded=html.match(/font-family:CubicZh;src:url\(data:font\/woff;base64,([A-Za-z0-9+/=]+)/)[1];
+  assert.deepEqual(Buffer.from(embedded,'base64'),readFileSync(new URL('./fonts/cubic-zh-subset.woff',import.meta.url)));
+ });
