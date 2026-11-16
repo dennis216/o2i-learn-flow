@@ -1,3 +1,5 @@
+> 最新武器扩展、全技能插图和试玩修正见 [BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md](BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md)。
+
 > 最新一轮试玩修订见 [BRIAN_PLAYTEST_REVISION_41_42.md](BRIAN_PLAYTEST_REVISION_41_42.md)。以下保留上一轮记录。
 
 > 2026-11-15 已恢复并实施本清单；最终规则和验证记录见 [BRIAN_BIOMES_SKILLS_41_42.md](BRIAN_BIOMES_SKILLS_41_42.md)。下方保留原始需求，发生冲突以最终记录为准。

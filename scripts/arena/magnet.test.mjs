@@ -10,7 +10,7 @@ const pickupSource = game.slice(game.indexOf('function magnetBacklogReady()'), g
 function fixture() {
   const collected = [];
   const a = { t: 0, p: { x: 100, y: 107, hp: 80, maxHp: 100 }, st: { magnet: 26 }, gems: [], picks: [], magnetUntil: 0, nextMagnetAt: 10, tips: {} };
-  const context = vm.createContext({ a, i: false, s: {}, X: () => a.p.x, _: () => a.p.y - 7,
+  const context = vm.createContext({H:()=>0, a, i: false, s: {}, X: () => a.p.x, _: () => a.p.y - 7,
     it: (x, y, px, py) => Math.hypot(px - x, py - y), at: (x, y, px, py) => Math.atan2(py - y, px - x),
     Kn: value => collected.push(value), Yn() {}, bt() {}, yt() {}, ls() {}, $: { coin() {}, shard() {} },
     j: Math.PI * 2, q: () => 0, F: (value, low, high) => Math.max(low, Math.min(high, value)), Wn: () => [0, 0, 1000, 1000] });

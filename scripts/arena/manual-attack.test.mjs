@@ -18,14 +18,14 @@ function fixture(automatic = true, guns = ['rifle']) {
   return { a, Tt, tt, shots, tick: context.ai };
 }
 
-test('all four main guns keep automatic firing as the default', () => {
-  for (const gun of ['sniper', 'rifle', 'shotgun', 'darts']) {
+test('all six main guns keep automatic firing as the default', () => {
+  for (const gun of ['sniper', 'rifle', 'shotgun', 'darts','vectorbow','integral']) {
     const f = fixture(true, [gun]); f.tick(.1); assert.deepEqual(f.shots, [gun]);
   }
 });
 
 test('manual mode requires a held attack for every main gun', () => {
-  for (const gun of ['sniper', 'rifle', 'shotgun', 'darts']) {
+  for (const gun of ['sniper', 'rifle', 'shotgun', 'darts','vectorbow','integral']) {
     const f = fixture(false, [gun]); f.tick(2); assert.deepEqual(f.shots, []);
     f.Tt.fire = 1; f.tick(.01); assert.deepEqual(f.shots, [gun]);
   }

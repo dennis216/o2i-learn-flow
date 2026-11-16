@@ -1,3 +1,5 @@
+> 最新武器扩展、全技能插图和试玩修正见 [BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md](BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md)。
+
 # Brian 第二轮试玩修订（#41 / #42）
 
 本轮仅修改 `brian` 个人预览。正式站与数据库未改。用户 2026-11-15 的 19 项反馈作为验收清单。

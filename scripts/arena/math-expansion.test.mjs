@@ -8,6 +8,7 @@ function fixture(chinese=false){
  const a={t:10,p:{x:100,y:107,hp:20,maxHp:100,dx:1,dy:0},st:{area:1},enemies,proj:[],pfx:[],mathPulses:[],cam:{x:0,y:0},gems:[],passives:{},thm:{}};
  const colors=new Proxy({},{get:(_,key)=>String(key)});
  const ctx=vm.createContext({a,i:chinese,wa:{},s:colors,Math,j:Math.PI*2,F:(v,min,max)=>Math.max(min,Math.min(max,v)),H:id=>a.passives[id]||0,ht:id=>!!a.thm[id],gt:()=>1,X:()=>a.p.x,_:()=>a.p.y-7,me:()=>enemies[0],at:(x,y,xx,yy)=>Math.atan2(yy-y,xx-x),ie:shot=>shots.push(shot),Rt:(x,y,r,callback)=>{for(const e of enemies)if(callback(e)===true)break;},At:(enemy,damage,options)=>calls.push({enemy,damage,options}),os:()=>0});
+ vm.runInContext(source.slice(source.indexOf('function advancedArsenal()'),source.indexOf('function mathArsenal()')),ctx);
  vm.runInContext(source.slice(source.indexOf('function mathArsenal()'),source.indexOf('function countUpgradeableSkills()')),ctx);
  const skills=ctx.mathArsenal(),theorems=ctx.mathTheorems();return{a,ctx,calls,shots,skills,theorems};
 }
