@@ -14,7 +14,10 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
 function ArenaGame({ language }: { language: Language }) {
-  try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
+  useState(() => {
+    try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
+    return language;
+  });
   const frame = useRef<HTMLIFrameElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [viewport, setViewport] = useState<{ width: number; height: number; top: number; left: number } | null>(null);
