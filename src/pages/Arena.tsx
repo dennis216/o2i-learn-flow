@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,12 +16,25 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 function ArenaGame({ language }: { language: Language }) {
   try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
   const frame = useRef<HTMLIFrameElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!expanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [expanded]);
 
   // Layout effect: the listener must exist before the iframe's first message.
   useLayoutEffect(() => {
     const onMessage = async (event: MessageEvent) => {
       const game = frame.current?.contentWindow;
-      if (!game || event.source !== game || event.origin !== window.location.origin || !isArenaRequest(event.data)) return;
+      if (!game || event.source !== game || event.origin !== window.location.origin) return;
+      if (event.data?.source === 'limit-arena-display') {
+        if (event.data.action === 'expand') setExpanded(true);
+        if (event.data.action === 'restore') setExpanded(false);
+        return;
+      }
+      if (!isArenaRequest(event.data)) return;
       const request = event.data;
       const renderRpc: ArenaRpc = async (name, args) => {
         const result = await rpc(name, args);
@@ -39,6 +52,8 @@ function ArenaGame({ language }: { language: Language }) {
       ref={frame}
       src="/games/limit-arena.html"
       title="CALC QUEST Limit Arena"
+      allowFullScreen
+      allow="fullscreen"
       onLoad={() => {
         const doc = frame.current?.contentDocument;
         if (doc) {
@@ -48,8 +63,8 @@ function ArenaGame({ language }: { language: Language }) {
         }
         frame.current?.focus();
       }}
-      className="block w-full border-0 bg-black"
-      style={{ height: 'calc(100dvh - 4rem)' }}
+      className={`${expanded ? 'fixed inset-0 z-[100]' : 'block'} w-full border-0 bg-black`}
+      style={{ height: expanded ? '100dvh' : 'calc(100dvh - 4rem)' }}
     />
   );
 }
