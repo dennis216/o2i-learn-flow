@@ -10,3 +10,13 @@ test('the four world elites use distinct coherent pixel sprites and keep the cro
 test('magnet is one pixel larger than the heart in each dimension, with no oversized halo',()=>{const f=fixture();let image;f.ctx.re=(ctx,sprite,palette,x,y,options)=>image={sprite,x,y,options};vm.runInContext(source.slice(source.indexOf('function drawCenteredMagnet('),source.indexOf('function collectBossExperience(')),f.ctx);f.ctx.drawCenteredMagnet({});assert.equal(image.sprite[0].length,10);assert.equal(image.sprite.length,9);assert.equal(image.options.scale,1);const draw=source.slice(source.indexOf('function drawMagnetPickup('),source.indexOf('function drawMagnetStatus('));assert(!draw.includes('Ht('));});
 test('exhausted question pools stop issuing requests but network and rate limits remain distinct',()=>{const f=fixture();let calls=0;Object.assign(f.ctx,{I:'play',Ce:{call(){calls++;return Promise.resolve({status:'empty'})}},fe:()=>({tier:0}),E:10});vm.runInContext(source.slice(source.indexOf('function vi('),source.indexOf('function Mi(')),f.ctx);f.a.questionPoolExhausted=true;f.ctx.vi();assert.equal(calls,0);assert.equal(f.a.lvQ.status,'exhausted');assert(source.includes('if(t==="empty"||t==="exhausted")'));assert(source.includes('questionPoolExhausted:false'));});
 test('exhaustion reward UI offers normal upgrades without modifying quiz statistics',()=>{const f=fixture();const cards=[];Object.assign(f.ctx,{i:false,I:'quiz',rs:n=>Array(n).fill({id:'skill'}),a:{answered:13,correct:9}});const method=source.slice(source.indexOf('quizExhausted(){'),source.indexOf('},cardsFor(t,e,o){',source.indexOf('quizExhausted(){'))+1);const ui=vm.runInContext('({'+method+'})',f.ctx);ui.show=html=>{assert(!html.includes('qfb no'));assert(html.includes('NO NEW QUESTIONS'));};ui.cardsFor=(options,title,basic)=>cards.push({options,basic});ui.quizExhausted();assert.equal(cards[0].options.length,3);assert.equal(cards[0].basic,false);assert.deepEqual(f.ctx.a,{answered:13,correct:9});});
+
+
+test('hint glyphs are cropped to their visible pixels before they are aligned',()=>{
+ const ctx=vm.createContext({Math});vm.runInContext(source.slice(source.indexOf('function inkBounds('),source.indexOf('const owlHintLines=')),ctx);
+ const image={width:8,height:7,data:new Uint8ClampedArray(8*7*4)};
+ assert.equal(ctx.inkBounds(image),null);
+ for(const[x,y]of[[2,3],[5,3],[4,5]])image.data[(y*8+x)*4+3]=255;
+ const bounds=ctx.inkBounds(image);assert.equal(bounds.x,2);assert.equal(bounds.y,3);assert.equal(bounds.w,4);assert.equal(bounds.h,3);
+ image.data[(6*8+7)*4+3]=1;const edge=ctx.inkBounds(image);assert.equal(edge.w,6);assert.equal(edge.h,4);
+});

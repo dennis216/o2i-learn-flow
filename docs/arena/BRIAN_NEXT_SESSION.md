@@ -1,3 +1,5 @@
+> 最新视觉与左侧触控修正见 [BRIAN_NOV16_UI_41_42.md](BRIAN_NOV16_UI_41_42.md)。
+
 > 最新 iPad / iPhone 适配和待办见 [BRIAN_IPAD_LAYOUT_41_42.md](BRIAN_IPAD_LAYOUT_41_42.md)。
 
 > 最新武器扩展、全技能插图和试玩修正见 [BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md](BRIAN_EQUIPMENT_ART_FEEDBACK_41_42.md)。
