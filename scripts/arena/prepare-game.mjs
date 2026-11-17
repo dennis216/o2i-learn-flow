@@ -4,10 +4,11 @@
 // It also builds the English/Chinese switch from scripts/arena/zh-CN.json. Questions are
 // served as data, so they stay English: only strings in the game's own code get translated.
 //
-// node scripts/arena/prepare-game.mjs <full-game.html> --questions <outside-repo.json>
+// node scripts/arena/prepare-game.mjs <full-game.html> --questions <outside-repo.json> --out <other.html>
+// Historical only: it can no longer overwrite public/games/limit-arena.html (see below).
 // Needs esbuild and typescript: run `npm install --no-save esbuild typescript` first, or point
 // O2I_ESBUILD_MODULE at an installed copy (O2I_TYPESCRIPT_MODULE likewise for typescript).
-// --keep-test-hooks, --out and --dump-strings are only for local checks.
+// --keep-test-hooks and --dump-strings are only for local checks.
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve, relative } from 'node:path';
@@ -21,8 +22,13 @@ const input = args[0];
 const questionsPath = flag('--questions');
 const keepHooks = args.includes('--keep-test-hooks');
 const dumpStrings = flag('--dump-strings');
-const outPath = resolve(flag('--out') ?? resolve(root, 'public/games/limit-arena.html'));
-assert.ok(input && questionsPath, 'Usage: prepare-game.mjs <full-game.html> --questions <outside-repo.json>');
+const gamePath = resolve(root, 'public/games/limit-arena.html');
+const outPath = resolve(flag('--out') ?? gamePath);
+assert.ok(input && questionsPath, 'Usage: prepare-game.mjs <full-game.html> --questions <outside-repo.json> --out <other.html>');
+// public/games/limit-arena.html is now the only source of the game and is edited directly
+// (Brian's #41/#42 work lives only there). Regenerating it from the outside-repo full build
+// would wipe those edits, so this script may only write somewhere else, for comparison.
+assert.notEqual(outPath, gamePath, 'Refusing to overwrite public/games/limit-arena.html: it is the source of truth now. Pass --out <other.html> to build a copy for comparison. See docs/arena/README_ZH.md.');
 const fromRoot = relative(root, resolve(questionsPath));
 assert.ok(fromRoot.startsWith('..'), 'The questions file must stay outside this repo.');
 

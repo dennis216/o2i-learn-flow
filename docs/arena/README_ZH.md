@@ -42,16 +42,20 @@
 
 ## 更新游戏
 
-完整版 HTML（含题库）只保存在仓库外。拿到新版本后运行：
+**`public/games/limit-arena.html` 是游戏唯一的源码，直接改这个文件。**（2026-11-16 起，#46 之后）
+
+- 以前这个文件由 `prepare-game.mjs` 从仓库外的完整版生成。Brian 在 #41/#42（PR #46）里直接改了这个文件，这些改动只存在于仓库里；再从完整版生成会把它们全部覆盖。
+- 所以 `prepare-game.mjs` 已改为拒绝写入 `public/games/limit-arena.html`，只能用 `--out <别的路径>` 生成一份对照用的副本。
+- 仓库外的完整版只做存档，不再修改。当初放在仓库外是因为它带着题库；现在题目由服务器发，这个理由已不成立。
+- 改完运行 `npm run test:arena`，再在个人预览站玩一局。
+- 万一文件被覆盖了：`git checkout origin/test-work -- public/games/limit-arena.html` 即可找回。
+
+旧流程（仅供查阅，不要再用来更新游戏）：
 
 ```bash
 npm install --no-save esbuild typescript
-node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路径.json>
-npm run test:arena
+node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路径.json> --out <仓库外的对照副本.html>
 ```
-
-脚本依赖游戏代码的具体写法，新版本改动过这些地方时会直接报错，不会悄悄产出错误文件。
-题目有改动时，重新运行导入脚本：相同 id 会被覆盖。要下架题目，把 `active` 改成 false。
 
 ## 语言切换
 
@@ -59,10 +63,10 @@ npm run test:arena
 
 **题目、选项和解析始终是英文**，它们是服务器发来的数据，不会被翻译。翻译只作用于游戏代码里的文字：
 
-- 词表在 `scripts/arena/zh-CN.json`，运行 `prepare-game.mjs` 时写入游戏。
+- 词表 `scripts/arena/zh-CN.json` 以前在运行 `prepare-game.mjs` 时写入游戏；它已经写进了 `limit-arena.html`，现在改这个 JSON 不会再生效。新文字直接在游戏代码里写中英文（Brian 现在的做法），之后整理代码时再统一成一种方式。
 - 模板用 `{}` 按顺序占位，需要调整顺序或省略时用 `{0}`、`{1}`。
 - 词表用到新汉字时，构建会报错。用完整版 Cubic 11 字体运行 `python3 scripts/arena/subset-zh-font.py <Cubic_11.ttf>` 重建字体子集。字体授权见 `scripts/arena/fonts/Cubic-11-OFL.txt`。
-- 新版游戏如果增加了文字，没进词表的部分会继续显示英文，不会报错，发布前要切到中文检查一遍。
+- 新增文字如果只写了英文，会继续显示英文，不会报错，发布前要切到中文检查一遍。
 
 ## 能防什么，不能防什么
 
