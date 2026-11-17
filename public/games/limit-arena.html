@@ -727,7 +727,7 @@ function drawExperienceCrystal(context,gem,px,py){
 }
 function drawUnitBadge(){
   if(!a.curUnit||I==="title"||I==="select")return;
-  const x=14,y=mt-30;
+  const x=12,y=mt-30;
   no(R,x,y,144,22,{border:s.dgray,fill:s.ink,shadow:null});
   Y(R,(i?"关卡 ":"STAGE ")+(a.worldStage||1)+(i?" · 单元 ":" · UNIT ")+a.curUnit,x+8,y+5,{pixel:true,size:12,col:s.lgray,outline:s.black});
 }
@@ -768,10 +768,12 @@ function owlHintLine(line){
 }
 function drawOwlHint(hint){
  const tablet=hasArenaTouch()&&Math.min(innerWidth,innerHeight)>=540&&Math.max(innerWidth,innerHeight)>=1000;
- if(tablet){R.save();R.translate(12,mt-44);R.scale(.65,.65);R.translate(-12,-(mt-44));}
  const prefix=hint.boss&&a.boss?`[r]${a.boss.def.name}: [/]`:"";
  const lines=i?$s(prefix+hint.s,12,264):hudCaptionLines(prefix+hint.s,264),height=Math.max(48,lines.length*19+24),top=mt-44-height;
- no(R,12,top,340,height,{border:hint.boss&&a.boss?a.boss.def.col:s.lav,fill:s.ink,shadow:s.black});
+ const scale=tablet?.65:1;
+ // Keep both HUD frames on the same pixel grid; shrink only the hint contents.
+ no(R,12,mt-44-height*scale,340*scale,height*scale,{border:hint.boss&&a.boss?a.boss.def.col:s.lav,fill:s.ink,shadow:s.black});
+ if(tablet){R.save();R.translate(12,mt-44);R.scale(scale,scale);R.translate(-12,-(mt-44));}
  Oo(R,24,top+12,E,1,true);
  lines.forEach((line,row)=>{const sprite=owlHintLine(line),b=sprite.bounds;if(b)R.drawImage(sprite.canvas,b.x,b.y,b.w,b.h,58,top+12+row*19,b.w,b.h);});
  if(tablet)R.restore();
