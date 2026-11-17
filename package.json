@@ -39,7 +39,9 @@
     "test:migrations": "node --test scripts/migrations/reconciliation.test.mjs scripts/continuous-practice-migration.test.mjs",
     "test:migrations:db": "O2I_MIGRATION_RECONCILIATION_DB=1 npm run test:courses:login:db",
     "test:courses:login:browser": "node scripts/course-login-browser.test.mjs",
-    "test:courses:browser": "node scripts/course-custom-browser.test.mjs"
+    "test:courses:browser": "node scripts/course-custom-browser.test.mjs",
+    "format:arena": "prettier --ignore-path scripts/arena/.prettierignore --write public/games/limit-arena.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs",
+    "check:arena:format": "prettier --ignore-path scripts/arena/.prettierignore --check public/games/limit-arena.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -106,6 +108,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^4.3.3",
+    "acorn": "8.15.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -113,6 +116,7 @@
     "globals": "^15.15.0",
     "pg": "8.23.1",
     "postcss": "^8.5.6",
+    "prettier": "3.6.2",
     "supabase": "2.119.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

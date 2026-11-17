@@ -50,6 +50,6 @@ reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR─
 
 - 测试站、个人预览站和正式站共用同一个 Supabase 数据库。在测试站上的删除、发布、改数据都会直接影响学生；测试用测试账号。
 - 数据库结构改动（`supabase/migrations`）会同时影响两边，要兼容正式站上还在运行的旧代码。
-- Limit Arena：`public/games/limit-arena.html` 是游戏唯一的源码，直接改它；不要再用 `scripts/arena/prepare-game.mjs` 从仓库外的完整版重新生成（脚本已禁止覆盖），仓库外那份只做存档。详见 [docs/arena/README_ZH.md](docs/arena/README_ZH.md)。
+- Limit Arena：直接维护 `public/games/limit-arena.html`（页面和样式）及 `public/games/limit-arena.js`（逻辑和中英文 UI）。不要再从仓库外的完整版重新生成；`prepare-game.mjs` 禁止覆盖这两个文件。仓库外那份只做存档。详见 [docs/arena/README_ZH.md](docs/arena/README_ZH.md)。
 - 不要再用 Lovable 编辑器改代码，网站已迁到 Cloudflare Pages（项目 `o2i-website`）。
 - 出问题需要回滚：Cloudflare → `o2i-website` → Deployments → 选上一个正常版本 → Rollback。
