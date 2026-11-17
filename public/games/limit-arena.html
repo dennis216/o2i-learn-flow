@@ -23,7 +23,7 @@
       <div class="stagewrap">
         <canvas id="c" width="640" height="360" tabindex="0" aria-label="Game screen"></canvas>
         <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tAttack">Attack</button></div>
-        <div class="display-controls"><button type="button" id="tFullscreen">Full</button></div>
+        <div class="display-controls"><div class="disp-bar"><span class="zoom" role="group" aria-label="Game size"><button type="button" id="tZoomOut" aria-label="Smaller">−</button><output id="tZoomVal">100%</output><button type="button" id="tZoomIn" aria-label="Bigger">+</button></span><button type="button" id="tFullscreen">Full</button></div></div>
         <div id="displayNotice" role="status" hidden></div>
         <div id="ov" hidden></div>
       </div>
@@ -158,7 +158,29 @@ body.touch:not([data-mode=run]) .touch-settings{display:none}
 
 #codex{display:block}#codex>.guide-section{margin-top:18px}#codex>.guide-section>.guide-list{grid-template-columns:repeat(2,minmax(0,1fr))}#codex .guide-list .guide-list{grid-template-columns:minmax(0,1fr)}
 @media(max-width:760px){#ov>.panel{max-height:100%;min-height:0;overflow:auto}#codex>.guide-section>.guide-list{grid-template-columns:minmax(0,1fr)}}
-body[data-ov=terrain] #ov{place-items:start center;align-content:start;padding-top:16px}.terrain-panel{max-height:100%;align-self:start;animation:none!important}
+body[data-ov=terrain] #ov{place-items:start center;align-content:start;padding-top:16px}
+/* Full screen: a labelled Exit with its key, and - / + for the game size. */
+.disp-bar{position:absolute;right:calc(var(--control-right) + 64px);top:var(--control-top);display:flex;align-items:center;gap:6px;pointer-events:auto}
+body.arena-expanded[data-ov] .disp-bar{right:calc(20px + env(safe-area-inset-right,0px));top:calc(18px + env(safe-area-inset-top,0px))}
+body.arena-expanded:is([data-ov=quiz],[data-ov=quizfb],[data-ov=pause]) .disp-bar{right:calc(8px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px))}
+.disp-bar #tFullscreen{position:static!important;width:auto!important;min-width:0!important;height:auto!important;min-height:36px!important;flex-direction:row;gap:6px;padding:6px 10px!important;opacity:1!important;background:var(--panel)!important;box-shadow:inset 0 0 0 2px var(--muted),2px 2px 0 var(--shade)!important;clip-path:none}
+body.arena-expanded .disp-bar #tFullscreen{box-shadow:inset 0 0 0 2px var(--yellow),2px 2px 0 var(--shade)!important}
+.disp-bar #tFullscreen .control-icon{width:16px;height:16px}
+.disp-bar #tFullscreen .control-label{font-size:13px;white-space:nowrap}
+.disp-bar #tFullscreen kbd{font-family:var(--pix);font-size:11px;line-height:1;padding:3px 5px;background:var(--bg);color:var(--yellow);box-shadow:inset 0 0 0 1px var(--muted)}
+.disp-bar .zoom{display:flex;align-items:center;background:var(--panel);box-shadow:inset 0 0 0 2px var(--muted),2px 2px 0 var(--shade)}
+body:not(.arena-expanded) .disp-bar .zoom{display:none}
+.disp-bar .zoom button{min-width:36px;min-height:36px;padding:0 8px;font-family:var(--pix);font-size:18px;line-height:1;background:none;box-shadow:none;color:var(--text)}
+.disp-bar .zoom button:disabled{opacity:.35}
+.disp-bar .zoom output{min-width:44px;text-align:center;font-family:var(--pix);font-size:13px;color:var(--text)}
+.disp-bar .sh,body.arena-expanded:not([data-ov]) .disp-bar .zoom,body.arena-expanded:not([data-ov]) .disp-bar .lg{display:none}
+body.arena-expanded:not([data-ov]) .disp-bar .sh{display:inline}
+body.arena-expanded canvas#c{width:calc(min(100vw,calc(100dvh * 16 / 9)) * var(--arena-zoom,1));height:calc(min(100dvh,calc(100vw * 9 / 16)) * var(--arena-zoom,1))}
+body.arena-expanded .tpad,body.arena-expanded:not([data-ov]) .display-controls{width:calc(min(100vw,calc(100dvh * 16 / 9)) * var(--arena-zoom,1));height:calc(min(100dvh,calc(100vw * 9 / 16)) * var(--arena-zoom,1))}
+@media(max-width:700px){.disp-bar #tFullscreen .control-label{font-size:12px}}
+.under-btns{display:flex;align-items:center;gap:14px;flex:none}
+.under .fullwin{white-space:nowrap;font-size:12px;padding:6px 10px}
+.under .fullwin[hidden]{display:none}.terrain-panel{max-height:100%;align-self:start;animation:none!important}
 
 #ov .panel.sz{animation:none;transform:none}
 /* Illustrated icons use the same palette and nearest-neighbour pixels throughout the guide. */
@@ -730,7 +752,7 @@ function Wi(){drawRegionHud();drawAbilityCooldown();drawMagnetStatus();drawUnitB
         <div class="score"><h3>Score</h3><table>${t.parts.map(([h,c])=>`<tr><td>${h}</td><td>${c}</td></tr>`).join("")}<tr class="tot"><td>Total</td><td>${t.total}</td></tr></table></div>
       </div>
       <div class="best"><h3>Top runs (this device)</h3><table><tr><th>#</th><th>Score</th><th>Time</th><th>Bosses</th><th>Accuracy</th><th>Date</th></tr>${l}</table></div>
-      <div class="row2"><button type="button" id="rzGo" class="go">Play again (Enter)</button><button type="button" id="rzNew">Change hero, gun or units</button><button type="button" id="rzTitle">Main menu</button></div></div>`,"results"),this.fillIcons(),ka(),N("rzGo").onclick=()=>{this.hide(),qa(a.cls)},N("rzTitle").onclick=()=>{this.hide(),us(),ds()},N("rzNew").onclick=()=>{this.heroSelect()}},key(t){const e=t.code;if(this.mode==="terrain"&&["Enter","Space","Escape"].includes(e)){N("terrainGo").click();return true;}if(this.mode==="quiz"){const o={KeyA:0,KeyB:1,KeyC:2,KeyD:3,Digit1:0,Digit2:1,Digit3:2,Digit4:3,Numpad1:0,Numpad2:1,Numpad3:2,Numpad4:3};if(e in o&&!t.repeat)return this.answer(o[e]),!0}if((this.mode==="quizfb"||this.mode==="chest")&&this.cards){const o=/^(Digit|Numpad)([1-5])$/.exec(e);if(o&&!t.repeat)return this.pick(+o[2]-1),!0;if(e==="KeyR")return this.reroll(),!0}if(this.mode==="pause"&&(e==="Escape"||e==="KeyP"))return this.unpause(),!0;if(this.mode==="menu")return(e==="Enter"||e==="Space")&&!t.repeat&&(t.preventDefault(),N("mStart").click()),!0;if(this.mode==="sub")return e==="Escape"&&this.menu(),!0;if(this.mode==="select"){const o=/^(Digit|Numpad)([1-4])$/.exec(e);if(o&&!t.repeat)return this.pickHero(Ne[+o[2]-1]),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),this.heroNext(),!0;if(e==="Escape")return this.menu(),!0}if(this.mode==="gun"){const o=/^(Digit|Numpad)([1-6])$/.exec(e);if(o&&!t.repeat)return this.pickGun(Object.keys(xt)[+o[2]-1]),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),this.gunNext(),!0;if(e==="Escape")return this.heroSelect(),!0}if(this.mode==="setup"){const o=/^(Digit|Numpad)([0-9])$/.exec(e);if(o&&!t.repeat)return this.toggleUnit(+o[2]||10),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),N("uGo").click(),!0;if(e==="Escape")return this.gunSelect(),!0}return this.mode==="stage"&&e==="Enter"?(N("stGo").click(),!0):this.mode==="results"&&(e==="Enter"||e==="Space")&&!t.repeat?(t.preventDefault(),N("rzGo").click(),!0):!!this.mode}};let i1=!1;function qa(t){if($.init(),St.start(),!t)return Bt.heroSelect();On(t),Tt.fire=0,syncAttackMode(),I="play",Bt.hide(),ds(),St.play("arena"),oe(i?`\u7B2C ${a.curUnit} \u5355\u5143`:`UNIT ${a.curUnit}`,Yt[a.theme].accent,i?`${le[a.curUnit-1].name} \xB7 \u654C\u4EBA ${Jt().name} \xB7 \u9898\u76EE ${fe().name}`:`${le[a.curUnit-1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`),document.body.dataset.mode="run";if(document.body.classList.contains("touch"))void enterArenaFullscreen();requestAnimationFrame(fitTouchStage)}let Te=null;const ds=()=>{Te={tc:E,d:.6}};function Co(){if(Te){if(E>Te.tc+Te.d){Te=null;return}Vs(R,E,Te.tc,Te.d,"open")}}function us(){I="title",hs=E,St.play("title"),document.body.dataset.mode="title",Bt.menu()}function progressWorldTransition(t){if(I!=="worldchange")return;a.t+=t;if(!a.themeTr){if(a.transitionReward){a.transitionReward=false;a.pendingBossReward=false;ls();}else I="play";}}
+      <div class="row2"><button type="button" id="rzGo" class="go">Play again (Enter)</button><button type="button" id="rzNew">Change hero, gun or units</button><button type="button" id="rzTitle">Main menu</button></div></div>`,"results"),this.fillIcons(),ka(),N("rzGo").onclick=()=>{this.hide(),qa(a.cls)},N("rzTitle").onclick=()=>{this.hide(),us(),ds()},N("rzNew").onclick=()=>{this.heroSelect()}},key(t){const e=t.code;if(this.mode==="terrain"&&["Enter","Space","Escape"].includes(e)){N("terrainGo").click();return true;}if(this.mode==="quiz"){const o={KeyA:0,KeyB:1,KeyC:2,KeyD:3,Digit1:0,Digit2:1,Digit3:2,Digit4:3,Numpad1:0,Numpad2:1,Numpad3:2,Numpad4:3};if(e in o&&!t.repeat)return this.answer(o[e]),!0}if((this.mode==="quizfb"||this.mode==="chest")&&this.cards){const o=/^(Digit|Numpad)([1-5])$/.exec(e);if(o&&!t.repeat)return this.pick(+o[2]-1),!0;if(e==="KeyR")return this.reroll(),!0}if(this.mode==="pause"&&(e==="Escape"||e==="KeyP"))return this.unpause(),!0;if(this.mode==="menu")return(e==="Enter"||e==="Space")&&!t.repeat&&(t.preventDefault(),N("mStart").click()),!0;if(this.mode==="sub")return e==="Escape"&&this.menu(),!0;if(this.mode==="select"){const o=/^(Digit|Numpad)([1-4])$/.exec(e);if(o&&!t.repeat)return this.pickHero(Ne[+o[2]-1]),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),this.heroNext(),!0;if(e==="Escape")return this.menu(),!0}if(this.mode==="gun"){const o=/^(Digit|Numpad)([1-6])$/.exec(e);if(o&&!t.repeat)return this.pickGun(Object.keys(xt)[+o[2]-1]),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),this.gunNext(),!0;if(e==="Escape")return this.heroSelect(),!0}if(this.mode==="setup"){const o=/^(Digit|Numpad)([0-9])$/.exec(e);if(o&&!t.repeat)return this.toggleUnit(+o[2]||10),!0;if(e==="Enter"&&!t.repeat)return t.preventDefault(),N("uGo").click(),!0;if(e==="Escape")return this.gunSelect(),!0}return this.mode==="stage"&&e==="Enter"?(N("stGo").click(),!0):this.mode==="results"&&(e==="Enter"||e==="Space")&&!t.repeat?(t.preventDefault(),N("rzGo").click(),!0):!!this.mode}};let i1=!1;function qa(t){if($.init(),St.start(),!t)return Bt.heroSelect();On(t),Tt.fire=0,syncAttackMode(),I="play",Bt.hide(),ds(),St.play("arena"),oe(i?`\u7B2C ${a.curUnit} \u5355\u5143`:`UNIT ${a.curUnit}`,Yt[a.theme].accent,i?`${le[a.curUnit-1].name} \xB7 \u654C\u4EBA ${Jt().name} \xB7 \u9898\u76EE ${fe().name}`:`${le[a.curUnit-1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`),document.body.dataset.mode="run";if(shouldAutoFullscreen())void enterArenaFullscreen();requestAnimationFrame(fitTouchStage)}let Te=null;const ds=()=>{Te={tc:E,d:.6}};function Co(){if(Te){if(E>Te.tc+Te.d){Te=null;return}Vs(R,E,Te.tc,Te.d,"open")}}function us(){I="title",hs=E,St.play("title"),document.body.dataset.mode="title",Bt.menu()}function progressWorldTransition(t){if(I!=="worldchange")return;a.t+=t;if(!a.themeTr){if(a.transitionReward){a.transitionReward=false;a.pendingBossReward=false;ls();}else I="play";}}
 function r1(t){E+=t,I==="worldchange"?progressWorldTransition(t):I==="play"?wi(t):I==="lvup"&&E-a.lvT>=a.lvDur&&a.lvQ&&(I="quiz",a.lvQ.status==="ok"?Bt.quiz(a.lvQ):Bt.quizUnavailable(a.lvQ.status))}let selectionBackdrop;
 function l1(){if(R.setTransform($e,0,0,$e,0,0),R.imageSmoothingEnabled=!1,I==="title"||I==="select"){if(I==="select"&&selectionBackdrop?.width===R.canvas.width&&selectionBackdrop?.height===R.canvas.height){R.drawImage(selectionBackdrop,0,0,G,mt);Co();return;}
  Xt.fillStyle=s.black;Xt.fillRect(0,0,pe,Fe);e1();
@@ -782,8 +804,15 @@ let displayNoticeTimer;
 function updateFullscreenLabel(){
   const expanded=document.body.classList.contains("arena-expanded");
   const button=N("tFullscreen");
-  setArenaControlLabel(button,expanded?(i?"退出":"Exit"):(i?"全屏":"Full"),expanded?"exit":"fullscreen");
-  button.setAttribute("aria-label",expanded?(i?"退出全屏":"Exit full screen"):(i?"进入全屏":"Enter full screen"));
+  setArenaControlLabel(button,expanded?(i?"退出全屏":"Exit full screen"):(i?"全屏":"Full screen"),expanded?"exit":"fullscreen");
+  if(expanded){
+    // Long label on menus; a short one during a run so the timer stays clear.
+    const label=button.querySelector(".control-label");label.textContent="";
+    for(const[cls,text]of[["lg",i?"退出全屏":"Exit full screen"],["sh",i?"退出":"Exit"]]){const span=document.createElement("span");span.className=cls;span.textContent=text;label.append(span)}
+    button.insertAdjacentHTML("beforeend","<kbd>Esc</kbd>");
+  }
+  button.setAttribute("aria-label",expanded?(i?"退出全屏（Esc）":"Exit full screen (Esc)"):(i?"进入全屏":"Enter full screen"));
+  const windowed=N("tFullWin");if(windowed)windowed.hidden=expanded;
   button.setAttribute("aria-pressed",String(expanded));
 }
 function notifyDisplay(message){
@@ -835,9 +864,60 @@ function arenaFullscreenChanged(){
 document.addEventListener("fullscreenchange",arenaFullscreenChanged);
 document.addEventListener("webkitfullscreenchange",arenaFullscreenChanged);
 N("tFullscreen").addEventListener("click",()=>{
-  if(document.body.classList.contains("arena-expanded"))void exitArenaFullscreen();
-  else void enterArenaFullscreen();
+  if(document.body.classList.contains("arena-expanded"))leaveFullscreenByChoice();
+  else enterFullscreenByChoice();
 });
+// The player decides: remember an exit so later runs stay windowed, and an entry so they go full screen again.
+const ARENA_FULL_KEY="cq-arena-full",ARENA_ZOOM_KEY="cq-arena-zoom",ARENA_ZOOMS=[.5,.6,.7,.8,.9,1];
+function arenaPref(key,value){try{if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value)}catch{}return null}
+function shouldAutoFullscreen(){return matchMedia("(pointer: coarse)").matches&&arenaPref(ARENA_FULL_KEY)!=="off"}
+function enterFullscreenByChoice(){arenaPref(ARENA_FULL_KEY,"on");void enterArenaFullscreen()}
+function leaveFullscreenByChoice(){
+  arenaPref(ARENA_FULL_KEY,"off");
+  if(I==="play")Bt.pause();   // never leave a run running while the screen changes size
+  void exitArenaFullscreen();
+}
+// Size of the game inside full screen: 100% fills the screen, smaller leaves a border.
+let arenaZoom=Number(arenaPref(ARENA_ZOOM_KEY));
+if(!ARENA_ZOOMS.includes(arenaZoom))arenaZoom=1;
+function applyArenaZoom(){
+  document.body.style.setProperty("--arena-zoom",String(arenaZoom));
+  N("tZoomVal").textContent=Math.round(arenaZoom*100)+"%";
+  N("tZoomOut").disabled=arenaZoom<=ARENA_ZOOMS[0];
+  N("tZoomIn").disabled=arenaZoom>=ARENA_ZOOMS[ARENA_ZOOMS.length-1];
+  requestAnimationFrame(fitTouchStage);
+}
+function stepArenaZoom(direction,fromKey){
+  const index=ARENA_ZOOMS.indexOf(arenaZoom)+direction;
+  if(index>=0&&index<ARENA_ZOOMS.length){arenaZoom=ARENA_ZOOMS[index];arenaPref(ARENA_ZOOM_KEY,String(arenaZoom));applyArenaZoom();}
+  if(fromKey&&!document.body.dataset.ov)notifyDisplay((i?"游戏大小 ":"Game size ")+Math.round(arenaZoom*100)+"%"+(i?" · 按 - / + 调整":" · press - / + to change"));
+}
+N("tZoomOut").addEventListener("click",()=>stepArenaZoom(-1));
+N("tZoomIn").addEventListener("click",()=>stepArenaZoom(1));
+N("tZoomOut").setAttribute("aria-label",i?"缩小（-）":"Smaller (-)");
+N("tZoomIn").setAttribute("aria-label",i?"放大（+）":"Bigger (+)");
+document.querySelector(".disp-bar .zoom").setAttribute("aria-label",i?"游戏大小":"Game size");
+applyArenaZoom();
+// Esc always leaves full screen (and pauses a run); - and + resize the game. Runs before the game's own keys.
+addEventListener("keydown",event=>{
+  if(!document.body.classList.contains("arena-expanded")||event.ctrlKey||event.metaKey||event.altKey)return;
+  if(event.target&&/INPUT|TEXTAREA/.test(event.target.tagName))return;
+  const code=event.code;
+  if(code==="Escape"){if(!event.repeat)leaveFullscreenByChoice()}
+  else if(code==="Minus"||code==="NumpadSubtract")stepArenaZoom(-1,true);
+  else if(code==="Equal"||code==="NumpadAdd")stepArenaZoom(1,true);
+  else return;
+  event.preventDefault();event.stopImmediatePropagation();
+},true);
+// Desktop players get a full-screen button too, next to the key hints.
+{
+  const windowed=document.createElement("button");
+  windowed.type="button";windowed.id="tFullWin";windowed.className="fullwin";
+  windowed.textContent=i?"⛶ 全屏":"⛶ Full screen";
+  windowed.addEventListener("click",enterFullscreenByChoice);
+  const group=document.createElement("div");group.className="under-btns";
+  N("touchTog").before(group);group.append(windowed,N("touchTog"));
+}
 updateFullscreenLabel();
 function syncAttackMode(){
   const automatic=tt.d.autoAttack!==false;
