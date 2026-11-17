@@ -14309,7 +14309,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function drawUnitBadge() {
     if (!a.curUnit || I === "title" || I === "select") return;
-    const x = 14,
+    const x = 12,
       y = mt - 30;
     no(R, x, y, 144, 22, { border: s.dgray, fill: s.ink, shadow: null });
     Y(
@@ -14440,23 +14440,25 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       hasArenaTouch() &&
       Math.min(innerWidth, innerHeight) >= 540 &&
       Math.max(innerWidth, innerHeight) >= 1000;
-    if (tablet) {
-      R.save();
-      R.translate(12, mt - 44);
-      R.scale(0.65, 0.65);
-      R.translate(-12, -(mt - 44));
-    }
     const prefix = hint.boss && a.boss ? `[r]${a.boss.def.name}: [/]` : "";
     const lines = i
         ? $s(prefix + hint.s, 12, 264)
         : hudCaptionLines(prefix + hint.s, 264),
       height = Math.max(48, lines.length * 19 + 24),
       top = mt - 44 - height;
-    no(R, 12, top, 340, height, {
+    const scale = tablet ? 0.65 : 1;
+    // Keep the frame on the same pixel grid as the stage badge; shrink only its contents.
+    no(R, 12, mt - 44 - height * scale, 340 * scale, height * scale, {
       border: hint.boss && a.boss ? a.boss.def.col : s.lav,
       fill: s.ink,
       shadow: s.black,
     });
+    if (tablet) {
+      R.save();
+      R.translate(12, mt - 44);
+      R.scale(scale, scale);
+      R.translate(-12, -(mt - 44));
+    }
     Oo(R, 24, top + 12, E, 1, true);
     lines.forEach((line, row) => {
       const sprite = owlHintLine(line),
