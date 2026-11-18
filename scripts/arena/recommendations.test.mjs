@@ -76,3 +76,17 @@ test("the title-screen guide does not mistake the previous run for a live build"
   assert(!f.ctx.ownsIngredient("gun"));
   assert(f.ctx.recipeHTML(["gun", "crit"]).includes("START A RUN"));
 });
+
+test("basic rewards account for effective healing regardless of card order", () => {
+  const { a, ctx } = fixture();
+  for (const cards of [ctx.fa(), ctx.fa().reverse()]) {
+    for (const [hp, expected] of [
+      [100, "dmg"],
+      [98, "dmg"],
+      [35, "heal"],
+    ]) {
+      a.p.hp = hp;
+      assert.equal(cards[ctx.recommendUpgrade(cards).index].type, expected);
+    }
+  }
+});

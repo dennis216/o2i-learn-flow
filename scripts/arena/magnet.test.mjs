@@ -13,7 +13,6 @@ function fixture() {
     st: { magnet: 26 },
     gems: [],
     picks: [],
-    magnetUntil: 0,
     nextMagnetAt: 10,
     tips: {},
   };
@@ -56,16 +55,15 @@ function fixture() {
   };
 }
 
-test("magnet pickup grants eight seconds and does not heal", () => {
+test("magnet pickup is consumed without healing", () => {
   const f = fixture();
   f.pickup("magnet");
   f.collect(0);
-  assert.equal(f.a.magnetUntil, 8);
   assert.equal(f.a.p.hp, 80);
   assert.equal(f.a.picks.length, 0);
 });
 
-test("temporary attraction is three times the normal range and includes new XP", () => {
+test("pickup sweeps all existing XP once and leaves future distant drops alone", () => {
   const f = fixture();
   f.a.gems = [f.gem(40), f.gem(80)];
   f.collect(0);
@@ -78,12 +76,11 @@ test("temporary attraction is three times the normal range and includes new XP",
   f.a.t = 4;
   f.a.gems.push(f.gem(50));
   f.collect(0);
-  assert.equal(f.a.gems.at(-1).mag, true);
+  assert.equal(f.a.gems.at(-1).mag, false);
 });
 
-test("new distant XP stops attracting when the magnet expires", () => {
+test("distant XP stays on the ground without a pickup", () => {
   const f = fixture();
-  f.a.magnetUntil = 8;
   f.a.t = 8;
   f.a.gems = [f.gem(50)];
   f.collect(0);
@@ -93,15 +90,13 @@ test("new distant XP stops attracting when the magnet expires", () => {
 test("magnet range composes with existing pickup upgrades", () => {
   const f = fixture();
   f.a.st.magnet = 40;
-  f.a.magnetUntil = 8;
-  f.a.gems = [f.gem(100)];
+  f.a.gems = [f.gem(35)];
   f.collect(0);
   assert.equal(f.a.gems[0].mag, true);
 });
 
 test("fast attraction cannot overshoot or duplicate XP", () => {
   const f = fixture();
-  f.a.magnetUntil = 8;
   f.a.gems = [f.gem(20, 4)];
   f.collect(0.5);
   f.collect(0.5);

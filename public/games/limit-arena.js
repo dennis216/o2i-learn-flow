@@ -6665,7 +6665,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       slowUntil: 0,
       runId: crypto.randomUUID(),
       questionPoolExhausted: false,
-      magnetUntil: 0,
       nextMagnetAt: 10,
       pendingLv: 0,
       tips: {},
@@ -9050,11 +9049,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     });
   }
   function magnetBacklogReady() {
-    if (
-      !a.gems.length ||
-      a.t < (a.magnetUntil || 0) ||
-      a.picks.some((pick) => pick.kind === "magnet")
-    )
+    if (!a.gems.length || a.picks.some((pick) => pick.kind === "magnet"))
       return false;
     if (a.lastMagnetSpawn !== undefined && a.t - a.lastMagnetSpawn < 30)
       return false;
@@ -9074,15 +9069,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const e = a.p,
       o = X(),
       r = _(),
-      boosted = a.t < (a.magnetUntil || 0),
-      n = a.st.magnet * (boosted ? 3 : 1);
+      n = a.st.magnet;
     ((a.gems = a.gems.filter((l) => {
       const h = it(l.x, l.y, o, r);
       if ((!l.mag && h < n && (l.mag = !0), l.mag)) {
-        const c =
-            (boosted ? 150 : 60) + (a.t - (l.magT ?? (l.magT = a.t))) * 420,
+        const c = 60 + (a.t - (l.magT ?? (l.magT = a.t))) * 420,
           u = at(l.x, l.y, o, r),
-          step = Math.min(Math.min(c, boosted ? 480 : 340) * t, h);
+          step = Math.min(Math.min(c, 340) * t, h);
         ((l.x += Math.cos(u) * step), (l.y += Math.sin(u) * step));
       }
       return it(l.x, l.y, o, r) < 7
@@ -9098,10 +9091,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
               $.coin());
           } else if (l.kind === "magnet") {
             collectBossExperience();
-            a.magnetUntil = a.t + 8;
-            ($.shard(),
-              bt(e.x, e.y - 22, i ? "磁铁 · 8 秒" : "Magnet · 8s", s.blue),
-              yt(e.x, e.y - 7, 8, 40, 0.4, s.blue));
+            ($.shard(), yt(e.x, e.y - 7, 8, 40, 0.4, s.blue));
           } else if (l.kind === "chest") {
             a.bossChestOrigin = { x: l.x, y: l.y };
             ls();
@@ -14262,46 +14252,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function showAbilityCooldown(kind, remaining) {
     a.abilityCooldownHint = { kind, until: E + 1.1, readyAt: a.t + remaining };
   }
-  let magnetHudCanvas;
   function drawMagnetPickup(context, x, y) {
     context.save();
     context.translate(Math.round(x), Math.round(y));
     drawCenteredMagnet(context);
     context.restore();
-  }
-  function drawMagnetStatus() {
-    const remaining = (a.magnetUntil || 0) - a.t;
-    if (remaining <= 0 || !a.p) return;
-    const px = F((a.p.x - a.cam.x) * ee, 90, G - 90),
-      py = F((a.p.y - a.cam.y) * ee + 20, 12, mt - 20);
-    const text = (i ? "" : "MAGNET ") + remaining.toFixed(1) + "S";
-    const width = Ui(text) + 4,
-      scale = 2,
-      prefix = i ? 32 : 0;
-    if (!magnetHudCanvas) {
-      magnetHudCanvas = document.createElement("canvas");
-      magnetHudCanvas.height = 12;
-    }
-    magnetHudCanvas.width = width;
-    const context = magnetHudCanvas.getContext("2d");
-    context.imageSmoothingEnabled = false;
-    kt(context, text, 2, 2, s.blue, { outline: s.black });
-    const left = Math.round(px - (width * scale + prefix) / 2);
-    if (i)
-      Y(R, "磁铁", left, Math.round(py), {
-        pixel: true,
-        size: 12,
-        col: s.blue,
-        outline: s.black,
-      });
-    R.imageSmoothingEnabled = false;
-    R.drawImage(
-      magnetHudCanvas,
-      left + prefix,
-      Math.round(py),
-      width * scale,
-      24,
-    );
   }
   function drawAbilityCooldown() {
     const hint = a.abilityCooldownHint;
@@ -14580,7 +14535,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function Wi() {
     drawRegionHud();
     drawAbilityCooldown();
-    drawMagnetStatus();
     drawUnitBadge();
     const t = a.banner;
     if (t && E - t.t0 < 2.4) {
@@ -19093,14 +19047,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         reason = i
           ? "已拥有全部组件，可直接获得组合效果"
           : "You own every ingredient for this combo";
-      } else if (
-        ["heal", "fullheal"].includes(card.type) &&
-        a.p.hp < a.p.maxHp * 0.5
-      ) {
-        score = 115;
+      } else if (["heal", "fullheal"].includes(card.type)) {
+        const missing = a.p.maxHp - a.p.hp;
+        if (missing <= 0) continue;
+        const restored = Math.min(missing, card.type === "heal" ? 30 : missing);
+        score = a.p.hp < a.p.maxHp * 0.5 ? 115 : restored;
         reason = i
-          ? "当前生命偏低，先保证生存"
-          : "Low HP: recovery is the safest immediate choice";
+          ? `现在可恢复 ${Math.round(restored)} HP`
+          : `Recover ${Math.round(restored)} HP now`;
+      } else if (card.type === "dmg") {
+        score = 24;
+        reason = i
+          ? "本局所有伤害 +4%"
+          : "Gain 4% damage for the rest of this run";
       } else {
         const combo = Object.values(jt).find(
           (recipe) =>
@@ -21751,23 +21710,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       set showAbilityCooldown(value) {
         showAbilityCooldown = value;
       },
-      get magnetHudCanvas() {
-        return magnetHudCanvas;
-      },
-      set magnetHudCanvas(value) {
-        magnetHudCanvas = value;
-      },
       get drawMagnetPickup() {
         return drawMagnetPickup;
       },
       set drawMagnetPickup(value) {
         drawMagnetPickup = value;
-      },
-      get drawMagnetStatus() {
-        return drawMagnetStatus;
-      },
-      set drawMagnetStatus(value) {
-        drawMagnetStatus = value;
       },
       get drawAbilityCooldown() {
         return drawAbilityCooldown;
