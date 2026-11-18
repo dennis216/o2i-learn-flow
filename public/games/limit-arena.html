@@ -172,7 +172,7 @@ body[data-ov=menu] .mz .mrow button{font-size:12px;padding:8px 6px}
       <div class="stagewrap">
         <canvas id="c" width="640" height="360" tabindex="0" aria-label="Game screen"></canvas>
         <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tLock">Auto-lock: ON</button><button type="button" id="tAttack">Attack</button></div>
-        <div class="display-controls"><button type="button" id="tFullscreen">Full</button></div>
+        <div class="display-controls"><button type="button" id="tFullscreen">Full</button><span class="zoom" id="tZoom" role="group" aria-label="Game size"><button type="button" id="tZoomOut" aria-label="Smaller">−</button><output id="tZoomVal">100%</output><button type="button" id="tZoomIn" aria-label="Bigger">+</button></span></div>
         <div id="displayNotice" role="status" hidden></div>
         <div id="ov" hidden></div>
       </div>
@@ -356,4 +356,36 @@ body.touch .kbd-hint,body.touch #mStart kbd{display:none}
 #ov .panel.uz{padding-bottom:0}
 #ov .panel.uz .urow{position:sticky;bottom:0;z-index:2;margin-top:12px;padding:10px 0 14px;background:var(--panel);box-shadow:0 -10px 12px -8px var(--shade)}
 @media(max-width:520px){#ov .panel.uz .urow{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}#ov .panel.uz .urow .ucount{grid-column:1/-1;grid-row:1;font-size:12px;line-height:1.5}#ov .panel.uz .urow button{min-height:48px;padding:8px}}
+/* Full screen (Dennis #41): readable Exit with its Esc key, and - / + for the game size. */
+#tFullscreen kbd,#tFullscreen .lg,#tFullscreen .sh{display:none}
+body.arena-expanded #tFullscreen .sh{display:inline}
+@media (hover:hover) and (pointer:fine){
+body.arena-expanded #tFullscreen{width:auto!important;flex-direction:row;gap:6px;padding:6px 10px;opacity:1}
+body.arena-expanded #tFullscreen .control-label{font-size:13px;white-space:nowrap}
+body.arena-expanded[data-ov] #tFullscreen .lg{display:inline}
+body.arena-expanded[data-ov] #tFullscreen .sh{display:none}
+body.arena-expanded #tFullscreen kbd{display:inline;font-family:var(--pix);font-size:11px;line-height:1;padding:3px 5px;background:var(--bg);color:var(--yellow);box-shadow:inset 0 0 0 1px var(--muted)}
+body.arena-expanded[data-ov]:not([data-ov=quiz]):not([data-ov=quizfb]) #tZoom{display:flex}
+}
+#tZoom{display:none;position:absolute;right:calc(20px + env(safe-area-inset-right,0px));top:calc(72px + env(safe-area-inset-top,0px));align-items:center;pointer-events:auto;background:var(--panel);box-shadow:inset 0 0 0 2px var(--muted),2px 2px 0 var(--shade)}
+#tZoom button{min-width:36px;min-height:36px;padding:0 8px;font-family:var(--pix);font-size:18px;line-height:1;background:none;box-shadow:none;color:var(--text)}
+#tZoom button:disabled{opacity:.35}
+#tZoom output{min-width:44px;text-align:center;font-family:var(--pix);font-size:13px;color:var(--text)}
+body.arena-expanded canvas#c,body.arena-expanded .tpad,body.arena-expanded:not([data-ov]) .display-controls{width:calc(min(var(--arena-view-width,100vw),calc(var(--arena-view-height,100dvh) * 16 / 9)) * var(--arena-zoom,1));height:calc(min(var(--arena-view-height,100dvh),calc(var(--arena-view-width,100vw) * 9 / 16)) * var(--arena-zoom,1))}
+/* Join the two #41 changes: Dennis's keyboard Exit pill keeps its row layout and
+   Esc badge, but its height, icon and text follow the arena size like Pause;
+   the - / + control sits under the pill instead of a fixed 72px. */
+@media (hover:hover) and (pointer:fine){
+body.arena-expanded #tFullscreen{height:calc(var(--ctl) * .72);padding:0 calc(var(--ctl) * .2);gap:calc(var(--ctl) * .12)}
+body.arena-expanded #tFullscreen .control-icon{width:calc(var(--ctl) * .38);height:calc(var(--ctl) * .38)}
+body.arena-expanded #tFullscreen .control-label{font-size:clamp(12px,calc(var(--ctl) * .2),15px)}
+}
+#tZoom{--ctl:clamp(34px,8cqmin,72px);top:calc(var(--control-top,18px) + var(--ctl) * .72 + 10px);right:var(--control-right,20px)}
+/* Desktop main menu: the long "Exit full screen" pill would cover the language /
+   music / sound row, so stack the right column: that row, then Exit, then - / +. */
+@media (hover:hover) and (pointer:fine){
+body.arena-expanded[data-ov=menu] header{right:calc(20px + env(safe-area-inset-right,0px))}
+body.arena-expanded[data-ov=menu] #tFullscreen{top:calc(48px + env(safe-area-inset-top,0px))}
+body.arena-expanded[data-ov=menu] #tZoom{top:calc(58px + env(safe-area-inset-top,0px) + var(--ctl) * .72)}
+}
 </style></body></html>

@@ -15389,7 +15389,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ),
         (N("mStart").onclick = () => {
           ($.init(), St.start());
-          if (hasArenaTouch()) void enterArenaFullscreen();
+          if (hasArenaTouch() && arenaFullPref() !== "off")
+            void enterArenaFullscreen();
           this.heroSelect();
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
@@ -15965,7 +15966,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `${le[a.curUnit - 1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`,
       ),
       (document.body.dataset.mode = "run"));
-    if (document.body.classList.contains("touch")) void enterArenaFullscreen();
+    if (document.body.classList.contains("touch") && arenaFullPref() !== "off")
+      void enterArenaFullscreen();
     requestAnimationFrame(fitTouchStage);
   }
   let Te = null;
@@ -16414,12 +16416,27 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       expanded ? (i ? "退出" : "Exit") : i ? "全屏" : "Full",
       expanded ? "exit" : "fullscreen",
     );
+    if (expanded) {
+      // Long label on menus, short during a run so the timer stays clear.
+      const label = button.querySelector(".control-label");
+      label.textContent = "";
+      for (const [cls, text] of [
+        ["lg", i ? "退出全屏" : "Exit full screen"],
+        ["sh", i ? "退出" : "Exit"],
+      ]) {
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = text;
+        label.append(span);
+      }
+      button.insertAdjacentHTML("beforeend", "<kbd>Esc</kbd>");
+    }
     button.setAttribute(
       "aria-label",
       expanded
         ? i
-          ? "退出全屏"
-          : "Exit full screen"
+          ? "退出全屏（Esc）"
+          : "Exit full screen (Esc)"
         : i
           ? "进入全屏"
           : "Enter full screen",
@@ -16537,7 +16554,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         document.body.dataset.fullscreenMode = "page";
         updateFullscreenLabel();
         requestAnimationFrame(fitTouchStage);
-      } else restoreArenaDisplay();
+      } else {
+        arenaFullPref("off");
+        if (I === "play") Bt.pause();
+        restoreArenaDisplay();
+      }
     } else {
       arenaNativeFullscreen = active;
       requestAnimationFrame(fitTouchStage);
@@ -16552,9 +16573,92 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   if (!testing) {
     N("tFullscreen").addEventListener("click", () => {
       if (document.body.classList.contains("arena-expanded"))
-        void exitArenaFullscreen();
-      else void enterArenaFullscreen();
+        leaveFullscreenByChoice();
+      else enterFullscreenByChoice();
     });
+  }
+  // The player decides: an exit is remembered so later visits stay windowed,
+  // an entry turns automatic full screen back on.
+  function arenaFullPref(value) {
+    try {
+      if (value === undefined) return localStorage.getItem("cq-arena-full");
+      localStorage.setItem("cq-arena-full", value);
+    } catch {}
+    return null;
+  }
+  function enterFullscreenByChoice() {
+    arenaFullPref("on");
+    void enterArenaFullscreen();
+  }
+  function leaveFullscreenByChoice() {
+    arenaFullPref("off");
+    if (I === "play") Bt.pause(); // never leave a run going while the screen changes size
+    void exitArenaFullscreen();
+  }
+  // Game size inside full screen: 100% fills the screen, smaller leaves a border.
+  const ARENA_ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1];
+  let arenaZoom = 1;
+  try {
+    arenaZoom = Number(localStorage.getItem("cq-arena-zoom"));
+  } catch {}
+  if (!ARENA_ZOOMS.includes(arenaZoom)) arenaZoom = 1;
+  function applyArenaZoom() {
+    document.body.style.setProperty("--arena-zoom", String(arenaZoom));
+    N("tZoomVal").textContent = Math.round(arenaZoom * 100) + "%";
+    N("tZoomOut").disabled = arenaZoom <= ARENA_ZOOMS[0];
+    N("tZoomIn").disabled = arenaZoom >= ARENA_ZOOMS[ARENA_ZOOMS.length - 1];
+    requestAnimationFrame(fitTouchStage);
+  }
+  function stepArenaZoom(direction, fromKey) {
+    const index = ARENA_ZOOMS.indexOf(arenaZoom) + direction;
+    if (index >= 0 && index < ARENA_ZOOMS.length) {
+      arenaZoom = ARENA_ZOOMS[index];
+      try {
+        localStorage.setItem("cq-arena-zoom", String(arenaZoom));
+      } catch {}
+      applyArenaZoom();
+    }
+    if (fromKey && !document.body.dataset.ov)
+      notifyDisplay(
+        (i ? "游戏大小 " : "Game size ") +
+          Math.round(arenaZoom * 100) +
+          "%" +
+          (i ? " · 按 - / + 调整" : " · press - / + to change"),
+      );
+  }
+  if (!testing) {
+    N("tZoomOut").addEventListener("click", () => stepArenaZoom(-1));
+    N("tZoomIn").addEventListener("click", () => stepArenaZoom(1));
+    N("tZoomOut").setAttribute("aria-label", i ? "缩小（-）" : "Smaller (-)");
+    N("tZoomIn").setAttribute("aria-label", i ? "放大（+）" : "Bigger (+)");
+    N("tZoom").setAttribute("aria-label", i ? "游戏大小" : "Game size");
+    applyArenaZoom();
+    // In full screen, Esc always leaves it (pausing a run) and - / + resize the game.
+    // Runs before the game's own keys.
+    addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          !document.body.classList.contains("arena-expanded") ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.altKey
+        )
+          return;
+        if (event.target && /INPUT|TEXTAREA/.test(event.target.tagName)) return;
+        const code = event.code;
+        if (code === "Escape") {
+          if (!event.repeat) leaveFullscreenByChoice();
+        } else if (code === "Minus" || code === "NumpadSubtract")
+          stepArenaZoom(-1, true);
+        else if (code === "Equal" || code === "NumpadAdd")
+          stepArenaZoom(1, true);
+        else return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
   }
   if (!testing) {
     updateFullscreenLabel();
@@ -19339,7 +19443,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Hide touch buttons")),
         ks(),
         us());
-      void enterArenaFullscreen(true);
+      if (arenaFullPref() !== "off") void enterArenaFullscreen(true);
+      else updateFullscreenLabel();
       let e = performance.now(),
         o = 0;
       const r = (n) => {
