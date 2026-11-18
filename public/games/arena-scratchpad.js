@@ -66,7 +66,7 @@ export function installScratchpad(document) {
     .scratch-open{flex:none!important;margin-left:4px;padding:4px 8px!important;min-height:32px;font-size:11px!important;white-space:nowrap}
     #arena-scratchpad{position:fixed;inset:0;box-sizing:border-box;width:min(900px,calc(100vw - 24px));height:min(620px,calc(100dvh - 24px));max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:12px;margin:auto;border:3px solid var(--muted);background:var(--panel);color:var(--text);box-shadow:6px 6px 0 var(--shade);font-family:var(--pix)}
     #arena-scratchpad[open]{display:flex;flex-direction:column;gap:10px}
-    #arena-scratchpad::backdrop{background:#0009}
+    #arena-scratchpad::backdrop{background:transparent}
     .scratch-toolbar{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap}
     .scratch-toolbar strong{font-size:14px;flex:1;min-width:70px}
     .scratch-toolbar button{min-height:40px;min-width:44px;padding:6px 10px;font:12px var(--pix);touch-action:manipulation}
@@ -75,6 +75,12 @@ export function installScratchpad(document) {
     .scratch-surface canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:crosshair}
     @media(max-width:500px),(max-height:450px){#arena-scratchpad{padding:8px;gap:6px}.scratch-toolbar{gap:4px}.scratch-toolbar button{padding:5px 8px}.scratch-toolbar strong{font-size:12px}}
   `;
+  style.textContent += `
+    #arena-scratchpad{inset:auto;margin:0;width:min(480px,78vw);height:min(350px,60dvh)}
+    #arena-scratchpad[data-size="0"]{width:min(350px,70vw);height:min(240px,50dvh)}
+    #arena-scratchpad[data-size="2"]{width:min(800px,94vw);height:min(570px,87dvh)}
+    .scratch-toolbar strong{cursor:grab;touch-action:none;user-select:none}
+  `;
   document.head.append(style);
   const dialog = document.createElement("dialog");
   dialog.id = "arena-scratchpad";
@@ -82,7 +88,7 @@ export function installScratchpad(document) {
   const toolbar = document.createElement("div");
   toolbar.className = "scratch-toolbar";
   const title = document.createElement("strong");
-  title.textContent = words.title;
+  title.textContent = "⠿ " + words.title;
   toolbar.append(title);
   let tool = "pen",
     active = null,
@@ -102,6 +108,53 @@ export function installScratchpad(document) {
     toolbar.append(button);
     buttons[action] = button;
   }
+  const sizes =
+    words === labels.zh ? ["小", "中", "大"] : ["Small", "Medium", "Large"];
+  const sizeButton = document.createElement("button");
+  toolbar.insertBefore(sizeButton, buttons.pen);
+  let size = 1,
+    position = null,
+    drag = null;
+  sizeButton.textContent = sizes[size];
+  function place() {
+    if (!dialog.open) return;
+    const { width, height } = dialog.getBoundingClientRect();
+    dialog.style.left =
+      Math.max(
+        0,
+        Math.min(position?.x ?? innerWidth - width - 8, innerWidth - width),
+      ) + "px";
+    dialog.style.top =
+      Math.max(
+        0,
+        Math.min(position?.y ?? innerHeight - height - 8, innerHeight - height),
+      ) + "px";
+  }
+  sizeButton.onclick = () => {
+    size = (size + 1) % sizes.length;
+    sizeButton.textContent = sizes[size];
+    dialog.dataset.size = size;
+    place();
+  };
+  title.onpointerdown = (e) => {
+    if (drag || e.button !== 0) return;
+    const rect = dialog.getBoundingClientRect();
+    drag = {
+      id: e.pointerId,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+    title.setPointerCapture(e.pointerId);
+  };
+  title.onpointermove = (e) => {
+    if (drag?.id !== e.pointerId) return;
+    position = { x: e.clientX - drag.x, y: e.clientY - drag.y };
+    place();
+  };
+  title.onlostpointercapture = () => {
+    drag = null;
+  };
+  window.addEventListener("resize", place);
   function selectTool(next) {
     tool = next;
     for (const action of ["pen", "eraser"])
@@ -244,6 +297,7 @@ export function installScratchpad(document) {
     opener.textContent = words.title;
     opener.onclick = () => {
       dialog.showModal();
+      place();
       resize();
       buttons.pen.focus({ preventScroll: true });
     };
