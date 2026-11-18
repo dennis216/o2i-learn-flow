@@ -31,7 +31,12 @@ const LABEL_ZH: Record<string, string> = {
   "Math Group": "数学组", "Chemistry Group": "化学组", "Physics Group": "物理组", "Biology Group": "生物组",
 };
 const LABEL_EN: Record<string, string> = { "Web Development & Management": "Website Group" };
-export const teamLabel = (value: string, language: string) => (language === "zh" ? LABEL_ZH[value] : LABEL_EN[value]) || value;
+const LABEL_ES: Record<string, string> = {
+  Leadership: "Dirección", "Team Members": "Miembros del equipo", Founder: "Fundador", "Co-founder": "Cofundador", "Team Leader": "Responsable de equipo", "Team Member": "Miembro", "Website Developer": "Desarrollo web",
+  "Publicity & Marketing": "Comunicación y difusión", "Web Development & Management": "Equipo web", "Curriculum Content & Media Production": "Contenidos educativos y producción audiovisual",
+  "Math Group": "Matemáticas", "Chemistry Group": "Química", "Physics Group": "Física", "Biology Group": "Biología",
+};
+export const teamLabel = (value: string, language: string) => (language === "zh" ? LABEL_ZH[value] : language === "es" ? LABEL_ES[value] : LABEL_EN[value]) || value;
 
 export function groupTeamMembers<T extends { roles: string[]; departments: string[]; order_index: number }>(members: readonly T[]) {
   const byOrder = (left: T, right: T) => left.order_index - right.order_index;

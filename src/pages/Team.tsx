@@ -117,10 +117,10 @@ const Team = () => {
   return (
     <main className={`min-h-screen bg-background ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <PageHeader icon={Users} tone="blue" title={t('Meet the team', '认识团队')}
+        <PageHeader icon={Users} tone="blue" title={t('Our team', '我们的团队')}
           description={teamMembers.length > 0
-            ? t(`${teamMembers.length} people who write the lessons, record the videos and build this site.`, `${teamMembers.length} 个人：写课、录视频、搭网站。`)
-            : t('We write the lessons, record the videos and build this site.', '写课、录视频、搭网站的人。')} />
+            ? t(`${teamMembers.length} people working on our lessons, videos and website.`, `我们共有 ${teamMembers.length} 位成员，一起制作课程、录制视频和维护网站。`)
+            : t('Meet the people who create our lessons, record our videos and build O2I.', '认识参与课程制作、视频录制和网站开发的成员。')} />
         {loading ? (
           <div className={GRID} aria-busy="true">
             {Array.from({ length: 6 }, (_, i) => (
@@ -138,7 +138,7 @@ const Team = () => {
         ) : teamMembers.length === 0 ? (
           <div className="mx-auto flex max-w-xl flex-col items-center py-16 text-center">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('Team information coming soon', '团队信息即将上线')}</h2>
-            <p className="mt-3 text-lg text-muted-foreground">{t('In the meantime, our courses are open to everyone.', '在那之前，课程已经可以直接学了。')}</p>
+            <p className="mt-3 text-lg text-muted-foreground">{t('You can still browse our courses while we update this page.', '团队介绍正在整理，欢迎先浏览课程。')}</p>
             <Button size="lg" className="mt-8" asChild><Link to="/courses">{t('Explore courses', '浏览课程')}</Link></Button>
           </div>
         ) : (

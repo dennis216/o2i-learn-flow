@@ -18,7 +18,7 @@ function LearningStatistics({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   useEffect(() => {
     let active = true;
     setBusy(true); setError(''); setStatistics(null);
@@ -63,7 +63,7 @@ function LearningStatistics({ userId }: { userId: string }) {
 export default function Profile() {
   const { user, isSuperAdmin, loading } = useAuth();
   const isProtectedAccount = isSuperAdmin;
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   if (loading) return <p role="status" className="p-8">{t('Checking your account…', '正在确认登录状态…')}</p>;
 
@@ -131,7 +131,7 @@ export default function Profile() {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <Input
                       id="created"
-                      value={new Date(user.created_at).toLocaleDateString()}
+                      value={new Date(user.created_at).toLocaleDateString(locale)}
                       disabled
                       className="bg-muted"
                     />

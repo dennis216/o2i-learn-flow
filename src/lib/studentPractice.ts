@@ -29,8 +29,21 @@ export interface AdaptationSummary {
   rule_version: 'practice-adaptation-v2'; error_count: number; slow_count: number; fallback_count: number; items: AdaptationItem[];
 }
 export type SelectionSummary = LegacySelectionSummary | AdaptationSummary;
-export function selectionRationale(summary?: SelectionSummary | null, language: 'en' | 'zh' = 'en'): string | null {
+export function selectionRationale(summary?: SelectionSummary | null, language: 'en' | 'zh' | 'es' = 'en'): string | null {
   if (!summary) return null;
+  if (language === 'es') {
+    const difficulty = { easy: 'fácil', medium: 'media', hard: 'alta' };
+    if (summary.rule_version === 'practice-adaptation-v2') {
+      const reasons = summary.items.filter(i => i.kind !== 'regular').map(i => `Añadimos ejercicios de ${i.representation_type} del tema ${i.topic_code} sobre ${i.skill_description}, según tus ${i.signal_count} respuestas recientes ${i.kind === 'error' ? 'incorrectas' : 'correctas pero lentas'}.`);
+      if (!reasons.length) reasons.push('Estamos creando tu historial con ejercicios habituales, dando prioridad a los que aún no has visto.');
+      if (summary.error_count + summary.slow_count < 2) reasons.push('Se incluyen otras preguntas si no hay suficientes ejercicios nuevos relacionados con tus errores o respuestas lentas.');
+      if (summary.fallback_count) reasons.push('También se incluyen otros niveles para priorizar preguntas nuevas o completar la serie.');
+      return reasons.join(' ');
+    }
+    if (summary.target_difficulty === null) return 'Práctica aleatoria de los temas publicados, dando prioridad a las preguntas que aún no has visto.';
+    const basis = summary.sample_count < 5 ? 'Estamos creando tu historial. Empezamos con dificultad media.' : `${summary.correct_count}/${summary.sample_count} aciertos en tus últimas preguntas distintas de este tema. Dificultad prevista: ${difficulty[summary.target_difficulty]}.`;
+    return basis + (summary.fallback_count ? ' Se incluyen otros niveles para priorizar preguntas nuevas o completar la serie.' : '');
+  }
   const zh = language === 'zh';
   if (summary.rule_version === 'practice-adaptation-v2') {
     const reasons = summary.items.filter(i => i.kind !== 'regular').map(i => zh
@@ -87,13 +100,26 @@ const reasonTextZh: Record<ContinuousReason['kind'], (r: ContinuousReason) => st
 };
 const repeatKinds = ['incorrect', 'oldest'];
 /** Repeats show no reason sentence. */
-export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' = 'en'): string | null {
+export function continuousReasonText(reason?: ContinuousReason | null, language: 'en' | 'zh' | 'es' = 'en'): string | null {
   if (!reason || reason.repeat) return null;
+  if (language === 'es') {
+    const difficulty = { easy: 'fácil', medium: 'media', hard: 'alta' }[reason.target_difficulty];
+    const messages: Record<ContinuousReason['kind'], string> = {
+      start: `Empezamos el tema ${reason.topic_code} con dificultad ${difficulty}.`,
+      new_topic: reason.topic_status === 'needs_practice' ? `Conviene practicar más el tema ${reason.topic_code}.` : `El tema ${reason.topic_code} tiene preguntas que aún no has intentado.`,
+      easier_after_error: `La última respuesta fue incorrecta. Probamos una pregunta de dificultad ${difficulty} del tema ${reason.topic_code}.`,
+      step_up: `Tres aciertos seguidos: subimos a dificultad ${difficulty}.`,
+      continue: `Continuamos con el tema ${reason.topic_code}, dificultad ${difficulty}.`,
+      review: `Repasamos el tema ${reason.topic_code} para comprobar qué recuerdas después de unos días.`,
+    };
+    return messages[reason.kind] ?? null;
+  }
   return (language === 'zh' ? reasonTextZh : reasonText)[reason.kind]?.(reason) ?? null;
 }
 export const topicStatusLabel: Record<TopicStatus, string> = { insufficient: 'Too few questions to tell yet', needs_practice: 'Needs more practice', stable: 'Fairly steady' };
 export const topicStatusLabelZh: Record<TopicStatus, string> = { insufficient: '做的题还太少，暂时看不出来', needs_practice: '还需要多练', stable: '比较稳定' };
-export function topicStatusBasis(t: PracticeRecapTopic, language: 'en' | 'zh' = 'en'): string {
+export function topicStatusBasis(t: PracticeRecapTopic, language: 'en' | 'zh' | 'es' = 'en'): string {
+  if (language === 'es') return t.sample_count ? `${t.correct_count} de tus últimas ${t.sample_count} preguntas nuevas resueltas al primer intento.` : 'Todavía no hay respuestas al primer intento.';
   if (language === 'zh') return t.sample_count ? `最近 ${t.sample_count} 道新题中，第一次就答对 ${t.correct_count} 道。` : '还没有第一次答题的记录。';
   return t.sample_count ? `${t.correct_count} of your last ${t.sample_count} new ${t.sample_count === 1 ? 'question' : 'questions'} correct on the first try.` : 'No first-try answers yet.';
 }

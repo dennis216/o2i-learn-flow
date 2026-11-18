@@ -53,3 +53,5 @@ reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR─
 - Limit Arena：`public/games/limit-arena.html` 是游戏唯一的源码，直接改它；不要再用 `scripts/arena/prepare-game.mjs` 从仓库外的完整版重新生成（脚本已禁止覆盖），仓库外那份只做存档。详见 [docs/arena/README_ZH.md](docs/arena/README_ZH.md)。
 - 不要再用 Lovable 编辑器改代码，网站已迁到 Cloudflare Pages（项目 `o2i-website`）。
 - 出问题需要回滚：Cloudflare → `o2i-website` → Deployments → 选上一个正常版本 → Rollback。
+
+- Arena 答题草稿纸组件直接维护 `public/games/arena-scratchpad.js`，中英文文案也在该 JS；字体扫描需覆盖它。

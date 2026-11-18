@@ -45,3 +45,17 @@ test('switching back to automatic firing takes effect without a new run', () => 
   const f = fixture(false); f.tick(2); assert.equal(f.shots.length, 0);
   f.tt.d.autoAttack = true; f.tick(.01); assert.equal(f.shots.length, 1);
 });
+
+
+test('touch movement belongs to the left half and a second right-hand finger cannot take it over',()=>{
+ const Tt={jx:0,jy:0,fire:0};const ctx=vm.createContext({G:640,I:'play',Lt:null,attackPointer:null,Tt,tt:{d:{autoAttack:true}},$: {init(){}},St:{start(){}},Da:event=>[event.x,event.y],N:()=>({setPointerCapture(){}}),Yo(){},fs:(...p)=>p,performance:{now:()=>100},Math});
+ vm.runInContext(game.slice(game.indexOf('function isMovementArea('),game.indexOf('N("c").addEventListener("pointerdown",handleArenaPointerDown)')),ctx);
+ const down=(id,x,y)=>ctx.handleArenaPointerDown({pointerType:'touch',pointerId:id,x,y,preventDefault(){}});
+ const move=(id,x,y)=>ctx.handleArenaPointerMove({pointerId:id,x,y});
+ down(1,500,100);move(1,550,120);assert.equal(ctx.Lt,null);assert.equal(Tt.jx,0);assert.equal(Tt.jy,0);
+ down(2,100,100);move(2,140,100);assert.equal(Tt.jx,1);assert.equal(Tt.jy,0);
+ down(3,500,100);move(3,540,160);assert.equal(ctx.Lt.id,2);assert.equal(Tt.jx,1);assert.equal(Tt.jy,0);
+ move(2,400,100);assert.equal(Tt.jx,0);assert.equal(Tt.jy,0);
+ move(2,120,120);assert(Tt.jx>0&&Tt.jy>0);
+ vm.runInContext(game.slice(game.indexOf('function cancelArenaPointers()'),game.indexOf('N("c").addEventListener("lostpointercapture"')),ctx);ctx.cancelArenaPointers();assert.equal(ctx.Lt,null);assert.equal(Tt.jx,0);assert.equal(Tt.jy,0);
+});

@@ -104,7 +104,7 @@ function PracticeRecap({ session, returnTo }: { session: PracticeSession; return
     <section aria-label={t('By Topic', '按 Topic')} className="space-y-2">
       <h2 className="text-xl font-semibold">{t('By Topic', '按 Topic')}</h2>
       {!recap.topics.length && <p>{t('No answers were submitted in this session.', '这次没有答题。')}</p>}
-      <ul className="space-y-2">{recap.topics.map(topic => <li key={topic.topic_id} className="rounded border p-3"><p className="font-medium">{topic.topic_code} · {topic.topic_title}: {(language === 'zh' ? topicStatusLabelZh : topicStatusLabel)[topic.status]}</p><p className="text-sm text-muted-foreground">{topicStatusBasis(topic, language)}</p></li>)}</ul>
+      <ul className="space-y-2">{recap.topics.map(topic => <li key={topic.topic_id} className="rounded border p-3"><p className="font-medium">{topic.topic_code} · {topic.topic_title}: {t(topicStatusLabel[topic.status], topicStatusLabelZh[topic.status])}</p><p className="text-sm text-muted-foreground">{topicStatusBasis(topic, language)}</p></li>)}</ul>
     </section>
     <section aria-label={t('Questions to look at again', '需要再看看的题')} className="space-y-2">
       <h2 className="text-xl font-semibold">{t('Questions to look at again', '需要再看看的题')}</h2>
