@@ -389,7 +389,7 @@ p > span {
   .glass-home h2 { font-weight: 500; letter-spacing: -.015em; }
   .glass-home h3 { font-weight: 500; letter-spacing: 0; line-height: 1.45; }
   .glass-home p { line-height: 1.85; }
-  .glass-nav a > span { font-family: 'O2I Numerals', 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; font-weight: 600; letter-spacing: .015em; }
+  .glass-nav a > span { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; font-weight: 600; letter-spacing: .015em; }
   .hero-live-stats > div + div { border-left: 1px solid hsl(var(--border)); padding-left: 1.5rem; }
   .hero-live-stats dt { font-family: 'Inter', 'Noto Sans SC', sans-serif; line-height: 1.5; }
 }
