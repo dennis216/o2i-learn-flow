@@ -4,14 +4,19 @@ import { daylightTheme } from '@/lib/daylightTheme';
 
 type Appearance = 'auto' | 'light' | 'dark';
 type Position = { latitude: number; longitude: number };
-const AppearanceContext = createContext<{ mode: Appearance; selectMode: (mode: Appearance) => void; solarStatus: 'system' | 'locating' | 'solar' }>({ mode: 'auto', selectMode: () => {}, solarStatus: 'system' });
+const CHOICE_KEY = 'o2i-appearance-choice';
+const AppearanceContext = createContext<{ mode: Appearance; selectMode: (mode: Appearance) => void; solarStatus: 'system' | 'locating' | 'solar' }>({ mode: 'light', selectMode: () => {}, solarStatus: 'system' });
 
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Appearance>(() => {
     try {
-      const saved = localStorage.getItem('o2i-appearance') ?? localStorage.getItem('o2i-theme');
-      return saved === 'light' || saved === 'dark' ? saved : 'auto';
-    } catch { return 'auto'; }
+      // Only a choice the visitor made counts. Older builds stored 'auto' on every visit,
+      // so a legacy 'auto' is treated as "never chose" and falls back to light.
+      const chosen = localStorage.getItem(CHOICE_KEY);
+      if (chosen === 'light' || chosen === 'dark' || chosen === 'auto') return chosen;
+      const legacy = localStorage.getItem('o2i-appearance') ?? localStorage.getItem('o2i-theme');
+      return legacy === 'dark' ? 'dark' : 'light';
+    } catch { return 'light'; }
   });
   const [position, setPosition] = useState<Position | null>(null);
   const [locating, setLocating] = useState(false);
@@ -26,10 +31,10 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, []);
   const selectMode = useCallback((value: Appearance) => {
     setMode(value);
+    try { localStorage.setItem(CHOICE_KEY, value); } catch { /* visit-only preference */ }
     if (value === 'auto' && !position) locate();
   }, [locate, position]);
   useEffect(() => {
-    try { localStorage.setItem('o2i-appearance', mode); } catch { /* visit-only preference */ }
     if (mode !== 'auto') return;
     let active = true;
     // Reuse an existing permission, but only prompt after the visitor selects Auto.

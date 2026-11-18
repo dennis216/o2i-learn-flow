@@ -135,9 +135,8 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between gap-1 sm:gap-4">
           <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <img src="/o2i-original-mark.jpg" alt="" className="h-8 w-8 rounded-full object-cover" />
+              <img src="/o2i-crest.png" alt="" width={44} height={44} className="brand-crest-logo h-11 w-11 shrink-0 object-contain" />
               <span className="whitespace-nowrap text-xl font-bold text-primary">O2I Institute</span>
-              <span aria-hidden="true" className="brand-companion border-l border-primary/25 pl-2"><img src="/heraldic-emblem-v4.png?v=4" alt="" className="h-6 w-6 object-contain sm:h-7 sm:w-7" /></span>
             </Link>
           </div>
 

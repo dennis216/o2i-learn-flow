@@ -495,3 +495,6 @@ body { font-variant-numeric: lining-nums; }
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 .page-enter { animation: page-enter 320ms ease-out both; }
 @media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
+
+@media (max-width: 399px) { .glass-nav a > img.brand-crest-logo { width: 2.25rem; height: 2.25rem; } }
+
