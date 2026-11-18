@@ -326,4 +326,12 @@ body[data-ov=gun] .cgrid.cls{grid-template-columns:repeat(3,minmax(0,1fr));max-h
 <script type="module" src="/games/limit-arena.js"></script>
 
 <script type="module" src="/games/arena-scratchpad.js"></script>
-</body></html>
+<style>
+body:not(.arena-expanded) .display-controls{display:block}
+body:not(.arena-expanded) #tFullscreen,body .under kbd,#tPause .control-label,#tFullscreen .control-label{opacity:1;color:#fff}
+@media (hover:hover) and (pointer:fine){#tDash .control-label::before{content:"Shift · "}#tSkill .control-label::before{content:"E · "}}
+body:not(.arena-expanded) .display-controls{z-index:210}
+body:not(.arena-expanded)[data-ov=gun] #ov:has(>.cz){position:absolute;inset:0;width:100%;height:100%;transform:none}
+body:not(.arena-expanded)[data-ov=gun] #ov>.cz{zoom:var(--panel-scale,1)}
+body:not(.arena-expanded)[data-ov=menu] #ov>.mz{zoom:var(--panel-scale,1)}
+</style></body></html>

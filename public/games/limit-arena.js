@@ -7209,6 +7209,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function Jn(t) {
     if (t.dead) return;
     if (t.boss) return Xi(t);
+    if (t.role === "toxic")
+      wt({
+        kind: "pool",
+        x: t.x,
+        y: t.y,
+        r: 16,
+        dmg: 4,
+        once: false,
+        warnFrom: a.t,
+        fire: a.t + 0.35,
+        end: a.t + 3.35,
+      });
     ((t.dead = !0),
       a.kills++,
       t.mark > a.t &&
@@ -7275,12 +7287,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ua(t.x + q(-14, 14), t.y + q(-14, 14), Math.round(o / 3));
       Math.random() < 0.55 &&
         a.picks.push({ kind: "heart", x: t.x, y: t.y, t0: a.t });
-      if (Math.random() < 0.55 * 0.95 * 0.9) spawnMagnetPickup(t.x, t.y, true);
+      if (Math.random() < 0.55 * 0.95 * 0.9 * 0.95)
+        spawnMagnetPickup(t.x, t.y, true);
       ($.boom(), (a.shake = Math.min(1, a.shake + 0.4)));
     } else {
       if (Math.random() < 0.009)
         a.picks.push({ kind: "heart", x: t.x, y: t.y, t0: a.t });
-      if (Math.random() < 0.009 * 0.95 * 0.9) spawnMagnetPickup(t.x, t.y, true);
+      if (Math.random() < 0.009 * 0.95 * 0.9 * 0.95)
+        spawnMagnetPickup(t.x, t.y, true);
     }
     K("kill", 0.035);
   }
@@ -8715,6 +8729,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         },
         r,
       );
+    if (a.worldStage >= 2 && !h.elite && !h.boss && t !== "turret") {
+      const roles =
+        a.worldStage % 2
+          ? ["toxic", "armor", "fuse"]
+          : ["fuse", "toxic", "armor"];
+      const slot = h.id % 12;
+      if (slot < 3) h.role = roles[slot === 2 ? 1 : 0];
+      if (slot === 5) h.role = roles[2];
+      if (h.role === "armor") {
+        h.hp *= 3;
+        h.sp *= 0.68;
+      }
+    }
     return ((h.maxHp = h.hp), (h.tint = h.id % 3), a.enemies.push(h), h);
   }
   function ia() {
@@ -8844,6 +8871,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         k = a.t < n.slowUntil || n.chill > a.t ? 0.6 - 0.05 * H("zero") : 1;
       let m = 0,
         y = 0;
+      if (n.role === "fuse" && !l && u < 25) {
+        wt({
+          kind: "blast",
+          x: n.x,
+          y: n.y,
+          r: 28,
+          dmg: 10,
+          warnFrom: a.t,
+          fire: a.t + 0.7,
+          end: a.t + 0.88,
+        });
+        Jn(n);
+        continue;
+      }
       if (n.type === "ghost") {
         const g = u > 115 ? 1 : u < 85 ? -1 : 0;
         ((m = (f * g - p * 0.5) * n.sp),
@@ -9059,6 +9100,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
               bt(e.x, e.y - 22, "+" + Math.round(c), s.green, !0),
               $.coin());
           } else if (l.kind === "magnet") {
+            collectBossExperience();
             a.magnetUntil = a.t + 8;
             ($.shard(),
               bt(e.x, e.y - 22, i ? "磁铁 · 8 秒" : "Magnet · 8s", s.blue),
@@ -11563,6 +11605,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         let r = !1;
         if (o.kind === "line" || o.kind === "rot")
           r = os(t, e, o.x0, o.y0, o.x1, o.y1) < o.w / 2 + 2;
+        else if (o.kind === "pool" || o.kind === "blast")
+          r = Math.hypot(t - o.x, e - o.y) <= o.r;
         else if (o.kind === "rect")
           r = t > o.x && t < o.x + o.w && e > o.y && e < o.y + o.h;
         else if (o.kind === "curve") {
@@ -13489,6 +13533,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }
         B(t, y, g, l ? s.yellow : s.white);
       }
+    } else if (e.kind === "pool" || e.kind === "blast") {
+      const color = e.kind === "pool" ? s.green : s.orange;
+      t.save();
+      t.fillStyle = color;
+      t.globalAlpha = l ? 0.12 : 0.32;
+      t.beginPath();
+      t.arc(e.x - o, e.y - r, e.r, 0, Math.PI * 2);
+      t.fill();
+      t.restore();
+      Ht(t, e.x - o, e.y - r, e.r, color, 1, 1);
     } else if (e.kind === "ring") {
       if (!e.follow) return;
       const u = e.follow.x - o,
@@ -14466,14 +14520,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         : hudCaptionLines(prefix + hint.s, 264),
       height = Math.max(48, lines.length * 19 + 24),
       top = mt - 44 - height;
-    const scale = tablet ? 0.65 : 1;
+    const scale = tablet || !hasArenaTouch() ? 0.65 : 1;
     // Keep the frame on the same pixel grid as the stage badge; shrink only its contents.
     no(R, 12, mt - 44 - height * scale, 340 * scale, height * scale, {
       border: hint.boss && a.boss ? a.boss.def.col : s.lav,
       fill: s.ink,
       shadow: s.black,
     });
-    if (tablet) {
+    if (scale !== 1) {
       R.save();
       R.translate(12, mt - 44);
       R.scale(scale, scale);
@@ -14496,7 +14550,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           b.h,
         );
     });
-    if (tablet) R.restore();
+    if (scale !== 1) R.restore();
   }
   function syncMenuBest() {
     const panel = document.querySelector("#ov>.mz");
@@ -16253,6 +16307,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       controls -
       gap * siblings.length -
       bottom;
+    stage.style.setProperty(
+      "--panel-scale",
+      String(
+        Math.min(1, Math.max(96, available) / 575, screen.clientWidth / 1020),
+      ),
+    );
     // Keep the normal player within the viewport; very small windows retain scrollable menus.
     stage.style.setProperty(
       "--arena-stage-height",
@@ -18702,11 +18762,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function heldWeaponSpec(id = a.cls) {
     const art = {
-      sniper: ["...bbb...", ".kkkkkkkk", "krssssssk", ".rk.k....", ".p......."],
-      rifle: ["..k....", "kkggssk", "rggggkk", ".pkm...", "...m..."],
-      shotgun: [".kkkkk", "roossk", "rkkssk", "pk....", "......"],
+      sniper: ["...bsk...", "...k.k.kk", "rrgsssssk", "rk.k.k...", ".p..k...."],
+      rifle: ["...ks...", "rrggk.sk", "rkgssssk", ".pkmg...", "...mk..."],
+      shotgun: ["....kkk", "rrssssk", "rksoosk", ".p.kk..", "......."],
       vectorbow: ["..g.g..", ".kg.gk.", "ggsssgg", ".kg.gk.", "..g.g.."],
-      integral: [".kkkkkk", "kroossk", "rrooosk", ".p.kk..", "......."],
+      integral: ["...kkss", ".rkoook", "rrgsssk", ".pkookk", "...kk.."],
       darts: ["..y..", ".kyk.", "yybyy", ".kyk.", "..y.."],
     };
     const pixels = art[id] || art.rifle;
@@ -18899,11 +18959,31 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       body[0] = "..kk....kk..";
       body[6] = "kkaaaaaaaakk";
     }
+    const accent = { toxic: s.green, fuse: s.orange, armor: s.lgray }[
+      enemy.role
+    ];
+    if (accent)
+      body[1] = enemy.role === "armor" ? ".kzzzzzzzzk." : "...kzzzk....";
     Ct(
       ctx,
-      "world:" + kind + ":" + variant + ":" + (enemy.tint || 0),
+      "world:" +
+        (enemy.role || "") +
+        ":" +
+        kind +
+        ":" +
+        variant +
+        ":" +
+        (enemy.tint || 0),
       body,
-      { k: s.black, a: light, b: dark, c: s.tan, g: s.green, w: s.white },
+      {
+        k: s.black,
+        a: light,
+        b: dark,
+        c: s.tan,
+        g: s.green,
+        w: s.white,
+        z: accent,
+      },
       x,
       y,
       options,

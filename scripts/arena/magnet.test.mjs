@@ -73,8 +73,8 @@ test("temporary attraction is three times the normal range and includes new XP",
   f.pickup("magnet");
   f.collect(0);
   f.collect(0);
-  assert.equal(f.a.gems[0].mag, true);
-  assert.equal(f.a.gems[1].mag, false);
+  assert.equal(f.a.gems.length, 0);
+  assert.deepEqual(f.collected, [2]);
   f.a.t = 4;
   f.a.gems.push(f.gem(50));
   f.collect(0);
