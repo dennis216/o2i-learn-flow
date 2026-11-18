@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { loadTeamMembers, teamLabel, type TeamMember } from '@/lib/teamDepartments';
+import { brandText } from '@/lib/brand';
 
 // Homepage shows leaders only; everyone else stays on /team.
 const LEADER_ROLES = ['Founder', 'Co-founder', 'Team Leader'] as const;
@@ -29,8 +30,8 @@ export default function TeamLeadersSection() {
   return (
     <section aria-labelledby="team-heading" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
       <Reveal className="mb-8">
-        <h2 id="team-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('Meet the team', '认识团队')}</h2>
-        <p className="mt-2 text-lg text-muted-foreground">{t('50+ experts. These are the people leading them.', '50 多位专家，下面是带队的人。')}</p>
+        <h2 id="team-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{brandText(t('The people behind O2I', '认识我们的团队'))}</h2>
+        <p className="mt-2 text-lg text-muted-foreground">{t('Meet the team leads behind our lessons, videos and website.', '从课程制作到网站开发，认识各组的负责人。')}</p>
       </Reveal>
       {leaders === null ? (
         <div aria-busy="true" className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -43,7 +44,7 @@ export default function TeamLeadersSection() {
           <ul className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {leaders.map(member => (
               <li key={member.id} className="flex items-start gap-4 py-3">
-                <div aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">{initials(member.name)}</div>
+                <div aria-hidden="true" className="home-team-avatar grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">{initials(member.name)}</div>
                 <div className="min-w-0">
                   <p className="text-lg font-semibold leading-tight text-foreground">{member.name}</p>
                   {/* highest role only: Founder, Co-founder or Team Leader */}

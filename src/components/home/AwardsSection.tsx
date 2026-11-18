@@ -14,9 +14,10 @@ export default function AwardsSection() {
         <a href={CERTIFICATE_PDF} target="_blank" rel="noopener" className="group mx-auto block w-full max-w-sm rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:max-w-none">
           <img src="/awards-iai2o-2026-certificate.webp" width={1200} height={927} loading="lazy"
             alt={t('Certificate of Achievement: Dennis\'s Team (Ziquan Wang, Wenyao Ma, Zixuan Luo) was awarded the Silver Medal in the AI for Business track (Virtual Session), September 26, 2026.', '获奖证书：Dennis\'s Team（Ziquan Wang、Wenyao Ma、Zixuan Luo）获 2026 年 9 月 26 日 AI for Business 赛道（线上组）银牌。')}
-            className="block h-auto w-full rounded-xl shadow-lg ring-1 ring-border transition-transform group-hover:-rotate-1 group-hover:scale-[1.02] motion-reduce:transform-none" />
+            className="block h-auto w-full award-certificate rounded-xl shadow-lg ring-1 ring-border transition-transform group-hover:-rotate-1 group-hover:scale-[1.02] motion-reduce:transform-none" />
         </a>
         <div>
+          <p className="section-kicker mb-4">{t('RECOGNITION', '团队荣誉')}</p>
           <h2 id="awards-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('Silver Medal, International AI Innovation Olympiad 2026', '国际 AI 创新奥林匹克 2026 银牌')}</h2>
           <p className="mt-3 text-lg text-muted-foreground">{t('AI for Business track, Global Finals.', 'AI for Business 赛道，全球总决赛。')}</p>
           <p className="mt-5 flex flex-wrap gap-x-6 gap-y-2">

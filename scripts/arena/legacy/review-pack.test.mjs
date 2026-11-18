@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { shuffledChoices, mathDefinitions } from './review-pack.mjs';
 test('choice shuffle is reproducible, preserves all choices and keeps answer mapping separate',()=>{
@@ -15,7 +14,7 @@ test('choice shuffle is reproducible, preserves all choices and keeps answer map
  assert.equal(orders.size,4);
 });
 test('MathJax glyph definitions are extracted as inert data without executing game code',()=>{
- const defs=mathDefinitions(readFileSync(new URL('../../../public/games/limit-arena.html',import.meta.url),'utf8'));
+ const defs=mathDefinitions();
  assert.ok(defs.includes('MJX-TEX-N-32'));
  assert.ok(defs.startsWith('<svg xmlns='));
  assert.throws(()=>mathDefinitions('<script>throw new Error("must not execute");</script>'));

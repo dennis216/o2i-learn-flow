@@ -42,13 +42,14 @@
 
 ## 更新游戏
 
-**`public/games/limit-arena.html` 是游戏唯一的源码，直接改这个文件。**（2026-11-16 起，#46 之后）
+**直接维护仓库里的两个游戏源码文件：`public/games/limit-arena.html`（页面、字体、样式）和 `public/games/limit-arena.js`（游戏逻辑、中英文 UI）。**（#47）
 
 - 以前这个文件由 `prepare-game.mjs` 从仓库外的完整版生成。Brian 在 #41/#42（PR #46）里直接改了这个文件，这些改动只存在于仓库里；再从完整版生成会把它们全部覆盖。
-- 所以 `prepare-game.mjs` 已改为拒绝写入 `public/games/limit-arena.html`，只能用 `--out <别的路径>` 生成一份对照用的副本。
+- 所以 `prepare-game.mjs` 拒绝写入这两个源码文件，只能用 `--out <别的路径>` 生成一份对照用的副本。
 - 仓库外的完整版只做存档，不再修改。当初放在仓库外是因为它带着题库；现在题目由服务器发，这个理由已不成立。
-- 改完运行 `npm run test:arena`，再在个人预览站玩一局。
-- 万一文件被覆盖了：`git checkout origin/test-work -- public/games/limit-arena.html` 即可找回。
+- JS 已用 Prettier 恢复缩进换行。改完运行 `npm run format:arena`、`npm run check:arena:format` 和 `npm run test:arena`，再在个人预览站玩一局。
+- 单字母变量不会由格式化自动恢复。以后修改某个函数时，再逐步改清楚相关名字，避免一次重写整个引擎。
+- 万一文件被覆盖了，从最后确认正常的提交恢复这两个文件；不要用仓库外存档生成覆盖，也不要默认恢复到还没合入个人修改的分支。
 
 旧流程（仅供查阅，不要再用来更新游戏）：
 
@@ -59,13 +60,13 @@ node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路�
 
 ## 语言切换
 
-游戏右上角可以切换 English / 中文，选择保存在玩家的浏览器里。首次打开时，浏览器语言是中文就显示中文。切换会重新加载游戏，所以进行中的一局里不能切换。
+游戏右上角可以切换 English / 中文，选择保存在玩家的浏览器里。首次打开时，浏览器语言是中文就显示中文。进行中的一局切换语言会先确认，接受后重新加载；取消则继续当前一局。
 
 **题目、选项和解析始终是英文**，它们是服务器发来的数据，不会被翻译。翻译只作用于游戏代码里的文字：
 
-- 词表 `scripts/arena/zh-CN.json` 以前在运行 `prepare-game.mjs` 时写入游戏；它已经写进了 `limit-arena.html`，现在改这个 JSON 不会再生效。新文字直接在游戏代码里写中英文（Brian 现在的做法），之后整理代码时再统一成一种方式。
-- 模板用 `{}` 按顺序占位，需要调整顺序或省略时用 `{0}`、`{1}`。
-- 词表用到新汉字时，构建会报错。用完整版 Cubic 11 字体运行 `python3 scripts/arena/subset-zh-font.py <Cubic_11.ttf>` 重建字体子集。字体授权见 `scripts/arena/fonts/Cubic-11-OFL.txt`。
+- 统一在 `public/games/limit-arena.js` 维护中英文文案（`i` 语言分支，以及同文件的静态标签映射 `legacyStaticTranslations`）。新增 UI 同时写两种语言，不增加另一份运行时 JSON 词表。
+- 旧 JSON 移到 `scripts/arena/fixtures/legacy-zh-CN.json`，仅供历史生成器对照和归档测试。它不是当前游戏翻译源，修改它不会更新 UI。
+- 新汉字由测试检查字体子集覆盖。必要时用完整版 Cubic 11 字体运行 `python scripts/arena/subset-zh-font.py <Cubic_11.ttf>` 重建；脚本扫描当前 HTML 和 JS。字体授权见 `scripts/arena/fonts/Cubic-11-OFL.txt`。
 - 新增文字如果只写了英文，会继续显示英文，不会报错，发布前要切到中文检查一遍。
 
 ## 能防什么，不能防什么
@@ -74,10 +75,12 @@ node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路�
 - 提交之前拿不到答案和解析，同一次发题只有第一次作答有效。
 - 每个账号限制为每分钟 30 题、每 24 小时 300 题，改动时修改 `arena_next_question` 里的 `per_minute` 和 `per_day`。超限时游戏发基础奖励，不会卡住。
 - 防不住有账号的人慢慢抄题：旧独立题库的 471 题按旧限流约两天可被一个账号逐题收集；当前正式题库的可用数量取决于已发布且符合游戏格式的题目，限流不能彻底防止收集。
-- 游戏引擎和美术会被下载到浏览器，已压缩混淆，但无法彻底隐藏。
+- 游戏引擎和美术会被下载到浏览器；格式化后的 JS 可读，不能用于保存秘密或完整题库。
 - 分数目前只在浏览器本地计算和保存，以后做排行榜要改成由服务器记录。
 
 ## 测试
+
+行为测试通过 `scripts/arena/test-runtime.mjs` 调用 JS 导出的 `createArenaTestApi()`，每次创建独立状态并注入画布、时钟和 DOM 替身；不再按代码原文的字符串位置截取函数。接口不会挂在游戏窗口上，测试实例不会启动浏览器动画循环。页面入口还会用 Acorn 检查模块语法。
 
 ```bash
 npm run test:arena

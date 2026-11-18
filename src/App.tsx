@@ -1,5 +1,6 @@
-import { Suspense, lazy } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Suspense, lazy, type ReactNode } from 'react';
+import { AppearanceProvider } from '@/contexts/AppearanceContext';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -11,13 +12,14 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import DeskPet from '@/components/DeskPet';
 import Index from '@/pages/Index';
+import Profile from '@/pages/Profile';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
 import Quiz from '@/pages/Quiz';
-import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
+import { AI_CHAT_ENABLED } from '@/lib/aiTutor';
 
 const Auth = lazy(() => import('@/pages/Auth'));
-const Profile = lazy(() => import('@/pages/Profile'));
 const Courses = lazy(() => import('@/pages/Courses'));
 const SolutionRequests = lazy(() => import('@/pages/SolutionRequests'));
 const SolutionRequestThread = lazy(() => import('@/pages/SolutionRequestThread'));
@@ -31,6 +33,11 @@ const Arena = lazy(() => import('@/pages/Arena'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 const queryClient = new QueryClient();
+
+function PageTransition({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <div key={pathname} className="page-enter"><PageErrorBoundary>{children}</PageErrorBoundary></div>;
+}
 
 function PageLoader() {
   const { t } = useLanguage();
@@ -51,6 +58,7 @@ function AppNavigation() {
 
 export default function App() {
   return (
+    <AppearanceProvider>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
       <AuthProvider>
@@ -60,6 +68,7 @@ export default function App() {
             <BrowserRouter>
               <AppNavigation />
               <Suspense fallback={<PageLoader />}>
+                <PageTransition>
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
@@ -67,7 +76,7 @@ export default function App() {
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/practice" element={<Practice />} />
                   <Route path="/practice/:videoId" element={<LegacyVideoRedirect />} />
-                  <Route path="/ai-tutor" element={AI_TUTOR_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
+                  <Route path="/ai-tutor" element={AI_CHAT_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
                   <Route path="/playground" element={<Playground />} />
                   <Route path="/solution-requests" element={<SolutionRequests />} />
                   <Route path="/solution-requests/:id" element={<SolutionRequestThread />} />
@@ -83,6 +92,7 @@ export default function App() {
                   <Route path="/arena" element={<Arena />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                </PageTransition>
               </Suspense>
               <Footer />
               <DeskPet />
@@ -91,5 +101,6 @@ export default function App() {
       </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>
+    </AppearanceProvider>
   );
 }
