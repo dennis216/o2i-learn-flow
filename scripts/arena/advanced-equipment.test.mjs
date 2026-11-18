@@ -1,8 +1,193 @@
-import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import{test}from'node:test';import vm from'node:vm';
-const source=readFileSync(new URL('../../public/games/limit-arena.html',import.meta.url),'utf8');
-function fixture(){const hits=[],shots=[],a={t:20,cls:'vectorbow',p:{x:100,y:107,hp:50,maxHp:100,dashUntil:0},passives:{},thm:{},st:{area:1,proj:0},proj:[],pfx:[],fx:[],enemies:Array.from({length:9},(_,id)=>({id,x:150,y:100,r:5,hp:100}))};const colors=new Proxy({},{get:(_,id)=>'#123456'});const ctx=vm.createContext({a,i:false,s:colors,Math,X:()=>a.p.x,_:()=>a.p.y-7,H:id=>a.passives[id]||0,ht:id=>!!a.thm[id],F:(v,min,max)=>Math.max(min,Math.min(max,v)),gt:()=>1,me:()=>a.enemies[0],at:(x,y,xx,yy)=>Math.atan2(yy-y,xx-x),weaponMuzzle:()=>({x:110,y:101}),ie:shot=>shots.push(shot),At:(enemy,damage,options)=>hits.push({enemy,damage,options}),os:()=>0,K(){}});vm.runInContext(source.slice(source.indexOf('function advancedArsenal()'),source.indexOf('function mathArsenal()')),ctx);return{a,ctx,hits,shots,skills:ctx.advancedArsenal(),theorems:ctx.advancedTheorems()};}
-test('two new classes, five evolving companions, ten general passives and five valid theorem recipes',()=>{const f=fixture();assert.equal(Object.keys(f.ctx.advancedClasses()).length,2);assert.equal(Object.values(f.skills).filter(s=>s.main).length,2);assert.equal(Object.values(f.skills).filter(s=>s.evo).length,5);assert.equal(Object.values(f.skills).filter(s=>s.kind==='passive'&&!s.cls).length,10);assert.equal(Object.keys(f.theorems).length,5);for(const skill of Object.values(f.skills).filter(s=>s.evo)){assert(f.skills[skill.evoNeed]||skill.evoNeed==='continuity');assert(skill.evo.icon);}for(const theorem of Object.values(f.theorems))assert(theorem.req.every(id=>f.skills[id]));});
-test('new main weapons and all companions/evolutions fire with bounded counts',()=>{const f=fixture();for(const[id,spec]of Object.entries(f.skills).filter(([,s])=>s.kind==='weapon'))for(const evolved of [false,true]){f.a.proj=[];f.a.pfx=[];f.shots.length=0;f.hits.length=0;assert.equal(f.ctx.fireAdvancedWeapon(id,{lv:5,n:0,evo:evolved},spec),true);assert(f.a.proj.length+f.a.pfx.length+f.shots.length>0);assert(f.shots.length<=4);assert(f.hits.length<=6);}});
-test('cannon honors Split Shot and ambush without inflating the projectile damage budget',()=>{const f=fixture(),spec=f.skills.integral;f.ctx.fireAdvancedWeapon('integral',{lv:1,n:0},spec);assert.equal(f.a.proj.length,1);assert.equal(f.a.proj[0].dmg,40);f.a.proj=[];f.a.fanUntil=22;f.ctx.fireAdvancedWeapon('integral',{lv:1,n:0},spec);assert.equal(f.a.proj.length,3);assert.equal(f.a.proj.reduce((s,p)=>s+p.dmg,0),60);f.a.proj=[];f.a.fanUntil=0;f.a.ambushNow=true;f.ctx.fireAdvancedWeapon('integral',{lv:1,n:0},spec);assert.equal(f.a.proj[0].dmg,120);});
-test('the new theorem effects are gated and evolutions keep their status behavior',()=>{const f=fixture();f.ctx.fireAdvancedWeapon('conic',{lv:1,n:0,evo:true},f.skills.conic);assert.equal(f.hits.length,6);assert.equal(f.hits[0].damage,22*.55);f.hits.length=0;f.a.thm.divergence=true;f.ctx.fireAdvancedWeapon('conic',{lv:1,n:0},f.skills.conic);assert.equal(f.hits[0].damage,22*1.12);f.ctx.fireAdvancedWeapon('crystal',{lv:1,n:0,evo:true},f.skills.crystal);assert.equal(f.a.proj.at(-1).st.chill,1.2);f.ctx.fireAdvancedWeapon('laplace',{lv:1,n:0,evo:true},f.skills.laplace);assert.equal(f.a.pfx.at(-1).st.shock,1.5);});
-test('defensive passives compose only during their stated windows',()=>{const f=fixture();f.a.passives={equilibrium:3,boundarylayer:3};assert.equal(f.ctx.advancedDefense(),1);f.a.p.hp=49;assert.equal(f.ctx.advancedDefense(),.88);f.a.p.dashUntil=19.5;assert.equal(f.ctx.advancedDefense(),.88*.88);f.a.t=20.6;assert.equal(f.ctx.advancedDefense(),.88);f.a.p.hp=75;assert.equal(f.ctx.advancedDefense(),1);});
+import { arenaContext } from "./test-runtime.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+function fixture() {
+  const hits = [],
+    shots = [],
+    a = {
+      t: 20,
+      cls: "vectorbow",
+      p: { x: 100, y: 107, hp: 50, maxHp: 100, dashUntil: 0 },
+      passives: {},
+      thm: {},
+      st: { area: 1, proj: 0 },
+      proj: [],
+      pfx: [],
+      fx: [],
+      enemies: Array.from({ length: 9 }, (_, id) => ({
+        id,
+        x: 150,
+        y: 100,
+        r: 5,
+        hp: 100,
+      })),
+    };
+  const colors = new Proxy({}, { get: (_, id) => "#123456" });
+  const ctx = arenaContext({
+    a,
+    i: false,
+    s: colors,
+    Math,
+    X: () => a.p.x,
+    _: () => a.p.y - 7,
+    H: (id) => a.passives[id] || 0,
+    ht: (id) => !!a.thm[id],
+    F: (v, min, max) => Math.max(min, Math.min(max, v)),
+    gt: () => 1,
+    me: () => a.enemies[0],
+    at: (x, y, xx, yy) => Math.atan2(yy - y, xx - x),
+    weaponMuzzle: () => ({ x: 110, y: 101 }),
+    ie: (shot) => shots.push(shot),
+    At: (enemy, damage, options) => hits.push({ enemy, damage, options }),
+    os: () => 0,
+    K() {},
+  });
+  return {
+    a,
+    ctx,
+    hits,
+    shots,
+    skills: ctx.advancedArsenal(),
+    theorems: ctx.advancedTheorems(),
+  };
+}
+test("two new classes, five evolving companions, ten general passives and five valid theorem recipes", () => {
+  const f = fixture();
+  assert.equal(Object.keys(f.ctx.advancedClasses()).length, 2);
+  assert.equal(Object.values(f.skills).filter((s) => s.main).length, 2);
+  assert.equal(Object.values(f.skills).filter((s) => s.evo).length, 5);
+  assert.equal(
+    Object.values(f.skills).filter((s) => s.kind === "passive" && !s.cls)
+      .length,
+    10,
+  );
+  assert.equal(Object.keys(f.theorems).length, 5);
+  for (const skill of Object.values(f.skills).filter((s) => s.evo)) {
+    assert(f.skills[skill.evoNeed] || skill.evoNeed === "continuity");
+    assert(skill.evo.icon);
+  }
+  for (const theorem of Object.values(f.theorems))
+    assert(theorem.req.every((id) => f.skills[id]));
+});
+test("new main weapons and all companions/evolutions fire with bounded counts", () => {
+  const f = fixture();
+  for (const [id, spec] of Object.entries(f.skills).filter(
+    ([, s]) => s.kind === "weapon",
+  ))
+    for (const evolved of [false, true]) {
+      f.a.proj = [];
+      f.a.pfx = [];
+      f.shots.length = 0;
+      f.hits.length = 0;
+      assert.equal(
+        f.ctx.fireAdvancedWeapon(id, { lv: 5, n: 0, evo: evolved }, spec),
+        true,
+      );
+      assert(f.a.proj.length + f.a.pfx.length + f.shots.length > 0);
+      assert(f.shots.length <= 4);
+      assert(f.hits.length <= 6);
+    }
+});
+test("cannon honors Split Shot and ambush without inflating the projectile damage budget", () => {
+  const f = fixture(),
+    spec = f.skills.integral;
+  f.ctx.fireAdvancedWeapon("integral", { lv: 1, n: 0 }, spec);
+  assert.equal(f.a.proj.length, 1);
+  assert.equal(f.a.proj[0].dmg, 40);
+  f.a.proj = [];
+  f.a.fanUntil = 22;
+  f.ctx.fireAdvancedWeapon("integral", { lv: 1, n: 0 }, spec);
+  assert.equal(f.a.proj.length, 3);
+  assert.equal(
+    f.a.proj.reduce((s, p) => s + p.dmg, 0),
+    60,
+  );
+  f.a.proj = [];
+  f.a.fanUntil = 0;
+  f.a.ambushNow = true;
+  f.ctx.fireAdvancedWeapon("integral", { lv: 1, n: 0 }, spec);
+  assert.equal(f.a.proj[0].dmg, 120);
+});
+test("the new theorem effects are gated and evolutions keep their status behavior", () => {
+  const f = fixture();
+  f.ctx.fireAdvancedWeapon("conic", { lv: 1, n: 0, evo: true }, f.skills.conic);
+  assert.equal(f.hits.length, 6);
+  assert.equal(f.hits[0].damage, 22 * 0.55);
+  f.hits.length = 0;
+  f.a.thm.divergence = true;
+  f.ctx.fireAdvancedWeapon("conic", { lv: 1, n: 0 }, f.skills.conic);
+  assert.equal(f.hits[0].damage, 22 * 1.12);
+  f.ctx.fireAdvancedWeapon(
+    "crystal",
+    { lv: 1, n: 0, evo: true },
+    f.skills.crystal,
+  );
+  assert.equal(f.a.proj.at(-1).st.chill, 1.2);
+  f.ctx.fireAdvancedWeapon(
+    "laplace",
+    { lv: 1, n: 0, evo: true },
+    f.skills.laplace,
+  );
+  assert.equal(f.a.pfx.at(-1).st.shock, 1.5);
+});
+test("defensive passives compose only during their stated windows", () => {
+  const f = fixture();
+  f.a.passives = { equilibrium: 3, boundarylayer: 3 };
+  assert.equal(f.ctx.advancedDefense(), 1);
+  f.a.p.hp = 49;
+  assert.equal(f.ctx.advancedDefense(), 0.88);
+  f.a.p.dashUntil = 19.5;
+  assert.equal(f.ctx.advancedDefense(), 0.88 * 0.88);
+  f.a.t = 20.6;
+  assert.equal(f.ctx.advancedDefense(), 0.88);
+  f.a.p.hp = 75;
+  assert.equal(f.ctx.advancedDefense(), 1);
+});
+
+test("each new main weapon has seven unique, class-scoped talents", () => {
+  const f = fixture();
+  for (const [id, hero] of Object.entries(f.ctx.advancedClasses())) {
+    assert.equal(hero.talents.length, 7);
+    assert.equal(new Set(hero.talents).size, 7);
+    for (const talent of hero.talents) {
+      assert.equal(f.skills[talent].cls, id);
+      assert(f.skills[talent].icon);
+    }
+  }
+});
+test("crossbow talents preserve range while adding their stated impact and marks", () => {
+  const f = fixture();
+  f.ctx.fireAdvancedWeapon("vectorbow", { lv: 1, n: 3 }, f.skills.vectorbow);
+  const plain = { ...f.shots[0] };
+  f.shots.length = 0;
+  f.a.passives = {
+    bow_velocity: 2,
+    bow_precision: 3,
+    bow_mark: 2,
+    bow_recoil: 2,
+  };
+  f.ctx.fireAdvancedWeapon("vectorbow", { lv: 1, n: 3 }, f.skills.vectorbow);
+  const enhanced = f.shots[0];
+  assert(
+    Math.abs(
+      Math.hypot(enhanced.vx, enhanced.vy) * enhanced.life -
+        Math.hypot(plain.vx, plain.vy) * plain.life,
+    ) < 1e-8,
+  );
+  assert.equal(enhanced.critAdd, 0.12);
+  assert.equal(enhanced.st.mark, 3);
+  assert.equal(enhanced.kb, plain.kb + 3);
+  assert.equal(enhanced.dmg, plain.dmg);
+});
+test("dash reload only subtracts the bounded remaining cannon cooldown", () => {
+  const f = fixture();
+  f.a.weapons = [
+    { id: "integral", t: 0.2 },
+    { id: "vectorbow", t: 2 },
+  ];
+  f.a.passives.cannon_reload = 2;
+  f.ctx.reduceCannonCooldownOnDash();
+  assert.equal(f.a.weapons[0].t, 0);
+  assert.equal(f.a.weapons[1].t, 2);
+});

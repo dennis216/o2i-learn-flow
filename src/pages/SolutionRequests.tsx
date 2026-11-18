@@ -78,15 +78,15 @@ export default function SolutionRequests() {
   return (
     <main className={`min-h-screen bg-background ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <PageHeader icon={MessageCircleQuestion} tone="amber" title={tt(['Solution Requests', '答疑区'])}
-          description={tt(['Ask everyone, or only O2I teachers. Teacher answers are marked official.', '可以问所有人，也可以只问 O2I 老师。老师的回复会标"官方"。'])}>
+        <PageHeader icon={MessageCircleQuestion} tone="amber" title={tt(['Questions & answers', '数学答疑'])}
+          description={tt(['Ask the community or send a question to O2I tutors. Tutor replies carry an official badge.', '可以公开讨论，也可以只向 O2I 老师提问。老师的回复会带有“官方”标记。'])}>
           <div className="flex flex-col items-start gap-1.5">
             {user
               ? <Button size="lg" className="h-12 px-8 text-base font-semibold" onClick={() => setAsking(true)} disabled={left === 0}>{tt(['Ask a question', '我要提问'])}</Button>
               : <Button size="lg" className="h-12 px-8 text-base font-semibold" asChild><Link to={`/auth?returnTo=${encodeURIComponent('/solution-requests')}`}>{tt(['Sign in to ask', '登录后提问'])}</Link></Button>}
             {left !== null && <span className="text-sm text-muted-foreground">{left === 0
-              ? tt(['5 questions per 24 hours used up', '24 小时内的 5 个提问名额已用完'])
-              : tt([`${left} of 5 questions left in 24 hours`, `24 小时内还能提 ${left} 个问题`])}</span>}
+              ? tt(['You have reached the limit of 5 questions per 24 hours.', '你已用完 24 小时内的 5 次提问机会。'])
+              : tt([`${left} of 5 questions remaining for this 24-hour period`, `24 小时内还能提 ${left} 个问题`])}</span>}
           </div>
         </PageHeader>
 
@@ -99,8 +99,8 @@ export default function SolutionRequests() {
 
         {tab === 'mine' && !user ? (
           <SignInPrompt icon={MessageCircleQuestion} tile="amber" returnTo="/solution-requests"
-            title={tt(['Stuck on a problem?', '有题不会？'])}
-            description={tt(['Sign in to ask and to find your questions here.', '登录后就能提问，你提过的问题都会在这里。'])} />
+            title={tt(['Stuck on a problem?', '遇到难题了？'])}
+            description={tt(['Sign in to ask a question and follow the replies here.', '登录后即可提问，并在这里查看后续回复。'])} />
         ) : (
           <>
             <div className="mt-6 flex flex-wrap items-end gap-3 border-b pb-4">

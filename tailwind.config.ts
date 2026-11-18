@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
@@ -14,8 +15,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        // Latin text uses IBM Plex Sans; Chinese falls through to the system CJK fonts.
-        sans: ['"IBM Plex Sans"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+        // Quiet editorial typography: Inter body, Cormorant / Noto Serif headings.
+        sans: ['O2I Numerals', '"Inter"', '"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+        display: ['O2I Numerals', '"Cormorant Garamond"', '"Noto Serif SC"', '"Songti SC"', 'Georgia', 'serif'],
         // Pixel accents only (labels in the CALC QUEST style); Latin glyphs only.
         pixel: ['Silkscreen', 'ui-monospace', 'monospace'],
       },
@@ -93,5 +95,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [animate],
 } satisfies Config;
