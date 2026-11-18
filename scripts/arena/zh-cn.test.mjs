@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { createHash } from "node:crypto";
 import { arenaContext } from "./test-runtime.mjs";
 import { legacyStaticTranslations } from "../../public/games/limit-arena.js";
 
@@ -66,8 +67,13 @@ test("the pixel font includes newly added Chinese UI labels in the shipped game"
     new URL("../../public/games/limit-arena.js", import.meta.url),
     "utf8",
   );
-  const decoded = (html + runtime).replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
-    String.fromCharCode(parseInt(hex, 16)),
+  const scratchpad = readFileSync(
+    new URL("../../public/games/arena-scratchpad.js", import.meta.url),
+    "utf8",
+  );
+  const decoded = (html + runtime + scratchpad).replace(
+    /\\u([0-9a-fA-F]{4})/g,
+    (_, hex) => String.fromCharCode(parseInt(hex, 16)),
   );
   const chars = new Set(
     readFileSync(
@@ -84,9 +90,13 @@ test("the pixel font includes newly added Chinese UI labels in the shipped game"
   const embedded = html.match(
     /font-family:CubicZh;src:url\(data:font\/woff;base64,([A-Za-z0-9+/=]+)/,
   )[1];
-  assert.deepEqual(
-    Buffer.from(embedded, "base64"),
-    readFileSync(new URL("./fonts/cubic-zh-subset.woff", import.meta.url)),
+  const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  assert.equal(
+    digest(Buffer.from(embedded, "base64")),
+    digest(
+      readFileSync(new URL("./fonts/cubic-zh-subset.woff", import.meta.url)),
+    ),
+    "embedded font must match the maintained font asset",
   );
 });
 

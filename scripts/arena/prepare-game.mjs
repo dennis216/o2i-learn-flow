@@ -32,6 +32,7 @@ assert.ok(input && questionsPath, 'Usage: prepare-game.mjs <full-game.html> --qu
 // would wipe those edits, so this script may only write somewhere else, for comparison.
 assert.notEqual(outPath, gamePath, 'Refusing to overwrite public/games/limit-arena.html: it is the source of truth now. Pass --out <other.html> to build a copy for comparison. See docs/arena/README_ZH.md.');
 assert.notEqual(outPath, runtimePath, 'Refusing to overwrite public/games/limit-arena.js: it is maintained source.');
+assert.notEqual(outPath, resolve(root, 'public/games/arena-scratchpad.js'), 'Refusing to overwrite the maintained scratchpad source.');
 const fromRoot = relative(root, resolve(questionsPath));
 assert.ok(fromRoot.startsWith('..'), 'The questions file must stay outside this repo.');
 

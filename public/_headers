@@ -2,3 +2,5 @@
   Cache-Control: no-cache
 /games/limit-arena.js
   Cache-Control: no-cache
+/games/arena-scratchpad.js
+  Cache-Control: no-cache

@@ -6800,13 +6800,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (o.y = F(o.y - Math.sin(t) * e, -4, 4)));
   }
   let za = () => a.st.cd * (Ae() ? 0.66 : 1);
+  let enemyGridReference,
+    occupiedEnemyCells = [];
   function go() {
-    for (const t of da) t.length = 0;
+    if (enemyGridReference !== da) {
+      for (const cell of da) cell.length = 0;
+      enemyGridReference = da;
+    } else for (const index of occupiedEnemyCells) da[index].length = 0;
+    occupiedEnemyCells.length = 0;
     for (const t of a.enemies) {
       if (t.dead) continue;
       const e = F(Math.floor(t.x / he), 0, Re - 1),
         o = F(Math.floor(t.y / he), 0, ha - 1);
-      da[o * Re + e].push(t);
+      const index = o * Re + e,
+        cell = da[index];
+      if (!cell.length) occupiedEnemyCells.push(index);
+      cell.push(t);
     }
   }
   function Rt(t, e, o, r) {
@@ -14309,18 +14318,29 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function drawUnitBadge() {
     if (!a.curUnit || I === "title" || I === "select") return;
-    const x = 12,
-      y = mt - 30;
-    no(R, x, y, 144, 22, { border: s.dgray, fill: s.ink, shadow: null });
-    Y(
-      R,
+    const text =
       (i ? "关卡 " : "STAGE ") +
-        (a.worldStage || 1) +
-        (i ? " · 单元 " : " · UNIT ") +
-        a.curUnit,
-      x + 8,
-      y + 5,
-      { pixel: true, size: 12, col: s.lgray, outline: s.black },
+      (a.worldStage || 1) +
+      (i ? " · 单元 " : " · UNIT ") +
+      a.curUnit;
+    const sprite = owlHintLine(text),
+      bounds = sprite.bounds;
+    if (!bounds) return;
+    const width = Math.ceil(Math.max(144, bounds.w + 24) / 3) * 3,
+      height = Math.ceil(Math.max(24, bounds.h + 12) / 3) * 3,
+      x = 12,
+      y = Math.floor((mt - 8 - height) / 3) * 3;
+    no(R, x, y, width, height, { border: s.dgray, fill: s.ink, shadow: null });
+    R.drawImage(
+      sprite.canvas,
+      bounds.x,
+      bounds.y,
+      bounds.w,
+      bounds.h,
+      x + 12,
+      y + Math.floor((height - bounds.h) / 2),
+      bounds.w,
+      bounds.h,
     );
   }
   let skillCaptionCache = new Map();
@@ -15311,7 +15331,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         "menu",
       ),
         (N("mStart").onclick = () => {
-          ($.init(), St.start(), this.heroSelect());
+          ($.init(), St.start());
+          if (hasArenaTouch()) void enterArenaFullscreen();
+          this.heroSelect();
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
         (N("mHow").onclick = () => this.sub("howto")),
@@ -15927,7 +15949,36 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
               : Bt.quizUnavailable(a.lvQ.status)));
   }
   let selectionBackdrop;
+  let pausedSceneMode,
+    pausedSceneAt = -Infinity,
+    pausedSceneWidth = 0,
+    pausedSceneHeight = 0;
+  function shouldRenderArenaFrame() {
+    const paused = [
+      "quiz",
+      "quizfb",
+      "chest",
+      "pause",
+      "stage",
+      "results",
+    ].includes(I);
+    if (
+      paused &&
+      !Te &&
+      pausedSceneMode === I &&
+      pausedSceneWidth === R.canvas.width &&
+      pausedSceneHeight === R.canvas.height &&
+      E - pausedSceneAt < 1 / 12
+    )
+      return false;
+    pausedSceneMode = I;
+    pausedSceneAt = E;
+    pausedSceneWidth = R.canvas.width;
+    pausedSceneHeight = R.canvas.height;
+    return true;
+  }
   function l1() {
+    if (!shouldRenderArenaFrame()) return;
     if (
       (R.setTransform($e, 0, 0, $e, 0, 0),
       (R.imageSmoothingEnabled = !1),
@@ -16328,7 +16379,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     requestAnimationFrame(fitTouchStage);
   }
   async function enterArenaFullscreen(pageOnly = false) {
-    if (document.body.classList.contains("arena-expanded")) {
+    if (
+      document.body.classList.contains("arena-expanded") &&
+      (pageOnly || arenaNativeFullscreen)
+    ) {
       window.parent.postMessage(
         { source: "limit-arena-display", action: "expand" },
         location.origin,
@@ -16337,6 +16391,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return;
     }
     document.body.classList.add("arena-expanded");
+    document.body.dataset.fullscreenMode = "page";
     window.parent.postMessage(
       { source: "limit-arena-display", action: "expand" },
       location.origin,
@@ -16363,10 +16418,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       arenaNativeFullscreen = !!(
         document.fullscreenElement || document.webkitFullscreenElement
       );
+      if (arenaNativeFullscreen)
+        document.body.dataset.fullscreenMode = "native";
       try {
-        if (screen.orientation?.lock)
+        if (screen.orientation?.lock) {
           await screen.orientation.lock("landscape");
-        else if (innerHeight > innerWidth)
+          N("displayNotice").hidden = true;
+        } else if (innerHeight > innerWidth)
           notifyDisplay(
             i ? "请将设备转为横屏。" : "Rotate your device to landscape.",
           );

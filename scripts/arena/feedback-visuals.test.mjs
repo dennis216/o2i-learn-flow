@@ -21,6 +21,111 @@ function fixture() {
   });
   return { a, ctx };
 }
+
+test("stage badge contains cropped English and Chinese glyphs inside its frame", () => {
+  for (const chinese of [false, true])
+    for (const glyphHeight of [12, 18, 24]) {
+      let frame, image;
+      const bounds = { x: 4, y: 9, w: chinese ? 116 : 162, h: glyphHeight };
+      const context = arenaContext({
+        i: chinese,
+        a: { curUnit: 12, worldStage: 11 },
+        I: "play",
+        mt: 360,
+        owlHintLine: () => ({ canvas: {}, bounds }),
+        no: (_, x, y, w, h) => {
+          frame = { x, y, w, h };
+        },
+        R: {
+          drawImage: (...args) => {
+            image = args;
+          },
+        },
+      });
+      context.drawUnitBadge();
+      const [, sx, sy, sw, sh, dx, dy, dw, dh] = image;
+      assert.deepEqual(
+        [sx, sy, sw, sh],
+        [bounds.x, bounds.y, bounds.w, bounds.h],
+      );
+      assert(dx >= frame.x + 6 && dy >= frame.y + 6);
+      assert(dx + dw <= frame.x + frame.w - 6);
+      assert(dy + dh <= frame.y + frame.h - 6);
+      assert(frame.y + frame.h <= 352);
+    }
+});
+
+test("occupied-cell grid rebuilding preserves enemies, removals and replacement grids", () => {
+  const context = arenaContext({
+    Re: 4,
+    ha: 4,
+    he: 32,
+    da: Array.from({ length: 16 }, () => []),
+    a: { enemies: [] },
+  });
+  for (let step = 0; step < 24; step++) {
+    context.a.enemies = Array.from({ length: step % 11 }, (_, id) => ({
+      id,
+      x: ((step * 31 + id * 19) % 180) - 20,
+      y: ((step * 11 + id * 43) % 180) - 20,
+      dead: id % 5 === 4,
+    }));
+    if (step === 12)
+      context.da = Array.from({ length: 16 }, () => [{ stale: true }]);
+    const expected = Array.from({ length: 16 }, () => []);
+    for (const enemy of context.a.enemies)
+      if (!enemy.dead) {
+        const col = Math.max(0, Math.min(3, Math.floor(enemy.x / 32)));
+        const row = Math.max(0, Math.min(3, Math.floor(enemy.y / 32)));
+        expected[row * 4 + col].push(enemy);
+      }
+    context.go();
+    assert.deepEqual(context.da, expected);
+  }
+});
+
+test("paused scenes redraw less often while combat, transitions and resize remain immediate", () => {
+  let rendered = 0;
+  const context = arenaContext({
+    I: "quiz",
+    E: 10,
+    Te: null,
+    a: {},
+    R: {
+      canvas: { width: 1280, height: 720 },
+      setTransform() {},
+      fillRect() {},
+    },
+    ji: () => rendered++,
+    Ki() {},
+    Ji() {},
+    Wi() {},
+    Co() {},
+  });
+  context.l1();
+  context.E = 10.04;
+  context.l1();
+  assert.equal(rendered, 1);
+  context.E = 10.1;
+  context.l1();
+  assert.equal(rendered, 2);
+  context.I = "play";
+  context.l1();
+  context.l1();
+  assert.equal(rendered, 4);
+  context.I = "quiz";
+  context.Te = {};
+  context.l1();
+  context.l1();
+  assert.equal(rendered, 6);
+  context.Te = null;
+  context.R.canvas.width++;
+  context.l1();
+  assert.equal(rendered, 7);
+  context.I = "results";
+  context.l1();
+  assert.equal(rendered, 8);
+});
 test("compact weapon sprites distinguish sniper, rifle, shotgun and boomerang", () => {
   const f = fixture();
   const art = new Set();

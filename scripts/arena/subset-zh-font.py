@@ -19,6 +19,9 @@ game = re.sub(r"\\u([0-9a-fA-F]{4})", lambda match: chr(int(match[1], 16)), game
 runtime = (here.parent.parent / "public/games/limit-arena.js").read_text(encoding="utf8")
 runtime = re.sub(r"\\u([0-9a-fA-F]{4})", lambda match: chr(int(match[1], 16)), runtime)
 text += game + runtime + "中文"
+text += (here.parent.parent / "public/games/arena-scratchpad.js").read_text(encoding="utf8")
+# Retain previously shipped glyphs for older entry points and archived label checks.
+text += (here / "fonts/cubic-zh-subset.chars.txt").read_text(encoding="utf8")
 characters = sorted({ch for ch in text if ord(ch) > 0x2E7F})
 
 font = TTFont(sys.argv[1])

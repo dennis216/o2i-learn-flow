@@ -40,8 +40,8 @@
     "test:migrations:db": "O2I_MIGRATION_RECONCILIATION_DB=1 npm run test:courses:login:db",
     "test:courses:login:browser": "node scripts/course-login-browser.test.mjs",
     "test:courses:browser": "node scripts/course-custom-browser.test.mjs",
-    "format:arena": "prettier --ignore-path scripts/arena/.prettierignore --write public/games/limit-arena.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs",
-    "check:arena:format": "prettier --ignore-path scripts/arena/.prettierignore --check public/games/limit-arena.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs"
+    "format:arena": "prettier --ignore-path scripts/arena/.prettierignore --write public/games/limit-arena.js public/games/arena-scratchpad.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs",
+    "check:arena:format": "prettier --ignore-path scripts/arena/.prettierignore --check public/games/limit-arena.js public/games/arena-scratchpad.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
