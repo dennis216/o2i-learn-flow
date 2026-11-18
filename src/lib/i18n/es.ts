@@ -50,7 +50,7 @@ export const spanish: Readonly<Record<string, string>> = {
   "Start game": "Empezar a jugar",
   "Courses": "Cursos",
   "Practice": "Práctica",
-  "Q&A": "Preguntas",
+  "Solution Request": "Solicitar solución",
   "Team": "Equipo",
   "Math lessons, practice and help when you need it.": "Lecciones de matemáticas, ejercicios y ayuda cuando la necesites.",
   "Footer": "Pie de página",

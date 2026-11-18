@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const links = [
   { to: '/courses', label: ['Courses', '课程'] },
   { to: '/practice', label: ['Practice', '练习'] },
-  { to: '/solution-requests', label: ['Q&A', '答疑'] },
+  { to: '/solution-requests', label: ['Solution Request', '答疑'] },
   { to: '/team', label: ['Team', '团队'] },
 ] as const;
 

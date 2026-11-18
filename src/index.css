@@ -256,8 +256,8 @@ p > span {
   .glass-hero { margin: 0; border-radius: 0; color: hsl(var(--studio-white)); background: hsl(var(--studio-ink)); }
   .glass-eyebrow { display: flex; align-items: center; gap: .8rem; color: hsl(var(--accent)); font-size: .625rem; letter-spacing: .18em; font-weight: 500; }
   .hero-eyebrow-line { width: 1.5rem; height: 1px; background: currentColor; }
-  .hero-title { max-width: 660px; font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; font-size: clamp(3rem, 5.1vw, 5.1rem); font-weight: 500; letter-spacing: -.025em; line-height: 1.06; text-wrap: balance; }
-  .hero-title-zh { font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: clamp(2.4rem, 4.2vw, 4.2rem); line-height: 1.5; font-weight: 500; letter-spacing: .015em; }
+  .hero-title { max-width: 660px; font-family: 'O2I Numerals', 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; font-size: clamp(3rem, 5.1vw, 5.1rem); font-weight: 500; letter-spacing: -.025em; line-height: 1.06; text-wrap: balance; }
+  .hero-title-zh { font-family: 'O2I Numerals', 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: clamp(2.4rem, 4.2vw, 4.2rem); line-height: 1.5; font-weight: 500; letter-spacing: .015em; }
   .hero-title-accent { display: block; color: hsl(var(--accent)); }
   .hero-description { color: hsl(var(--studio-muted)); }
   .glass-hero .glass-primary { border-radius: .4rem; color: hsl(var(--studio-ink)); background: hsl(var(--accent)); box-shadow: none; }
@@ -265,7 +265,7 @@ p > span {
   .hero-secondary { color: hsl(var(--studio-white)); border-bottom: 1px solid hsl(var(--studio-white) / .35); }
   .hero-secondary:hover { color: hsl(var(--accent)); border-color: currentColor; }
   .hero-stats { border-top: 1px solid hsl(var(--studio-white) / .2); padding-top: 1.75rem; max-width: 440px; }
-  .hero-stats dd { font-weight: 500; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2rem; line-height: 1.1; }
+  .hero-stats dd { font-weight: 500; font-family: 'O2I Numerals', 'Cormorant Garamond', Georgia, serif; font-size: 2rem; line-height: 1.1; }
   .hero-stats dt { color: hsl(var(--studio-muted)); font-size: .8rem; }
   .learning-graph { padding: 1.5rem 0; min-width: 0; }
   .graph-heading { display: flex; justify-content: space-between; padding-bottom: 1.25rem; border-bottom: 1px solid hsl(var(--studio-white) / .2); color: hsl(var(--studio-white) / .7); font-size: .6rem; letter-spacing: .17em; }
@@ -275,7 +275,7 @@ p > span {
   .section-kicker { font-size: .6rem; font-weight: 500; letter-spacing: .16em; color: hsl(var(--primary)); }
   .glass-trait { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: background-color 200ms, border-color 200ms; }
   .glass-trait:hover { background: hsl(var(--secondary)); border-color: hsl(var(--primary) / .45); }
-  .trait-number { font-family: Georgia, 'Times New Roman', serif; font-size: 1.5rem; color: hsl(var(--primary) / .6); font-variant-numeric: tabular-nums; }
+  .trait-number { font-family: 'O2I Numerals', Georgia, 'Times New Roman', serif; font-size: 1.5rem; color: hsl(var(--primary) / .6); font-variant-numeric: tabular-nums; }
   .trait-link { display: flex; align-items: center; justify-content: space-between; }
   .trait-link svg { transition: transform 200ms; }
   .glass-trait:hover .trait-link svg { transform: translate(2px, -2px); }
@@ -382,14 +382,14 @@ p > span {
 
 @layer base {
   body { -webkit-font-smoothing: antialiased; }
-  h1, h2, h3 { font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; font-weight: 500; }
-  :lang(zh-CN) h1, :lang(zh-CN) h2, :lang(zh-CN) h3 { font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif; line-height: 1.5; }
+  h1, h2, h3 { font-family: 'O2I Numerals', 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; font-weight: 500; }
+  :lang(zh-CN) h1, :lang(zh-CN) h2, :lang(zh-CN) h3 { font-family: 'O2I Numerals', 'Noto Serif SC', 'Songti SC', 'SimSun', serif; line-height: 1.5; }
 }
 @layer components {
   .glass-home h2 { font-weight: 500; letter-spacing: -.015em; }
   .glass-home h3 { font-weight: 500; letter-spacing: 0; line-height: 1.45; }
   .glass-home p { line-height: 1.85; }
-  .glass-nav a > span { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; font-weight: 600; letter-spacing: .015em; }
+  .glass-nav a > span { font-family: 'O2I Numerals', 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; font-weight: 600; letter-spacing: .015em; }
   .hero-live-stats > div + div { border-left: 1px solid hsl(var(--border)); padding-left: 1.5rem; }
   .hero-live-stats dt { font-family: 'Inter', 'Noto Sans SC', sans-serif; line-height: 1.5; }
 }
@@ -484,3 +484,14 @@ p > span {
   .hero-layout .hero-description { margin-top: .75rem; }
   .hero-layout > div:first-child > div + div { margin-top: 1rem; }
 }
+
+/* Numeric glyphs share a quiet sans face; titles retain their existing letters. */
+@font-face { font-family: 'O2I Numerals'; src: url('/fonts/inter-digits-400.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; unicode-range: U+0030-0039; size-adjust: 94%; }
+@font-face { font-family: 'O2I Numerals'; src: url('/fonts/inter-digits-500.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; unicode-range: U+0030-0039; size-adjust: 94%; }
+@font-face { font-family: 'O2I Numerals'; src: url('/fonts/inter-digits-600.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; unicode-range: U+0030-0039; size-adjust: 94%; }
+@font-face { font-family: 'O2I Numerals'; src: url('/fonts/inter-digits-700.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; unicode-range: U+0030-0039; size-adjust: 94%; }
+body { font-variant-numeric: lining-nums; }
+.community-learners-copy strong { letter-spacing: -.015em; font-weight: 500; }
+@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
+.page-enter { animation: page-enter 320ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }

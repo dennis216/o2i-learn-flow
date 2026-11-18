@@ -16,8 +16,8 @@ export default {
     extend: {
       fontFamily: {
         // Quiet editorial typography: Inter body, Cormorant / Noto Serif headings.
-        sans: ['"Inter"', '"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
-        display: ['"Cormorant Garamond"', '"Noto Serif SC"', '"Songti SC"', 'Georgia', 'serif'],
+        sans: ['O2I Numerals', '"Inter"', '"Noto Sans SC"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+        display: ['O2I Numerals', '"Cormorant Garamond"', '"Noto Serif SC"', '"Songti SC"', 'Georgia', 'serif'],
         // Pixel accents only (labels in the CALC QUEST style); Latin glyphs only.
         pixel: ['Silkscreen', 'ui-monospace', 'monospace'],
       },

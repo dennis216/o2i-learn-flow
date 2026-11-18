@@ -7,6 +7,7 @@ import { Book, Bot, ChevronDown, FlaskConical, Gamepad2, Languages, LogOut, Menu
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
+import { useAppearance } from '@/contexts/AppearanceContext';
 import { Moon, Sun } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
@@ -24,9 +25,10 @@ export default function Navbar() {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme !== 'light';
-  const themeLabel = isDark ? t('Light mode', '浅色模式', 'Modo claro') : t('Dark mode', '深色模式', 'Modo oscuro');
+  const { resolvedTheme, forcedTheme } = useTheme();
+  const { mode, selectMode, solarStatus } = useAppearance();
+  const isDark = (forcedTheme ?? resolvedTheme) !== 'light';
+  const themeLabel = t('Appearance', '外观', 'Apariencia');
 
   const handleSignOut = async () => {
     try {
@@ -72,7 +74,7 @@ export default function Navbar() {
       <PracticeMenu mobile={mobile} />
       {AI_CHAT_ENABLED && <Link to="/ai-tutor" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Bot className="nav-icon mr-2 h-4 w-4" />{t('AI Tutor', 'AI 助教')}</Button></Link>}
       <Link to="/playground" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><FlaskConical className="nav-icon mr-2 h-4 w-4" />{t('Explore', '互动模型')}</Button></Link>
-      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="nav-icon mr-2 h-4 w-4" />{t('Q&A', '答疑')}</Button></Link>
+      <Link to="/solution-requests" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><MessageCircleQuestion className="nav-icon mr-2 h-4 w-4" />{t('Solution Request', '答疑')}</Button></Link>
       <Link to="/team" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Users className="nav-icon mr-2 h-4 w-4" />{t('Team', '团队')}</Button></Link>
       {isAdmin && <Link to="/admin" onClick={closeMobileMenu}><Button variant="ghost" className={mobile ? 'w-full justify-start' : ''}><Shield className="nav-icon mr-2 h-4 w-4" />Admin</Button></Link>}
       {user && accessError && <Button variant="ghost" disabled={accessLoading} onClick={retryAdminAccess} title={accessError}>{t('Retry permissions', '重新加载权限')}</Button>}
@@ -97,10 +99,25 @@ export default function Navbar() {
   );
 
   const ThemeToggle = () => (
-    <Button variant="ghost" size="sm" className="shrink-0 px-2" aria-label={themeLabel} title={themeLabel} onClick={() => setTheme(isDark ? 'light' : 'dark')}>
+    <DropdownMenu modal={false}>
+    <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className="shrink-0 px-2" aria-label={themeLabel} title={themeLabel}>
       {isDark ? <Sun aria-hidden="true" className="h-4 w-4" /> : <Moon aria-hidden="true" className="h-4 w-4" />}
-      <span className="hidden xl:inline">{themeLabel}</span>
-    </Button>
+      <span className="hidden xl:inline">{mode === 'auto' ? t('Auto', '自动', 'Auto') : isDark ? t('Dark mode', '深色模式', 'Modo oscuro') : t('Light mode', '浅色模式', 'Modo claro')}</span>
+    </Button></DropdownMenuTrigger>
+    <DropdownMenuContent align="end" className="glass-surface glass-menu w-64 p-2">
+      <DropdownMenuRadioGroup value={mode} onValueChange={value => { if (value === 'auto' || value === 'light' || value === 'dark') selectMode(value); }}>
+        <DropdownMenuRadioItem value="auto">{t('Auto · sunrise & sunset', '自动 · 跟随日出日落', 'Auto · amanecer y atardecer')}</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value="light">{t('Light mode', '浅色模式', 'Modo claro')}</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value="dark">{t('Dark mode', '深色模式', 'Modo oscuro')}</DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+      {mode === 'auto' && <p className="px-2 pb-1 pt-2 text-xs leading-relaxed text-muted-foreground">{solarStatus === 'solar'
+        ? t('Following local sunrise and sunset.', '正在跟随所在地的日出日落。', 'Sigue el amanecer y el atardecer locales.')
+        : solarStatus === 'locating'
+          ? t('Finding your location…', '正在获取位置…', 'Buscando tu ubicación…')
+          : t('Allow location for sunrise and sunset. Without it, we follow your system appearance.', '允许定位后可跟随日出日落；未获取位置时跟随系统外观。', 'Permite la ubicación para seguir el sol. Sin ella, se usa la apariencia del sistema.')}</p>}
+      {mode === 'auto' && solarStatus === 'system' && <Button variant="ghost" size="sm" className="mt-1 w-full text-xs" onClick={() => selectMode('auto')}>{t('Use my location', '使用我的位置', 'Usar mi ubicación')}</Button>}
+    </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => user ? (
