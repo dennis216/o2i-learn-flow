@@ -171,12 +171,11 @@ body[data-ov=menu] .mz .mrow button{font-size:12px;padding:8px 6px}
     <section class="screen pix" aria-label="Game screen">
       <div class="stagewrap">
         <canvas id="c" width="640" height="360" tabindex="0" aria-label="Game screen"></canvas>
-        <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tAttack">Attack</button></div>
+        <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tLock">Auto-lock: ON</button><button type="button" id="tAttack">Attack</button></div>
         <div class="display-controls"><button type="button" id="tFullscreen">Full</button></div>
         <div id="displayNotice" role="status" hidden></div>
         <div id="ov" hidden></div>
       </div>
-      <div class="touch-settings"><button type="button" id="tLock">Auto-lock: ON</button></div>
       <div class="under"><span><kbd>WASD</kbd> move · <kbd>Shift</kbd> / <kbd>Space</kbd> dash · <kbd>E</kbd> skill · <kbd>L</kbd> auto-lock · click an enemy to lock · <kbd>Esc</kbd> pause · answer <kbd>A</kbd>–<kbd>D</kbd> · pick <kbd>1</kbd>–<kbd>4</kbd></span><button type="button" class="touchtog" id="touchTog">Show touch buttons</button></div>
     </section>
   </div>
@@ -334,4 +333,27 @@ body:not(.arena-expanded) .display-controls{z-index:210}
 body:not(.arena-expanded)[data-ov=gun] #ov:has(>.cz){position:absolute;inset:0;width:100%;height:100%;transform:none}
 body:not(.arena-expanded)[data-ov=gun] #ov>.cz{zoom:var(--panel-scale,1)}
 body:not(.arena-expanded)[data-ov=menu] #ov>.mz{zoom:var(--panel-scale,1)}
+
+/* Corner buttons follow the size of the game area (#41): about 34px on phones,
+   50px on iPad and 65px on desktop, instead of a fixed 52x48 everywhere.
+   cqmin = the short side of the arena layer the button sits in. */
+.tpad,.display-controls{container-type:size}
+#tPause,#tFullscreen,.tpad #tLock{--ctl:clamp(34px,8cqmin,72px);--ctl-gap:clamp(6px,1.2cqmin,12px)}
+#tPause,#tFullscreen{width:var(--ctl);height:var(--ctl);min-width:0;min-height:0;padding:2px;gap:2px}
+#tPause{top:var(--control-top);right:var(--control-right)}
+#tFullscreen{top:var(--control-top);right:calc(var(--control-right) + var(--ctl) + var(--ctl-gap))}
+body:not(.touch) #tFullscreen,body.arena-expanded[data-ov] #tFullscreen,body.arena-expanded[data-ov=quiz] #tFullscreen,body.arena-expanded[data-ov=quizfb] #tFullscreen,body.arena-expanded[data-ov=pause] #tFullscreen{right:var(--control-right);top:var(--control-top);width:var(--ctl);min-width:0}
+/* The menu's language / music / sound row sits left of the (now larger) Exit button.
+   In menus the Exit layer covers the viewport, so 8vmin here equals its 8cqmin. */
+body.arena-expanded[data-ov=menu] header{right:calc(28px + clamp(34px,8vmin,72px) + env(safe-area-inset-right,0px))}
+#tPause .control-icon,#tFullscreen .control-icon{width:calc(var(--ctl) * .5);height:calc(var(--ctl) * .5)}
+#tPause .control-label,#tFullscreen .control-label{font-size:clamp(8px,calc(var(--ctl) * .2),14px);line-height:1}
+/* Auto-lock lives on the arena under Pause, so it is reachable in full screen too. */
+.tpad #tLock{display:flex;align-items:center;justify-content:center;top:calc(var(--control-top) + var(--ctl) + var(--ctl-gap));right:var(--control-right);bottom:auto;width:auto;height:calc(var(--ctl) * .62);min-height:0;padding:0 calc(var(--ctl) * .2);border-radius:0;clip-path:none;white-space:nowrap;font-size:clamp(8px,calc(var(--ctl) * .22),13px);opacity:.82;background:color-mix(in srgb,var(--panel2) 40%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--muted) 60%,transparent)}
+/* Keyboard-only hints (Enter, E, 1-9) are hidden on touch screens. */
+body.touch .kbd-hint,body.touch #mStart kbd{display:none}
+/* Step 3 keeps Back / Start on screen while the unit list scrolls. */
+#ov .panel.uz{padding-bottom:0}
+#ov .panel.uz .urow{position:sticky;bottom:0;z-index:2;margin-top:12px;padding:10px 0 14px;background:var(--panel);box-shadow:0 -10px 12px -8px var(--shade)}
+@media(max-width:520px){#ov .panel.uz .urow{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}#ov .panel.uz .urow .ucount{grid-column:1/-1;grid-row:1;font-size:12px;line-height:1.5}#ov .panel.uz .urow button{min-height:48px;padding:8px}}
 </style></body></html>

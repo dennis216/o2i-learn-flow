@@ -9234,6 +9234,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function oe(t, e, o) {
     a.banner = { s: t, col: e, sub: o, t0: E };
   }
+  function usesTouchControls() {
+    try {
+      return document.body.classList.contains("touch");
+    } catch {
+      return false;
+    }
+  }
   function Qe(t, e, o = 5) {
     a.tips["o_" + t] ||
       (tt.d.runs >= 3 && t !== "boss1") ||
@@ -10514,25 +10521,38 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       a.t > 0.6 &&
         Qe(
           "move",
-          i
-            ? "[y]WASD[/] \u79FB\u52A8\u3002\u653B\u51FB[y]\u81EA\u52A8\u8FDB\u884C[/]（可以在设置中切换为手动进攻）\u5E76\u66FF\u4F60\u7784\u51C6\uFF08\u9501\u5B9A > \u6807\u8BB0 > \u6700\u8FD1\uFF09\u3002\u4F60\u53EA\u7BA1\u8EB2\u907F\uFF01"
-            : "[y]WASD[/] to move. Attacks are [y]automatic[/] (switch to manual attack in Settings) and aim for you (locked > marked > nearest). Just focus on dodging!",
+          // Touch screens have no keyboard: describe dragging and tapping instead.
+          usesTouchControls()
+            ? i
+              ? "[y]在画面上拖动[/]即可移动。攻击[y]自动进行[/]（可以在设置中切换为手动进攻）并替你瞄准，点一下敌人可以锁定它。你只管躲避！"
+              : "[y]Drag[/] on the screen to move. Attacks are [y]automatic[/] (switch to manual attack in Settings) and aim for you. Tap an enemy to lock on. Just focus on dodging!"
+            : i
+              ? "[y]WASD[/] \u79FB\u52A8\u3002\u653B\u51FB[y]\u81EA\u52A8\u8FDB\u884C[/]（可以在设置中切换为手动进攻）\u5E76\u66FF\u4F60\u7784\u51C6\uFF08\u9501\u5B9A > \u6807\u8BB0 > \u6700\u8FD1\uFF09\u3002\u4F60\u53EA\u7BA1\u8EB2\u907F\uFF01"
+              : "[y]WASD[/] to move. Attacks are [y]automatic[/] (switch to manual attack in Settings) and aim for you (locked > marked > nearest). Just focus on dodging!",
         ),
       a.t > 9 &&
         a.enemies.length &&
         Qe(
           "dash",
-          i
-            ? "[y]Shift[/] \u51B2\u523A\uFF1A\u77ED\u6682\u65E0\u654C\uFF0C\u53EF\u7A7F\u8FC7\u654C\u4EBA\u548C\u5B50\u5F39\uFF08\u6709\u51B7\u5374\uFF09\u3002"
-            : "[y]Shift[/] to dash: you are briefly invincible and can pass through enemies and bullets (has a cooldown).",
+          usesTouchControls()
+            ? i
+              ? "点[y]冲刺[/]按钮：短暂无敌，可穿过敌人和子弹（有冷却）。"
+              : "Tap [y]Dash[/]: you are briefly invincible and can pass through enemies and bullets (has a cooldown)."
+            : i
+              ? "[y]Shift[/] \u51B2\u523A\uFF1A\u77ED\u6682\u65E0\u654C\uFF0C\u53EF\u7A7F\u8FC7\u654C\u4EBA\u548C\u5B50\u5F39\uFF08\u6709\u51B7\u5374\uFF09\u3002"
+              : "[y]Shift[/] to dash: you are briefly invincible and can pass through enemies and bullets (has a cooldown).",
         ),
       a.t > 14 &&
         a.skillReady <= a.t &&
         Qe(
           "skill",
-          i
-            ? `\u6309 [y]E[/]\uFF08\u6216\u6280\u80FD\u6309\u94AE\uFF09\u4F7F\u7528\u82F1\u96C4\u6280\u80FD\uFF1A[y]${ne().active.name}[/]\uFF01`
-            : `Press [y]E[/] (or the Skill button) to use your hero skill: [y]${ne().active.name}[/]!`,
+          usesTouchControls()
+            ? i
+              ? `点[y]技能[/]按钮使用英雄技能：[y]${ne().active.name}[/]！`
+              : `Tap [y]Skill[/] to use your hero skill: [y]${ne().active.name}[/]!`
+            : i
+              ? `\u6309 [y]E[/]\uFF08\u6216\u6280\u80FD\u6309\u94AE\uFF09\u4F7F\u7528\u82F1\u96C4\u6280\u80FD\uFF1A[y]${ne().active.name}[/]\uFF01`
+              : `Press [y]E[/] (or the Skill button) to use your hero skill: [y]${ne().active.name}[/]!`,
         ),
       a.tips.gem &&
         a.lv === 1 &&
@@ -13660,6 +13680,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ")": [".#.", "..#", "..#", "..#", ".#."],
       "?": ["##.", "..#", ".#.", "...", ".#."],
       "\xD7": ["...", "#.#", ".#.", "#.#", "..."],
+      // Symbols used by tips and HUD copy; missing glyphs used to draw as "?".
+      ">": ["#..", ".#.", "..#", ".#.", "#.."],
+      "<": ["..#", ".#.", "#..", ".#.", "..#"],
+      "=": ["...", "###", "...", "###", "..."],
+      ";": ["...", ".#.", "...", ".#.", "#.."],
+      '"': ["#.#", "#.#", "...", "...", "..."],
+      "*": ["#.#", ".#.", "###", ".#.", "#.#"],
+      "^": [".#.", "#.#", "...", "...", "..."],
+      _: ["...", "...", "...", "...", "###"],
+      "#": ["#.#", "###", "#.#", "###", "#.#"],
+      "[": ["##.", "#..", "#..", "#..", "##."],
+      "]": [".##", "..#", "..#", "..#", ".##"],
+      "→": ["...", "..#", "###", "..#", "..."],
+      "←": ["...", "#..", "###", "#..", "..."],
     },
     Zi = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase(),
     Ui = (t) => {
@@ -13667,6 +13701,35 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       for (const o of t) e += o === " " ? 2 : 4;
       return Math.max(0, e - 1);
     };
+  // Push the right-hand HUD (LV, kills, quiz) below whichever corner buttons are
+  // showing: Pause and Auto-lock on touch screens, Exit everywhere.
+  function topRightControlOffset() {
+    try {
+      const canvas = N("c"),
+        box = canvas.getBoundingClientRect();
+      let bottom = 0;
+      for (const id of ["tPause", "tFullscreen", "tLock"]) {
+        const el = N(id);
+        if (!el || !el.offsetParent) continue;
+        const r = el.getBoundingClientRect();
+        if (
+          r.height &&
+          r.left > box.left + box.width / 2 &&
+          r.top < box.top + box.height / 2
+        )
+          bottom = Math.max(bottom, r.bottom);
+      }
+      if (!bottom) return 0;
+      return Math.max(
+        0,
+        Math.ceil(
+          ((bottom - box.top + 6) / Math.max(1, canvas.clientHeight)) * D,
+        ) - 7,
+      );
+    } catch {
+      return 0;
+    }
+  }
   function $o(t, e, o, r, n) {
     for (const l of e) {
       if (l === " ") {
@@ -13943,18 +14006,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       );
     }
     const hudRight = A - 5,
-      hudOffset = document.body.classList.contains("touch")
-        ? Math.max(
-            0,
-            Math.ceil(
-              ((N("tPause").getBoundingClientRect().bottom -
-                N("c").getBoundingClientRect().top +
-                12) /
-                Math.max(1, N("c").clientHeight)) *
-                D,
-            ) - 7,
-          )
-        : 0;
+      hudOffset = topRightControlOffset();
     Y(e, `LV ${a.lv}`, hudRight, 7 + hudOffset, {
       pixel: !0,
       size: 12,
@@ -15378,7 +15430,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (this.sel = Nt[tt.d.hero] ? tt.d.hero : "redred"),
         this.show(
           i
-            ? `<div class="panel cz pix"><div class="qhd"><b>\u9009\u62E9\u82F1\u96C4</b><span>\u7B2C 1/3 \u6B65 \xB7 \u4E00\u4E2A\u5E38\u9A7B\u88AB\u52A8\uFF0C\u4E00\u4E2A\u6309 E \u89E6\u53D1\u7684\u6280\u80FD</span></div>
+            ? `<div class="panel cz pix"><div class="qhd"><b>\u9009\u62E9\u82F1\u96C4</b><span>\u7B2C 1/3 \u6B65 \xB7 \u4E00\u4E2A\u5E38\u9A7B\u88AB\u52A8\uFF0C\u4E00\u4E2A<span class="kbd-hint">\u6309 E </span>\u4E3B\u52A8\u89E6\u53D1\u7684\u6280\u80FD</span></div>
       <div class="cgrid n4 cls">${Ne.map((t, e) => {
         const o = Nt[t];
         return i
@@ -15386,17 +15438,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <span class="hsp"><canvas data-hs="${t}" width="20" height="22"></canvas></span>
         <span class="ct"><b>${z(o.name)}</b>
           <span class="hk"><s>\u88AB\u52A8 \xB7 \u5E38\u9A7B</s><strong>${z(o.passive[0])}\u3002</strong>${z(o.passive[1])}</span>
-          <span class="hk ha"><s>\u6280\u80FD \xB7 \u6309 E</s><strong>${z(o.active.name)}\u3002</strong>${z(o.active.desc)} <i>${o.active.cd} \u79D2\u6062\u590D\u3002</i></span></span>
+          <span class="hk ha"><s>\u6280\u80FD<span class="kbd-hint"> \xB7 \u6309 E</span></s><strong>${z(o.active.name)}\u3002</strong>${z(o.active.desc)} <i>${o.active.cd} \u79D2\u6062\u590D\u3002</i></span></span>
         <kbd>${e + 1}</kbd></button>`
           : `<button type="button" class="card clsc hero${t === this.sel ? " last" : ""}" data-c="${t}">
         <span class="hsp"><canvas data-hs="${t}" width="20" height="22"></canvas></span>
         <span class="ct"><b>${z(o.name)}</b>
           <span class="hk"><s>Passive \xB7 always on</s><strong>${z(o.passive[0])}.</strong> ${z(o.passive[1])}</span>
-          <span class="hk ha"><s>Skill \xB7 press E</s><strong>${z(o.active.name)}.</strong> ${z(o.active.desc)} <i>Recharges in ${o.active.cd} s.</i></span></span>
+          <span class="hk ha"><s>Skill<span class="kbd-hint"> \xB7 press E</span></s><strong>${z(o.active.name)}.</strong> ${z(o.active.desc)} <i>Recharges in ${o.active.cd} s.</i></span></span>
         <kbd>${e + 1}</kbd></button>`;
       }).join("")}</div>
-      <div class="row2"><button type="button" id="hBack">\u2190 \u8FD4\u56DE</button><button type="button" id="hNext" class="go">\u4E0B\u4E00\u6B65\uFF1A\u9009\u62E9\u67AA\u68B0 \u2192 (Enter)</button></div></div>`
-            : `<div class="panel cz pix"><div class="qhd"><b>CHOOSE YOUR HERO</b><span>Step 1 of 3 \xB7 a passive that is always on, and a skill you trigger with E</span></div>
+      <div class="row2"><button type="button" id="hBack">\u2190 \u8FD4\u56DE</button><button type="button" id="hNext" class="go">\u4E0B\u4E00\u6B65\uFF1A\u9009\u62E9\u67AA\u68B0 \u2192<span class="kbd-hint"> (Enter)</span></button></div></div>`
+            : `<div class="panel cz pix"><div class="qhd"><b>CHOOSE YOUR HERO</b><span>Step 1 of 3 \xB7 a passive that is always on, and a skill you trigger<span class="kbd-hint"> with E</span></span></div>
       <div class="cgrid n4 cls">${Ne.map((t, e) => {
         const o = Nt[t];
         return i
@@ -15404,16 +15456,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <span class="hsp"><canvas data-hs="${t}" width="20" height="22"></canvas></span>
         <span class="ct"><b>${z(o.name)}</b>
           <span class="hk"><s>\u88AB\u52A8 \xB7 \u5E38\u9A7B</s><strong>${z(o.passive[0])}\u3002</strong>${z(o.passive[1])}</span>
-          <span class="hk ha"><s>\u6280\u80FD \xB7 \u6309 E</s><strong>${z(o.active.name)}\u3002</strong>${z(o.active.desc)} <i>${o.active.cd} \u79D2\u6062\u590D\u3002</i></span></span>
+          <span class="hk ha"><s>\u6280\u80FD<span class="kbd-hint"> \xB7 \u6309 E</span></s><strong>${z(o.active.name)}\u3002</strong>${z(o.active.desc)} <i>${o.active.cd} \u79D2\u6062\u590D\u3002</i></span></span>
         <kbd>${e + 1}</kbd></button>`
           : `<button type="button" class="card clsc hero${t === this.sel ? " last" : ""}" data-c="${t}">
         <span class="hsp"><canvas data-hs="${t}" width="20" height="22"></canvas></span>
         <span class="ct"><b>${z(o.name)}</b>
           <span class="hk"><s>Passive \xB7 always on</s><strong>${z(o.passive[0])}.</strong> ${z(o.passive[1])}</span>
-          <span class="hk ha"><s>Skill \xB7 press E</s><strong>${z(o.active.name)}.</strong> ${z(o.active.desc)} <i>Recharges in ${o.active.cd} s.</i></span></span>
+          <span class="hk ha"><s>Skill<span class="kbd-hint"> \xB7 press E</span></s><strong>${z(o.active.name)}.</strong> ${z(o.active.desc)} <i>Recharges in ${o.active.cd} s.</i></span></span>
         <kbd>${e + 1}</kbd></button>`;
       }).join("")}</div>
-      <div class="row2"><button type="button" id="hBack">\u2190 Back</button><button type="button" id="hNext" class="go">Next: pick a gun \u2192 (Enter)</button></div></div>`,
+      <div class="row2"><button type="button" id="hBack">\u2190 Back</button><button type="button" id="hNext" class="go">Next: pick a gun \u2192<span class="kbd-hint"> (Enter)</span></button></div></div>`,
           "select",
         ),
         this.el.querySelectorAll("[data-hs]").forEach((t) => {
@@ -15468,7 +15520,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <kbd>${o + 1}</kbd></button>`;
         })
         .join("")}</div>
-      <div class="row2"><button type="button" id="gBack">\u2190 \u8FD4\u56DE</button><button type="button" id="gNext" class="go">\u4E0B\u4E00\u6B65\uFF1A\u5355\u5143\u4E0E\u96BE\u5EA6 \u2192 (Enter)</button></div></div>`
+      <div class="row2"><button type="button" id="gBack">\u2190 \u8FD4\u56DE</button><button type="button" id="gNext" class="go">\u4E0B\u4E00\u6B65\uFF1A\u5355\u5143\u4E0E\u96BE\u5EA6 \u2192<span class="kbd-hint"> (Enter)</span></button></div></div>`
             : `<div class="panel cz pix"><div class="qhd"><b>CHOOSE YOUR GUN</b><span>Step 2 of 3 \xB7 unique firing styles and class talents</span></div>
       <div class="cgrid n4 cls">${t
         .map((e, o) => {
@@ -15490,7 +15542,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <kbd>${o + 1}</kbd></button>`;
         })
         .join("")}</div>
-      <div class="row2"><button type="button" id="gBack">\u2190 Back</button><button type="button" id="gNext" class="go">Next: units &amp; difficulty \u2192 (Enter)</button></div></div>`,
+      <div class="row2"><button type="button" id="gBack">\u2190 Back</button><button type="button" id="gNext" class="go">Next: units &amp; difficulty \u2192<span class="kbd-hint"> (Enter)</span></button></div></div>`,
           "gun",
         ),
         this.el.querySelectorAll("[data-ic2]").forEach((e) => {
@@ -15527,7 +15579,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       this.show(
         i
           ? `<div class="panel uz pix"><div class="qhd"><b>\u5355\u5143\u4E0E\u96BE\u5EA6</b><span>\u7B2C 3/3 \u6B65 \xB7 \u9898\u76EE\u6765\u81EA\u4F60\u9009\u62E9\u7684\u5355\u5143</span></div>
-      <div class="uh"><h3>AP \u5FAE\u79EF\u5206\u5355\u5143 <small>\u53EF\u591A\u9009 \xB7 \u6309\u952E 1\u20139\u30010</small></h3><div class="pre"><button type="button" data-pre="ab">AB \xB7 \u5355\u5143 1\u20138</button><button type="button" data-pre="bc">BC \xB7 \u5355\u5143 1\u201310</button><button type="button" data-pre="none">\u6E05\u7A7A</button></div></div>
+      <div class="uh"><h3>AP \u5FAE\u79EF\u5206\u5355\u5143 <small>\u53EF\u591A\u9009<span class="kbd-hint"> \xB7 \u6309\u952E 1\u20139\u30010</span></small></h3><div class="pre"><button type="button" data-pre="ab">AB \xB7 \u5355\u5143 1\u20138</button><button type="button" data-pre="bc">BC \xB7 \u5355\u5143 1\u201310</button><button type="button" data-pre="none">\u6E05\u7A7A</button></div></div>
       <div class="ugrid">${le.map((o) => (i ? `<button type="button" class="uchip" data-u="${o.n}"><span class="un">\u5355\u5143 ${o.n}${o.bc ? " <s>BC</s>" : ""}</span><span class="nm">${z(o.name)}</span><span class="qc">${Ie(o.n)} \u9053\u9898</span></button>` : `<button type="button" class="uchip" data-u="${o.n}"><span class="un">Unit ${o.n}${o.bc ? " <s>BC</s>" : ""}</span><span class="nm">${z(o.name)}</span><span class="qc">${Ie(o.n)} questions</span></button>`)).join("")}</div>
       <div class="d2"><div><h3>\u654C\u4EBA\u96BE\u5EA6</h3>
       <div class="dgrid">${Object.entries(Zt)
@@ -15543,9 +15595,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             `<button type="button" class="dchip d-${["easy", "normal", "hard"][n]}" data-q="${o}"><b>${r.name}</b><span>${z(r.desc)}</span></button>`,
         )
         .join("")}</div></div></div>
-      <div class="row2 urow"><button type="button" id="uBack">\u2190 \u8FD4\u56DE</button><span class="ucount" id="uCount"></span><button type="button" id="uGo" class="go">\u25B6 \u5F00\u59CB (Enter)</button></div></div>`
+      <div class="row2 urow"><button type="button" id="uBack">\u2190 \u8FD4\u56DE</button><span class="ucount" id="uCount"></span><button type="button" id="uGo" class="go">\u25B6 \u5F00\u59CB<span class="kbd-hint"> (Enter)</span></button></div></div>`
           : `<div class="panel uz pix"><div class="qhd"><b>UNITS &amp; DIFFICULTY</b><span>Step 3 of 3 \xB7 questions come from the units you pick</span></div>
-      <div class="uh"><h3>AP Calculus units <small>pick one or more \xB7 keys 1\u20139, 0</small></h3><div class="pre"><button type="button" data-pre="ab">AB \xB7 Units 1\u20138</button><button type="button" data-pre="bc">BC \xB7 Units 1\u201310</button><button type="button" data-pre="none">Clear</button></div></div>
+      <div class="uh"><h3>AP Calculus units <small>pick one or more<span class="kbd-hint"> \xB7 keys 1\u20139, 0</span></small></h3><div class="pre"><button type="button" data-pre="ab">AB \xB7 Units 1\u20138</button><button type="button" data-pre="bc">BC \xB7 Units 1\u201310</button><button type="button" data-pre="none">Clear</button></div></div>
       <div class="ugrid">${le.map((o) => (i ? `<button type="button" class="uchip" data-u="${o.n}"><span class="un">\u5355\u5143 ${o.n}${o.bc ? " <s>BC</s>" : ""}</span><span class="nm">${z(o.name)}</span><span class="qc">${Ie(o.n)} \u9053\u9898</span></button>` : `<button type="button" class="uchip" data-u="${o.n}"><span class="un">Unit ${o.n}${o.bc ? " <s>BC</s>" : ""}</span><span class="nm">${z(o.name)}</span><span class="qc">${Ie(o.n)} questions</span></button>`)).join("")}</div>
       <div class="d2"><div><h3>Enemy difficulty</h3>
       <div class="dgrid">${Object.entries(Zt)
@@ -15561,7 +15613,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             `<button type="button" class="dchip d-${["easy", "normal", "hard"][n]}" data-q="${o}"><b>${r.name}</b><span>${z(r.desc)}</span></button>`,
         )
         .join("")}</div></div></div>
-      <div class="row2 urow"><button type="button" id="uBack">\u2190 Back</button><span class="ucount" id="uCount"></span><button type="button" id="uGo" class="go">\u25B6 Start (Enter)</button></div></div>`,
+      <div class="row2 urow"><button type="button" id="uBack">\u2190 Back</button><span class="ucount" id="uCount"></span><button type="button" id="uGo" class="go">\u25B6 Start<span class="kbd-hint"> (Enter)</span></button></div></div>`,
         "setup",
       );
       const e = () => {
@@ -15618,7 +15670,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ),
         (N("uBack").onclick = () => this.gunSelect()),
         (N("uGo").onclick = () => {
-          t.units.length && ($.coin(), this.hide(), qa(tt.d.cls));
+          if (!t.units.length) return;
+          ($.coin(), this.hide(), qa(tt.d.cls));
+          // A portrait phone shows the 16:9 arena as a thin strip; remind once per run.
+          if (usesTouchControls() && innerHeight > innerWidth)
+            notifyDisplay(
+              i
+                ? "建议将设备转为横屏游玩，画面会更大。"
+                : "Turn your phone sideways for a bigger arena.",
+            );
         }),
         e());
     },
@@ -15697,10 +15757,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           i
             ? `<div class="panel pz pix"><div class="qhd"><b>\u901A\u5173\uFF01</b><span>\u4E09\u4E2A\u9996\u9886\u5168\u90E8\u51FB\u8D25</span></div>
       <p class="lead">DNE \u9886\u4E3B\u3001\u5207\u7EBF\u7235\u58EB\u548C\u9ECE\u66FC\u5DE8\u50CF\u90FD\u5012\u4E0B\u4E86\u3002\u73B0\u5728\u53EF\u4EE5\u7ED3\u675F\u672C\u5C40\uFF0C\u4E5F\u53EF\u4EE5\u7EE7\u7EED<b class="cy">\u65E0\u5C3D\u6A21\u5F0F</b>\uFF1A\u9996\u9886\u4F1A\u53D8\u5F3A\uFF0C\u5E76\u5F00\u59CB<b class="co">\u6DF7\u7528\u5F7C\u6B64\u7684\u62DB\u5F0F</b>\u3002</p>
-      <div class="row2"><button type="button" id="stGo" class="go">\u7EE7\u7EED\u6311\u6218 (Enter)</button><button type="button" id="stEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
+      <div class="row2"><button type="button" id="stGo" class="go">\u7EE7\u7EED\u6311\u6218<span class="kbd-hint"> (Enter)</span></button><button type="button" id="stEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
             : `<div class="panel pz pix"><div class="qhd"><b>STAGE CLEAR!</b><span>All three bosses beaten</span></div>
       <p class="lead">The DNE Lord, Sir Tangent and the Riemann Colossus are down. End the run now, or keep going in <b class="cy">Endless mode</b>: bosses get stronger and start <b class="co">mixing each other's attacks</b>.</p>
-      <div class="row2"><button type="button" id="stGo" class="go">Keep going (Enter)</button><button type="button" id="stEnd">End run</button></div></div>`,
+      <div class="row2"><button type="button" id="stGo" class="go">Keep going<span class="kbd-hint"> (Enter)</span></button><button type="button" id="stEnd">End run</button></div></div>`,
           "stage",
         ),
         (N("stGo").onclick = () => {
@@ -15783,7 +15843,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <div class="score"><h3>\u5F97\u5206</h3><table>${t.parts.map(([h, c]) => `<tr><td>${h}</td><td>${c}</td></tr>`).join("")}<tr class="tot"><td>\u603B\u5206</td><td>${t.total}</td></tr></table></div>
       </div>
       <div class="best"><h3>\u6700\u4F73\u8BB0\u5F55\uFF08\u672C\u8BBE\u5907\uFF09</h3><table><tr><th>#</th><th>\u5F97\u5206</th><th>\u65F6\u95F4</th><th>\u9996\u9886</th><th>\u6B63\u786E\u7387</th><th>\u65E5\u671F</th></tr>${l}</table></div>
-      <div class="row2"><button type="button" id="rzGo" class="go">\u518D\u73A9\u4E00\u5C40 (Enter)</button><button type="button" id="rzNew">\u66F4\u6362\u82F1\u96C4\u3001\u67AA\u68B0\u6216\u5355\u5143</button><button type="button" id="rzTitle">\u4E3B\u83DC\u5355</button></div></div>`
+      <div class="row2"><button type="button" id="rzGo" class="go">\u518D\u73A9\u4E00\u5C40<span class="kbd-hint"> (Enter)</span></button><button type="button" id="rzNew">\u66F4\u6362\u82F1\u96C4\u3001\u67AA\u68B0\u6216\u5355\u5143</button><button type="button" id="rzTitle">\u4E3B\u83DC\u5355</button></div></div>`
           : `<div class="panel rz pix"><div class="qhd"><b>${n}</b><span>Run summary</span>${e.newBest ? (i ? '<span class="nb">\u2605 \u65B0\u7EAA\u5F55\uFF01</span>' : '<span class="nb">\u2605 New best!</span>') : ""}</div>
       <div class="stats s6">${[
         [i ? "\u5B58\u6D3B\u65F6\u95F4" : "Time survived", Et(a.t)],
@@ -15803,7 +15863,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         <div class="score"><h3>Score</h3><table>${t.parts.map(([h, c]) => `<tr><td>${h}</td><td>${c}</td></tr>`).join("")}<tr class="tot"><td>Total</td><td>${t.total}</td></tr></table></div>
       </div>
       <div class="best"><h3>Top runs (this device)</h3><table><tr><th>#</th><th>Score</th><th>Time</th><th>Bosses</th><th>Accuracy</th><th>Date</th></tr>${l}</table></div>
-      <div class="row2"><button type="button" id="rzGo" class="go">Play again (Enter)</button><button type="button" id="rzNew">Change hero, gun or units</button><button type="button" id="rzTitle">Main menu</button></div></div>`,
+      <div class="row2"><button type="button" id="rzGo" class="go">Play again<span class="kbd-hint"> (Enter)</span></button><button type="button" id="rzNew">Change hero, gun or units</button><button type="button" id="rzTitle">Main menu</button></div></div>`,
         "results",
       ),
         this.fillIcons(),
