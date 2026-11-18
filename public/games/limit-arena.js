@@ -8730,13 +8730,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         r,
       );
     if (a.worldStage >= 2 && !h.elite && !h.boss && t !== "turret") {
-      const roles =
-        a.worldStage % 2
-          ? ["toxic", "armor", "fuse"]
-          : ["fuse", "toxic", "armor"];
       const slot = h.id % 12;
-      if (slot < 3) h.role = roles[slot === 2 ? 1 : 0];
-      if (slot === 5) h.role = roles[2];
+      if (slot < 3 || slot === 5) {
+        h.role = ["fuse", "toxic", "armor"][Math.floor(Math.random() * 3)];
+      }
       if (h.role === "armor") {
         h.hp *= 3;
         h.sp *= 0.68;
@@ -18899,49 +18896,69 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
     return true;
   }
+  const worldEnemyArt = {
+    snow: [
+      ".kk....kk...",
+      ".kwkwwkwk...",
+      "..kwaaawk...",
+      ".kawaaawak..",
+      "kwwkwwkwwwk.",
+      "kawwwwwwwak.",
+      ".kawbbwwak..",
+      "..kwwwwwk...",
+      ".kwak.kawk..",
+      ".kkk...kkk..",
+    ],
+    desert: [
+      ".........kk.",
+      "........kack",
+      "........kbk.",
+      ".kk....kbk..",
+      "kackkkkack..",
+      ".kkwaawak...",
+      "..kkaakak...",
+      ".kbcbbcbk...",
+      "kak.kk.kak..",
+      "kk......kk..",
+    ],
+    rainforest: [
+      "...kg..kgk..",
+      "..kggkkggk..",
+      "...kggggk...",
+      ".kkawkkwakk.",
+      "kaawkbbkwaak",
+      ".kkaaaaaakk.",
+      "..kgbbbbgk..",
+      ".kaggggggak.",
+      "kgk......kgk",
+      "kk........kk",
+    ],
+    book: [
+      ".kkkk..kkkk.",
+      "kwwcckkccwwk",
+      "kwaccbbccawk",
+      "kwwcwbbwcwwk",
+      "kcwckbbkcwck",
+      "kwcccbbcccwk",
+      "kccwwbbwwcck",
+      ".kkccbbcckk.",
+      "...kkggkk...",
+      "....kgk.....",
+    ],
+  };
   function drawWorldEnemy(ctx, enemy, x, y, options) {
     const kind = Yt[a.theme || 0]?.worldKind;
     if (!kind || enemy.type === "turret" || options.layer === "crown")
       return false;
     if (enemy.elite) return drawWorldElite(ctx, kind, x, y, options);
-    const sprite = [
-        "....kkkk....",
-        "..kkaaaakk..",
-        ".kaaaaaaaak.",
-        "kaawaaawaak.",
-        "kaakaaakaak.",
-        "kaaaaaaaaak.",
-        ".kkaaaakk...",
-        "..kabbak....",
-        "..kabbak....",
-        ".kk....kk...",
-      ],
-      colors = {
-        snow: ["#d7e5e8", "#75a7c6"],
-        desert: ["#d9ac73", "#a67653"],
-        rainforest: ["#7eb375", "#456e4a"],
-        book: ["#c1a9d7", "#766a9f"],
-      },
-      [light, dark] = colors[kind];
-    const body = sprite.slice();
-    if (kind === "snow") {
-      body[0] = ".kk.kkkk.kk.";
-      body[1] = ".kwkaaaakwk.";
-    }
-    if (kind === "desert") {
-      body[0] = "....kkk.....";
-      body[1] = "...kaakk....";
-      body[2] = "..kaaaaakk..";
-    }
-    if (kind === "rainforest") {
-      body[0] = "...kk..kk...";
-      body[1] = "..kggkkggk..";
-    }
-    if (kind === "book") {
-      body[0] = "..kkkkkkkk..";
-      body[1] = ".kcccccccck.";
-      body[2] = ".kcaacaacck.";
-    }
+    const colors = {
+      snow: ["#d7e5e8", "#75a7c6"],
+      desert: ["#d9ac73", "#a67653"],
+      rainforest: ["#7eb375", "#456e4a"],
+      book: ["#c1a9d7", "#766a9f"],
+    };
+    const [light, dark] = colors[kind];
+    const body = worldEnemyArt[kind].slice();
     const variant =
       enemy.type === "slime"
         ? 0
@@ -18963,7 +18980,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       enemy.role
     ];
     if (accent)
-      body[1] = enemy.role === "armor" ? ".kzzzzzzzzk." : "...kzzzk....";
+      body[6] =
+        body[6].slice(0, 4) +
+        (enemy.role === "armor" ? "zzzz" : "zz") +
+        body[6].slice(enemy.role === "armor" ? 8 : 6);
     Ct(
       ctx,
       "world:" +
