@@ -15704,7 +15704,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           `${Math.round(Math.min(0.85, a.st.critC) * 100)}% \xD7${Math.min(4, a.st.critM).toFixed(1)}`,
         ],
         [
-          i ? "\u81EA\u52A8\u9501\u5B9A (L)" : "Auto-lock (L)",
+          i
+            ? "\u81EA\u52A8\u9501\u5B9A<span class='kbd-hint'> (L)</span>"
+            : "Auto-lock<span class='kbd-hint'> (L)</span>",
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
@@ -15716,7 +15718,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         .map(([e, o]) => `<div><span>${e}</span><span>${o}</span></div>`)
         .join("")}</div>
       ${this.buildHTML()}
-      <div class="row2"><button type="button" id="pzGo" class="go">\u7EE7\u7EED (Esc)</button><button type="button" id="pzEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
+      <div class="row2"><button type="button" id="pzGo" class="go">\u7EE7\u7EED<span class="kbd-hint"> (Esc)</span></button><button type="button" id="pzEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
           : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span></div>
       <div class="stats">${[
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
@@ -15727,7 +15729,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           `${Math.round(Math.min(0.85, a.st.critC) * 100)}% \xD7${Math.min(4, a.st.critM).toFixed(1)}`,
         ],
         [
-          i ? "\u81EA\u52A8\u9501\u5B9A (L)" : "Auto-lock (L)",
+          i
+            ? "\u81EA\u52A8\u9501\u5B9A<span class='kbd-hint'> (L)</span>"
+            : "Auto-lock<span class='kbd-hint'> (L)</span>",
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
@@ -15739,7 +15743,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         .map(([e, o]) => `<div><span>${e}</span><span>${o}</span></div>`)
         .join("")}</div>
       ${this.buildHTML()}
-      <div class="row2"><button type="button" id="pzGo" class="go">Resume (Esc)</button><button type="button" id="pzEnd">End run</button></div></div>`,
+      <div class="row2"><button type="button" id="pzGo" class="go">Resume<span class="kbd-hint"> (Esc)</span></button><button type="button" id="pzEnd">End run</button></div></div>`,
         "pause",
       ),
         this.fillIcons(),

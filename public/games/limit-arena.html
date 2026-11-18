@@ -390,4 +390,20 @@ body.arena-expanded[data-ov=menu] header{right:calc(20px + env(safe-area-inset-r
 body.arena-expanded[data-ov=menu] #tFullscreen{top:calc(48px + env(safe-area-inset-top,0px))}
 body.arena-expanded[data-ov=menu] #tZoom{top:calc(58px + env(safe-area-inset-top,0px) + var(--ctl) * .72)}
 }
+/* Phones and iPads (also with a trackpad or keyboard attached): a plain square "Exit"
+   and no keyboard hints at all - no Esc badge, no "Shift ·" / "E ·", no A-D footer,
+   no game-size - / + (a desktop control). */
+body.touch.arena-expanded #tFullscreen{width:var(--ctl)!important;height:var(--ctl);flex-direction:column;gap:2px;padding:2px}
+body.touch.arena-expanded #tFullscreen .control-icon{width:calc(var(--ctl) * .5);height:calc(var(--ctl) * .5)}
+body.touch.arena-expanded #tFullscreen .control-label{font-size:clamp(8px,calc(var(--ctl) * .2),14px)}
+body.touch #tFullscreen kbd,body.touch.arena-expanded #tFullscreen .lg{display:none!important}
+body.touch.arena-expanded #tFullscreen .sh{display:inline!important}
+body.touch #tDash .control-label::before,body.touch #tSkill .control-label::before{content:none!important}
+body.touch #tZoom{display:none!important}
+body.touch .qfoot,body.touch .under>span{display:none}
+body.touch.arena-expanded[data-ov=menu] #tFullscreen{top:var(--control-top)}
+/* Windowed play on a phone/iPad: panels (pause, quiz, picks, results) cover the page,
+   so the small "Full" button would float in the middle of them. Show it only in play. */
+body.touch:not(.arena-expanded)[data-ov]:not([data-ov=menu]) #tFullscreen{display:none}
+body.touch.arena-expanded[data-ov=menu] header{right:calc(28px + clamp(34px,8vmin,72px) + env(safe-area-inset-right,0px))}
 </style></body></html>
