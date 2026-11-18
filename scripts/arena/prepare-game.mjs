@@ -1,7 +1,8 @@
-// Turns a full Limit Arena HTML build into two separate outputs:
-//   1. public/games/limit-arena.html: minified, with no questions or answers.
+// Historical comparison tool; never use this to update the maintained game.
+// Turns an archived full Limit Arena HTML build into two separate outputs:
+//   1. A separate comparison HTML file: minified, with no questions or answers.
 //   2. A private questions JSON file, for import-questions.mjs. It must stay outside this repo.
-// It also builds the English/Chinese switch from scripts/arena/zh-CN.json. Questions are
+// It also builds the English/Chinese switch from scripts/arena/fixtures/legacy-zh-CN.json. Questions are
 // served as data, so they stay English: only strings in the game's own code get translated.
 //
 // node scripts/arena/prepare-game.mjs <full-game.html> --questions <outside-repo.json> --out <other.html>
@@ -23,12 +24,14 @@ const questionsPath = flag('--questions');
 const keepHooks = args.includes('--keep-test-hooks');
 const dumpStrings = flag('--dump-strings');
 const gamePath = resolve(root, 'public/games/limit-arena.html');
+const runtimePath = resolve(root, 'public/games/limit-arena.js');
 const outPath = resolve(flag('--out') ?? gamePath);
 assert.ok(input && questionsPath, 'Usage: prepare-game.mjs <full-game.html> --questions <outside-repo.json> --out <other.html>');
-// public/games/limit-arena.html is now the only source of the game and is edited directly
-// (Brian's #41/#42 work lives only there). Regenerating it from the outside-repo full build
+// The public HTML entry and JS module are maintained source, edited directly.
+// Regenerating either from the outside-repo full build
 // would wipe those edits, so this script may only write somewhere else, for comparison.
 assert.notEqual(outPath, gamePath, 'Refusing to overwrite public/games/limit-arena.html: it is the source of truth now. Pass --out <other.html> to build a copy for comparison. See docs/arena/README_ZH.md.');
+assert.notEqual(outPath, runtimePath, 'Refusing to overwrite public/games/limit-arena.js: it is maintained source.');
 assert.notEqual(outPath, resolve(root, 'public/games/arena-scratchpad.js'), 'Refusing to overwrite the maintained scratchpad source.');
 const fromRoot = relative(root, resolve(questionsPath));
 assert.ok(fromRoot.startsWith('..'), 'The questions file must stay outside this repo.');
@@ -36,7 +39,7 @@ assert.ok(fromRoot.startsWith('..'), 'The questions file must stay outside this 
 const require = createRequire(import.meta.url);
 const esbuild = require(process.env.O2I_ESBUILD_MODULE ?? 'esbuild');
 const ts = require(process.env.O2I_TYPESCRIPT_MODULE ?? 'typescript');
-const zh = JSON.parse(readFileSync(new URL('./zh-CN.json', import.meta.url), 'utf8'));
+const zh = JSON.parse(readFileSync(new URL('./fixtures/legacy-zh-CN.json', import.meta.url), 'utf8'));
 const subsetFont = readFileSync(new URL('./fonts/cubic-zh-subset.woff', import.meta.url)).toString('base64');
 const subsetChars = new Set(readFileSync(new URL('./fonts/cubic-zh-subset.chars.txt', import.meta.url), 'utf8'));
 
