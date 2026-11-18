@@ -135,7 +135,11 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between gap-1 sm:gap-4">
           <div className="flex shrink-0 items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <img src="/o2i-mark.png" alt="" width={54} height={36} className="brand-mark h-9 w-auto shrink-0" />
+              {/* Original colours in light mode; a brightened copy so the navy reads on the dark header. */}
+              <span className="brand-mark shrink-0">
+                <img src="/o2i-mark.png" alt="" width={54} height={36} className="h-9 w-auto dark:hidden" />
+                <img src="/o2i-mark-dark.png" alt="" width={54} height={36} className="hidden h-9 w-auto dark:block" />
+              </span>
               <span className="whitespace-nowrap text-xl font-bold text-primary">O2I Institute</span>
             </Link>
           </div>

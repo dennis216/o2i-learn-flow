@@ -496,7 +496,5 @@ body { font-variant-numeric: lining-nums; }
 .page-enter { animation: page-enter 320ms ease-out both; }
 @media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
 
-@media (max-width: 399px) { .glass-nav a > img.brand-mark { height: 2rem; } }
-/* The navy part of the o2i mark needs a faint light edge on the dark green header. */
-.dark .glass-nav a > img.brand-mark { filter: drop-shadow(0 0 1px hsl(45 30% 96% / .55)); }
+@media (max-width: 399px) { .glass-nav a > .brand-mark img { height: 2rem; } }
 
