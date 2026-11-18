@@ -1,6 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import FilterChips from '@/components/FilterChips';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export type Category = 'High School' | 'Contest';
@@ -19,7 +17,7 @@ export const CONTEST_SUBJECTS = [
 
 const SUBJECT_LABELS: Record<string, string> = {
   'AP Calc': 'AP Calculus',
-  'AP Stats': 'Stats',
+  'AP Stats': 'AP Stats',
   'Pre-Calculus 12': 'Precalc',
   SAT: 'SAT Math',
 };
@@ -35,63 +33,14 @@ interface CourseFiltersProps {
   onSubjectChange: (subject: Subject) => void;
 }
 
-export function CourseFilters({
-  category,
-  subject,
-  onCategoryChange,
-  onSubjectChange,
-}: CourseFiltersProps) {
+// One row for every subject; the category (High School / Contest) follows from the subject, so there is no second level to pick.
+export function CourseFilters({ subject, onCategoryChange, onSubjectChange }: CourseFiltersProps) {
   const { t } = useLanguage();
-  const subjects = category === 'High School' ? HIGH_SCHOOL_SUBJECTS : CONTEST_SUBJECTS;
-
-  const handleCategoryChange = (newCategory: string) => {
-    const cat = newCategory as Category;
-    onCategoryChange(cat);
-    // Set to first subject of new category
-    if (cat === 'High School') {
-      onSubjectChange(HIGH_SCHOOL_SUBJECTS[0]);
-    } else {
-      onSubjectChange(CONTEST_SUBJECTS[0]);
-    }
+  const options = [...HIGH_SCHOOL_SUBJECTS, ...CONTEST_SUBJECTS].map(value => ({ value, label: SUBJECT_LABELS[value] || value }));
+  const choose = (value: Exclude<Subject, null> | null) => {
+    if (!value) return;
+    onCategoryChange((CONTEST_SUBJECTS as readonly string[]).includes(value) ? 'Contest' : 'High School');
+    onSubjectChange(value);
   };
-
-  return (
-    <div className="space-y-4">
-      {/* Top-level category tabs */}
-      <Tabs value={category} onValueChange={handleCategoryChange} className="w-full">
-        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 h-12">
-          <TabsTrigger 
-            value="High School" 
-            className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            {t('High School', '高中')}
-          </TabsTrigger>
-          <TabsTrigger 
-            value="Contest" 
-            className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            {t('Contest', '竞赛')}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Subject sub-filters */}
-      <div className="flex flex-wrap justify-center gap-2">
-        {subjects.map((subj) => (
-          <Button
-            key={subj}
-            variant={subject === subj ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => onSubjectChange(subj)}
-            className={cn(
-              'rounded-full transition-all',
-              subject === subj && 'bg-primary text-primary-foreground shadow-md'
-            )}
-          >
-            {SUBJECT_LABELS[subj] || subj}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
+  return <FilterChips label={t('Subject', '科目')} options={options} value={subject} onChange={choose} />;
 }

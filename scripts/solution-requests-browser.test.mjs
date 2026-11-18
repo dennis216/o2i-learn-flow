@@ -29,6 +29,7 @@ sql(`INSERT INTO auth.users(id) VALUES ('${users.alice}'), ('${users.bob}'), ('$
   INSERT INTO public.profiles(user_id, full_name) VALUES ('${users.alice}', 'Alice Real'), ('${users.bob}', 'Bob Real'), ('${users.quinn}', 'Quinn Teacher');
   INSERT INTO public.user_roles(user_id, role) VALUES ('${users.alice}', 'student'), ('${users.bob}', 'student'), ('${users.quinn}', 'question_admin')`);
 file('../supabase/migrations/20261111000000_solution_request_threads.sql');
+file('../supabase/migrations/20261112000000_solution_requests_close_direct_access.sql');
 
 // ---- Supabase stand-in ----
 const app = 'http://127.0.0.1:5198', api = 'http://127.0.0.1:55530';

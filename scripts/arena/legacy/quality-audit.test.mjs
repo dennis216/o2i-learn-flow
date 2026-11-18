@@ -22,6 +22,16 @@ test('flags figure language that has no image, but not analytic uses of "graph" 
   assert.deepEqual(auditRow(row({ stem: 'Using the table below, estimate $f\'(1)$.' })).issues,
     ['table_language_without_table', 'figure_language_but_requires_figure_false']);
   assert.deepEqual(auditRow(row({ requires_figure: true })).issues, ['requires_figure_without_image']);
+  // Phrasings seen in the legacy bank.
+  assert.deepEqual(auditRow(row({ stem: 'The graph of $f$ is shown. Find $f(2)$.' })).issues,
+    ['figure_language_without_image', 'figure_language_but_requires_figure_false']);
+  assert.deepEqual(auditRow(row({ stem: 'Use the graph to estimate $f(2)$.' })).issues,
+    ['figure_language_without_image', 'figure_language_but_requires_figure_false']);
+  assert.deepEqual(auditRow(row({ stem: 'Use the table to estimate $f(2)$.\n\n| x | f |\n| --- | --- |\n| 1 | 2 |' })).issues, []);
+  assert.deepEqual(auditRow(row({ stem: '$f$ is continuous with the values below.\n\n| x | f |\n| --- | --- |\n| 1 | 2 |' })).issues, []);
+  assert.deepEqual(auditRow(row({ stem: '$f$ is continuous with the values below.' })).issues,
+    ['table_language_without_table', 'figure_language_but_requires_figure_false']);
+  assert.deepEqual(auditRow(row({ stem: 'For a polar curve $r=f(\\theta)$, which gives $dy/dx$? What curve is $r=2$?' })).issues, []);
 });
 
 test('summary separates legacy and other questions by status and records whether the source had a graph', () => {

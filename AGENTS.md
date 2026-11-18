@@ -2,16 +2,45 @@
 
 这是默认做法，不是硬性规定：情况特殊时按需调整，但请说明原因。
 
+## 团队分工
+
+| 人 | GitHub | 主要负责 | 个人分支 |
+|---|---|---|---|
+| Reeva | `ReevaYao` | 各板块都做；**唯一的数据库负责人** | `reeva` |
+| Dennis | `dennis216` | 游戏、课程（Courses），有时做全局改动；仓库管理员 | `dennis` |
+| Brian | `BriBribr1an` | 游戏、练习（Practice） | `brian` |
+
+游戏 Dennis 和 Brian 都会改：改之前在对应的 Issue 里说一声，避免两人同时改同一个文件。改别人负责的板块，也先在 Issue 里说。
+
+## 任务记录
+
+- 每件要做的事都开一个 GitHub Issue，写清做什么、谁负责、做完是什么样子；按板块打标签（`area: …`）。
+- 讨论结果和决定写进 Issue 评论或 `docs/`，不要只留在聊天里。
+- 提交或 PR 说明里写上 `#Issue号`；做完在 Issue 里写一句结论再关闭。AI 也照做。
+
 ## 分支与上线
 
-- 日常改动直接在 `test-work` 上做。开工前先 `git pull origin test-work`。
-- 推到 `test-work` 后约 1 分钟，测试站自动更新：https://test-work.o2i-website.pages.dev
-- 测试没问题后，开 PR 把 `test-work` 合并进 `main`；`main` 一更新，正式站 https://www.o2iinstitute.org 约 1 分钟后自动上线。
-- 不要直接推送到 `main`。如果有人直接改了 `main`，记得把它同步回 `test-work`。
-- 尽量少量多次提交、每次一件事，并让 `test-work` 保持能正常运行（别把做到一半的东西推上去）。
-- 需要好几天的大改动，或多人同时改同一块文件时，可以临时开分支；合并后及时删除。
-- 合并 PR 时选 "Create a merge commit"（不要 squash）。合并后 `main` 和 `test-work` 应指向同一个提交：把 `test-work` 快进到 `main`。
-- 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-09`），方便回溯。备份分支只保留最近两个：新建第三个时，删掉日期最早的那个。`feature/calc-quest-world` 先保留，不要清理。
+```
+reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR──▶  main（正式站）  ──▶  backup-YYYY-MM-DD
+```
+
+- 每个人只在**自己的分支**上改。每天开工前先把 `test-work` 合进自己的分支：`git checkout <自己的分支> && git pull && git merge origin/test-work`，再 `git push`。
+- 让 AI 干活时，告诉它"在 `<自己的分支>` 上改"。AI 不要把自己开的临时分支（如 `claude/…`、worktree 分支）推到 GitHub：直接提交并推到你的分支（Reeva 的小改动可直接推 `test-work`）。万一已经推上去了，合回你的分支后删掉。
+- 自己分支推上去后，Cloudflare 会生成个人预览站：`https://<分支名>.o2i-website.pages.dev`，先在这里看效果。
+- 做完一件事（最多一两天）就开 PR 合进 `test-work`（base 选 `test-work`，不是 `main`），别攒很多再合，攒得越久冲突越多。别把做到一半、跑不起来的东西合进 `test-work`。
+- 合进 `test-work` 的 PR 可以自己合：在个人预览站上看过、能正常运行就行。动到别人负责的板块、或者有数据库改动的，请对方或 Reeva 看一眼再合。合完 PR 不删个人分支，继续在上面做下一件事。
+- `test-work` 的测试站：https://test-work.o2i-website.pages.dev 。大家都合进来以后在这里一起验收。
+- 统一上线由 **Reeva** 负责：在测试站验收后，开 PR 把 `test-work` 合进 `main`，`main` 更新后约 1 分钟正式站 https://www.o2iinstitute.org 自动上线。上线前在群里说一声，没合进 `test-work` 的东西这次就不上。
+- 合并 PR 都选 "Create a merge commit"（不要 squash）。合进 `main` 后把 `test-work` 快进到 `main`，让两者指向同一个提交。
+- 不要直接推送到 `main` 或 `test-work`，都走 PR。例外：Reeva（含 Reeva 让 AI 做的）的小改动可以直接推 `test-work`；大改动在 `reeva` 分支上做再走 PR。如果有人直接改了 `main`，记得同步回 `test-work`。
+- 大的更新合并进 `main` 后，把 `main` 另存一个备份分支 `backup-YYYY-MM-DD`（例如 `backup-2026-11-09`）。备份分支只保留最近两个：新建第三个时，删掉日期最早的那个。`feature/calc-quest-world` 先保留，不要清理。
+
+## 数据库
+
+- **只有 Reeva 改生产库的结构和设置**（执行迁移、部署包、改 Supabase 后台设置）。在网站后台正常录入、发布课程和题目不算，大家照常做，但记住学生会马上看到。其他人和他们的 AI 只写迁移文件和部署包，交给 Reeva 执行，不要自己连生产库写入。
+- 新迁移开工前先在 Issue 里占好版本号（`supabase/migrations/` 的文件名时间戳），避免两个人用同一个号。
+- 部署沿用"只读预检 → 单事务部署 → 只读验收"，部署记录（时间、执行人、验收结果）写进对应的 `docs/` 目录。
+- 依赖新数据库函数的前端，要等数据库部署完再合进 `test-work`。
 
 ## 界面风格
 
@@ -19,7 +48,8 @@
 
 ## 注意
 
-- 测试站和正式站共用同一个 Supabase 数据库。在测试站上的删除、发布、改数据都会直接影响学生；测试用测试账号。
+- 测试站、个人预览站和正式站共用同一个 Supabase 数据库。在测试站上的删除、发布、改数据都会直接影响学生；测试用测试账号。
 - 数据库结构改动（`supabase/migrations`）会同时影响两边，要兼容正式站上还在运行的旧代码。
+- Limit Arena：`public/games/limit-arena.html` 是游戏唯一的源码，直接改它；不要再用 `scripts/arena/prepare-game.mjs` 从仓库外的完整版重新生成（脚本已禁止覆盖），仓库外那份只做存档。详见 [docs/arena/README_ZH.md](docs/arena/README_ZH.md)。
 - 不要再用 Lovable 编辑器改代码，网站已迁到 Cloudflare Pages（项目 `o2i-website`）。
 - 出问题需要回滚：Cloudflare → `o2i-website` → Deployments → 选上一个正常版本 → Rollback。

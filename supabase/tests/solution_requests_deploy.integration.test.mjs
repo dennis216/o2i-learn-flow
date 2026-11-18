@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { files } from '../../scripts/generate-solution-request-deploy.mjs';
+import { files as closeFiles } from '../../scripts/generate-solution-request-close-deploy.mjs';
 
 const url = process.env.SR_TEST_DATABASE_URL;
 assert.ok(url, 'Set SR_TEST_DATABASE_URL to a disposable local database.');
@@ -14,9 +15,12 @@ const run = (args, input) => execFileSync('psql', [url, '-qtAX', '-v', 'ON_ERROR
 }).trim();
 const sqlFile = name => run(['-f', '-'], files[name]);
 
-test('committed package matches the generator', () => {
+test('committed packages match the generators', () => {
   for (const [name, text] of Object.entries(files)) {
     assert.equal(readFileSync(new URL(`../../docs/solution-requests/${name}`, import.meta.url), 'utf8'), text, `${name} is stale; run the generator`);
+  }
+  for (const [name, text] of Object.entries(closeFiles)) {
+    assert.equal(readFileSync(new URL(`../../docs/solution-requests/close-direct-access/${name}`, import.meta.url), 'utf8'), text, `close-direct-access/${name} is stale; run the generator`);
   }
 });
 
@@ -41,4 +45,17 @@ test('a truncated paste is refused with the length it got, and changes nothing',
   const broken = files['10_upgrade.sql'].replace("NOTIFY pgrst,'reload schema';", '');
   assert.throws(() => run(['-f', '-'], broken), e => /does not match the repository migration \(got \d+ characters/.test(String(e.stderr)));
   assert.equal(JSON.parse(sqlFile('00_preflight_readonly.sql').split('\n')[0]).baseline_ok, true);
+});
+
+test('the close-direct-access package needs the first one, runs once and verifies', () => {
+  const close = name => run(['-f', '-'], closeFiles[name]);
+  assert.throws(() => close('10_upgrade.sql'), e => /Deploy 20261111000000/.test(String(e.stderr)));
+  run(['-f', '-'], files['10_upgrade.sql']);
+  const before = JSON.parse(close('00_preflight_readonly.sql'));
+  assert.deepEqual([before.baseline_ok, before.anon_can_select], [true, true]);
+  assert.equal(before.direct_policies.length, 2);
+  run(['-f', '-'], closeFiles['10_upgrade.sql'].replaceAll('\n', '\r\n'));
+  const verify = JSON.parse(close('20_verify_readonly.sql'));
+  assert.equal(verify.all_checks_pass, true, JSON.stringify(verify.checks));
+  assert.throws(() => close('10_upgrade.sql'), e => /Already registered/.test(String(e.stderr)));
 });

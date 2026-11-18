@@ -344,3 +344,24 @@ test('lists: scopes, filters, paging and the admin queue order', () => {
   assert.deepEqual(call(null, `public.sr_list('public', NULL, NULL, false)`).items.map(i => i.id), [first]);
   refused(null, `public.sr_list('public', 'pending')`, /SR_INVALID/);
 });
+
+test('closing direct table access keeps every sr_* path working and stops id leaks', () => {
+  resetQuota();
+  file('../migrations/20261112000000_solution_requests_close_direct_access.sql');
+  for (const uid of [null, alice]) {
+    const role = uid ? 'authenticated' : 'anon';
+    assert.throws(() => asRole(role, uid, 'SELECT user_id FROM public.solution_requests'), /permission denied/);
+    assert.throws(() => asRole(role, uid, `INSERT INTO public.solution_requests(user_id, title) VALUES ('${alice}', 'direct')`), /permission denied/);
+  }
+  assert.throws(() => asRole('authenticated', alice, `UPDATE public.solution_requests SET title = 'x'`), /permission denied/);
+  const img = upload(alice);
+  const id = create(alice, { images: [img] });
+  const r = reply(bob, id, 'still works');
+  assert.equal(get(null, id).replies[0].id, r);
+  assert.ok(call(null, `public.sr_list('public')`).items.some(item => item.id === id));
+  assert.ok(call(alice, `public.sr_list('mine')`).items.some(item => item.id === id));
+  assert.equal(asRole('anon', null, `SELECT count(*) FROM storage.objects WHERE name = '${img}'`), '1', 'public images still load');
+  call(alice, `public.sr_set_solved('${id}', true, '${r}')`);
+  assert.equal(statusOf(id), 'solved');
+  assert.ok(call(alice, `public.sr_withdraw('${id}')`));
+});

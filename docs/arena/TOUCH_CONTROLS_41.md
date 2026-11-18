@@ -1,0 +1,28 @@
+# Brian's Arena touch-control update (#41)
+
+> This is the initial implementation record. The latest appearance, manual firing, pickup, and viewport behavior is documented in [BRIAN_PLAYTEST_41_42.md](BRIAN_PLAYTEST_41_42.md).
+
+Brian moved Dash, Skill, and Pause into the game viewport so iPad and phone players can use them without reaching below the canvas. Dash and Skill use translucent pixel-style buttons on the right (58% opacity, brighter when pressed). Pause is a quieter button in the upper-right corner (45% opacity), with the nearby HUD text shifted left to keep it readable. Auto-lock remains available below the game, and the existing top-left ability indicators and keyboard bindings remain in place.
+
+The controls follow the site language: Skill / 技能, Dash / 冲刺, and Pause / 暂停. Accessible names match the visible labels. Both English and Chinese were checked at all four viewport sizes below.
+
+Pressing either ability during its cooldown shows the remaining time next to the player for 1.1 seconds, with a short fade. Touch controls hide while quiz, pause, and other dialogs are open. Additional movement touches cannot replace the active movement pointer. Devices with touch plus a trackpad are recognized through touch capability rather than only their primary pointer type.
+
+The touch canvas fits the available frame height. On short landscape screens the game header is hidden during a run to leave space for play. This is a focused control improvement, not completion of the broader viewport work in #42.
+
+## Local validation
+
+- Production build passed.
+- Arena bridge, public-game, and Chinese translation/font checks: 10 passed.
+- Synthetic browser checks at 1180×820, 820×1180, 390×844, and 844×390 passed: action buttons inside the canvas without overlap; movement pointer retained while using abilities; cooldown feedback triggered; pause/resume and control visibility worked.
+- The local fixture used no production account or database. It injected test access only into an in-memory copy; the shipped game has no test hooks.
+
+Physical iPad/Safari multitouch and comfort still need Brian's acceptance on the personal preview. The production website and database are unchanged. New characters, balance changes, onboarding, and broader gameplay feedback are outside this update.
+
+## Fullscreen follow-up
+
+Touch players starting a run now request native fullscreen and, where supported, a landscape orientation lock. A localized Full / 全屏 button enters it manually, and Exit / 退出 remains reachable during pause, quizzes, and menus. The host iframe explicitly permits fullscreen.
+
+If native fullscreen is unavailable or denied, the iframe expands over the site navigation and fills the available browser viewport. A brief localized message explains that the browser UI cannot be hidden and recommends landscape orientation. This fallback does not claim to remove browser tabs or address bars. Leaving the mode restores the normal iframe size and document scrolling; native exit events are handled too.
+
+Additional synthetic checks passed for native fullscreen and a mocked unsupported-browser fallback in both English and Chinese: entry, controls inside the canvas, pause, exit, and restoration of page scrolling. TypeScript, the Arena page lint check, production build, and the existing 10 checks passed. Actual iOS/Safari fullscreen and orientation support still depend on the device/browser and require physical acceptance.

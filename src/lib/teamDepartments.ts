@@ -22,6 +22,17 @@ export const TEAM_ROLES: readonly string[] = [
   "Website Developer",
 ];
 
+// Display names for the fixed lists above; anything else shows as stored.
+// The stored department name stays the same (the admin form and the live site use it); readers see "Website Group".
+const LABEL_ZH: Record<string, string> = {
+  Leadership: "负责人", "Team Members": "团队成员",
+  Founder: "创始人", "Co-founder": "联合创始人", "Team Leader": "组长", "Team Member": "成员", "Website Developer": "网站开发",
+  "Publicity & Marketing": "宣传与推广", "Web Development & Management": "网站组", "Curriculum Content & Media Production": "课程内容与视频制作",
+  "Math Group": "数学组", "Chemistry Group": "化学组", "Physics Group": "物理组", "Biology Group": "生物组",
+};
+const LABEL_EN: Record<string, string> = { "Web Development & Management": "Website Group" };
+export const teamLabel = (value: string, language: string) => (language === "zh" ? LABEL_ZH[value] : LABEL_EN[value]) || value;
+
 export function groupTeamMembers<T extends { roles: string[]; departments: string[]; order_index: number }>(members: readonly T[]) {
   const byOrder = (left: T, right: T) => left.order_index - right.order_index;
   const leadership = members

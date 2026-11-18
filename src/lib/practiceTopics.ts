@@ -10,3 +10,12 @@ export function practiceTopicCards(topics: PracticeTopic[], unit: number | null)
     .sort((a, b) => a.code.localeCompare(b.code, 'en', { numeric: true }));
   return { units, cards };
 }
+
+// "All" view: one foldable group per Unit, in Unit order; topics without a numeric Unit go last (unit null).
+export function practiceTopicGroups(topics: PracticeTopic[]) {
+  const { units, cards } = practiceTopicCards(topics, null);
+  const groups: { unit: number | null; topics: PracticeTopic[] }[] = units.map(unit => ({ unit, topics: cards.filter(topic => practiceTopicUnit(topic.code) === unit) }));
+  const other = cards.filter(topic => practiceTopicUnit(topic.code) === null);
+  if (other.length) groups.push({ unit: null, topics: other });
+  return groups;
+}
