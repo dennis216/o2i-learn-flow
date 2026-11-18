@@ -111,10 +111,10 @@ export default function Playground() {
 
   return (
     <div className={`mx-auto min-h-[70vh] max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
-      <PageHeader icon={FlaskConical} tone="purple" title={t('Playground', '互动工具')} description={t('GeoGebra models you can drag and adjust.', '可以拖动、调整的 GeoGebra 数学模型。')} />
+      <PageHeader icon={FlaskConical} tone="purple" title={t('Interactive models', '互动模型')} description={t('Explore a concept by moving a point or changing a value in GeoGebra.', '拖动图形、调整参数，看看数学规律如何变化。')} />
 
       {entries.length === 0 ? (
-        <p className="py-10 text-lg text-muted-foreground">{t('No models yet. Check back soon.', '还没有互动模型，敬请期待。')}</p>
+        <p className="py-10 text-lg text-muted-foreground">{t('There are no models available yet.', '暂时还没有可用的互动模型。')}</p>
       ) : (
         <>
           {groups.length > 1 && <FilterChips className="mb-8" label={t('Filter by unit', '按单元筛选')} value={activeFilter} onChange={setActiveFilter}

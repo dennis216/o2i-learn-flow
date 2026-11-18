@@ -51,13 +51,13 @@ export default function Courses() {
   const selected = courses.find(c => c.id === requestedCourseId);
   const select = (course: Course) => setParams({ course: course.id });
   return <div className={`mx-auto min-h-screen max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 ${language === 'zh' ? 'break-keep [overflow-wrap:anywhere]' : ''}`}>
-    <PageHeader icon={Book} tone="blue" title={t('Courses', '课程')} description={t('Free video lessons that follow the official syllabus.', '免费视频课，跟着官方大纲走。')} />
+    <PageHeader icon={Book} tone="blue" title={t('Courses', '课程')} description={t('Free video lessons, organised around the course syllabus.', '按课程大纲编排的免费视频课。')} />
     <CourseFilters category={category} subject={subject} onCategoryChange={setCategory} onSubjectChange={setSubject} />
     {loading ? <p role="status" className="py-12 text-muted-foreground">{t('Loading courses…', '课程加载中…')}</p> : error ? <div role="alert" className="space-y-3 py-12"><p>{error}</p><Button onClick={() => setRetry(n => n + 1)}>{t('Retry', '重试')}</Button></div> : <div className="-mx-3 mt-6 grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr))]">{courses.map((course, i) => <CourseCard key={course.id} course={course} index={i} onSelect={select} />)}</div>}
     {!loading && !error && !courses.length && <div className="max-w-xl py-10">
       <h2 className="text-2xl font-bold tracking-tight">{t('Coming soon', '即将上线')}</h2>
-      <p className="mt-2 text-lg text-muted-foreground">{t("We're still making these lessons.", '这门课还在制作中。')}</p>
-      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"><Button asChild size="lg" className="h-12 px-8 text-base font-semibold"><Link to="/practice">{t('Go to Practice', '去做练习')}</Link></Button><Link to="/arena" className="rounded-sm py-2 font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('Play Limit Arena', '去竞技场')}</Link></div>
+      <p className="mt-2 text-lg text-muted-foreground">{t('Lessons in this subject are still in production.', '这个科目的课程正在制作中。')}</p>
+      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"><Button asChild size="lg" className="h-12 px-8 text-base font-semibold"><Link to="/practice">{t('Try some practice questions', '先做几道练习')}</Link></Button><Link to="/arena" className="rounded-sm py-2 font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('Play Limit Arena', '去竞技场')}</Link></div>
     </div>}
     {selected && <CourseDetailModal key={`${user?.id ?? 'visitor'}:${selected.id}`} course={selected} supabaseUrl={SUPABASE_URL} topicId={requestedTopicId} entryId={requestedEntryId} initialVideoId={requestedVideoId ?? undefined} resumeTime={(location.state as { resumeTime?: number } | null)?.resumeTime} onEntryChange={changeEntry} onClose={() => setParams({})} />}
   </div>;

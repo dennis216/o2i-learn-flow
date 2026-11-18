@@ -15,7 +15,7 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 // The game reads its own same-origin language key on load; keep it on the site's choice.
 function ArenaGame({ language }: { language: Language }) {
   useState(() => {
-    try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
+    try { localStorage.setItem('cq-arena-lang', language === 'zh' ? 'zh' : 'en'); } catch { /* the game falls back to the browser language */ }
     return language;
   });
   const frame = useRef<HTMLIFrameElement>(null);

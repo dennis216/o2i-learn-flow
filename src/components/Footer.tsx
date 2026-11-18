@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const links = [
   { to: '/courses', label: ['Courses', '课程'] },
   { to: '/practice', label: ['Practice', '练习'] },
-  { to: '/solution-requests', label: ['Solution Requests', '答疑'] },
+  { to: '/solution-requests', label: ['Q&A', '答疑'] },
   { to: '/team', label: ['Team', '团队'] },
 ] as const;
 
@@ -16,11 +16,10 @@ export default function Footer() {
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
         <div className="space-y-2">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/o2i-logo.jpg" alt="" className="h-7 w-7 rounded-full object-cover" />
             <span className="font-bold text-primary">O2I Institute</span>
             <span className="text-sm font-medium text-muted-foreground">One to Infinity</span>
           </Link>
-          <p className="text-sm text-muted-foreground">{t('Math courses, practice and tutor help, from 1 to ∞.', '数学课程、练习和老师答疑，从 1 到无穷。')}</p>
+          <p className="text-sm text-muted-foreground">{t('Math lessons, practice and help when you need it.', '数学课程、练习与答疑。')}</p>
         </div>
         <nav aria-label={t('Footer', '页脚导航')} className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
           {links.map((link) => (

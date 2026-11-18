@@ -147,7 +147,7 @@ export default function ThreadView({ id, onChanged, onGone }: { id: string; onCh
       )}
 
       <section aria-label={tt(['Replies', '回复'])} className="space-y-4">
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{tt([`${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`, `${replies.length} 条回复`])}</h2>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{tt([`${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`, `${replies.length} 条回复`, `${replies.length} ${replies.length === 1 ? 'respuesta' : 'respuestas'}`])}</h2>
         {replies.length === 0 && (
           <p className="rounded-2xl bg-muted/40 p-6 text-center text-muted-foreground">
             {tt(r.is_public ? ['No replies yet. Classmates and O2I teachers can answer here.', '还没有回复。同学和 O2I 老师都可以在这里解答。']

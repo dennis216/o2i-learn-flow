@@ -2,6 +2,16 @@
 
 新页面和改版都按这份来。以首页（`src/pages/Index.tsx`）为样板；拿不准时照首页做。
 
+## 深绿本地试版（2026-11-16，#49）
+
+Brian 最新方向：不再追求液态玻璃，改为整站深森林绿背景、暖白文字与香槟金强调。仅本地试验，暂不推送、不更新 PR #48、不部署。以下规则优先于旧版蓝色规范。
+
+- 导航、首屏、内容区、课程卡片、弹窗和页脚统一使用深绿色表面；首屏无白边，取消发光无限符号和玻璃浮层。最新布局以文末“本地最新调整”为准：纹章只放在左上角站名旁，首屏使用细线数学示意图。
+- 英文首屏标题使用 Georgia 衬线字体，中文保留系统无衬线字体；内容区使用编号、细边框与留白；通过深绿底色、稍浅卡片和边框区分层次。
+- 颜色统一放在 `src/index.css` 的 token 中；共享导航、按钮和卡片同步使用绿色系，正文保持高对比。
+- 遵循减少动态效果与高对比偏好；不依赖背景模糊。
+- 游戏源码、数据库、权限与课程内容保持原样；游戏展示继续使用像素风。
+
 ## 品牌
 
 - 名称 **O2I Institute**，口号 **One to Infinity**（1 → ∞）。
@@ -62,3 +72,34 @@
 
 - 桌面 1440 和手机 390 两个宽度，中文和英文各看一遍，没有横向滚动。
 - `npm run build` 通过，改到的文件 `npx eslint` 无新问题。
+
+## 本地最新调整：徽记位置、双语文案、游戏介绍
+
+- 用户明确要求纹章只作为左上角站名旁的小徽记：使用平面版 `public/heraldic-emblem-v4.png`，40px 显示，不在首屏正文或页脚重复展示；首页右侧使用细线数学示意图。
+- 首页 CALC QUEST 区块使用墨绿底、暗绿面板、暖金强调，与全站深绿协调。不修改实际游戏里的美术与交互。
+- 首页、导航、页脚及课程/练习/答疑/互动模型/团队/登录页面的主要介绍文案使用自然双语表达。保留题目内容、课程数据、功能规则、额度与密码要求；避免逐句翻译、空泛口号与开发术语（如 Authentication、Solution Requests）。
+- 所有调整仍仅保存在本地，不推送、不更新 PR #48、不部署。
+
+## 字体与真实数据（本地）
+
+- 英文标题改用 Cormorant Garamond，中文标题使用 Noto Serif SC；正文使用 Inter / Noto Sans SC。加载失败时回退到本机衬线或系统无衬线字体。
+- 首屏统计从站点现有 Supabase 公共接口读取：`count_all_profiles`、公开 `team_members` 数量、`courses` 中 `is_published = true` 的数量。移除写死的“50+ 位专家”和数字滚动动画。
+- 2026-11-16 本地只读核实结果：公共账号统计 2071，团队成员 7，已发布课程 2。数字仅记录验收时状态，不作为页面常量；页面每次载入重新请求，接口失败的对应项不展示。
+- 团队名单、负责人和课程列表继续读取网站现有接口；不更改生产数据库。
+
+## 三语、品牌图标与首屏徽标（最新）
+
+- 语言菜单提供 English / 简体中文 / Español，保存本地选择并设置对应文档语言；西语覆盖主要学生界面、状态、验证提示与动态文案。教学视频、题目正文、课程标题与游戏内部内容保留原语言；竞技场在西语界面下使用英文游戏。
+- 西语资源在 `src/lib/i18n/es.ts`；模板插值在 `translate.ts`，未知内容保留原文，不猜测翻译。
+- 左上角恢复用户提供的原版 O2I 标志，名称旁保留 24–28px 平面纹章，不在正文放大展示。
+- Instagram / YouTube 使用 Simple Icons 11.15.0 的品牌路径，替换通用相机/视频符号；小红书在所有语言中保留真实字标，不再用 RED 文本替代。其余图标沿用既有品牌路径。平台链接保留原值。
+- 首屏改成用户参考图中的两枚徽标：从 `count_all_profiles` 读取学习人数；“10+ 位资深导师 · Euclid 荣誉榜 · AMC 前 1%”由用户提供。移除团队人数和课程数量，不再为这两项请求统计数据。
+- 调整仍仅在本地，不推送、不更新 PR、不部署、不写生产库。
+
+## Optional light appearance
+The header includes a theme toggle beside the language menu in all three languages. Dark remains the default. Light uses warm ivory, forest green and bronze, including page surfaces, cards, navigation and dialogs. next-themes persists the selection under o2i-theme. Local preview only.
+
+
+## Dr. Owler interaction (#49)
+Restored standalone AI chat navigation independently of course AI tools. The draggable homepage owl greets on a tap, responds to repeated pats, becomes annoyed after four quick pats and resets after five seconds. Its localized speech bubble links to the existing authenticated AI chat. Dragging does not open a greeting; Enter/Space work as well. Existing AI service implementation remains unchanged; no test prompts or production writes were sent.
+

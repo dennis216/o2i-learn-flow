@@ -19,7 +19,7 @@ import { PRACTICE_CAPTURE_PREFIX } from '@/lib/practiceCapture';
 function AccountQuiz({ sessionId, topicId, questionId, courseId, continuous, returnTo, onCourseLoaded, onNextSet }: { sessionId: string; topicId?: string; questionId?: string; courseId?: string; continuous?: boolean; returnTo?: string | null; onCourseLoaded: (path: string | null) => void; onNextSet: (topicId: string | null, courseId?: string | null) => void }) {
   const [session, setSession] = useState<PracticeSession | null>(null);
   const { user } = useAuth();
-  const { language, t } = useLanguage();
+  const { language, t, locale } = useLanguage();
   const [index, setIndex] = useState(0);
   const [busy, setBusy] = useState(true), [error, setError] = useState(''), [saveError, setSaveError] = useState('');
   const [retry, setRetry] = useState(0), [finished, setFinished] = useState(false);
@@ -70,7 +70,7 @@ function AccountQuiz({ sessionId, topicId, questionId, courseId, continuous, ret
     <p>{t('These answers count in your learning statistics and Review. Continue playing in Arena; use Practice this Topic below for normal practice.', '这些答题会计入学习统计，也能在复习里看到。想接着玩就回竞技场；想做普通练习，点下面的“练习这个 Topic”。')}</p>
     <Button asChild variant="outline"><Link to="/arena">{t('Back to Arena', '返回竞技场')}</Link></Button>
     {(questionId ? session.questions.filter(q => q.question_id === questionId && q.attempt) : session.questions.filter(q => q.attempt)).map(q => <Card key={q.question_id}><CardContent className="space-y-4 p-5">
-      <p className="text-sm text-muted-foreground">{t('Saved', '保存于')} {new Date(q.attempt!.submitted_at).toLocaleString()}</p>
+      <p className="text-sm text-muted-foreground">{t('Saved', '保存于')} {new Date(q.attempt!.submitted_at).toLocaleString(locale)}</p>
       <QuestionBody question={q} selected={q.attempt!.selected_option_id} disabled onSelect={() => {}} />
       <SavedAnswer question={q} />
     </CardContent></Card>)}

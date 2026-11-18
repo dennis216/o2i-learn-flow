@@ -5,7 +5,7 @@ import type { Database } from '../integrations/supabase/types.ts';
 export type SrClient = SupabaseClient<Database>;
 export type SrStatus = 'awaiting' | 'replied' | 'answered' | 'solved';
 export type ProblemType = Database['public']['Enums']['problem_type'];
-export type Bilingual = readonly [en: string, zh: string];
+export type Bilingual = readonly [en: string, zh: string, es?: string];
 
 export const BUCKET = 'solution-images';
 export const LIMITS = {

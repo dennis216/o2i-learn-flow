@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { ThemeProvider } from 'next-themes';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -14,7 +15,7 @@ import Index from '@/pages/Index';
 import Review from '@/pages/Review';
 import Practice from '@/pages/Practice';
 import Quiz from '@/pages/Quiz';
-import { AI_TUTOR_ENABLED } from '@/lib/aiTutor';
+import { AI_CHAT_ENABLED } from '@/lib/aiTutor';
 
 const Auth = lazy(() => import('@/pages/Auth'));
 const Profile = lazy(() => import('@/pages/Profile'));
@@ -51,6 +52,7 @@ function AppNavigation() {
 
 export default function App() {
   return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="o2i-theme" disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
       <AuthProvider>
@@ -67,7 +69,7 @@ export default function App() {
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/practice" element={<Practice />} />
                   <Route path="/practice/:videoId" element={<LegacyVideoRedirect />} />
-                  <Route path="/ai-tutor" element={AI_TUTOR_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
+                  <Route path="/ai-tutor" element={AI_CHAT_ENABLED ? <AITutor /> : <Navigate to="/courses" replace />} />
                   <Route path="/playground" element={<Playground />} />
                   <Route path="/solution-requests" element={<SolutionRequests />} />
                   <Route path="/solution-requests/:id" element={<SolutionRequestThread />} />
@@ -91,5 +93,6 @@ export default function App() {
       </AuthProvider>
       </LanguageProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   );
 }
