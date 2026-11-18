@@ -171,12 +171,11 @@ body[data-ov=menu] .mz .mrow button{font-size:12px;padding:8px 6px}
     <section class="screen pix" aria-label="Game screen">
       <div class="stagewrap">
         <canvas id="c" width="640" height="360" tabindex="0" aria-label="Game screen"></canvas>
-        <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tAttack">Attack</button></div>
+        <div class="tpad"><button type="button" id="tDash">Dash</button><button type="button" id="tSkill">Skill</button><button type="button" id="tPause">Pause</button><button type="button" id="tLock">Auto-lock: ON</button><button type="button" id="tAttack">Attack</button></div>
         <div class="display-controls"><button type="button" id="tFullscreen">Full</button><span class="zoom" id="tZoom" role="group" aria-label="Game size"><button type="button" id="tZoomOut" aria-label="Smaller">−</button><output id="tZoomVal">100%</output><button type="button" id="tZoomIn" aria-label="Bigger">+</button></span></div>
         <div id="displayNotice" role="status" hidden></div>
         <div id="ov" hidden></div>
       </div>
-      <div class="touch-settings"><button type="button" id="tLock">Auto-lock: ON</button></div>
       <div class="under"><span><kbd>WASD</kbd> move · <kbd>Shift</kbd> / <kbd>Space</kbd> dash · <kbd>E</kbd> skill · <kbd>L</kbd> auto-lock · click an enemy to lock · <kbd>Esc</kbd> pause · answer <kbd>A</kbd>–<kbd>D</kbd> · pick <kbd>1</kbd>–<kbd>4</kbd></span><button type="button" class="touchtog" id="touchTog">Show touch buttons</button></div>
     </section>
   </div>
@@ -334,6 +333,31 @@ body:not(.arena-expanded) .display-controls{z-index:210}
 body:not(.arena-expanded)[data-ov=gun] #ov:has(>.cz){position:absolute;inset:0;width:100%;height:100%;transform:none}
 body:not(.arena-expanded)[data-ov=gun] #ov>.cz{zoom:var(--panel-scale,1)}
 body:not(.arena-expanded)[data-ov=menu] #ov>.mz{zoom:var(--panel-scale,1)}
+
+/* Corner buttons follow the size of the game area (#41): about 34px on phones,
+   50px on iPad and 65px on desktop, instead of a fixed 52x48 everywhere.
+   cqmin = the short side of the arena layer the button sits in. */
+.tpad,.display-controls{container-type:size}
+#tPause,#tFullscreen,.tpad #tLock{--ctl:clamp(34px,8cqmin,72px);--ctl-gap:clamp(6px,1.2cqmin,12px)}
+#tPause,#tFullscreen{width:var(--ctl);height:var(--ctl);min-width:0;min-height:0;padding:2px;gap:2px}
+#tPause{top:var(--control-top);right:var(--control-right)}
+#tFullscreen{top:var(--control-top);right:calc(var(--control-right) + var(--ctl) + var(--ctl-gap))}
+body:not(.touch) #tFullscreen,body.arena-expanded[data-ov] #tFullscreen,body.arena-expanded[data-ov=quiz] #tFullscreen,body.arena-expanded[data-ov=quizfb] #tFullscreen,body.arena-expanded[data-ov=pause] #tFullscreen{right:var(--control-right);top:var(--control-top);width:var(--ctl);min-width:0}
+/* The menu's language / music / sound row sits left of the (now larger) Exit button.
+   In menus the Exit layer covers the viewport, so 8vmin here equals its 8cqmin. */
+body.arena-expanded[data-ov=menu] header{right:calc(28px + clamp(34px,8vmin,72px) + env(safe-area-inset-right,0px))}
+#tPause .control-icon,#tFullscreen .control-icon{width:calc(var(--ctl) * .5);height:calc(var(--ctl) * .5)}
+#tPause .control-label,#tFullscreen .control-label{font-size:clamp(8px,calc(var(--ctl) * .2),14px);line-height:1}
+/* Auto-lock lives on the arena under Pause, so it is reachable in full screen too. */
+.tpad #tLock{display:flex;align-items:center;justify-content:center;top:calc(var(--control-top) + var(--ctl) + var(--ctl-gap));right:var(--control-right);bottom:auto;width:auto;height:calc(var(--ctl) * .62);min-height:0;padding:0 calc(var(--ctl) * .2);border-radius:0;clip-path:none;white-space:nowrap;font-size:clamp(8px,calc(var(--ctl) * .22),13px);opacity:.82;background:color-mix(in srgb,var(--panel2) 40%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--muted) 60%,transparent)}
+/* Phones and tablets: no Auto-lock button in play (it stays on; keyboards still use L). */
+body.touch .tpad #tLock{display:none}
+/* Keyboard-only hints (Enter, E, 1-9) are hidden on touch screens. */
+body.touch .kbd-hint,body.touch #mStart kbd{display:none}
+/* Step 3 keeps Back / Start on screen while the unit list scrolls. */
+#ov .panel.uz{padding-bottom:0}
+#ov .panel.uz .urow{position:sticky;bottom:0;z-index:2;margin-top:12px;padding:10px 0 14px;background:var(--panel);box-shadow:0 -10px 12px -8px var(--shade)}
+@media(max-width:520px){#ov .panel.uz .urow{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}#ov .panel.uz .urow .ucount{grid-column:1/-1;grid-row:1;font-size:12px;line-height:1.5}#ov .panel.uz .urow button{min-height:48px;padding:8px}}
 /* Full screen (Dennis #41): readable Exit with its Esc key, and - / + for the game size. */
 #tFullscreen kbd,#tFullscreen .lg,#tFullscreen .sh{display:none}
 body.arena-expanded #tFullscreen .sh{display:inline}
@@ -350,4 +374,46 @@ body.arena-expanded[data-ov]:not([data-ov=quiz]):not([data-ov=quizfb]) #tZoom{di
 #tZoom button:disabled{opacity:.35}
 #tZoom output{min-width:44px;text-align:center;font-family:var(--pix);font-size:13px;color:var(--text)}
 body.arena-expanded canvas#c,body.arena-expanded .tpad,body.arena-expanded:not([data-ov]) .display-controls{width:calc(min(var(--arena-view-width,100vw),calc(var(--arena-view-height,100dvh) * 16 / 9)) * var(--arena-zoom,1));height:calc(min(var(--arena-view-height,100dvh),calc(var(--arena-view-width,100vw) * 9 / 16)) * var(--arena-zoom,1))}
+/* Join the two #41 changes: Dennis's keyboard Exit pill keeps its row layout and
+   Esc badge, but its height, icon and text follow the arena size like Pause;
+   the - / + control sits under the pill instead of a fixed 72px. */
+@media (hover:hover) and (pointer:fine){
+body.arena-expanded #tFullscreen{height:calc(var(--ctl) * .72);padding:0 calc(var(--ctl) * .2);gap:calc(var(--ctl) * .12)}
+body.arena-expanded #tFullscreen .control-icon{width:calc(var(--ctl) * .38);height:calc(var(--ctl) * .38)}
+body.arena-expanded #tFullscreen .control-label{font-size:clamp(12px,calc(var(--ctl) * .2),15px)}
+}
+#tZoom{--ctl:clamp(34px,8cqmin,72px);top:calc(var(--control-top,18px) + var(--ctl) * .72 + 10px);right:var(--control-right,20px)}
+/* Desktop main menu: the long "Exit full screen" pill would cover the language /
+   music / sound row, so stack the right column: that row, then Exit, then - / +. */
+@media (hover:hover) and (pointer:fine){
+body.arena-expanded[data-ov=menu] header{right:calc(20px + env(safe-area-inset-right,0px))}
+body.arena-expanded[data-ov=menu] #tFullscreen{top:calc(48px + env(safe-area-inset-top,0px))}
+body.arena-expanded[data-ov=menu] #tZoom{top:calc(58px + env(safe-area-inset-top,0px) + var(--ctl) * .72)}
+}
+/* Phones and iPads (also with a trackpad or keyboard attached): a plain square "Exit"
+   and no keyboard hints at all - no Esc badge, no "Shift ·" / "E ·", no A-D footer,
+   no game-size - / + (a desktop control). */
+body.touch.arena-expanded #tFullscreen{width:var(--ctl)!important;height:var(--ctl);flex-direction:column;gap:2px;padding:2px}
+body.touch.arena-expanded #tFullscreen .control-icon{width:calc(var(--ctl) * .5);height:calc(var(--ctl) * .5)}
+body.touch.arena-expanded #tFullscreen .control-label{font-size:clamp(8px,calc(var(--ctl) * .2),14px)}
+body.touch #tFullscreen kbd,body.touch.arena-expanded #tFullscreen .lg{display:none!important}
+body.touch.arena-expanded #tFullscreen .sh{display:inline!important}
+body.touch #tDash .control-label::before,body.touch #tSkill .control-label::before{content:none!important}
+body.touch #tZoom{display:none!important}
+body.touch .qfoot,body.touch .under>span{display:none}
+body.touch.arena-expanded[data-ov=menu] #tFullscreen{top:var(--control-top)}
+/* Battle held upright on a phone/iPad: pause behind a "turn your device" screen.
+   Exit stays on top so the player can still leave without turning. */
+#landscapeGate{display:none}
+body.landscape-gate #landscapeGate{position:fixed;inset:0;z-index:220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;background:var(--bg);color:var(--text)}
+#landscapeGate p{margin:0;font-family:var(--pix);font-size:18px;line-height:1.6;color:var(--yellow)}
+#landscapeGate small{max-width:30ch;font-size:13px;line-height:1.7;color:var(--muted)}
+#landscapeGate .lg-phone{width:44px;height:76px;border:4px solid var(--text);border-radius:8px;box-shadow:3px 3px 0 var(--shade);animation:lg-turn 1.8s ease-in-out infinite}
+@keyframes lg-turn{0%,25%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+@media (prefers-reduced-motion:reduce){#landscapeGate .lg-phone{animation:none;transform:rotate(-90deg)}}
+body.landscape-gate .display-controls{z-index:230}
+/* Windowed play on a phone/iPad: panels (pause, quiz, picks, results) cover the page,
+   so the small "Full" button would float in the middle of them. Show it only in play. */
+body.touch:not(.arena-expanded)[data-ov]:not([data-ov=menu]) #tFullscreen{display:none}
+body.touch.arena-expanded[data-ov=menu] header{right:calc(28px + clamp(34px,8vmin,72px) + env(safe-area-inset-right,0px))}
 </style></body></html>

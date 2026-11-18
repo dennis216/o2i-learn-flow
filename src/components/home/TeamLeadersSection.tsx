@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { loadTeamMembers, teamLabel, type TeamMember } from '@/lib/teamDepartments';
+import { brandText } from '@/lib/brand';
 
 // Homepage shows leaders only; everyone else stays on /team.
 const LEADER_ROLES = ['Founder', 'Co-founder', 'Team Leader'] as const;
@@ -29,7 +30,7 @@ export default function TeamLeadersSection() {
   return (
     <section aria-labelledby="team-heading" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
       <Reveal className="mb-8">
-        <h2 id="team-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{t('The people behind O2I', '认识我们的团队')}</h2>
+        <h2 id="team-heading" className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{brandText(t('The people behind O2I', '认识我们的团队'))}</h2>
         <p className="mt-2 text-lg text-muted-foreground">{t('Meet the team leads behind our lessons, videos and website.', '从课程制作到网站开发，认识各组的负责人。')}</p>
       </Reveal>
       {leaders === null ? (

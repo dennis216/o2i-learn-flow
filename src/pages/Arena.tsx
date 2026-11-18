@@ -11,6 +11,9 @@ import PixelOwl from '@/components/PixelOwl';
 import { HudTag, NameTag, Stars, pixelButton, pixelPanel } from '@/components/PixelUi';
 
 const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never);
+// Height of the floating site header in Navbar.tsx (12px top gap + 64px bar + 1px border),
+// so the embedded game fills the rest of the screen without scrolling the page.
+const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
 function ArenaGame({ language }: { language: Language }) {
@@ -99,7 +102,7 @@ function ArenaGame({ language }: { language: Language }) {
       className={`${expanded ? 'fixed inset-0 z-[100]' : 'block'} w-full border-0 bg-black`}
       style={expanded ? { height: viewport?.height ?? '100dvh', width: viewport?.width ?? '100%',
         top: viewport?.top ?? 0, left: viewport?.left ?? 0, right: 'auto', bottom: 'auto' }
-        : { height: 'calc(100dvh - 4rem)' }}
+        : { height: `calc(100dvh - ${SITE_NAV_HEIGHT})` }}
     />
   );
 }
@@ -110,7 +113,7 @@ export default function Arena() {
   if (user) return <ArenaGame key={user.id + language} language={language} />;
   return (
     <main className="text-[#FFF1E8]">
-      <Stars className="grid min-h-[calc(100dvh-4rem)] place-items-center px-4 py-16">
+      <Stars className="grid min-h-[calc(100dvh-77px)] place-items-center px-4 py-16">
         <div className={`w-full max-w-lg p-6 sm:p-8 ${pixelPanel}`}>
           <HudTag title="LIMIT ARENA" />
           <h1 className="mt-5 text-3xl font-bold tracking-tight">{t('Limit Arena', '极限竞技场')}</h1>
