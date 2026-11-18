@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Book } from 'lucide-react';
 import { z } from 'zod';
+import { brandText } from '@/lib/brand';
 import { authReturnTo } from '@/lib/authReturnTo';
 
 const passwordSchema = z.string()
@@ -169,17 +169,19 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
-            <Book className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold text-primary">O2I Institute</span>
+          {/* Same mark and wordmark as the site header (Navbar.tsx). */}
+          <Link to="/" className="mb-4 flex items-center justify-center gap-2">
+            <img src="/o2i-mark.png" alt="" width={60} height={40} className="h-10 w-auto dark:hidden" />
+            <img src="/o2i-mark-dark.png" alt="" width={60} height={40} className="hidden h-10 w-auto dark:block" />
+            <span className="o2i-name text-3xl font-semibold text-primary">O2I Institute</span>
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">{t('Welcome to O2I', '欢迎来到 O2I')}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{brandText(t('Welcome to O2I', '欢迎来到 O2I'))}</h1>
           <p className="text-muted-foreground mt-2">{t('Sign in to continue, or create an account to get started.', '登录继续学习，或注册一个新账号。')}</p>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>{t('Your O2I account', 'O2I 账号')}</CardTitle>
+            <CardTitle>{brandText(t('Your O2I account', 'O2I 账号'))}</CardTitle>
             <CardDescription>
               {t('Keep your practice history and questions in one place.', '保存练习记录，随时查看自己的提问。')}
             </CardDescription>
