@@ -15673,13 +15673,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (N("uGo").onclick = () => {
           if (!t.units.length) return;
           ($.coin(), this.hide(), qa(tt.d.cls));
-          // A portrait phone shows the 16:9 arena as a thin strip; remind once per run.
-          if (usesTouchControls() && innerHeight > innerWidth)
-            notifyDisplay(
-              i
-                ? "建议将设备转为横屏游玩，画面会更大。"
-                : "Turn your phone sideways for a bigger arena.",
-            );
         }),
         e());
     },
@@ -16467,8 +16460,66 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     try {
       screen.orientation?.unlock?.();
     } catch {}
+    landscapeLocked = false;
     updateFullscreenLabel();
     requestAnimationFrame(fitTouchStage);
+  }
+  // Phones and iPads: the menus (hero, gun, units, results) work upright; only the
+  // battle needs landscape. Android can lock the screen while in native full screen.
+  // iOS cannot lock it, so a battle held upright pauses behind a "turn your device"
+  // screen and carries on by itself once the device is turned.
+  let landscapeLocked = false,
+    landscapeGatePaused = false;
+  function lockLandscapeForRun() {
+    if (landscapeLocked || !screen.orientation?.lock) return;
+    if (!(document.fullscreenElement || document.webkitFullscreenElement))
+      return;
+    landscapeLocked = true;
+    screen.orientation.lock("landscape").catch(() => {
+      landscapeLocked = false;
+    });
+  }
+  function releaseLandscape() {
+    if (!landscapeLocked) return;
+    landscapeLocked = false;
+    try {
+      screen.orientation?.unlock?.();
+    } catch {}
+  }
+  function landscapeGate() {
+    let gate = N("landscapeGate");
+    if (!gate) {
+      gate = document.createElement("div");
+      gate.id = "landscapeGate";
+      gate.setAttribute("role", "status");
+      gate.innerHTML = i
+        ? '<span class="lg-phone" aria-hidden="true"></span><p>请把设备横过来</p><small>游戏已暂停，横过来后会自动继续。</small>'
+        : '<span class="lg-phone" aria-hidden="true"></span><p>Turn your device sideways</p><small>The game is paused and carries on once you turn it.</small>';
+      document.querySelector(".stagewrap").append(gate);
+    }
+    return gate;
+  }
+  function syncLandscapeGate() {
+    const inRun = document.body.dataset.mode === "run" && I !== "results";
+    if (!inRun) releaseLandscape();
+    else if (I === "play" && usesTouchControls()) lockLandscapeForRun();
+    // Only in the expanded player: after Exit the page is the player's choice, and the
+    // pause it made stays until they resume.
+    const expanded = document.body.classList.contains("arena-expanded");
+    const upright = expanded && usesTouchControls() && innerHeight > innerWidth;
+    if (upright && I === "play") {
+      Bt.pause();
+      landscapeGatePaused = I === "pause";
+    }
+    if (landscapeGatePaused) {
+      if (I !== "pause" || !expanded) landscapeGatePaused = false;
+      else if (!upright) {
+        landscapeGatePaused = false;
+        Bt.unpause();
+      }
+    }
+    if (landscapeGatePaused) landscapeGate();
+    document.body.classList.toggle("landscape-gate", landscapeGatePaused);
   }
   async function enterArenaFullscreen(pageOnly = false) {
     if (
@@ -16491,13 +16542,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     updateFullscreenLabel();
     const stage = document.querySelector(".stagewrap");
     if (pageOnly || usesPageFullscreen()) {
+      // Menus (hero, gun, units) are fine upright; the battle asks for landscape
+      // through syncLandscapeGate(), so no rotate notice here.
       document.body.dataset.fullscreenMode = "page";
-      if (innerHeight > innerWidth)
-        notifyDisplay(
-          i
-            ? "建议将设备转为横屏游玩。"
-            : "Rotate your device to landscape for a wider view.",
-        );
       requestAnimationFrame(fitTouchStage);
       return;
     }
@@ -16512,25 +16559,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       );
       if (arenaNativeFullscreen)
         document.body.dataset.fullscreenMode = "native";
-      try {
-        if (screen.orientation?.lock) {
-          await screen.orientation.lock("landscape");
-          N("displayNotice").hidden = true;
-        } else if (innerHeight > innerWidth)
-          notifyDisplay(
-            i ? "请将设备转为横屏。" : "Rotate your device to landscape.",
-          );
-      } catch {
-        if (innerHeight > innerWidth)
-          notifyDisplay(
-            i ? "请将设备转为横屏。" : "Rotate your device to landscape.",
-          );
-      }
+      // The landscape lock now waits for the battle (lockLandscapeForRun).
+      if (I === "play") lockLandscapeForRun();
     } catch {
       notifyDisplay(
         i
-          ? "浏览器暂不支持全屏；已展开游戏，建议横屏游玩。"
-          : "Full screen is unavailable here. The game is expanded; rotate your device to landscape.",
+          ? "浏览器暂不支持全屏，已展开游戏。"
+          : "Full screen is unavailable here, so the game is expanded instead.",
       );
     }
     requestAnimationFrame(fitTouchStage);
@@ -19457,6 +19492,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           o += l;
           let h = 0;
           try {
+            syncLandscapeGate();
             for (; o >= 1 / 60 && h < 5; ) (r1(1 / 60), (o -= 1 / 60), h++);
             (h >= 5 && (o = 0), l1());
           } catch (c) {
@@ -22226,6 +22262,36 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       },
       set restoreArenaDisplay(value) {
         restoreArenaDisplay = value;
+      },
+      get lockLandscapeForRun() {
+        return lockLandscapeForRun;
+      },
+      set lockLandscapeForRun(value) {
+        lockLandscapeForRun = value;
+      },
+      get syncLandscapeGate() {
+        return syncLandscapeGate;
+      },
+      set syncLandscapeGate(value) {
+        syncLandscapeGate = value;
+      },
+      get landscapeLocked() {
+        return landscapeLocked;
+      },
+      set landscapeLocked(value) {
+        landscapeLocked = value;
+      },
+      get landscapeGatePaused() {
+        return landscapeGatePaused;
+      },
+      set landscapeGatePaused(value) {
+        landscapeGatePaused = value;
+      },
+      get usesTouchControls() {
+        return usesTouchControls;
+      },
+      set usesTouchControls(value) {
+        usesTouchControls = value;
       },
       get enterArenaFullscreen() {
         return enterArenaFullscreen;
