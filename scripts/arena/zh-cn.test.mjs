@@ -71,7 +71,11 @@ test("the pixel font includes newly added Chinese UI labels in the shipped game"
     new URL("../../public/games/arena-scratchpad.js", import.meta.url),
     "utf8",
   );
-  const decoded = (html + runtime + scratchpad).replace(
+  const knowledge = readFileSync(
+    new URL("../../public/games/arena-knowledge.js", import.meta.url),
+    "utf8",
+  );
+  const decoded = (html + runtime + scratchpad + knowledge).replace(
     /\\u([0-9a-fA-F]{4})/g,
     (_, hex) => String.fromCharCode(parseInt(hex, 16)),
   );

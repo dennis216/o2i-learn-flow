@@ -44,6 +44,8 @@
 
 **直接维护仓库里的两个游戏源码文件：`public/games/limit-arena.html`（页面、字体、样式）和 `public/games/limit-arena.js`（游戏逻辑、中英文 UI）。**（#47）
 
+知识点联动玩法（题碑、单元技能、宝箱进度、隐藏算力房、小首领与装备、周挑战）在 `public/games/arena-knowledge.js`，规则和数值见 [DENNIS_KNOWLEDGE_FLOW_55.md](DENNIS_KNOWLEDGE_FLOW_55.md)（#55）。
+
 - 以前这个文件由 `prepare-game.mjs` 从仓库外的完整版生成。Brian 在 #41/#42（PR #46）里直接改了这个文件，这些改动只存在于仓库里；再从完整版生成会把它们全部覆盖。
 - 所以 `prepare-game.mjs` 拒绝写入这两个源码文件，只能用 `--out <别的路径>` 生成一份对照用的副本。
 - 仓库外的完整版只做存档，不再修改。当初放在仓库外是因为它带着题库；现在题目由服务器发，这个理由已不成立。
@@ -64,7 +66,7 @@ node scripts/arena/prepare-game.mjs <完整版.html> --questions <仓库外路�
 
 **题目、选项和解析始终是英文**，它们是服务器发来的数据，不会被翻译。翻译只作用于游戏代码里的文字：
 
-- 统一在 `public/games/limit-arena.js` 维护中英文文案（`i` 语言分支，以及同文件的静态标签映射 `legacyStaticTranslations`）。新增 UI 同时写两种语言，不增加另一份运行时 JSON 词表。
+- 统一在 `public/games/limit-arena.js` 维护中英文文案（知识点联动玩法的文案在 `arena-knowledge.js` 的数据表里）（`i` 语言分支，以及同文件的静态标签映射 `legacyStaticTranslations`）。新增 UI 同时写两种语言，不增加另一份运行时 JSON 词表。
 - 旧 JSON 移到 `scripts/arena/fixtures/legacy-zh-CN.json`，仅供历史生成器对照和归档测试。它不是当前游戏翻译源，修改它不会更新 UI。
 - 新汉字由测试检查字体子集覆盖。必要时用完整版 Cubic 11 字体运行 `python scripts/arena/subset-zh-font.py <Cubic_11.ttf>` 重建；脚本扫描当前 HTML 和 JS。字体授权见 `scripts/arena/fonts/Cubic-11-OFL.txt`。
 - 新增文字如果只写了英文，会继续显示英文，不会报错，发布前要切到中文检查一遍。
