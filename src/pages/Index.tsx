@@ -66,8 +66,8 @@ export default function Index() {
               </Link>
             </Reveal>
           </div>
-          <Reveal delay={180}><LearningGraph /></Reveal>
           <Reveal delay={240} className="hero-proof-row lg:col-span-2"><ScholarCounter /></Reveal>
+          <Reveal delay={180} className="hero-artwork"><LearningGraph /></Reveal>
         </div>
       </section>
 

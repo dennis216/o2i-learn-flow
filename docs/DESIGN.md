@@ -103,3 +103,7 @@ The header includes a theme toggle beside the language menu in all three languag
 ## Dr. Owler interaction (#49)
 Restored standalone AI chat navigation independently of course AI tools. The draggable homepage owl greets on a tap, responds to repeated pats, becomes annoyed after four quick pats and resets after five seconds. Its localized speech bubble links to the existing authenticated AI chat. Dragging does not open a greeting; Enter/Space work as well. Existing AI service implementation remains unchanged; no test prompts or production writes were sent.
 
+
+## First-screen community proof (#49)
+Moved community badges ahead of decorative artwork on stacked phone/tablet layouts. Desktop retains its two-column illustration and a full-width proof row with reduced vertical padding. Learner numerals now use Inter with lining/tabular figures instead of Cormorant Garamond. Checked Chinese, English and Spanish at 320x568, 375x667, 390x844, 768x1024, 1024x768, 1366x768 and 1440x900 using browser viewport simulation. Both verified count and 10+ tutor badges fit without scrolling after data loads; no horizontal page overflow. Very short landscape screens and enlarged text may still require scrolling. Counts remain fetched from the original public RPC.
+
