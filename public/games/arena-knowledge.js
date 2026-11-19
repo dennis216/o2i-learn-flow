@@ -8,6 +8,13 @@
 // "spark" with matching unit skills. Each world has a themed mini-boss that
 // drops its own equipment, and a weekly challenge fixes the rules for a week.
 //
+// Second round (Dennis: "plays very messy"): one new thing at a time. Tablets
+// open one tier at a time and share one cooldown; the lair and the hidden room
+// appear later in each world; first-time help is a short owl hint that never
+// pauses; banners queue; at most one objective arrow plus one loot arrow;
+// skill hits never crit, so passive skills add no big numbers or screen shake.
+// See docs/arena/DENNIS_KNOWLEDGE_FLOW_55.md for the sources behind each rule.
+//
 // limit-arena.js passes live accessors to createKnowledgeFlow, so tests that
 // patch runtime bindings also patch what this module sees. Outside a real run
 // (no `a.kf`) every hook is a no-op.
@@ -25,11 +32,61 @@ const neg = (n) => (n < 0 ? `−${-n}` : String(n));
 const signed = (n) => (n < 0 ? ` − ${-n}` : ` + ${n}`);
 
 // ---------------------------------------------------------------- tuning
+// `cd` is the shared cooldown: answering any tablet dims all of them for the
+// cooldown of the tier you chose. Tier n opens after n − 1 tablets this run.
 export const TABLETS = [
-  { tier: 1, col: "#00E436", cd: 35, chest: 0.18, ring: 52, spawn: 1 },
-  { tier: 2, col: "#FFEC27", cd: 50, chest: 0.28, ring: 56, spawn: 1.25 },
-  { tier: 3, col: "#FF004D", cd: 70, chest: 0.4, ring: 62, spawn: 1.6 },
+  { tier: 1, col: "#00E436", cd: 25, chest: 0.18, ring: 52, spawn: 1 },
+  { tier: 2, col: "#FFEC27", cd: 35, chest: 0.28, ring: 56, spawn: 1.25 },
+  { tier: 3, col: "#FF004D", cd: 45, chest: 0.4, ring: 62, spawn: 1.6 },
 ];
+// Pacing, in game seconds. [first world, later worlds] where there are two.
+export const PACE = {
+  firstTablet: 2,
+  restAfterModal: 8,
+  lairAfter: [120, 45],
+  secondLairAfter: 60,
+  doorAfter: [200, 90],
+  lairArrow: 15,
+  bannerGap: 2,
+  hintGap: 3,
+};
+
+// First-time help, shown once per device as a short owl hint that never
+// pauses the game. Two sentences at most; {dir} is filled with a direction.
+export const HINTS = {
+  tablet: [
+    "Question tablet: step on it to answer a question from this unit.",
+    "题碑：走上去，答一道本单元的题。",
+  ],
+  tablet2: [
+    "A 2-star tablet opened: harder, and its rewards include unit skills.",
+    "两星题碑开了：更难，奖励里有本单元技能。",
+  ],
+  tablet3: [
+    "A 3-star tablet opened far out: hardest, more enemies, best rewards.",
+    "三星题碑在远处开了：最难，怪更多，奖励最强。",
+  ],
+  chest: [
+    "Correct answers fill the chest bar (top right). Full bar = a knowledge chest.",
+    "答对题会涨右上角的宝箱条，涨满掉一个知识宝箱。",
+  ],
+  unit: [
+    "Unit skills work only in this unit and fade when the next unit begins.",
+    "单元技能只在本单元有效，进入下一单元就会消失。",
+  ],
+  lair: [
+    "A mini-boss lair appeared. Walk close to wake it; beat it for equipment.",
+    "小首领巢穴出现了。走近会叫醒它，打败它掉装备。",
+  ],
+  room: [
+    "A hidden computation room is somewhere {dir}. Walk near to find it.",
+    "这个世界藏着一间算力房，{dir}。走近就能发现。",
+  ],
+  gear: [
+    "Equipment fires on its own. Find the same one again to level it up.",
+    "装备会自动开火，再捡到同一件就会升级。",
+  ],
+};
 export const CHEST = {
   kill: 0.002,
   elite: 0.03,
@@ -1411,10 +1468,24 @@ export function createKnowledgeFlow(api) {
       zones: [],
       later: [],
       queue: [],
+      hints: [],
+      banners: [],
+      lastNow: 0,
+      restUntil: 0,
+      tabletAt: PACE.firstTablet,
+      tabletWait: PACE.firstTablet,
+      chestFlash: -9,
       weekly: null,
       lastBossType: null,
       bossPlan: null,
-      stats: { tablets: 0, rooms: 0, miniBosses: 0, chests: 0 },
+      stats: {
+        tablets: 0,
+        rooms: 0,
+        miniBosses: 0,
+        chests: 0,
+        opened: 0,
+        worlds: 0,
+      },
     };
   }
   const weeklyHas = (rule) => !!kfOf()?.weekly?.rules?.includes(rule);
@@ -1456,9 +1527,20 @@ export function createKnowledgeFlow(api) {
     }
     return best;
   }
+  // Skills and equipment fire on their own, so their hits stay quiet: no crits
+  // (no big "90!" numbers, crit sparks or screen shake) and pale numbers. The
+  // average crit is folded into the damage, so their strength is unchanged.
+  function critAverage() {
+    const st = api.a.st || {};
+    return 1 + Math.min(0.85, st.critC || 0) * (Math.min(4, st.critM || 1) - 1);
+  }
   function hit(e, base, opts = {}) {
     if (!e || e.dead) return 0;
-    return api.damage(e, base * scale(), opts);
+    return api.damage(e, base * scale() * critAverage(), {
+      ...opts,
+      nocrit: true,
+      quiet: true,
+    });
   }
   function hitLine(x0, y0, x1, y1, width, base, opts = {}) {
     const cx = (x0 + x1) / 2,
@@ -1541,7 +1623,6 @@ export function createKnowledgeFlow(api) {
             col: "#FFF1E8",
             life: 0.12,
           });
-          api.sound?.("hitTick", 0.15);
         });
       };
       slam(1, 0.28);
@@ -1643,7 +1724,6 @@ export function createKnowledgeFlow(api) {
           life: 0.25,
         });
       }
-      api.sound?.("hitTick", 0.12);
     },
     rate() {},
     chain(s, def, lv, dt) {
@@ -1835,7 +1915,6 @@ export function createKnowledgeFlow(api) {
             dps: def.dmg[lv - 1] * 0.5,
             col: def.col,
           });
-        api.sound?.("hitTick", 0.15);
       });
     },
     accum(s, def, lv) {
@@ -2188,7 +2267,7 @@ export function createKnowledgeFlow(api) {
       if (struck || age > s.life) {
         if (s.kind === "rocket") {
           blast(s.x, s.y, 26, s.dmg, s.col);
-          api.sound?.("hitTick", 0.15);
+          api.sound?.("hitTick", 0.08);
         } else if (struck) {
           hit(struck, s.dmg);
           struck.slowUntil = Math.max(struck.slowUntil || 0, now() + 1.5);
@@ -2239,6 +2318,10 @@ export function createKnowledgeFlow(api) {
         (1 + 0.08 * foundLv("f_area")) *
         (weeklyHas("chestRush") ? 1.5 : 1);
     kf.chest = Math.min(kf.chestOut ? 1 : 2, kf.chest + gain);
+    if (gain >= 0.05) {
+      kf.chestFlash = api.now;
+      hint("chest");
+    }
     if (kf.chest >= 1 && !kf.chestOut) dropChest();
     return gain;
   }
@@ -2253,13 +2336,12 @@ export function createKnowledgeFlow(api) {
       y = clamp(a.p.y + (a.p.dy || 0) * 34, top + 10, bottom - 10);
     a.picks.push({ kind: "kfchest", kf: true, persist: true, x, y, t0: a.t });
     whenPlaying(() => {
-      api.banner(
+      say(
         L(["KNOWLEDGE CHEST!", "知识宝箱！"]),
         "#29ADFF",
         L(["Your answers filled the chest", "答题攒满了宝箱进度"]),
       );
       api.sfx?.("shard");
-      tutorial("chest");
     });
   }
 
@@ -2412,7 +2494,7 @@ export function createKnowledgeFlow(api) {
       def = UNIT_SKILLS[id];
     if (kf.unit[id]) kf.unit[id].lv = Math.min(3, kf.unit[id].lv + 1);
     else kf.unit[id] = { lv: 1, cd: 1, n: 0 };
-    whenPlaying(() => tutorial("unit"));
+    hint("unit");
     checkSparks();
     return def;
   }
@@ -2428,7 +2510,7 @@ export function createKnowledgeFlow(api) {
       kf.sparks[id] = true;
       const def = UNIT_SKILLS[id];
       whenPlaying(() => {
-        api.banner(
+        say(
           (api.zh ? "火花！" : "SPARK! ") + L(def.sparkName),
           "#FFEC27",
           L(def.sparkInfo),
@@ -2441,14 +2523,14 @@ export function createKnowledgeFlow(api) {
     const kf = kfOf(),
       def = EQUIPMENT[id];
     kf.gear[slot] = { id, lv: 1, cd: 0.5 };
-    whenPlaying(() => {
-      api.banner(
+    whenPlaying(() =>
+      say(
         (api.zh ? "装备：" : "EQUIPPED: ") + L(def.name),
         def.col,
         L(def.info),
-      );
-      tutorial("gear");
-    });
+      ),
+    );
+    hint("gear");
   }
   function offerGear(id) {
     const kf = kfOf(),
@@ -2457,10 +2539,10 @@ export function createKnowledgeFlow(api) {
     if (owned) {
       if (owned.lv < GEAR_MAX) {
         owned.lv++;
-        api.banner(`${L(def.name)} Lv ${owned.lv}`, def.col, L(def.info));
+        say(`${L(def.name)} Lv ${owned.lv}`, def.col, L(def.info));
       } else {
         const gain = addChest(CHEST.salvage, true);
-        api.banner(
+        say(
           L(def.name) + " MAX",
           def.col,
           (api.zh ? "宝箱进度 +" : "Chest +") + Math.round(gain * 100) + "%",
@@ -2533,54 +2615,60 @@ export function createKnowledgeFlow(api) {
     if (labelEl && labelText) labelEl.textContent = labelText;
   }
 
-  // ------------------------------------------------------------ tutorials
-  const TUTORIALS = {
-    tablet: [
-      ["QUESTION TABLETS", "题碑"],
-      [
-        "Walk onto a tablet to answer a question from this unit. ★ tablets are near the start; ★★★ tablets are far out, where more enemies come. Harder tablets give stronger rewards: ★★ and ★★★ offer skills that belong to this unit, and fill more of the chest meter. A used tablet recharges.",
-        "走到题碑上就能主动答一道本单元的题。★ 题碑在出生点附近，★★★ 在远处，那里怪更多。越难奖励越强：★★ 和 ★★★ 会给本单元专属技能，宝箱进度也涨得更多。用过的题碑要等一会儿才能再用。",
-      ],
-    ],
-    chest: [
-      ["KNOWLEDGE CHEST", "知识宝箱"],
-      [
-        "Small enemies drop less XP now. The chest meter (top right) fills mainly from correct answers — harder questions fill more — and a little from kills. When it is full, a knowledge chest drops next to you: pick 1 of 3.",
-        "小怪掉的经验变少了。右上角的宝箱进度主要靠答对题推进（越难推进越多），击杀只加一点。攒满后会在你身边掉一个知识宝箱，3 选 1。",
-      ],
-    ],
-    unit: [
-      ["UNIT SKILLS", "单元技能"],
-      [
-        "Unit skills belong to the unit you are studying. After the boss, the next unit begins and they fade. Each one that reached Lv 3 leaves +3% damage for the rest of the run.",
-        "单元技能只属于你正在学的这个单元。击败首领、进入下一个单元后它们会失效；升到 Lv 3 的技能会留下本局永久 +3% 伤害。",
-      ],
-    ],
-    lair: [
-      ["MINI-BOSS LAIR", "小首领巢穴"],
-      [
-        "A mini-boss sleeps here. Walk closer to wake it, and beat it for its own equipment. If you run far away, it goes home and heals.",
-        "这里睡着一个小首领，走近就会醒来。打败它能拿到它的专属装备。跑得太远，它会回巢回血。",
-      ],
-    ],
-    room: [
-      ["HIDDEN ROOM", "隐藏房间"],
-      [
-        "You found a hidden computation room: 3 quick questions on the algebra this unit builds on. Get 2 right to pick a permanent foundation skill. Foundations spark with matching unit skills. Each world's room opens once.",
-        "你发现了一间隐藏的算力房：3 道本单元要用到的基础计算题。答对 2 题以上可以选一个永久的算力技能，算力技能和对应的单元技能会碰撞出火花。每个世界的房间只能进一次。",
-      ],
-    ],
-    gear: [
-      ["EQUIPMENT", "装备"],
-      [
-        "Equipment fires on its own. You have 2 slots; getting the same equipment again levels it up (max Lv 3).",
-        "装备会自动开火。你有 2 个装备槽，再拿到同一件装备会升级（最高 Lv 3）。",
-      ],
-    ],
-  };
-  function tutorial(key) {
-    const [title, text] = TUTORIALS[key];
-    return api.tutorial("kf:" + key, L(title), L(text));
+  // ------------------------------------------------------------ hints and banners
+  // Hints (see HINTS) and banners queue so two never land on top of each other.
+  function hint(key, fill = "") {
+    const kf = kfOf(),
+      seen = api.save?.d?.regionSeen || {};
+    if (!kf || seen["kfh:" + key] || kf.hints.some((h) => h.key === key))
+      return false;
+    kf.hints.push({ key, s: L(HINTS[key]).replace("{dir}", fill) });
+    return true;
+  }
+  function pumpHints() {
+    const kf = kfOf(),
+      a = api.a;
+    if (!kf.hints.length) return;
+    const owl = a.owl;
+    if (owl && api.now - owl.t0 < (owl.dur || 0) + PACE.hintGap) return;
+    const h = kf.hints.shift(),
+      save = api.save;
+    try {
+      (save.d.regionSeen || (save.d.regionSeen = {}))["kfh:" + h.key] = true;
+      save.save();
+    } catch {}
+    a.owl = { s: h.s, t0: api.now, dur: 6 };
+  }
+  function say(title, col, sub) {
+    const kf = kfOf(),
+      b = api.a.banner;
+    if (kf && b && api.now - b.t0 < PACE.bannerGap) {
+      kf.banners.push([title, col, sub]);
+      if (kf.banners.length > 3) kf.banners.shift();
+      return;
+    }
+    api.banner(title, col, sub);
+  }
+  function pumpBanners() {
+    const kf = kfOf(),
+      b = api.a.banner;
+    if (kf.banners.length && !(b && api.now - b.t0 < PACE.bannerGap))
+      api.banner(...kf.banners.shift());
+  }
+  // "north-east" style direction from the player, for hints.
+  function direction(x, y) {
+    const dx = x - api.px(),
+      dy = y - api.py();
+    if (api.zh) {
+      const d =
+        (dx < -60 ? "西" : dx > 60 ? "东" : "") +
+        (dy < -60 ? "北" : dy > 60 ? "南" : "");
+      return d ? `就在${d}边` : "就在附近";
+    }
+    const d =
+      (dy < -60 ? "north" : dy > 60 ? "south" : "") +
+      (dx < -60 ? "west" : dx > 60 ? "east" : "");
+    return d ? "to the " + d : "nearby";
   }
 
   // ------------------------------------------------------------ world objects
@@ -2607,28 +2695,32 @@ export function createKnowledgeFlow(api) {
     const others = Object.keys(MINI_BOSSES).filter(
       (id) => id !== bossForWorld(kind),
     );
+    kf.tabletAt = Math.max(kf.tabletAt, a.t + PACE.firstTablet);
     kf.world = {
       stage,
       theme,
       kind,
+      t0: a.t,
+      first: kf.stats.worlds++ === 0,
       tablets: layout.tablets.map((p, n) => ({
         ...p,
         tier: n + 1,
         cdMul: n === 2 ? hard : 1,
-        readyAt: a.t + [2, 6, 10][n],
       })),
+      // Lairs start hidden and appear one at a time (see unlockLairs).
       lairs: layout.lairs.map((p, n) => ({
         ...p,
         boss:
           n === 0
             ? bossForWorld(kind)
             : others[Math.floor(api.Math.random() * others.length)],
-        state: "sleep",
+        state: "hidden",
+        shownAt: -99,
         enemy: null,
         nextAtk: 0,
         atk: 0,
       })),
-      door: { ...layout.door, revealed: false, used: false },
+      door: { ...layout.door, locked: true, revealed: false, used: false },
     };
     return kf.world;
   }
@@ -2644,11 +2736,22 @@ export function createKnowledgeFlow(api) {
     );
   };
 
+  // Tier n opens after n − 1 tablets this run, so a new run starts with ★ only.
+  const tabletOpen = (tab) => tab.tier <= 1 + (kfOf().stats.tablets || 0);
+  // All open tablets share one cooldown, and none lights up right after a
+  // question or a panel closes.
+  const tabletsReady = () => {
+    const kf = kfOf(),
+      t = api.a.t;
+    return t >= kf.tabletAt && t >= kf.restUntil;
+  };
+
   function askTablet(tab) {
     const a = api.a,
       kf = a.kf,
       rule = TABLETS[tab.tier - 1];
-    tab.readyAt = a.t + rule.cd * tab.cdMul;
+    kf.tabletWait = rule.cd * tab.cdMul;
+    kf.tabletAt = a.t + kf.tabletWait;
     kf.stats.tablets++;
     api.clearInput();
     api.mode = "lvup";
@@ -2687,29 +2790,41 @@ export function createKnowledgeFlow(api) {
   }
 
   function tickTablets() {
-    const a = api.a,
-      p = P();
+    if (!tabletsReady()) return false;
+    const p = P();
     for (const tab of kfOf().world.tablets) {
-      const d = Math.hypot(p.x - tab.x, p.y - tab.y);
-      if (d < 150 && tutorial("tablet")) return true;
-      if (a.t < tab.readyAt || d > 11) continue;
+      if (!tabletOpen(tab)) continue;
+      // Explain each tier when it first lights up.
+      hint(tab.tier === 1 ? "tablet" : "tablet" + tab.tier);
+      if (Math.hypot(p.x - tab.x, p.y - tab.y) > 11) continue;
       askTablet(tab);
       return true;
     }
     return false;
   }
 
+  // The hidden room can be found only after the world's first mini-boss falls
+  // (or after a while), so it never stacks on the first minutes.
   function tickDoor() {
-    const door = kfOf().world.door;
+    const a = api.a,
+      kf = kfOf(),
+      world = kf.world,
+      door = world.door;
     if (!door || door.used) return false;
     const p = P(),
       d = Math.hypot(p.x - door.x, p.y - door.y);
+    if (door.locked) {
+      const wait = PACE.doorAfter[world.first ? 0 : 1];
+      if (!world.lairs.some((l) => l.state === "done") && a.t - world.t0 < wait)
+        return false;
+      door.locked = false;
+      hint("room", direction(door.x, door.y));
+    }
     if (!door.revealed && d < (weeklyHas("roomWeek") ? 220 : 70)) {
       door.revealed = true;
       api.sfx?.("shard");
       api.float(door.x, door.y - 20, "?", "#FFEC27", true);
     }
-    if (door.revealed && d < 150 && tutorial("room")) return true;
     if (door.revealed && d < 11) {
       openRoom(door);
       return true;
@@ -2758,7 +2873,7 @@ export function createKnowledgeFlow(api) {
         m.hp = m.maxHp = enemyHp(26);
         m.sp = 24;
       }
-    api.banner(
+    say(
       (api.zh ? "小首领：" : "MINI-BOSS: ") + L(def.name),
       def.col,
       L(
@@ -2895,16 +3010,41 @@ export function createKnowledgeFlow(api) {
       }
     }
   }
+  // Lairs appear one at a time: the first after the first chest is opened or
+  // after PACE.lairAfter, the next once that one is beaten or a minute later.
+  function unlockLairs() {
+    const a = api.a,
+      kf = kfOf(),
+      world = kf.world,
+      hidden = world.lairs.find((l) => l.state === "hidden");
+    if (!hidden || !calm()) return;
+    const shown = world.lairs.filter((l) => l.state !== "hidden"),
+      age = a.t - world.t0,
+      due = shown.length
+        ? shown.every((l) => l.state === "done") ||
+          a.t - Math.max(...shown.map((l) => l.shownAt)) >= PACE.secondLairAfter
+        : age >= PACE.lairAfter[world.first ? 0 : 1] ||
+          (world.first && kf.stats.opened > 0 && age >= 30);
+    if (!due) return;
+    hidden.state = "sleep";
+    hidden.shownAt = a.t;
+    const def = MINI_BOSSES[hidden.boss];
+    say(
+      api.zh ? "小首领出现了" : "A MINI-BOSS APPEARED",
+      def.col,
+      `${L(def.name)} · ${direction(hidden.x, hidden.y)}`,
+    );
+    hint("lair");
+  }
   function tickLairs(dt) {
     const a = api.a,
       p = P();
+    unlockLairs();
     for (const lair of kfOf().world.lairs) {
-      if (lair.state === "done") continue;
+      if (lair.state === "done" || lair.state === "hidden") continue;
       const d = Math.hypot(p.x - lair.x, p.y - lair.y);
       if (lair.state === "sleep") {
-        if (!calm()) continue;
-        if (d < 160 && tutorial("lair")) return true;
-        if (d < 105) wake(lair);
+        if (calm() && d < 105) wake(lair);
         continue;
       }
       const e = lair.enemy;
@@ -3667,29 +3807,34 @@ export function createKnowledgeFlow(api) {
       t = api.now,
       on = (x, y, m = 70) =>
         x > -m && y > -m && x < view.w + m && y < view.h + m;
+    // Dim stones while the shared cooldown runs; rings and glow only when
+    // ready. Cooldown dots show only up close.
+    const ready = tabletsReady(),
+      left = Math.max(kf.tabletAt, kf.restUntil) - a.t,
+      wait = Math.max(kf.tabletWait || 1, left);
     for (const tab of kf.world.tablets) {
+      if (!tabletOpen(tab)) continue;
       const x = Math.round(tab.x - camX),
         y = Math.round(tab.y - camY);
       if (!on(x, y)) continue;
-      const rule = TABLETS[tab.tier - 1],
-        isReady = a.t >= tab.readyAt;
-      ctx.globalAlpha = isReady ? 0.55 : 0.25;
-      api.drawRing(ctx, x, y + 2, rule.ring, rule.col, 3, 1);
-      ctx.globalAlpha = 1;
-      if (isReady)
+      const rule = TABLETS[tab.tier - 1];
+      if (ready) {
+        ctx.globalAlpha = 0.35;
+        api.drawRing(ctx, x, y + 2, rule.ring, rule.col, 3, 1);
+        ctx.globalAlpha = 1;
         api.drawRing(ctx, x, y + 2, 13 + Math.sin(t * 4) * 1.5, rule.col, 2, 1);
+      }
       api.drawShadow(ctx, x, y + 2, 16);
-      blit(ctx, tabletSprite(tab.tier, isReady), x, y + 3);
+      blit(ctx, tabletSprite(tab.tier, ready), x, y + 3);
       for (let k = 0; k < tab.tier; k++)
         drawStar(
           ctx,
           x - (tab.tier - 1) * 4 + k * 8,
-          y - 23 + (isReady ? Math.round(Math.sin(t * 3 + k) * 1) : 0),
-          isReady ? rule.col : "#5F574F",
+          y - 23 + (ready ? Math.round(Math.sin(t * 3 + k) * 1) : 0),
+          ready ? rule.col : "#5F574F",
         );
-      if (!isReady) {
-        const left = tab.readyAt - a.t,
-          frac = 1 - left / (rule.cd * tab.cdMul);
+      if (!ready && Math.hypot(api.px() - tab.x, api.py() - tab.y) < 90) {
+        const frac = 1 - left / wait;
         for (let k = 0; k < 12; k++) {
           const ang = (k / 12) * Math.PI * 2 - Math.PI / 2;
           api.drawRect(
@@ -3704,6 +3849,7 @@ export function createKnowledgeFlow(api) {
       }
     }
     for (const lair of kf.world.lairs) {
+      if (lair.state === "hidden") continue;
       const x = Math.round(lair.x - camX),
         y = Math.round(lair.y - camY);
       if (!on(x, y, 90)) continue;
@@ -3744,7 +3890,7 @@ export function createKnowledgeFlow(api) {
       }
     }
     const door = kf.world.door;
-    if (door && !door.used) {
+    if (door && !door.used && !door.locked) {
       const x = Math.round(door.x - camX),
         y = Math.round(door.y - camY),
         dist = Math.hypot(api.px() - door.x, api.py() - door.y);
@@ -3845,6 +3991,9 @@ export function createKnowledgeFlow(api) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return;
+    // Player-side effects stay a step behind enemies and their bullets.
+    const FX = 0.75;
+    ctx.globalAlpha = FX;
     const t = a.t,
       sx = (v) => Math.round(v - camX),
       sy = (v) => Math.round(v - camY),
@@ -3865,27 +4014,20 @@ export function createKnowledgeFlow(api) {
       const def = UNIT_SKILLS[id];
       if (def.engine === "asymptote" && s.x !== undefined) {
         const reach = 110 * area();
-        ctx.globalAlpha = 0.85;
-        line(s.x, s.y - reach, s.x, s.y + reach, def.col, 2, 4);
-        ctx.globalAlpha = 1;
-        api.text(ctx, "x=a", sx(s.x), sy(s.y - reach) - 12, {
-          pixel: true,
-          size: 12,
-          col: def.col,
-          align: "center",
-          outline: "#0b0a16",
-        });
+        ctx.globalAlpha = FX * 0.6;
+        line(s.x, s.y - reach, s.x, s.y + reach, def.col, 1, 4);
+        ctx.globalAlpha = FX;
       } else if (def.engine === "motion" && s.pts?.length > 1) {
         for (let k = 1; k < s.pts.length; k++) {
           const q = s.pts[k];
-          ctx.globalAlpha = clamp(1 - (t - q.t) / 1.4, 0, 1) * 0.8;
+          ctx.globalAlpha = FX * (clamp(1 - (t - q.t) / 1.4, 0, 1) * 0.8);
           line(s.pts[k - 1].x, s.pts[k - 1].y, q.x, q.y, def.col, 2);
         }
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = FX;
       } else if (def.engine === "field") {
         const p = P(),
           r = 70 * area();
-        ctx.globalAlpha = 0.45;
+        ctx.globalAlpha = FX * 0.45;
         for (let gy = -r; gy <= r; gy += 16)
           for (let gx = -r; gx <= r; gx += 16) {
             if (gx * gx + gy * gy > r * r) continue;
@@ -3898,11 +4040,11 @@ export function createKnowledgeFlow(api) {
               def.col,
             );
           }
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = FX;
       } else if (def.engine === "area") {
         const p = P(),
           spark = sparkOn("u8_area");
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = FX * 0.7;
         for (let k = 0; k < 64; k++) {
           const th = (k / 64) * Math.PI * 2,
             r1 = (28 + 5 * Math.sin(3 * th + (s.ph || 0))) * area(),
@@ -3926,7 +4068,7 @@ export function createKnowledgeFlow(api) {
             "#FFF1E8",
           );
         }
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = FX;
       } else if ((def.engine === "disk" || def.engine === "rose") && s.pos) {
         for (const [x, y] of s.pos) {
           if (def.engine === "disk") {
@@ -3941,7 +4083,7 @@ export function createKnowledgeFlow(api) {
         }
         if (def.engine === "rose" && s.k) {
           const p = P();
-          ctx.globalAlpha = 0.25;
+          ctx.globalAlpha = FX * 0.25;
           for (let k = 0; k < 90; k++) {
             const th = (k / 90) * Math.PI * 2,
               r = 58 * area() * Math.cos(s.k * th);
@@ -3954,16 +4096,16 @@ export function createKnowledgeFlow(api) {
               def.col,
             );
           }
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = FX;
         }
       } else if (def.engine === "taylor" && s.rings) {
         const p = P();
         for (const ring of s.rings) {
           const q = (t - ring.t0) / 0.35;
           if (q < 0 || q > 1) continue;
-          ctx.globalAlpha = 1 - q * 0.6;
+          ctx.globalAlpha = FX * (1 - q * 0.6);
           api.drawRing(ctx, sx(p.x), sy(p.y), ring.R * q, def.col, 3, 2);
-          ctx.globalAlpha = 1;
+          ctx.globalAlpha = FX;
         }
       }
     }
@@ -3972,7 +4114,7 @@ export function createKnowledgeFlow(api) {
     for (const f of kf.fx) {
       const q = clamp((t - f.t0) / f.life, 0, 1),
         fade = 1 - q;
-      ctx.globalAlpha = Math.max(0.15, fade);
+      ctx.globalAlpha = FX * Math.max(0.15, fade);
       if (f.kind === "squeeze") {
         const close = clamp((t - f.t0) / Math.max(0.05, f.life - 0.12), 0, 1),
           gap = f.gap * (1 - close),
@@ -4099,7 +4241,7 @@ export function createKnowledgeFlow(api) {
       } else if (f.kind === "pop") {
         api.drawRing(ctx, sx(f.x), sy(f.y), 3 + q * 5, f.col, 1, 1);
       }
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = FX;
     }
     for (const s of kf.shots) {
       if (s.kind === "ink") {
@@ -4132,35 +4274,38 @@ export function createKnowledgeFlow(api) {
         api.drawRect(ctx, sx(s.x) - 1, sy(s.y) - 2, 1, 1, "#FFF1E8");
       }
     }
+    ctx.globalAlpha = 1;
   }
 
-  // Right-hand HUD column: chest meter, unit skills, equipment, foundations.
+  // Right-hand HUD column: a small chest bar, then unit skills and equipment.
   function drawHud(ctx, right, y) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return y;
     const pal = api.pal;
-    y += 2;
-    const pct = Math.floor(clamp(kf.chest, 0, 1) * 100),
-      label = kf.chestOut
-        ? api.zh
-          ? "宝箱已掉落"
-          : "CHEST DROPPED"
-        : (api.zh ? "宝箱 " : "CHEST ") + pct + "%";
-    api.hudText(ctx, label, right, y, kf.chestOut ? pal.yellow : "#7fd6ff", {
-      outline: pal.black,
-      align: "right",
-    });
-    api.drawRect(ctx, right - 46, y + 7, 46, 4, pal.black);
+    y += 3;
+    // Chest bar: a small chest and a thin bar, no text. Bright for a moment
+    // after it grows, dim in calm moments; it blinks while a chest waits.
+    const lit = kf.chestOut || api.now - kf.chestFlash < 2.5,
+      blink = kf.chestOut && Math.floor(api.now * 3) % 2 === 0,
+      cx = right - 52;
+    ctx.globalAlpha = lit ? 1 : 0.6;
+    api.drawRect(ctx, cx - 1, y - 1, 9, 8, pal.black);
+    api.drawRect(ctx, cx, y + 1, 7, 5, blink ? pal.yellow : "#2d7fa8");
+    api.drawRect(ctx, cx + 1, y, 5, 1, "#1d5a7c");
+    api.drawRect(ctx, cx, y + 2, 7, 1, "#FFCC4D");
+    api.drawRect(ctx, cx + 3, y + 2, 1, 2, "#FFCC4D");
+    api.drawRect(ctx, right - 42, y + 1, 42, 5, pal.black);
     api.drawRect(
       ctx,
-      right - 45,
-      y + 8,
-      Math.round(44 * clamp(kf.chest, 0, 1)),
-      2,
+      right - 41,
+      y + 2,
+      Math.round(40 * clamp(kf.chest, 0, 1)),
+      3,
       kf.chestOut ? pal.yellow : "#29ADFF",
     );
-    y += 14;
+    ctx.globalAlpha = 1;
+    y += 11;
     const row = [];
     for (const [id, s] of Object.entries(kf.unit))
       row.push({
@@ -4227,48 +4372,71 @@ export function createKnowledgeFlow(api) {
       drawRow(row, 12);
       y += 18;
     }
-    const found = Object.entries(kf.found).map(([id, lv]) => ({
-      icon: "kf_" + id,
-      col: FOUNDATIONS[id].col,
-      lv,
-      max: FOUNDATION_MAX,
-    }));
-    if (found.length) {
-      drawRow(found, 9);
-      y += 12;
-    }
-    if (kf.weekly) {
-      api.hudText(ctx, api.zh ? "本周挑战" : "WEEKLY", right, y, pal.yellow, {
-        outline: pal.black,
-        align: "right",
-      });
-      y += 9;
-    }
+    // Foundations and the weekly rules live on the pause screen; a spark
+    // shows as a yellow frame on its unit skill.
     return y;
   }
 
-  // Edge markers for ready tablets, a sleeping lair and dropped loot.
-  function drawMarkers(ctx) {
+  // At most two edge arrows, and never for something already on screen: one
+  // objective (the nearest ready tablet you cannot see, so standing at the ★
+  // tablet points you to the ★★ one; else a lair that just appeared or is
+  // fighting; else a found room door) and the nearest dropped chest or gear.
+  function markerTargets() {
     const a = api.a,
       kf = a?.kf;
-    if (!kf?.world || a.boss || api.mode !== "play") return;
+    if (!kf?.world || a.boss) return [];
+    const p = P(),
+      view = api.view,
+      cam = a.cam || { x: p.x - view.w / 2, y: p.y - view.h / 2 },
+      away = (o) => {
+        const x = o.x - cam.x,
+          y = o.y - cam.y;
+        return !(x > 0 && y > 0 && x < view.w && y < view.h);
+      },
+      dist = (o) => Math.hypot(o.x - p.x, o.y - p.y),
+      nearest = (list) =>
+        list
+          .filter(away)
+          .reduce(
+            (best, o) => (!best || dist(o) < dist(best) ? o : best),
+            null,
+          ),
+      marks = [];
+    const tab = tabletsReady()
+        ? nearest(kf.world.tablets.filter(tabletOpen))
+        : null,
+      // A sleeping lair gets the arrow when it appears, then a short reminder
+      // once a minute instead of a permanent one.
+      lair = nearest(
+        kf.world.lairs.filter(
+          (l) =>
+            l.state === "awake" ||
+            (l.state === "sleep" &&
+              (a.t - l.shownAt < PACE.lairArrow || (a.t - l.shownAt) % 60 < 8)),
+        ),
+      ),
+      door = kf.world.door;
+    if (tab)
+      marks.push({
+        x: tab.x,
+        y: tab.y,
+        col: TABLETS[tab.tier - 1].col,
+        label: "*".repeat(tab.tier),
+      });
+    else if (lair)
+      marks.push({ x: lair.x, y: lair.y, col: "#FF004D", label: "!" });
+    else if (door && door.revealed && !door.used && away(door))
+      marks.push({ x: door.x, y: door.y, col: "#FFEC27", label: "?" });
+    const loot = nearest(a.picks.filter((item) => item.kf));
+    if (loot) marks.push({ x: loot.x, y: loot.y, col: "#FFEC27", label: "+" });
+    return marks;
+  }
+  function drawMarkers(ctx) {
+    const a = api.a;
+    if (!a?.kf?.world || api.mode !== "play") return;
     const view = api.view,
       cam = a.cam,
-      marks = [];
-    for (const tab of kf.world.tablets)
-      if (a.t >= tab.readyAt)
-        marks.push({
-          x: tab.x,
-          y: tab.y,
-          col: TABLETS[tab.tier - 1].col,
-          label: "*".repeat(tab.tier),
-        });
-    for (const lair of kf.world.lairs)
-      if (lair.state !== "done")
-        marks.push({ x: lair.x, y: lair.y, col: "#FF004D", label: "!" });
-    for (const item of a.picks)
-      if (item.kf)
-        marks.push({ x: item.x, y: item.y, col: "#FFEC27", label: "?" });
+      marks = markerTargets();
     for (const m of marks) {
       const x = m.x - cam.x,
         y = m.y - cam.y;
@@ -4324,6 +4492,11 @@ export function createKnowledgeFlow(api) {
       const a = api.a,
         kf = a?.kf;
       if (!kf || !a.p || api.mode !== "play") return;
+      // Real time jumped: a question or panel just closed. Rest before any
+      // tablet lights up again, so questions never come back to back.
+      if (kf.lastNow && api.now - kf.lastNow > 0.5)
+        kf.restUntil = Math.max(kf.restUntil, a.t + PACE.restAfterModal);
+      kf.lastNow = api.now;
       if (kf.queue.length) {
         const list = kf.queue.splice(0);
         for (const fn of list) {
@@ -4339,6 +4512,8 @@ export function createKnowledgeFlow(api) {
         kf.later = kf.later.filter((l) => l.at > a.t);
         for (const l of due) l.fn();
       }
+      pumpBanners();
+      pumpHints();
       kf.moveT = a.p.moving ? kf.moveT + dt : 0;
       for (const [id, s] of Object.entries(kf.unit)) {
         const def = UNIT_SKILLS[id];
@@ -4374,7 +4549,7 @@ export function createKnowledgeFlow(api) {
           y: e.y,
           t0: a.t,
         });
-        api.banner(
+        say(
           api.zh ? "小首领被击败！" : "MINI-BOSS DOWN!",
           def.col,
           (api.zh ? "掉落：" : "Dropped: ") + L(EQUIPMENT[def.gear].name),
@@ -4414,7 +4589,7 @@ export function createKnowledgeFlow(api) {
         .map((id) => L(UNIT_SKILLS[id].name))
         .join(api.zh ? "、" : ", ");
       after(3, () =>
-        api.banner(
+        say(
           api.zh ? `第 ${prev} 单元技能结束` : `UNIT ${prev} SKILLS FADE`,
           "#83769C",
           names +
@@ -4449,12 +4624,6 @@ export function createKnowledgeFlow(api) {
           (api.zh ? "宝箱进度 +" : "Chest +") +
             Math.round(q.kfGain * 100) +
             "%",
-        );
-      if (q.kfSource === "tablet" && correct && q.kfTier >= 2)
-        notes.push(
-          api.zh
-            ? `${"★".repeat(q.kfTier)} 题碑：奖励里有本单元技能`
-            : `${"★".repeat(q.kfTier)} tablet: unit skills in your rewards`,
         );
       if (!notes.length) return;
       const p = (api.doc() || document).createElement("p");
@@ -4498,6 +4667,7 @@ export function createKnowledgeFlow(api) {
       if (!kf || !item?.kf) return;
       if (item.kind === "kfchest") {
         kf.chestOut = false;
+        kf.stats.opened++;
         if (kf.chest >= 1) dropChest();
         openCardPanel(
           chestCards(),
@@ -4541,8 +4711,8 @@ export function createKnowledgeFlow(api) {
       let f = 1;
       for (const tab of kf.world.tablets)
         if (
-          Math.hypot(p.x - tab.x, p.y - tab.y) <
-          TABLETS[tab.tier - 1].ring + 20
+          tabletOpen(tab) &&
+          Math.hypot(p.x - tab.x, p.y - tab.y) < TABLETS[tab.tier - 1].ring + 20
         )
           f = Math.max(f, TABLETS[tab.tier - 1].spawn);
       return f;
@@ -4695,6 +4865,10 @@ export function createKnowledgeFlow(api) {
         out.push(
           `<li><span></span><b>${api.zh ? "知识沉淀" : "Knowledge kept"}</b><em>+${Math.round(kf.residue * 100)}%</em></li>`,
         );
+      if (kf.weekly?.rules?.length)
+        out.push(
+          `<li title="${api.esc(kf.weekly.rules.map((r) => L(WEEKLY_RULES[r].info)).join(" "))}"><span></span><b>${api.zh ? "本周挑战" : "Weekly"}</b><em>${api.esc(kf.weekly.rules.map((r) => L(WEEKLY_RULES[r].name)).join(" · "))}</em></li>`,
+        );
       return out.join("");
     },
     icon,
@@ -4712,6 +4886,11 @@ export function createKnowledgeFlow(api) {
       gainUnitSkill,
       gainFoundation,
       ensureWorld,
+      markerTargets,
+      tabletOpen,
+      tabletsReady,
+      hint,
+      hit,
       offerGear,
       unitCard,
       sparkOn,

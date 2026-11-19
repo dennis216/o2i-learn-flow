@@ -8,8 +8,10 @@ import {
   DRILLS,
   EQUIPMENT,
   FOUNDATIONS,
+  HINTS,
   LAYOUT,
   MINI_BOSSES,
+  PACE,
   ROOM_TOPICS,
   TABLETS,
   UNIT_SKILLS,
@@ -23,14 +25,14 @@ import {
   worldLayout,
 } from "../../public/games/arena-knowledge.js";
 
-const TUTORIALS = ["tablet", "chest", "unit", "lair", "room", "gear"];
-
-// A real run state from On(), with the new tutorials already read so no DOM is needed.
+// A real run state from On(), with every first-time hint already read and a
+// bridge that answers at once (no window in Node).
 function run(overrides = {}) {
   const context = arenaContext({ i: false, ...overrides });
   context.tt.d.regionSeen = Object.fromEntries(
-    TUTORIALS.map((key) => ["kf:" + key, true]),
+    Object.keys(HINTS).map((key) => ["kfh:" + key, true]),
   );
+  context.Ce = { call: () => Promise.resolve({ status: "error" }) };
   context.On("rifle");
   context.I = "play";
   return context;
@@ -288,6 +290,9 @@ test("a defeated mini-boss leaves its equipment and its lair stays cleared", () 
   context.a.p.x = lair.x + 80;
   context.a.p.y = lair.y + 7;
   k.update(1 / 60);
+  assert.equal(lair.state, "hidden");
+  context.a.t = world.t0 + PACE.lairAfter[0];
+  k.update(1 / 60);
   assert.equal(lair.state, "awake");
   const boss = lair.enemy;
   assert.equal(boss.type, "kfboss");
@@ -317,6 +322,9 @@ test("hard tablets bring more enemies only near them", () => {
   assert.equal(k.spawnFactor(), 1);
   context.a.p.x = world.tablets[2].x;
   context.a.p.y = world.tablets[2].y + 30;
+  // Not open yet in a new run, so it changes nothing.
+  assert.equal(k.spawnFactor(), 1);
+  context.a.kf.stats.tablets = 2;
   assert.equal(k.spawnFactor(), TABLETS[2].spawn);
 });
 
@@ -372,4 +380,196 @@ test("level-up questions keep their usual cards; tablet text only on tablets", (
   assert.equal(k.levelText(), null);
   context.a.lvBanner.t = 5;
   assert.equal(k.levelText().title, "TABLET!");
+});
+
+test("tablets open one tier at a time and share one cooldown", () => {
+  const context = run(),
+    k = context.knowledge,
+    a = context.a,
+    world = k._.ensureWorld(),
+    [easy, medium] = world.tablets;
+  assert.deepEqual(world.tablets.map(k._.tabletOpen), [true, false, false]);
+  assert.ok(!k._.tabletsReady());
+  a.t = PACE.firstTablet;
+  assert.ok(k._.tabletsReady());
+  // A closed tablet does nothing.
+  a.p.x = medium.x;
+  a.p.y = medium.y;
+  k.update(1 / 60);
+  assert.equal(context.I, "play");
+  a.p.x = easy.x;
+  a.p.y = easy.y;
+  k.update(1 / 60);
+  assert.equal(context.I, "lvup");
+  assert.equal(a.kf.stats.tablets, 1);
+  assert.deepEqual(world.tablets.map(k._.tabletOpen), [true, true, false]);
+  // Every tablet dims for the cooldown of the tier that was answered.
+  assert.ok(!k._.tabletsReady());
+  a.t += TABLETS[0].cd - 0.1;
+  assert.ok(!k._.tabletsReady());
+  a.t += 0.1;
+  assert.ok(k._.tabletsReady());
+});
+
+test("no tablet lights up right after a question or panel closes", () => {
+  const context = run(),
+    k = context.knowledge,
+    a = context.a;
+  k._.ensureWorld();
+  a.t = 20;
+  context.E = 100;
+  k.update(1 / 60);
+  assert.ok(k._.tabletsReady());
+  // Thirty real seconds pass in a quiz while game time stands still.
+  context.E = 130;
+  k.update(1 / 60);
+  assert.ok(!k._.tabletsReady());
+  a.t += PACE.restAfterModal;
+  assert.ok(k._.tabletsReady());
+});
+
+test("the lair and the hidden room wait their turn", () => {
+  const context = run(),
+    k = context.knowledge,
+    a = context.a,
+    world = k._.ensureWorld(),
+    [lair] = world.lairs,
+    door = world.door;
+  assert.equal(lair.state, "hidden");
+  assert.ok(door.locked);
+  // Standing near the locked door finds nothing.
+  a.p.x = door.x + 40;
+  a.p.y = door.y;
+  k.update(1 / 60);
+  assert.ok(door.locked);
+  assert.ok(!door.revealed);
+  // Opening the first chest brings the lair forward (but not before 30 s).
+  a.kf.stats.opened = 1;
+  a.t = world.t0 + 29;
+  k.update(1 / 60);
+  assert.equal(lair.state, "hidden");
+  a.t = world.t0 + 30;
+  k.update(1 / 60);
+  assert.equal(lair.state, "sleep");
+  // Beating the mini-boss unlocks the room, which is found by walking near.
+  lair.state = "done";
+  k.update(1 / 60);
+  assert.ok(!door.locked);
+  assert.ok(door.revealed);
+  // A later world waits less.
+  const next = run(),
+    w2 = next.knowledge._.ensureWorld();
+  next.a.kf.stats.worlds = 1;
+  w2.first = false;
+  next.a.t = w2.t0 + PACE.lairAfter[1];
+  next.knowledge.update(1 / 60);
+  assert.equal(w2.lairs[0].state, "sleep");
+});
+
+test("at most one objective arrow and one loot arrow", () => {
+  const context = run(),
+    k = context.knowledge,
+    a = context.a,
+    world = k._.ensureWorld();
+  a.t = PACE.firstTablet;
+  a.kf.stats.tablets = 2;
+  // Camera far away: everything is off screen.
+  a.cam = { x: -5000, y: -5000 };
+  let marks = k._.markerTargets();
+  assert.equal(marks.length, 1);
+  assert.match(marks[0].label, /^\*+$/);
+  // Standing at a tablet, the arrow points to the next one you cannot see.
+  const [first] = world.tablets;
+  a.p.x = first.x;
+  a.p.y = first.y;
+  a.cam = { x: first.x - 200, y: first.y - 120 };
+  marks = k._.markerTargets();
+  assert.equal(marks.length, 1);
+  assert.notEqual(marks[0].x, first.x);
+  a.cam = { x: -5000, y: -5000 };
+  for (let n = 0; n < 3; n++)
+    a.picks.push({ kind: "kfchest", kf: true, x: 100 + n * 50, y: 100 });
+  marks = k._.markerTargets();
+  assert.equal(marks.length, 2);
+  // While tablets cool down, a lair that just appeared takes the arrow, then
+  // the arrow goes away so it does not nag.
+  a.picks.length = 0;
+  a.t = world.t0 + PACE.lairAfter[0];
+  a.kf.tabletAt = a.t + 30;
+  k.update(1 / 60);
+  marks = k._.markerTargets();
+  assert.deepEqual(
+    marks.map((m) => m.label),
+    ["!"],
+  );
+  a.t += PACE.lairArrow + 1;
+  assert.deepEqual(k._.markerTargets(), []);
+  // A short reminder once a minute (tablets still cooling down).
+  a.t += 60 - PACE.lairArrow - 1 + 2;
+  a.kf.tabletAt = a.t + 30;
+  assert.deepEqual(
+    k._.markerTargets().map((m) => m.label),
+    ["!"],
+  );
+});
+
+test("first-time help is a short hint that never pauses", () => {
+  const context = run();
+  context.tt.d.regionSeen = {};
+  const k = context.knowledge;
+  k._.ensureWorld();
+  assert.ok(k._.hint("chest"));
+  k.update(1 / 60);
+  assert.equal(context.I, "play");
+  assert.equal(context.a.owl.s, HINTS.chest[0]);
+  assert.ok(context.tt.d.regionSeen["kfh:chest"]);
+  // Once per device.
+  assert.ok(!k._.hint("chest"));
+  for (const [key, [en, zh]] of Object.entries(HINTS)) {
+    assert.ok((en.match(/[.!?](\s|$)/g) || []).length <= 2, key);
+    assert.ok((zh.match(/[。！？]/g) || []).length <= 2, key);
+    assert.ok(en.length <= 90 && zh.length <= 32, key);
+  }
+});
+
+test("skill hits stay quiet: no crits, same average damage", () => {
+  const context = run(),
+    k = context.knowledge,
+    a = context.a;
+  a.st.critC = 1;
+  a.st.critM = 3;
+  const foe = context.ye("golem", a.p.x + 20, a.p.y),
+    hp = foe.hp,
+    crits = a.crits;
+  k._.hit(foe, 10);
+  assert.equal(a.crits, crits);
+  assert.ok(!a.floats.some((f) => f.crit));
+  // The average crit (chance capped at 85%, ×3) is folded in: 10 × 2.7.
+  assert.ok(Math.abs(hp - foe.hp - 27 * context.gt()) < 1e-6);
+});
+
+test("the HUD keeps foundations and the weekly rules on the pause screen", () => {
+  const context = run(),
+    k = context.knowledge;
+  const ctx = new Proxy(
+    { globalAlpha: 1 },
+    {
+      get: (target, key) =>
+        key in target
+          ? target[key]
+          : key === "measureText"
+            ? () => ({ width: 4 })
+            : () => {},
+      set: (target, key, value) => ((target[key] = value), true),
+    },
+  );
+  const bare = k.drawHud(ctx, 400, 50);
+  k._.gainFoundation("f_factor");
+  context.a.kf.weekly = { rules: ["chestRush"], unit: 1 };
+  assert.equal(k.drawHud(ctx, 400, 50), bare);
+  assert.match(k.buildItems(), /f_factor/);
+  assert.match(k.buildItems(), /Chest Rush/);
+  k._.gainUnitSkill("u1_ivt");
+  assert.ok(k.drawHud(ctx, 400, 50) > bare);
+  assert.equal(ctx.globalAlpha, 1);
 });
