@@ -44,7 +44,7 @@
 
 **直接维护仓库里的两个游戏源码文件：`public/games/limit-arena.html`（页面、字体、样式）和 `public/games/limit-arena.js`（游戏逻辑、中英文 UI）。**（#47）
 
-知识点联动玩法（题碑、单元技能、宝箱进度、隐藏算力房、小首领与装备、周挑战）在 `public/games/arena-knowledge.js`，规则和数值见 [DENNIS_KNOWLEDGE_FLOW_55.md](DENNIS_KNOWLEDGE_FLOW_55.md)（#55）。
+知识点联动玩法（题碑、单元技能、小首领与装备、管理员测试速度）在 `public/games/arena-knowledge.js`，规则和数值见 [DENNIS_KNOWLEDGE_FLOW_55.md](DENNIS_KNOWLEDGE_FLOW_55.md)（#55）。
 
 - 以前这个文件由 `prepare-game.mjs` 从仓库外的完整版生成。Brian 在 #41/#42（PR #46）里直接改了这个文件，这些改动只存在于仓库里；再从完整版生成会把它们全部覆盖。
 - 所以 `prepare-game.mjs` 拒绝写入这两个源码文件，只能用 `--out <别的路径>` 生成一份对照用的副本。

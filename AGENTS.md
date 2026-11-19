@@ -55,4 +55,4 @@ reeva / dennis / brian  ──PR──▶  test-work（测试站）  ──PR─
 - 出问题需要回滚：Cloudflare → `o2i-website` → Deployments → 选上一个正常版本 → Rollback。
 
 - Arena 答题草稿纸组件直接维护 `public/games/arena-scratchpad.js`，中英文文案也在该 JS；字体扫描需覆盖它。
-- Arena 知识点联动玩法（题碑、单元技能、宝箱进度、隐藏算力房、小首领与装备、周挑战）直接维护 `public/games/arena-knowledge.js`，中英文文案和数值都在该 JS；字体扫描需覆盖它（#55）。
+- Arena 知识点联动玩法（题碑、单元技能、小首领与装备、管理员测试速度）直接维护 `public/games/arena-knowledge.js`，中英文文案和数值都在该 JS；字体扫描需覆盖它（#55）。

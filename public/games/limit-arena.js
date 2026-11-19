@@ -6781,8 +6781,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       a.hero === "blueblue" && (e.cd *= 0.88),
       a.hero === "greengreen" && ((e.speed *= 1.15), (e.dashCd *= 0.75)),
       a.hero === "goldgold" && (e.armor = 1 - (1 - e.armor) * 0.9),
-      applyMathStats(e),
-      knowledge.applyStats(e));
+      applyMathStats(e));
     ((a.p.maxHp =
       t.hp +
       8 * H("compactness") +
@@ -6793,7 +6792,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       H("limitbreak") &&
         !a.lb.next &&
         (a.lb.next = a.t + [20, 17, 14][H("limitbreak") - 1]));
-    knowledge.afterStats();
   }
   let gt = () =>
     a.st.dmg *
@@ -15262,8 +15260,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
               ? "\u6CA1\u7B54\u5BF9\uFF1A\u9009\u62E9\u57FA\u7840\u5956\u52B1"
               : "Not quite: pick a basic reward",
           !r || !!n.noReroll,
-        ),
-        knowledge.afterReveal(this.el, this.q, r));
+        ));
     },
     quizUnavailable(t) {
       if (t === "empty" || t === "exhausted") {
@@ -15448,8 +15445,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
         (N("mHow").onclick = () => this.sub("howto")),
-        (N("mRec").onclick = () => this.sub("records")),
-        knowledge.decorateMenu(this.el));
+        (N("mRec").onclick = () => this.sub("records")));
     },
     sub(t) {
       const fromRun = I === "pause";
@@ -15932,7 +15928,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }));
     },
     key(t) {
-      if (knowledge.key(t)) return true;
       const e = t.code;
       if (this.mode === "terrain" && ["Enter", "Space", "Escape"].includes(e)) {
         N("terrainGo").click();
@@ -19532,9 +19527,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     get themes() {
       return Yt;
     },
-    get units() {
-      return le;
-    },
     get bridge() {
       return Ce;
     },
@@ -19548,10 +19540,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return Math;
     },
     doc: () => (typeof document === "undefined" ? null : document),
-    heroIds: () => Object.keys(Nt),
-    gunIds: () => Object.keys(xt),
-    heroName: (id) => Nt[id]?.name || id,
-    gunName: (id) => xt[id]?.name || id,
     px: () => X(),
     py: () => _(),
     bounds: () => Wn(),
@@ -19564,13 +19552,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     hazard: (hazard) => wt(hazard),
     bullet: (x, y, angle, speed, options) => Pt(x, y, angle, speed, options),
     banner: (title, color, sub) => oe(title, color, sub),
-    float: (x, y, text, color, big) => bt(x, y, text, color, big),
-    tutorial: (key, title, text) => showRegionTutorial(key, title, text),
     cards: (count) => rs(count),
-    basicCards: () => fa(),
     bossCards: () => $i(),
-    recompute: () => Jo(),
-    startRun: (cls) => qa(cls),
     clearInput: () => {
       for (const key in Tt) Tt[key] = 0;
     },

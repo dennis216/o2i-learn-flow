@@ -1,29 +1,20 @@
-// Knowledge flow (#55): question tablets, chest meter, unit skills, rooms,
-// mini-bosses and the weekly challenge. Synthetic data only, no database.
+// Knowledge flow (#55): question tablets, unit skills and mini-bosses.
+// Synthetic data only, no database.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { arenaContext } from "./test-runtime.mjs";
 import {
   BOSS_FOR_UNIT,
-  DRILLS,
   EQUIPMENT,
-  FOUNDATIONS,
   HINTS,
   LAYOUT,
   MINI_BOSSES,
   PACE,
-  ROOM_TOPICS,
   TABLETS,
   TEST_SPEEDS,
   UNIT_SKILLS,
-  WEEKLY_RULES,
   testSpeedFor,
   bossTypeFor,
-  isoWeek,
-  makeDrill,
-  roomDrills,
-  seededRandom,
-  weeklyChallenge,
   worldLayout,
 } from "../../public/games/arena-knowledge.js";
 
@@ -42,45 +33,7 @@ function run(overrides = {}) {
 
 const fixed = (value) => () => value;
 
-test("drills always offer four different options and mark the right one", () => {
-  for (const topic of Object.keys(DRILLS))
-    for (let seed = 0; seed < 150; seed++)
-      for (const zh of [false, true]) {
-        const drill = makeDrill(topic, seededRandom(seed), zh);
-        assert.equal(drill.opts.length, 4, topic);
-        assert.equal(new Set(drill.opts).size, 4, topic + " " + drill.stem);
-        assert.ok(drill.ans >= 0 && drill.ans < 4, topic);
-        assert.ok(drill.stem && drill.why, topic);
-      }
-});
-
-test("drill answers are mathematically right", () => {
-  const right = (maker, rnd = fixed(0)) => {
-    const drill = maker(rnd, false);
-    return drill.opts[drill.ans].replace(/<[^>]+>/g, " ").trim();
-  };
-  assert.equal(right(DRILLS.f_factor[0]), "4"); // (x²−4)/(x−2) → 4
-  assert.equal(right(DRILLS.f_rationalize[1]), "1  4"); // 1/(2·2)
-  assert.equal(right(DRILLS.f_rationalize[2]), "4"); // (x−4)/(√x−2) → 4
-  assert.equal(right(DRILLS.f_slope[1]), "3"); // x² from 1 to 2
-  assert.equal(right(DRILLS.f_area[0]), "55"); // 1+…+10
-  assert.equal(right(DRILLS.f_area[1]), "5"); // (2+3)·2/2
-  assert.equal(right(DRILLS.f_exponent[2]), "4"); // ln(e²·e²)
-  assert.equal(right(DRILLS.f_compose[0]), "5"); // f(g(1)) = 2·2+1
-  assert.equal(right(DRILLS.f_trig[1]), "4  5"); // cos θ when sin θ = 3/5
-});
-
-test("each unit's hidden room drills that unit's foundations", () => {
-  for (let unit = 1; unit <= 10; unit++) {
-    const drills = roomDrills(unit, seededRandom(unit));
-    assert.equal(drills.length, 3);
-    for (const drill of drills)
-      assert.ok(ROOM_TOPICS[unit].includes(drill.topic));
-    for (const topic of ROOM_TOPICS[unit]) assert.ok(FOUNDATIONS[topic], topic);
-  }
-});
-
-test("every unit has its own skills, each with three levels and a spark partner", () => {
+test("every unit has its own skills, each with three levels", () => {
   const engines = Object.keys(run().knowledge._.ENGINES);
   for (let unit = 1; unit <= 10; unit++) {
     const own = Object.values(UNIT_SKILLS).filter((s) => s.unit === unit);
@@ -89,16 +42,8 @@ test("every unit has its own skills, each with three levels and a spark partner"
   for (const [id, skill] of Object.entries(UNIT_SKILLS)) {
     assert.ok(engines.includes(skill.engine), id);
     assert.equal(skill.up.length, 3, id);
-    for (const pair of [
-      skill.name,
-      skill.info,
-      skill.sparkName,
-      skill.sparkInfo,
-      skill.why,
-      ...skill.up,
-    ])
+    for (const pair of [skill.name, skill.info, ...skill.up])
       assert.ok(pair[0] && pair[1] && pair[0] !== pair[1], id);
-    assert.ok(FOUNDATIONS[skill.spark], id);
   }
   for (const boss of Object.values(MINI_BOSSES))
     assert.ok(EQUIPMENT[boss.gear]);
@@ -109,26 +54,11 @@ test("every unit has its own skills, each with three levels and a spark partner"
     );
 });
 
-test("the weekly challenge stays the same for the whole ISO week", () => {
-  const monday = weeklyChallenge(new Date(2026, 10, 16, 9)),
-    sunday = weeklyChallenge(new Date(2026, 10, 22, 23));
-  assert.deepEqual(monday, sunday);
-  assert.equal(monday.id, "2026-W47");
-  assert.deepEqual(isoWeek(new Date(2026, 0, 1)), { year: 2026, week: 1 });
-  const next = weeklyChallenge(new Date(2026, 10, 23, 9));
-  assert.equal(next.id, "2026-W48");
-  for (const week of [monday, next]) {
-    assert.equal(new Set(week.rules).size, 2);
-    for (const rule of week.rules) assert.ok(WEEKLY_RULES[rule]);
-  }
-  const limited = weeklyChallenge(new Date(2026, 10, 18), { units: [3, 7] });
-  assert.ok([3, 7].includes(limited.unit));
-});
-
 test("world layout stays on the map and away from special regions", () => {
   const world = { w: 1152, h: 768, cx: 576, cy: 384 };
-  const plain = worldLayout(world, [], 0, 2);
-  for (const p of [...plain.tablets, ...plain.lairs, plain.door]) {
+  const plain = worldLayout(world, [], 0);
+  assert.equal(plain.lairs.length, 1);
+  for (const p of [...plain.tablets, ...plain.lairs]) {
     assert.ok(p.x >= 40 && p.x <= world.w - 40, JSON.stringify(p));
     assert.ok(p.y >= 40 && p.y <= world.h - 40, JSON.stringify(p));
   }
@@ -136,7 +66,7 @@ test("world layout stays on the map and away from special regions", () => {
   const blocked = [{ x: plain.tablets[0].x, y: plain.tablets[0].y, r: 30 }],
     moved = worldLayout(world, blocked, 0);
   assert.notEqual(moved.variant, 0);
-  for (const p of [...moved.tablets, ...moved.lairs, moved.door])
+  for (const p of [...moved.tablets, ...moved.lairs])
     assert.ok(Math.hypot(p.x - blocked[0].x, p.y - blocked[0].y) > 100);
 });
 
@@ -173,54 +103,35 @@ test("small enemies give less XP while elites keep theirs", () => {
   assert.equal(context.a.gems[0].v, 2);
 });
 
-test("correct tablet answers fill the chest and offer this unit's skills", () => {
+test("every tablet offers this unit's skills; harder ones offer more and stronger", () => {
   const context = run(),
-    k = context.knowledge;
-  const hard = k.answerCards(
-    { kfSource: "tablet", kfTier: 3, tier: 3 },
-    true,
-    [],
-  );
-  assert.equal(context.a.kf.chest, TABLETS[2].chest);
-  assert.ok(hard.noReroll);
-  const units = hard.filter((card) => card.kf === "unit");
-  assert.equal(units.length, 2);
-  for (const card of units) assert.equal(UNIT_SKILLS[card.id].unit, 1);
-  const easy = k.answerCards(
-    { kfSource: "tablet", kfTier: 1, tier: 1 },
-    true,
-    [],
-  );
-  assert.ok(!easy.some((card) => card.kf === "unit"));
-  const before = context.a.kf.chest,
-    basic = [{ type: "heal" }];
+    k = context.knowledge,
+    offer = (tier) =>
+      k.answerCards({ kfSource: "tablet", kfTier: tier, tier }, true, []);
+  const units = (cards) => cards.filter((card) => card.kf === "unit");
+  const easy = offer(1),
+    medium = offer(2),
+    hard = offer(3);
+  assert.equal(units(easy).length, 1);
+  assert.equal(units(medium).length, 2);
+  assert.equal(units(hard).length, 2);
+  for (const card of [...units(easy), ...units(hard)])
+    assert.equal(UNIT_SKILLS[card.id].unit, 1);
+  assert.ok(units(easy).every((card) => card.step === 1));
+  assert.ok(units(hard).every((card) => card.step === 2));
+  assert.ok(hard.noReroll && !easy.noReroll);
+  // A ★★★ skill starts at Lv 2.
+  k.applyCard(units(hard)[0]);
+  assert.equal(context.a.kf.unit[units(hard)[0].id].lv, 2);
+  // Wrong answers and level-up questions keep their usual cards.
+  const basic = [{ type: "heal" }];
   assert.equal(
     k.answerCards({ kfSource: "tablet", kfTier: 3 }, false, basic),
     basic,
   );
-  assert.equal(context.a.kf.chest, before);
-  // A level-up question still counts toward the chest.
-  k.answerCards({ tier: 2 }, true, basic);
-  assert.ok(context.a.kf.chest > before);
+  assert.equal(k.answerCards({ tier: 2 }, true, basic), basic);
 });
-
-test("a full chest meter drops one knowledge chest next to the player", () => {
-  const context = run(),
-    k = context.knowledge;
-  k._.addChest(1.1, true);
-  const chests = context.a.picks.filter((p) => p.kind === "kfchest");
-  assert.equal(chests.length, 1);
-  assert.ok(chests[0].persist);
-  assert.ok(
-    Math.hypot(chests[0].x - context.a.p.x, chests[0].y - context.a.p.y) < 50,
-  );
-  assert.ok(Math.abs(context.a.kf.chest - 0.1) < 1e-9);
-  k._.addChest(2, true);
-  assert.equal(context.a.picks.filter((p) => p.kind === "kfchest").length, 1);
-  assert.equal(context.a.kf.chest, 1);
-});
-
-test("unit skills fade with the next unit and mastered ones leave damage", () => {
+test("unit skills fade with the next unit", () => {
   const context = run(),
     k = context.knowledge;
   context.a.units = [1, 2];
@@ -231,25 +142,13 @@ test("unit skills fade with the next unit and mastered ones leave damage", () =>
   context.Xn();
   assert.equal(context.a.curUnit, 2);
   assert.deepEqual(context.a.kf.unit, {});
-  assert.equal(context.a.kf.residue, 0.03);
-  assert.equal(k.damageMult({}), 1.03);
+  assert.equal(k.damageMult({}), 1);
   // A single-unit run never changes unit, so its skills stay.
   const single = run();
   single.knowledge._.gainUnitSkill("u1_ivt");
   single.a.bossK = 1;
   single.Xn();
   assert.ok(single.a.kf.unit.u1_ivt);
-});
-
-test("a foundation and its matching unit skill spark", () => {
-  const context = run(),
-    k = context.knowledge;
-  k._.gainUnitSkill("u1_squeeze");
-  assert.equal(k._.sparkOn("u1_squeeze"), false);
-  k.applyCard({ type: "kf", kf: "found", id: "f_rationalize" });
-  assert.equal(k._.sparkOn("u1_squeeze"), true);
-  assert.equal(context.a.kf.found.f_rationalize, 1);
-  assert.ok(context.a.kf.sparks.u1_squeeze);
 });
 
 test("equipment levels up when found again and asks before replacing", () => {
@@ -277,7 +176,7 @@ test("equipment levels up when found again and asks before replacing", () => {
   assert.equal(context.I, "chest");
   assert.deepEqual(
     offered.map((card) => card.kf),
-    ["equipSwap", "equipSwap", "salvage"],
+    ["equipSwap", "equipSwap", "keep"],
   );
   k.applyCard(offered[1]);
   assert.equal(context.a.kf.gear[1].id, "frost");
@@ -302,7 +201,7 @@ test("a defeated mini-boss leaves its equipment and its lair stays cleared", () 
   assert.equal(lair.state, "done");
   const drop = context.a.picks.find((p) => p.kind === "kfgear");
   assert.equal(drop.gear, MINI_BOSSES.mech.gear);
-  assert.ok(context.a.kf.chest >= 0.35);
+  assert.ok(!context.a.picks.some((p) => p.kind === "kfchest"));
 });
 
 test("moving with Instantaneous Rate fires faster", () => {
@@ -337,7 +236,6 @@ test("every unit skill runs and hurts nearby enemies", () => {
       k = context.knowledge,
       a = context.a;
     a.curUnit = skill.unit;
-    for (const found of Object.keys(FOUNDATIONS)) a.kf.found[found] = 2;
     for (let n = 0; n < 3; n++) k._.gainUnitSkill(id);
     if (skill.engine === "accum") a.kf.unit[id].n = 99;
     const foes = [];
@@ -430,44 +328,32 @@ test("no tablet lights up right after a question or panel closes", () => {
   assert.ok(k._.tabletsReady());
 });
 
-test("the lair and the hidden room wait their turn", () => {
+test("the mini-boss lair waits its turn", () => {
   const context = run(),
     k = context.knowledge,
     a = context.a,
     world = k._.ensureWorld(),
-    [lair] = world.lairs,
-    door = world.door;
+    [lair] = world.lairs;
+  assert.equal(world.lairs.length, 1);
   assert.equal(lair.state, "hidden");
-  assert.ok(door.locked);
-  // Standing near the locked door finds nothing.
-  a.p.x = door.x + 40;
-  a.p.y = door.y;
   k.update(1 / 60);
-  assert.ok(door.locked);
-  assert.ok(!door.revealed);
-  // Opening the first chest brings the lair forward (but not before 30 s).
-  a.kf.stats.opened = 1;
+  assert.equal(lair.state, "hidden");
+  // Two tablets answered bring it forward (but not before 30 s).
+  a.kf.stats.tablets = 2;
   a.t = world.t0 + 29;
   k.update(1 / 60);
   assert.equal(lair.state, "hidden");
   a.t = world.t0 + 30;
   k.update(1 / 60);
   assert.equal(lair.state, "sleep");
-  // Beating the mini-boss unlocks the room, which is found by walking near.
-  lair.state = "done";
-  k.update(1 / 60);
-  assert.ok(!door.locked);
-  assert.ok(door.revealed);
   // A later world waits less.
   const next = run(),
     w2 = next.knowledge._.ensureWorld();
-  next.a.kf.stats.worlds = 1;
   w2.first = false;
   next.a.t = w2.t0 + PACE.lairAfter[1];
   next.knowledge.update(1 / 60);
   assert.equal(w2.lairs[0].state, "sleep");
 });
-
 test("at most one objective arrow and one loot arrow", () => {
   const context = run(),
     k = context.knowledge,
@@ -490,7 +376,7 @@ test("at most one objective arrow and one loot arrow", () => {
   assert.notEqual(marks[0].x, first.x);
   a.cam = { x: -5000, y: -5000 };
   for (let n = 0; n < 3; n++)
-    a.picks.push({ kind: "kfchest", kf: true, x: 100 + n * 50, y: 100 });
+    a.picks.push({ kind: "kfgear", kf: true, x: 100 + n * 50, y: 100 });
   marks = k._.markerTargets();
   assert.equal(marks.length, 2);
   // While tablets cool down, a lair that just appeared takes the arrow, then
@@ -520,13 +406,13 @@ test("first-time help is a short hint that never pauses", () => {
   context.tt.d.regionSeen = {};
   const k = context.knowledge;
   k._.ensureWorld();
-  assert.ok(k._.hint("chest"));
+  assert.ok(k._.hint("unit"));
   k.update(1 / 60);
   assert.equal(context.I, "play");
-  assert.equal(context.a.owl.s, HINTS.chest[0]);
-  assert.ok(context.tt.d.regionSeen["kfh:chest"]);
+  assert.equal(context.a.owl.s, HINTS.unit[0]);
+  assert.ok(context.tt.d.regionSeen["kfh:unit"]);
   // Once per device.
-  assert.ok(!k._.hint("chest"));
+  assert.ok(!k._.hint("unit"));
   for (const [key, [en, zh]] of Object.entries(HINTS)) {
     assert.ok((en.match(/[.!?](\s|$)/g) || []).length <= 2, key);
     assert.ok((zh.match(/[。！？]/g) || []).length <= 2, key);
@@ -550,7 +436,7 @@ test("skill hits stay quiet: no crits, same average damage", () => {
   assert.ok(Math.abs(hp - foe.hp - 27 * context.gt()) < 1e-6);
 });
 
-test("the HUD keeps foundations and the weekly rules on the pause screen", () => {
+test("the HUD shows only unit skills and equipment; the pause list names them", () => {
   const context = run(),
     k = context.knowledge;
   const ctx = new Proxy(
@@ -566,13 +452,10 @@ test("the HUD keeps foundations and the weekly rules on the pause screen", () =>
     },
   );
   const bare = k.drawHud(ctx, 400, 50);
-  k._.gainFoundation("f_factor");
-  context.a.kf.weekly = { rules: ["chestRush"], unit: 1 };
-  assert.equal(k.drawHud(ctx, 400, 50), bare);
-  assert.match(k.buildItems(), /f_factor/);
-  assert.match(k.buildItems(), /Chest Rush/);
+  assert.equal(bare, 53);
   k._.gainUnitSkill("u1_ivt");
   assert.ok(k.drawHud(ctx, 400, 50) > bare);
+  assert.match(k.buildItems(), /kf_u1_ivt/);
   assert.equal(ctx.globalAlpha, 1);
 });
 

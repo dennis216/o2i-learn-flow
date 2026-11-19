@@ -1,18 +1,17 @@
 // Knowledge flow for Limit Arena (#55), from Dennis's 2026-11-18 playtest notes.
 //
-// Growth comes mainly from questions and chests: small enemies drop less XP and
-// correct answers fill a knowledge-chest meter. Question tablets sit in easy
-// (★) and hard (★★★) areas of each world; hard ones offer skills that belong
-// to the unit being studied and fade when the next unit begins. Hidden rooms
-// drill the algebra a unit builds on and give permanent foundation skills that
-// "spark" with matching unit skills. Each world has a themed mini-boss that
-// drops its own equipment, and a weekly challenge fixes the rules for a week.
+// One idea: fight → answer → get stronger, and harder questions give stronger
+// skills. Small enemies drop less XP. Question tablets sit in easy (★) and hard
+// (★★★) areas of each world and offer skills that belong to the unit being
+// studied; they fade when the next unit begins. Each world has a themed
+// mini-boss that drops its own equipment.
 //
-// Second round (Dennis: "plays very messy"): one new thing at a time. Tablets
-// open one tier at a time and share one cooldown; the lair and the hidden room
-// appear later in each world; first-time help is a short owl hint that never
-// pauses; banners queue; at most one objective arrow plus one loot arrow;
-// skill hits never crit, so passive skills add no big numbers or screen shake.
+// Kept calm on purpose (Dennis: "plays very messy"): tablets open one tier at a
+// time and share one cooldown; the lair appears later; first-time help is a
+// short owl hint that never pauses; banners queue; at most one objective arrow
+// plus one loot arrow; skill hits never crit. Third round cut the chest meter,
+// hidden rooms with their foundations and sparks, knowledge residue and the
+// weekly challenge so the core loop stands out.
 // See docs/arena/DENNIS_KNOWLEDGE_FLOW_55.md for the sources behind each rule.
 //
 // limit-arena.js passes live accessors to createKnowledgeFlow, so tests that
@@ -21,31 +20,19 @@
 
 const pick = (zh, pair) => (zh ? pair[1] : pair[0]);
 
-// ---------------------------------------------------------------- math HTML
-// Questions are plain HTML; the game stylesheet draws .kf-frac / .kf-rad.
-export const frac = (n, d) =>
-  `<span class="kf-frac"><span>${n}</span><span>${d}</span></span>`;
-export const rad = (x) => `√<span class="kf-rad">${x}</span>`;
-const sup = (b, e) => `${b}<sup>${e}</sup>`;
-const lim = (x, a) => `lim<sub>${x}→${a}</sub>`;
-const neg = (n) => (n < 0 ? `−${-n}` : String(n));
-const signed = (n) => (n < 0 ? ` − ${-n}` : ` + ${n}`);
-
 // ---------------------------------------------------------------- tuning
 // `cd` is the shared cooldown: answering any tablet dims all of them for the
 // cooldown of the tier you chose. Tier n opens after n − 1 tablets this run.
 export const TABLETS = [
-  { tier: 1, col: "#00E436", cd: 25, chest: 0.18, ring: 52, spawn: 1 },
-  { tier: 2, col: "#FFEC27", cd: 35, chest: 0.28, ring: 56, spawn: 1.25 },
-  { tier: 3, col: "#FF004D", cd: 45, chest: 0.4, ring: 62, spawn: 1.6 },
+  { tier: 1, col: "#00E436", cd: 25, ring: 52, spawn: 1 },
+  { tier: 2, col: "#FFEC27", cd: 35, ring: 56, spawn: 1.25 },
+  { tier: 3, col: "#FF004D", cd: 45, ring: 62, spawn: 1.6 },
 ];
 // Pacing, in game seconds. [first world, later worlds] where there are two.
 export const PACE = {
   firstTablet: 2,
   restAfterModal: 8,
   lairAfter: [120, 45],
-  secondLairAfter: 60,
-  doorAfter: [200, 90],
   lairArrow: 15,
   bannerGap: 2,
   hintGap: 3,
@@ -95,10 +82,6 @@ export const HINTS = {
     "A 3-star tablet opened far out: hardest, more enemies, best rewards.",
     "三星题碑在远处开了：最难，怪更多，奖励最强。",
   ],
-  chest: [
-    "Correct answers fill the chest bar (top right). Full bar = a knowledge chest.",
-    "答对题会涨右上角的宝箱条，涨满掉一个知识宝箱。",
-  ],
   unit: [
     "Unit skills work only in this unit and fade when the next unit begins.",
     "单元技能只在本单元有效，进入下一单元就会消失。",
@@ -107,25 +90,12 @@ export const HINTS = {
     "A mini-boss lair appeared. Walk close to wake it; beat it for equipment.",
     "小首领巢穴出现了。走近会叫醒它，打败它掉装备。",
   ],
-  room: [
-    "A hidden computation room is somewhere {dir}. Walk near to find it.",
-    "这个世界藏着一间算力房，{dir}。走近就能发现。",
-  ],
   gear: [
     "Equipment fires on its own. Find the same one again to level it up.",
     "装备会自动开火，再捡到同一件就会升级。",
   ],
 };
-export const CHEST = {
-  kill: 0.002,
-  elite: 0.03,
-  miniBoss: 0.35,
-  levelQuestion: [0.12, 0.18, 0.26],
-  perfectRoom: 0.2,
-  salvage: 0.3,
-};
 export const SMALL_ENEMY_XP = 0.6;
-export const RESIDUE_PER_MASTERED = 0.03;
 
 // Offsets from the world centre; flipped per world so maps differ. They stay
 // outside the ring where Brian's special regions and landmarks live.
@@ -135,16 +105,11 @@ export const LAYOUT = {
     [290, 200],
     [430, -270],
   ],
-  lairs: [
-    [-440, -250],
-    [-20, 300],
-  ],
-  door: [70, -340],
+  lair: [-440, -250],
 };
 
 // ---------------------------------------------------------------- unit skills
-// Each unit owns 2–3 skills. `spark` names the foundation skill that, when also
-// owned, adds the spark effect. Numbers are per level (Lv 1–3).
+// Each unit owns 2–3 skills. Numbers are per level (Lv 1–3).
 export const UNIT_SKILLS = {
   u1_squeeze: {
     unit: 1,
@@ -162,16 +127,6 @@ export const UNIT_SKILLS = {
       ["38 damage · every 4.5 s", "38 伤害 · 每 4.5 秒"],
       ["52 damage · every 4 s", "52 伤害 · 每 4 秒"],
     ],
-    spark: "f_rationalize",
-    sparkName: ["Rationalized Squeeze", "有理化夹逼"],
-    sparkInfo: [
-      "The lines close a second time for 60% damage and mark what they catch.",
-      "边界线再夹一次（60% 伤害），并标记被夹住的敌人。",
-    ],
-    why: [
-      "Limits with radicals are often squeezed only after rationalizing.",
-      "含根式的极限，常常要先有理化再夹逼。",
-    ],
   },
   u1_asymptote: {
     unit: 1,
@@ -187,16 +142,6 @@ export const UNIT_SKILLS = {
       ["8 damage per second", "每秒 8 伤害"],
       ["12 damage per second", "每秒 12 伤害"],
       ["16 damage per second", "每秒 16 伤害"],
-    ],
-    spark: "f_factor",
-    sparkName: ["Removable Discontinuity", "可去间断点"],
-    sparkInfo: [
-      "Enemies that die at the asymptote burst for 20 area damage.",
-      "在渐近线上被消灭的敌人会爆开，造成 20 点范围伤害。",
-    ],
-    why: [
-      "Factoring tells a removable hole from a true asymptote.",
-      "因式分解能分清是可去间断点还是真正的渐近线。",
     ],
   },
   u1_ivt: {
@@ -215,16 +160,6 @@ export const UNIT_SKILLS = {
       ["34 damage · every 4 s", "34 伤害 · 每 4 秒"],
       ["46 damage · every 3.5 s", "46 伤害 · 每 3.5 秒"],
     ],
-    spark: "f_factor",
-    sparkName: ["Root Finder", "零点定理"],
-    sparkInfo: [
-      "The midpoint also explodes, like bisecting toward a root.",
-      "曲线的中点再爆炸一次，就像用二分法逼近零点。",
-    ],
-    why: [
-      "A factored form shows where a function crosses zero.",
-      "因式分解后，函数在哪里过零一眼就能看出来。",
-    ],
   },
   u2_tangent: {
     unit: 2,
@@ -242,16 +177,6 @@ export const UNIT_SKILLS = {
       ["42 damage · every 3 s", "42 伤害 · 每 3 秒"],
       ["56 damage · every 2.5 s", "56 伤害 · 每 2.5 秒"],
     ],
-    spark: "f_slope",
-    sparkName: ["Point–Slope", "点斜式"],
-    sparkInfo: [
-      "Also fires backward along the same line.",
-      "沿同一条直线再向后射一条。",
-    ],
-    why: [
-      "A tangent line is point–slope form with m = f′(a).",
-      "切线就是斜率 m = f′(a) 的点斜式直线。",
-    ],
   },
   u2_rate: {
     unit: 2,
@@ -267,16 +192,6 @@ export const UNIT_SKILLS = {
       ["+10% fire rate while moving", "移动时射速 +10%"],
       ["+16% fire rate while moving", "移动时射速 +16%"],
       ["+22% fire rate while moving", "移动时射速 +22%"],
-    ],
-    spark: "f_exponent",
-    sparkName: ["Power Rule", "幂法则"],
-    sparkInfo: [
-      "After 2 s of nonstop movement the bonus doubles.",
-      "连续移动 2 秒后，射速加成翻倍。",
-    ],
-    why: [
-      "The power rule turns exponents into rates of change.",
-      "幂法则把指数变成变化率。",
     ],
   },
   u3_chain: {
@@ -296,16 +211,6 @@ export const UNIT_SKILLS = {
       ["5 links · 20 damage", "连锁 5 环 · 20 伤害"],
       ["6 links · 25 damage", "连锁 6 环 · 25 伤害"],
     ],
-    spark: "f_compose",
-    sparkName: ["Composition", "复合函数"],
-    sparkInfo: [
-      "+2 links, and the last link explodes.",
-      "连锁 +2 环，最后一环会爆炸。",
-    ],
-    why: [
-      "The chain rule needs you to see the inside and outside functions.",
-      "看清内外层函数，链式法则才用得上。",
-    ],
   },
   u3_inverse: {
     unit: 3,
@@ -323,16 +228,6 @@ export const UNIT_SKILLS = {
       ["Pulse every 5 s", "每 5 秒一次脉冲"],
       ["Pulse every 4 s", "每 4 秒一次脉冲"],
     ],
-    spark: "f_trig",
-    sparkName: ["Inverse Trig", "反三角函数"],
-    sparkInfo: [
-      "The pulse also freezes enemies for 1.5 s.",
-      "脉冲还会冰冻敌人 1.5 秒。",
-    ],
-    why: [
-      "Inverse trig functions undo sin, cos and tan.",
-      "反三角函数把 sin、cos、tan 反过来。",
-    ],
   },
   u4_lhopital: {
     unit: 4,
@@ -348,16 +243,6 @@ export const UNIT_SKILLS = {
       ["+40% damage to elites and mini-bosses", "对精英和小首领伤害 +40%"],
       ["+60% damage to elites and mini-bosses", "对精英和小首领伤害 +60%"],
       ["+80% damage to elites and mini-bosses", "对精英和小首领伤害 +80%"],
-    ],
-    spark: "f_factor",
-    sparkName: ["Two Ways to 0/0", "0/0 的两种解法"],
-    sparkInfo: [
-      "+20% more, and your hits slow them briefly.",
-      "再 +20%，并让被击中的它们短暂减速。",
-    ],
-    why: [
-      "Factoring and L'Hôpital both resolve 0/0.",
-      "因式分解和洛必达法则都能化解 0/0。",
     ],
   },
   u4_motion: {
@@ -375,10 +260,6 @@ export const UNIT_SKILLS = {
       ["14 damage per second", "每秒 14 伤害"],
       ["18 damage per second", "每秒 18 伤害"],
     ],
-    spark: "f_slope",
-    sparkName: ["Velocity Vector", "速度方向"],
-    sparkInfo: ["The trail also pushes enemies away.", "轨迹还会把敌人推开。"],
-    why: ["Velocity is the slope of position.", "速度就是位移的斜率。"],
   },
   u5_extreme: {
     unit: 5,
@@ -396,16 +277,6 @@ export const UNIT_SKILLS = {
       ["70 damage · every 4.5 s", "70 伤害 · 每 4.5 秒"],
       ["95 damage · every 4 s", "95 伤害 · 每 4 秒"],
     ],
-    spark: "f_factor",
-    sparkName: ["Critical Points", "临界点"],
-    sparkInfo: [
-      "Also strikes the enemy with the least HP for half damage.",
-      "同时打击生命最低的敌人，造成一半伤害。",
-    ],
-    why: [
-      "Set f′(x) = 0 and factor to find critical points.",
-      "令 f′(x) = 0 再因式分解，就能找到临界点。",
-    ],
   },
   u5_mvt: {
     unit: 5,
@@ -422,16 +293,6 @@ export const UNIT_SKILLS = {
       ["26 damage · every 4.5 s", "26 伤害 · 每 4.5 秒"],
       ["36 damage · every 4 s", "36 伤害 · 每 4 秒"],
       ["48 damage · every 3.5 s", "48 伤害 · 每 3.5 秒"],
-    ],
-    spark: "f_slope",
-    sparkName: ["Parallel Tangent", "平行切线"],
-    sparkInfo: [
-      "A second beam fires parallel to the first.",
-      "旁边再发射一条平行的光束。",
-    ],
-    why: [
-      "Somewhere the tangent has the same slope as the secant.",
-      "总有一点的切线斜率等于割线斜率。",
     ],
   },
   u6_riemann: {
@@ -451,16 +312,6 @@ export const UNIT_SKILLS = {
       ["5 rectangles · 30 damage", "5 个矩形 · 30 伤害"],
       ["6 rectangles · 40 damage", "6 个矩形 · 40 伤害"],
     ],
-    spark: "f_area",
-    sparkName: ["Trapezoid Rule", "梯形法则"],
-    sparkInfo: [
-      "+2 rectangles, and they leave a damaging area for 1.2 s.",
-      "矩形 +2，并留下持续 1.2 秒的伤害区域。",
-    ],
-    why: [
-      "Area formulas turn rectangles and trapezoids into integrals.",
-      "面积公式把矩形和梯形变成积分。",
-    ],
   },
   u6_accum: {
     unit: 6,
@@ -478,13 +329,6 @@ export const UNIT_SKILLS = {
       ["18 kills → 80 damage", "18 次击杀 → 80 伤害"],
       ["16 kills → 110 damage", "16 次击杀 → 110 伤害"],
     ],
-    spark: "f_area",
-    sparkName: ["Area Formula", "面积公式"],
-    sparkInfo: ["The shockwave is 30% wider.", "冲击波范围 +30%。"],
-    why: [
-      "Accumulated change is the area under the rate.",
-      "累积的变化量就是变化率曲线下的面积。",
-    ],
   },
   u7_field: {
     unit: 7,
@@ -500,16 +344,6 @@ export const UNIT_SKILLS = {
       ["6 damage per second", "每秒 6 伤害"],
       ["9 damage per second", "每秒 9 伤害"],
       ["12 damage per second", "每秒 12 伤害"],
-    ],
-    spark: "f_exponent",
-    sparkName: ["Separation", "分离变量"],
-    sparkInfo: [
-      "Enemies in the field are also slowed.",
-      "场内的敌人还会减速。",
-    ],
-    why: [
-      "Separating variables leads to exponents and logs.",
-      "分离变量最后要用指数和对数来解。",
     ],
   },
   u7_growth: {
@@ -527,16 +361,6 @@ export const UNIT_SKILLS = {
       ["Up to +47% damage", "最多 +47% 伤害"],
       ["Up to +60% damage", "最多 +60% 伤害"],
     ],
-    spark: "f_exponent",
-    sparkName: ["Natural Growth", "自然增长"],
-    sparkInfo: [
-      "+6 more stacks, and it decays half as fast.",
-      "叠加上限 +6 层，衰减速度减半。",
-    ],
-    why: [
-      "y = Ce^(kt) is the exponent rules at work.",
-      "y = Ce^(kt) 就是指数律的应用。",
-    ],
   },
   u8_area: {
     unit: 8,
@@ -552,16 +376,6 @@ export const UNIT_SKILLS = {
       ["10 damage per second", "每秒 10 伤害"],
       ["14 damage per second", "每秒 14 伤害"],
       ["18 damage per second", "每秒 18 伤害"],
-    ],
-    spark: "f_area",
-    sparkName: ["Top Minus Bottom", "上减下"],
-    sparkInfo: [
-      "+25% damage and a wider gap between the curves.",
-      "伤害 +25%，两条曲线之间更宽。",
-    ],
-    why: [
-      "Area between curves is ∫(top − bottom).",
-      "曲线间面积 = ∫(上 − 下)。",
     ],
   },
   u8_disk: {
@@ -580,16 +394,6 @@ export const UNIT_SKILLS = {
       ["3 discs · 18 damage", "3 个圆盘 · 18 伤害"],
       ["4 discs · 24 damage", "4 个圆盘 · 24 伤害"],
     ],
-    spark: "f_trig",
-    sparkName: ["Washer Method", "圆环法"],
-    sparkInfo: [
-      "+1 disc, and the orbit swings in and out.",
-      "圆盘 +1，轨道忽远忽近。",
-    ],
-    why: [
-      "Revolving around an axis traces circles with cos and sin.",
-      "绕轴旋转画出的圆，用 cos 和 sin 描述。",
-    ],
   },
   u9_rose: {
     unit: 9,
@@ -606,16 +410,6 @@ export const UNIT_SKILLS = {
       ["3 petals · 12 damage", "3 片花瓣 · 12 伤害"],
       ["4 petals · 16 damage", "4 片花瓣 · 16 伤害"],
       ["5 petals · 22 damage", "5 片花瓣 · 22 伤害"],
-    ],
-    spark: "f_trig",
-    sparkName: ["Double Angle", "倍角公式"],
-    sparkInfo: [
-      "A second blade traces the rose half a petal behind.",
-      "第二片刀刃落后半片花瓣，一起画玫瑰线。",
-    ],
-    why: [
-      "Polar curves are built from sin and cos.",
-      "极坐标曲线由 sin 和 cos 组成。",
     ],
   },
   u9_vector: {
@@ -635,13 +429,6 @@ export const UNIT_SKILLS = {
       ["24 + 55 damage", "24 + 55 伤害"],
       ["30 + 70 damage", "30 + 70 伤害"],
     ],
-    spark: "f_trig",
-    sparkName: ["Components", "分解分量"],
-    sparkInfo: ["The u + v beam is 60% wider.", "u + v 光束宽度 +60%。"],
-    why: [
-      "Vectors split into components with sin and cos.",
-      "向量要用 sin、cos 分解成分量。",
-    ],
   },
   u10_geometric: {
     unit: 10,
@@ -660,10 +447,6 @@ export const UNIT_SKILLS = {
       ["8 bounces · a = 52", "弹跳 8 次 · a = 52"],
       ["10 bounces · a = 66", "弹跳 10 次 · a = 66"],
     ],
-    spark: "f_exponent",
-    sparkName: ["Ratio Test", "比值判别"],
-    sparkInfo: ["The ratio becomes r = 0.9.", "公比变成 r = 0.9。"],
-    why: ["Each term ar^n is an exponent rule.", "每一项 ar^n 都是指数律。"],
   },
   u10_taylor: {
     unit: 10,
@@ -682,80 +465,7 @@ export const UNIT_SKILLS = {
       ["4 terms · 44 damage", "4 项 · 44 伤害"],
       ["5 terms · 54 damage", "5 项 · 54 伤害"],
     ],
-    spark: "f_trig",
-    sparkName: ["Series for sin x", "sin x 的展开"],
-    sparkInfo: [
-      "The rings also freeze enemies for 1 s.",
-      "波纹还会冰冻敌人 1 秒。",
-    ],
-    why: [
-      "sin x expands to x − x³/3! + x⁵/5! − …",
-      "sin x 展开成 x − x³/3! + x⁵/5! − …",
-    ],
   },
-};
-
-// ---------------------------------------------------------------- foundations
-export const FOUNDATIONS = {
-  f_rationalize: {
-    col: "#4fb4ff",
-    name: ["Rationalizing", "根式有理化"],
-    info: [
-      "+8% damage to elites, mini-bosses and armored enemies per level.",
-      "每级对精英、小首领和装甲敌人伤害 +8%。",
-    ],
-  },
-  f_factor: {
-    col: "#33d6a0",
-    name: ["Factoring", "因式分解"],
-    info: ["+4% damage per level.", "每级伤害 +4%。"],
-  },
-  f_slope: {
-    col: "#ff9d81",
-    name: ["Slope & Lines", "斜率与直线"],
-    info: ["+5% move speed per level.", "每级移动速度 +5%。"],
-  },
-  f_exponent: {
-    col: "#a8e72e",
-    name: ["Exponent & Log Rules", "指数与对数律"],
-    info: ["+6% XP per level.", "每级经验 +6%。"],
-  },
-  f_compose: {
-    col: "#29adff",
-    name: ["Composition", "复合与反函数"],
-    info: [
-      "Unit skills recharge 8% faster per level.",
-      "每级单元技能冷却 −8%。",
-    ],
-  },
-  f_trig: {
-    col: "#ff77a8",
-    name: ["Trig Values", "三角函数值"],
-    info: [
-      "Unit skills cover 10% more area per level.",
-      "每级单元技能范围 +10%。",
-    ],
-  },
-  f_area: {
-    col: "#ffec27",
-    name: ["Area & Sums", "面积与求和"],
-    info: ["+8% chest progress per level.", "每级宝箱进度 +8%。"],
-  },
-};
-export const FOUNDATION_MAX = 2;
-
-// Prerequisite topics drilled in each unit's hidden room (first is drilled twice).
-export const ROOM_TOPICS = {
-  1: ["f_rationalize", "f_factor"],
-  2: ["f_exponent", "f_slope"],
-  3: ["f_compose", "f_trig"],
-  4: ["f_slope", "f_factor"],
-  5: ["f_factor", "f_slope"],
-  6: ["f_area", "f_exponent"],
-  7: ["f_exponent", "f_area"],
-  8: ["f_area", "f_trig"],
-  9: ["f_trig", "f_slope"],
-  10: ["f_exponent", "f_area"],
 };
 
 // ---------------------------------------------------------------- equipment
@@ -895,96 +605,13 @@ export const WORLD_PREFIX = {
   book: ["Ink ", "书页·"],
 };
 
-// ---------------------------------------------------------------- weekly
-export const WEEKLY_RULES = {
-  chestRush: {
-    name: ["Chest Rush", "宝箱加速"],
-    info: ["Chest progress ×1.5.", "宝箱进度 ×1.5。"],
-  },
-  hardWeek: {
-    name: ["Hard Questions", "难题周"],
-    info: [
-      "★★★ tablets recharge 40% faster and offer 1 of 4.",
-      "★★★ 题碑冷却快 40%，奖励 4 选 1。",
-    ],
-  },
-  bossHunt: {
-    name: ["Boss Hunt", "小首领周"],
-    info: [
-      "Every world has a second mini-boss lair.",
-      "每个世界多一个小首领巢穴。",
-    ],
-  },
-  glass: {
-    name: ["Glass Cannon", "玻璃大炮"],
-    info: ["+30% damage, −30% max HP.", "伤害 +30%，生命上限 −30%。"],
-  },
-  swift: {
-    name: ["Swift Feet", "疾风"],
-    info: ["+15% move speed.", "移动速度 +15%。"],
-  },
-  roomWeek: {
-    name: ["Computation Week", "算力周"],
-    info: [
-      "Hidden rooms show from farther away; 3/3 picks 2 foundations.",
-      "隐藏房间更远就能看到；全对可以选 2 个算力技能。",
-    ],
-  },
-};
-
-export function isoWeek(date) {
-  const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
-  const day = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - day);
-  const year = d.getUTCFullYear(),
-    start = Date.UTC(year, 0, 1);
-  return { year, week: Math.ceil(((d - start) / 86400000 + 1) / 7) };
-}
-
-export function seededRandom(seed) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Same unit, hero, gun and two rules for everyone in an ISO week.
-export function weeklyChallenge(
-  date = new Date(),
-  {
-    heroes = ["redred", "blueblue", "goldgold", "greengreen"],
-    guns = ["rifle", "sniper", "shotgun"],
-    units = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-  } = {},
-) {
-  const { year, week } = isoWeek(date),
-    n = year * 53 + week,
-    rnd = seededRandom(n * 2654435761),
-    pool = units.length ? units : [1];
-  const rules = Object.keys(WEEKLY_RULES),
-    first = rules.splice(Math.floor(rnd() * rules.length), 1)[0],
-    second = rules[Math.floor(rnd() * rules.length)];
-  return {
-    id: `${year}-W${String(week).padStart(2, "0")}`,
-    unit: pool[n % pool.length],
-    hero: heroes[Math.floor(rnd() * heroes.length)],
-    cls: guns[Math.floor(rnd() * guns.length)],
-    rules: [first, second],
-  };
-}
-
 // ---------------------------------------------------------------- layout
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-// Positions for tablets, lairs and the hidden door in one world. The variant
+// Positions for tablets and lairs in one world. The variant
 // mirrors the layout; a variant whose objects overlap a special region is
 // skipped.
-export function worldLayout(world, zones = [], variant = 0, lairCount = 1) {
+export function worldLayout(world, zones = [], variant = 0) {
   const tryVariant = (v) => {
     const fx = v & 1 ? -1 : 1,
       fy = v & 2 ? -1 : 1;
@@ -994,12 +621,11 @@ export function worldLayout(world, zones = [], variant = 0, lairCount = 1) {
     });
     return {
       tablets: LAYOUT.tablets.map(at),
-      lairs: LAYOUT.lairs.slice(0, lairCount).map(at),
-      door: at(LAYOUT.door),
+      lairs: [at(LAYOUT.lair)],
     };
   };
   const clear = (layout) =>
-    [...layout.tablets, ...layout.lairs, layout.door].every((p) =>
+    [...layout.tablets, ...layout.lairs].every((p) =>
       zones.every((z) => Math.hypot(p.x - z.x, p.y - z.y) > (z.r || 30) + 70),
     );
   for (let n = 0; n < 4; n++) {
@@ -1014,456 +640,8 @@ export function bossTypeFor(unit, lastType) {
   return mapped && mapped !== lastType ? mapped : null;
 }
 
-// ---------------------------------------------------------------- drills
-// Quick multiple-choice questions on the algebra a unit builds on. Generated
-// here (no question bank involved), never written to learning records.
-const ri = (rnd, lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
-const choose = (rnd, list) => list[Math.floor(rnd() * list.length)];
-
-function options(rnd, right, wrong) {
-  const seen = new Set([right]),
-    out = [right];
-  for (const w of wrong) {
-    if (out.length === 4) break;
-    if (!seen.has(w)) {
-      seen.add(w);
-      out.push(w);
-    }
-  }
-  let filler = 2;
-  while (out.length < 4) {
-    const f = String(Number.parseInt(right, 10) + filler || filler);
-    filler += 3;
-    if (!seen.has(f)) {
-      seen.add(f);
-      out.push(f);
-    }
-  }
-  for (let n = out.length - 1; n > 0; n--) {
-    const k = Math.floor(rnd() * (n + 1));
-    [out[n], out[k]] = [out[k], out[n]];
-  }
-  return { opts: out, ans: out.indexOf(right) };
-}
-
-export const DRILLS = {
-  f_rationalize: [
-    (rnd, zh) => {
-      const [m, n] = choose(rnd, [
-        [5, 3],
-        [7, 3],
-        [7, 5],
-        [6, 2],
-        [7, 2],
-        [5, 2],
-      ]);
-      const right = frac(`${rad(m)} − ${rad(n)}`, m - n);
-      return {
-        stem: zh
-          ? `把分母有理化：${frac(1, `${rad(m)} + ${rad(n)}`)} = ?`
-          : `Rationalize the denominator: ${frac(1, `${rad(m)} + ${rad(n)}`)} = ?`,
-        ...options(rnd, right, [
-          frac(`${rad(m)} + ${rad(n)}`, m - n),
-          frac(`${rad(m)} − ${rad(n)}`, m + n),
-          frac(`${rad(n)} − ${rad(m)}`, m - n),
-        ]),
-        why: zh
-          ? `分子分母同乘 ${rad(m)} − ${rad(n)}：分母变成 ${m} − ${n} = ${m - n}。`
-          : `Multiply top and bottom by the conjugate ${rad(m)} − ${rad(n)}: the bottom becomes ${m} − ${n} = ${m - n}.`,
-      };
-    },
-    (rnd, zh) => {
-      const k = ri(rnd, 2, 5);
-      return {
-        stem: `${lim("x", 0)} ${frac(`${rad(`x + ${k * k}`)} − ${k}`, "x")} = ?`,
-        ...options(rnd, frac(1, 2 * k), [
-          frac(1, k),
-          String(2 * k),
-          "0",
-          frac(1, k * k),
-        ]),
-        why: zh
-          ? `分子分母同乘 ${rad(`x + ${k * k}`)} + ${k}，约去 x 得 ${frac(1, `${rad(`x + ${k * k}`)} + ${k}`)} → ${frac(1, 2 * k)}。`
-          : `Multiply by the conjugate ${rad(`x + ${k * k}`)} + ${k}; the x cancels, leaving ${frac(1, `${rad(`x + ${k * k}`)} + ${k}`)} → ${frac(1, 2 * k)}.`,
-      };
-    },
-    (rnd, zh) => {
-      const r = ri(rnd, 2, 5),
-        b = r * r;
-      return {
-        stem: `${lim("x", b)} ${frac(`x − ${b}`, `${rad("x")} − ${r}`)} = ?`,
-        ...options(rnd, String(2 * r), [String(r), String(b), frac(1, 2 * r)]),
-        why: zh
-          ? `x − ${b} = (${rad("x")} − ${r})(${rad("x")} + ${r})，约分后是 ${rad("x")} + ${r} → ${2 * r}。`
-          : `x − ${b} = (${rad("x")} − ${r})(${rad("x")} + ${r}); after cancelling, ${rad("x")} + ${r} → ${2 * r}.`,
-      };
-    },
-  ],
-  f_factor: [
-    (rnd, zh) => {
-      const k = ri(rnd, 2, 6);
-      return {
-        stem: `${lim("x", k)} ${frac(`${sup("x", 2)} − ${k * k}`, `x − ${k}`)} = ?`,
-        ...options(rnd, String(2 * k), [
-          String(k),
-          "0",
-          String(k * k),
-          zh ? "不存在" : "Does not exist",
-        ]),
-        why: zh
-          ? `${sup("x", 2)} − ${k * k} = (x − ${k})(x + ${k})，约去 x − ${k} 后代入：${k} + ${k} = ${2 * k}。`
-          : `${sup("x", 2)} − ${k * k} = (x − ${k})(x + ${k}); cancel x − ${k}, then substitute: ${k} + ${k} = ${2 * k}.`,
-      };
-    },
-    (rnd, zh) => {
-      const p = ri(rnd, 1, 6);
-      let q = ri(rnd, 1, 6);
-      if (q === p) q = (q % 6) + 1;
-      const poly = `${sup("x", 2)} + ${p + q}x + ${p * q}`;
-      return {
-        stem: zh ? `因式分解：${poly} = ?` : `Factor: ${poly} = ?`,
-        ...options(rnd, `(x + ${p})(x + ${q})`, [
-          `(x − ${p})(x − ${q})`,
-          `(x + ${p})(x − ${q})`,
-          `(x + ${p * q})(x + 1)`,
-        ]),
-        why: zh
-          ? `找两个数，和为 ${p + q}、积为 ${p * q}：${p} 和 ${q}。`
-          : `Find two numbers with sum ${p + q} and product ${p * q}: ${p} and ${q}.`,
-      };
-    },
-    (rnd, zh) => {
-      const k = ri(rnd, 2, 6);
-      let b = ri(rnd, 1, 5);
-      if (b === k) b = k - 1;
-      const poly = `${sup("x", 2)}${signed(-(k + b)).replace(" ", " ")}x${signed(k * b)}`;
-      return {
-        stem: `${lim("x", k)} ${frac(poly, `x − ${k}`)} = ?`,
-        ...options(rnd, neg(k - b), [
-          neg(k + b),
-          neg(b - k),
-          "0",
-          String(k * b),
-        ]),
-        why: zh
-          ? `分子 = (x − ${k})(x − ${b})，约分后代入 x = ${k}：${k} − ${b} = ${neg(k - b)}。`
-          : `The top is (x − ${k})(x − ${b}); cancel and substitute x = ${k}: ${k} − ${b} = ${neg(k - b)}.`,
-      };
-    },
-  ],
-  f_slope: [
-    (rnd, zh) => {
-      const m = choose(rnd, [-3, -2, -1, 1, 2, 3]),
-        dx = ri(rnd, 1, 3),
-        x1 = ri(rnd, -3, 3),
-        y1 = ri(rnd, -3, 3);
-      const x2 = x1 + dx,
-        y2 = y1 + m * dx;
-      return {
-        stem: zh
-          ? `经过 (${neg(x1)}, ${neg(y1)}) 和 (${neg(x2)}, ${neg(y2)}) 的直线，斜率是？`
-          : `What is the slope of the line through (${neg(x1)}, ${neg(y1)}) and (${neg(x2)}, ${neg(y2)})?`,
-        ...options(rnd, neg(m), [
-          neg(-m),
-          frac(1, neg(m)),
-          neg(m + 1),
-          neg(m * dx),
-        ]),
-        why: zh
-          ? `斜率 = Δy/Δx = (${neg(y2)} − ${neg(y1)})/(${neg(x2)} − ${neg(x1)}) = ${neg(m * dx)}/${dx} = ${neg(m)}。`
-          : `Slope = Δy/Δx = (${neg(y2)} − ${neg(y1)})/(${neg(x2)} − ${neg(x1)}) = ${neg(m * dx)}/${dx} = ${neg(m)}.`,
-      };
-    },
-    (rnd, zh) => {
-      const a = ri(rnd, 1, 4),
-        h = ri(rnd, 1, 2);
-      return {
-        stem: zh
-          ? `f(x) = ${sup("x", 2)} 从 x = ${a} 到 x = ${a + h} 的平均变化率是？`
-          : `The average rate of change of f(x) = ${sup("x", 2)} from x = ${a} to x = ${a + h} is?`,
-        ...options(rnd, String(2 * a + h), [
-          String(2 * a),
-          String(a * a + h),
-          String((a + h) * (a + h)),
-        ]),
-        why: zh
-          ? `(f(${a + h}) − f(${a}))/${h} = (${(a + h) * (a + h)} − ${a * a})/${h} = ${2 * a + h}。`
-          : `(f(${a + h}) − f(${a}))/${h} = (${(a + h) * (a + h)} − ${a * a})/${h} = ${2 * a + h}.`,
-      };
-    },
-    (rnd, zh) => {
-      const m = choose(rnd, [-2, -1, 2, 3]),
-        x0 = ri(rnd, 1, 3),
-        y0 = ri(rnd, -2, 4),
-        d = ri(rnd, 1, 3);
-      return {
-        stem: zh
-          ? `直线过点 (${x0}, ${neg(y0)})，斜率 ${neg(m)}。当 x = ${x0 + d} 时 y = ?`
-          : `A line passes through (${x0}, ${neg(y0)}) with slope ${neg(m)}. What is y when x = ${x0 + d}?`,
-        ...options(rnd, neg(y0 + m * d), [
-          neg(y0 - m * d),
-          neg(m * (x0 + d)),
-          neg(y0 + m),
-        ]),
-        why: zh
-          ? `点斜式：y = ${neg(y0)} + ${neg(m)}·(${x0 + d} − ${x0}) = ${neg(y0 + m * d)}。`
-          : `Point–slope: y = ${neg(y0)} + ${neg(m)}·(${x0 + d} − ${x0}) = ${neg(y0 + m * d)}.`,
-      };
-    },
-  ],
-  f_exponent: [
-    (rnd, zh) => {
-      const p = ri(rnd, 2, 5),
-        q = ri(rnd, 2, 5);
-      return {
-        stem: zh
-          ? `化简：${sup("x", p)} · ${sup("x", q)} = ?`
-          : `Simplify: ${sup("x", p)} · ${sup("x", q)} = ?`,
-        ...options(rnd, sup("x", p + q), [
-          sup("x", p * q),
-          sup("x", Math.abs(p - q) || 1),
-          sup(`(2x)`, p + q),
-        ]),
-        why: zh
-          ? `同底相乘，指数相加：${p} + ${q} = ${p + q}。`
-          : `Same base: add the exponents, ${p} + ${q} = ${p + q}.`,
-      };
-    },
-    (rnd, zh) => {
-      const n = ri(rnd, 1, 3);
-      const right = sup("x", `−${frac(2 * n - 1, 2)}`);
-      return {
-        stem: zh
-          ? `写成 x 的幂：${frac(rad("x"), sup("x", n))} = ?`
-          : `Write as a power of x: ${frac(rad("x"), sup("x", n))} = ?`,
-        ...options(rnd, right, [
-          sup("x", frac(2 * n - 1, 2)),
-          sup("x", `−${frac(1, 2 * n)}`),
-          sup("x", `−${2 * n}`),
-        ]),
-        why: zh
-          ? `${rad("x")} = ${sup("x", frac(1, 2))}，除以 ${sup("x", n)} 就是指数相减：${frac(1, 2)} − ${n} = −${frac(2 * n - 1, 2)}。`
-          : `${rad("x")} = ${sup("x", frac(1, 2))}; dividing by ${sup("x", n)} subtracts exponents: ${frac(1, 2)} − ${n} = −${frac(2 * n - 1, 2)}.`,
-      };
-    },
-    (rnd, zh) => {
-      const k = ri(rnd, 2, 5),
-        m = ri(rnd, 2, 5);
-      return {
-        stem: `ln(${sup("e", k)} · ${sup("e", m)}) = ?`,
-        ...options(rnd, String(k + m), [
-          String(k * m),
-          sup("e", k + m),
-          `ln ${k + m}`,
-        ]),
-        why: zh
-          ? `${sup("e", k)} · ${sup("e", m)} = ${sup("e", k + m)}，而 ln(${sup("e", "u")}) = u。`
-          : `${sup("e", k)} · ${sup("e", m)} = ${sup("e", k + m)}, and ln(${sup("e", "u")}) = u.`,
-      };
-    },
-  ],
-  f_compose: [
-    (rnd, zh) => {
-      const a = ri(rnd, 2, 4),
-        b = ri(rnd, 1, 5),
-        c = ri(rnd, 1, 3),
-        k = ri(rnd, 1, 3);
-      const g = k * k + c,
-        right = a * g + b;
-      return {
-        stem: zh
-          ? `f(x) = ${a}x + ${b}，g(x) = ${sup("x", 2)} + ${c}。f(g(${k})) = ?`
-          : `f(x) = ${a}x + ${b} and g(x) = ${sup("x", 2)} + ${c}. f(g(${k})) = ?`,
-        ...options(rnd, String(right), [
-          String((a * k + b) ** 2 + c),
-          String(a * k + b + g),
-          String(a * k * k + c + b),
-        ]),
-        why: zh
-          ? `先算里层 g(${k}) = ${g}，再算外层 f(${g}) = ${a}·${g} + ${b} = ${right}。`
-          : `Inside first: g(${k}) = ${g}; then outside: f(${g}) = ${a}·${g} + ${b} = ${right}.`,
-      };
-    },
-    (rnd, zh) => {
-      const a = ri(rnd, 2, 5),
-        b = ri(rnd, 1, 6);
-      return {
-        stem: zh
-          ? `f(x) = ${a}x + ${b} 的反函数 f<sup>−1</sup>(x) = ?`
-          : `The inverse of f(x) = ${a}x + ${b} is f<sup>−1</sup>(x) = ?`,
-        ...options(rnd, frac(`x − ${b}`, a), [
-          frac(`x + ${b}`, a),
-          `${a}x − ${b}`,
-          frac(1, `${a}x + ${b}`),
-        ]),
-        why: zh
-          ? `由 y = ${a}x + ${b} 解出 x = (y − ${b})/${a}，再把 x、y 互换。`
-          : `Solve y = ${a}x + ${b} for x = (y − ${b})/${a}, then swap x and y.`,
-      };
-    },
-    (rnd, zh) => {
-      const n = ri(rnd, 2, 4),
-        c = ri(rnd, 1, 5);
-      return {
-        stem: zh
-          ? `h(x) = (${sup("x", 2)} + ${c})${sup("", n)} = f(g(x))，g(x) = ${sup("x", 2)} + ${c}。外层 f(u) = ?`
-          : `h(x) = (${sup("x", 2)} + ${c})${sup("", n)} = f(g(x)) with g(x) = ${sup("x", 2)} + ${c}. The outside function f(u) = ?`,
-        ...options(rnd, sup("u", n), [
-          `${sup("u", 2)} + ${c}`,
-          `${n}u`,
-          sup("u", n + 1),
-        ]),
-        why: zh
-          ? `把 ${sup("x", 2)} + ${c} 看成 u，h 就是 ${sup("u", n)}。`
-          : `Call ${sup("x", 2)} + ${c} “u”; then h is ${sup("u", n)}.`,
-      };
-    },
-  ],
-  f_trig: [
-    (rnd, zh) => {
-      const facts = [
-        ["sin(π/6)", frac(1, 2)],
-        ["cos(π/3)", frac(1, 2)],
-        ["sin(π/4)", frac(rad(2), 2)],
-        ["cos(π/6)", frac(rad(3), 2)],
-        ["tan(π/4)", "1"],
-        ["cos(π)", "−1"],
-        ["tan(π/3)", rad(3)],
-        ["sin(π/2)", "1"],
-      ];
-      const [q, right] = choose(rnd, facts);
-      const pool = [
-        frac(1, 2),
-        frac(rad(2), 2),
-        frac(rad(3), 2),
-        "1",
-        "−1",
-        rad(3),
-        "0",
-      ].filter((v) => v !== right);
-      const wrong = [];
-      while (wrong.length < 3) {
-        const v = choose(rnd, pool);
-        if (!wrong.includes(v)) wrong.push(v);
-      }
-      return {
-        stem: `${q} = ?`,
-        ...options(rnd, right, wrong),
-        why: zh
-          ? `${q} = ${right}（单位圆上的特殊角）。`
-          : `${q} = ${right} (a special angle on the unit circle).`,
-      };
-    },
-    (rnd, zh) => {
-      const [a, b, c] = choose(rnd, [
-        [3, 4, 5],
-        [5, 12, 13],
-        [8, 15, 17],
-      ]);
-      return {
-        stem: zh
-          ? `θ 在第一象限，sin θ = ${frac(a, c)}。cos θ = ?`
-          : `θ is in quadrant I and sin θ = ${frac(a, c)}. cos θ = ?`,
-        ...options(rnd, frac(b, c), [frac(a, b), frac(c, b), `−${frac(b, c)}`]),
-        why: zh
-          ? `${sup("sin", 2)}θ + ${sup("cos", 2)}θ = 1，所以 cos θ = ${rad(`1 − ${a * a}/${c * c}`)} = ${frac(b, c)}。`
-          : `sin²θ + cos²θ = 1, so cos θ = ${rad(`1 − ${a * a}/${c * c}`)} = ${frac(b, c)}.`,
-      };
-    },
-    (rnd, zh) => {
-      const [a, b, c] = choose(rnd, [
-        [3, 4, 5],
-        [5, 12, 13],
-      ]);
-      return {
-        stem: zh
-          ? `sin θ = ${frac(a, c)}，cos θ = ${frac(b, c)}。sin 2θ = ?`
-          : `sin θ = ${frac(a, c)} and cos θ = ${frac(b, c)}. sin 2θ = ?`,
-        ...options(rnd, frac(2 * a * b, c * c), [
-          frac(2 * a, c),
-          frac(a * b, c * c),
-          frac(b * b - a * a, c * c),
-        ]),
-        why: zh
-          ? `倍角公式 sin 2θ = 2 sin θ cos θ = 2·${a}·${b}/${c * c} = ${frac(2 * a * b, c * c)}。`
-          : `Double angle: sin 2θ = 2 sin θ cos θ = 2·${a}·${b}/${c * c} = ${frac(2 * a * b, c * c)}.`,
-      };
-    },
-  ],
-  f_area: [
-    (rnd, zh) => {
-      const n = choose(rnd, [10, 20, 50, 100]);
-      return {
-        stem: `1 + 2 + 3 + … + ${n} = ?`,
-        ...options(rnd, String((n * (n + 1)) / 2), [
-          String(n * n),
-          String((n * (n - 1)) / 2),
-          String(n * (n + 1)),
-        ]),
-        why: zh
-          ? `首尾配对：${frac(`${n}(${n} + 1)`, 2)} = ${(n * (n + 1)) / 2}。`
-          : `Pair first with last: ${frac(`${n}(${n} + 1)`, 2)} = ${(n * (n + 1)) / 2}.`,
-      };
-    },
-    (rnd, zh) => {
-      const a = ri(rnd, 2, 6),
-        b = ri(rnd, 3, 9),
-        h = 2 * ri(rnd, 1, 4);
-      return {
-        stem: zh
-          ? `梯形上底 ${a}、下底 ${b}、高 ${h}，面积 = ?`
-          : `A trapezoid has parallel sides ${a} and ${b} and height ${h}. Its area is?`,
-        ...options(rnd, String(((a + b) * h) / 2), [
-          String((a + b) * h),
-          String(a * b * h),
-          String(((a + b) * h) / 4),
-        ]),
-        why: zh
-          ? `面积 = (上底 + 下底) × 高 ÷ 2 = (${a} + ${b})·${h}/2 = ${((a + b) * h) / 2}。`
-          : `Area = (a + b)·h/2 = (${a} + ${b})·${h}/2 = ${((a + b) * h) / 2}.`,
-      };
-    },
-    (rnd, zh) => {
-      const n = ri(rnd, 3, 6),
-        right = (n * (n + 1)) / 2;
-      return {
-        stem: zh
-          ? `用 ${n} 个宽 1 的矩形（取右端点）估计 f(x) = x 在 [0, ${n}] 上的面积 = ?`
-          : `Estimate the area under f(x) = x on [0, ${n}] with ${n} rectangles of width 1, using right endpoints.`,
-        ...options(rnd, String(right), [
-          String((n * n) / 2),
-          String((n * (n - 1)) / 2),
-          String(n * n),
-        ]),
-        why: zh
-          ? `右端点高度是 1, 2, …, ${n}，相加得 ${right}。`
-          : `The right-endpoint heights are 1, 2, …, ${n}; they add to ${right}.`,
-      };
-    },
-  ],
-};
-
-export function makeDrill(topic, rnd = Math.random, zh = false) {
-  const makers = DRILLS[topic] || DRILLS.f_factor;
-  return { topic, ...makers[Math.floor(rnd() * makers.length)](rnd, zh) };
-}
-
-// Three drills for a unit's room: two on the first topic, one on the second.
-export function roomDrills(unit, rnd = Math.random, zh = false) {
-  const [a, b] = ROOM_TOPICS[unit] || ROOM_TOPICS[1];
-  const list = [
-    makeDrill(a, rnd, zh),
-    makeDrill(a, rnd, zh),
-    makeDrill(b, rnd, zh),
-  ];
-  // Avoid the same stem twice in one room.
-  if (list[1].stem === list[0].stem) list[1] = makeDrill(b, rnd, zh);
-  return list;
-}
-
 // ---------------------------------------------------------------- runtime
 export function createKnowledgeFlow(api) {
-  let armedWeekly = null;
   const L = (pair) => pick(api.zh, pair);
   const kfOf = () => api.a?.kf;
   const sprites = new Map();
@@ -1471,7 +649,6 @@ export function createKnowledgeFlow(api) {
   // Card category labels get their own colours (see .c-unit etc. in the HTML).
   const CAT = {
     unit: ["Unit skill", "单元技能"],
-    found: ["Foundation", "算力"],
     gear: ["Equipment", "装备"],
   };
   try {
@@ -1481,13 +658,8 @@ export function createKnowledgeFlow(api) {
   // ------------------------------------------------------------ state
   function freshState() {
     return {
-      chest: 0,
-      chestOut: false,
       unit: {},
-      found: {},
       gear: [null, null],
-      residue: 0,
-      sparks: {},
       growth: 0,
       growthT: -9,
       moveT: 0,
@@ -1503,31 +675,17 @@ export function createKnowledgeFlow(api) {
       restUntil: 0,
       tabletAt: PACE.firstTablet,
       tabletWait: PACE.firstTablet,
-      chestFlash: -9,
-      weekly: null,
       lastBossType: null,
       bossPlan: null,
-      stats: {
-        tablets: 0,
-        rooms: 0,
-        miniBosses: 0,
-        chests: 0,
-        opened: 0,
-        worlds: 0,
-      },
+      stats: { tablets: 0, miniBosses: 0, worlds: 0 },
     };
   }
-  const weeklyHas = (rule) => !!kfOf()?.weekly?.rules?.includes(rule);
   const unitLv = (id) => kfOf()?.unit?.[id]?.lv || 0;
-  const foundLv = (id) => kfOf()?.found?.[id] || 0;
-  const sparkOn = (id) => unitLv(id) > 0 && foundLv(UNIT_SKILLS[id].spark) > 0;
   const now = () => api.a.t;
   const after = (delay, fn) => kfOf().later.push({ at: now() + delay, fn });
   const whenPlaying = (fn) => kfOf().queue.push(fn);
 
   // ------------------------------------------------------------ geometry helpers
-  const area = () => 1 + 0.1 * foundLv("f_trig");
-  const cdMul = () => 1 - 0.08 * foundLv("f_compose");
   // Test speed of this run (1 unless an admin chose a faster one) and a
   // helper that shortens a waiting time to match.
   const speed = () => api.a?.testSpeed || 1;
@@ -1606,7 +764,7 @@ export function createKnowledgeFlow(api) {
   function ready(s, dt, period) {
     s.cd = (s.cd ?? 1) - dt;
     if (s.cd > 0) return false;
-    s.cd = period * cdMul();
+    s.cd = period;
     return true;
   }
   const retry = (s) => (s.cd = 0.3);
@@ -1616,14 +774,13 @@ export function createKnowledgeFlow(api) {
     squeeze(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
       const p = P(),
-        target = nearestFoe(p.x, p.y, 170 * area());
+        target = nearestFoe(p.x, p.y, 170);
       if (!target) return retry(s);
       const c = clusterAround(target),
         ang = Math.atan2(c.y - p.y, c.x - p.x) + Math.PI / 2,
-        half = 46 * area(),
-        gap = 30 * area(),
-        dmg = def.dmg[lv - 1],
-        spark = sparkOn("u1_squeeze");
+        half = 46,
+        gap = 30,
+        dmg = def.dmg[lv - 1];
       const slam = (mul, delay) => {
         fx({
           kind: "squeeze",
@@ -1645,7 +802,7 @@ export function createKnowledgeFlow(api) {
               Math.abs(dx * cos + dy * sin) <= half &&
               Math.abs(-dx * sin + dy * cos) <= gap + (e.r || 0)
             )
-              hit(e, dmg * mul, spark ? { st: { mark: 2 } } : {});
+              hit(e, dmg * mul);
           }
           fx({
             kind: "flash",
@@ -1659,7 +816,6 @@ export function createKnowledgeFlow(api) {
         });
       };
       slam(1, 0.28);
-      if (spark) after(0.3, () => slam(0.6, 0.24));
     },
     asymptote(s, def, lv, dt) {
       const p = P();
@@ -1671,11 +827,11 @@ export function createKnowledgeFlow(api) {
         for (const e of foes(p.x, p.y, 170)) e.x < p.x ? left++ : right++;
         s.side = right >= left ? 1 : -1;
       }
-      const target = p.x + (s.side || 1) * 44 * area();
+      const target = p.x + (s.side || 1) * 44;
       s.x =
         s.x === undefined ? target : s.x + (target - s.x) * Math.min(1, dt * 5);
       s.y = p.y;
-      const reach = 110 * area();
+      const reach = 110;
       s.tick = (s.tick ?? 0.5) - dt;
       const tick = s.tick <= 0;
       if (tick) s.tick = 0.5;
@@ -1693,7 +849,7 @@ export function createKnowledgeFlow(api) {
     ivt(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
       const p = P(),
-        list = foes(p.x, p.y, 180 * area()).slice(0, 24);
+        list = foes(p.x, p.y, 180).slice(0, 24);
       if (!list.length) return retry(s);
       let a = p,
         b = list[0],
@@ -1717,16 +873,6 @@ export function createKnowledgeFlow(api) {
         col: def.col,
         life: 0.32,
       });
-      if (sparkOn("u1_ivt"))
-        after(0.12, () =>
-          blast(
-            (a.x + b.x) / 2,
-            (a.y + b.y) / 2,
-            22 * area(),
-            def.dmg[lv - 1] * 0.6,
-            def.col,
-          ),
-        );
     },
     tangent(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
@@ -1740,23 +886,19 @@ export function createKnowledgeFlow(api) {
         dx = (t.x - p.x) / d;
         dy = (t.y - p.y) / d;
       }
-      const len = 220 * area(),
-        dirs = sparkOn("u2_tangent") ? [1, -1] : [1];
-      for (const k of dirs) {
-        const x1 = p.x + dx * len * k,
-          y1 = p.y + dy * len * k;
-        hitLine(p.x, p.y, x1, y1, 6, def.dmg[lv - 1]);
-        fx({
-          kind: "beam",
-          x0: p.x,
-          y0: p.y,
-          x1,
-          y1,
-          w: 3,
-          col: def.col,
-          life: 0.25,
-        });
-      }
+      const x1 = p.x + dx * 220,
+        y1 = p.y + dy * 220;
+      hitLine(p.x, p.y, x1, y1, 6, def.dmg[lv - 1]);
+      fx({
+        kind: "beam",
+        x0: p.x,
+        y0: p.y,
+        x1,
+        y1,
+        w: 3,
+        col: def.col,
+        life: 0.25,
+      });
     },
     rate() {},
     chain(s, def, lv, dt) {
@@ -1764,28 +906,23 @@ export function createKnowledgeFlow(api) {
       const p = P();
       let cur = nearestFoe(p.x, p.y, 160);
       if (!cur) return retry(s);
-      const spark = sparkOn("u3_chain"),
-        hops = def.hops[lv - 1] + (spark ? 2 : 0),
+      const hops = def.hops[lv - 1],
         seen = new Set(),
         pts = [];
-      let from = p,
-        last = cur;
+      let from = p;
       for (let k = 0; k < hops && cur; k++) {
         seen.add(cur);
         pts.push([from.x, from.y, cur.x, cur.y]);
         hit(cur, def.dmg[lv - 1] * Math.pow(1.15, k), { st: { shock: 1 } });
-        from = last = cur;
+        from = cur;
         cur = nearestFoe(from.x, from.y, 80, seen);
       }
       fx({ kind: "chain", pts, col: def.col, life: 0.22 });
-      if (spark)
-        blast(last.x, last.y, 26 * area(), def.dmg[lv - 1] * 1.5, def.col);
     },
     inverse(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
       const p = P(),
-        r = 60 * area(),
-        st = sparkOn("u3_inverse") ? { chill: 1.5 } : undefined;
+        r = 60;
       let erased = 0;
       api.a.ebul = api.a.ebul.filter((b) => {
         if (Math.hypot(b.x - p.x, b.y - p.y) < r) {
@@ -1794,8 +931,7 @@ export function createKnowledgeFlow(api) {
         }
         return true;
       });
-      for (const e of foes(p.x, p.y, r))
-        hit(e, def.dmg[lv - 1], st ? { st } : {});
+      for (const e of foes(p.x, p.y, r)) hit(e, def.dmg[lv - 1]);
       const bolts = [];
       for (let k = 0; k < Math.min(erased, 12); k++) {
         const list = foes(p.x, p.y, 170);
@@ -1826,26 +962,15 @@ export function createKnowledgeFlow(api) {
       s.tick = (s.tick ?? 0.3) - dt;
       if (s.tick > 0 || s.pts.length < 2) return;
       s.tick = 0.3;
-      const push = sparkOn("u4_motion");
       for (const e of foes(p.x, p.y, 140)) {
-        let best = 99,
-          bp = null;
+        let best = 99;
         for (let k = 1; k < s.pts.length; k++) {
           const a = s.pts[k - 1],
-            b = s.pts[k],
-            d = segDist(e.x, e.y, a.x, a.y, b.x, b.y);
-          if (d < best) {
-            best = d;
-            bp = b;
-          }
+            b = s.pts[k];
+          best = Math.min(best, segDist(e.x, e.y, a.x, a.y, b.x, b.y));
         }
         if (best > 8 + (e.r || 0)) continue;
         hit(e, def.dps[lv - 1] * 0.3, { quiet: true, nocrit: true });
-        if (push && bp && !e.boss) {
-          const ang = Math.atan2(e.y - bp.y, e.x - bp.x);
-          e.kx = (e.kx || 0) + Math.cos(ang) * 60 * (e.kbr || 1);
-          e.ky = (e.ky || 0) + Math.sin(ang) * 60 * (e.kbr || 1);
-        }
       }
     },
     extreme(s, def, lv, dt) {
@@ -1853,18 +978,10 @@ export function createKnowledgeFlow(api) {
       const p = P(),
         list = foes(p.x, p.y, 200);
       if (!list.length) return retry(s);
-      let hi = list[0],
-        lo = list[0];
-      for (const e of list) {
-        if (e.hp > hi.hp) hi = e;
-        if (e.hp < lo.hp) lo = e;
-      }
+      let hi = list[0];
+      for (const e of list) if (e.hp > hi.hp) hi = e;
       hit(hi, def.dmg[lv - 1]);
       fx({ kind: "smite", x: hi.x, y: hi.y, col: def.col, life: 0.3 });
-      if (sparkOn("u5_extreme") && lo !== hi) {
-        hit(lo, def.dmg[lv - 1] * 0.5);
-        fx({ kind: "smite", x: lo.x, y: lo.y, col: "#29ADFF", life: 0.3 });
-      }
     },
     mvt(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
@@ -1879,43 +996,27 @@ export function createKnowledgeFlow(api) {
         }
       }
       if (!far) return retry(s);
-      const lines = [[0, 0]];
-      if (sparkOn("u5_mvt")) {
-        const ang = Math.atan2(far.y - p.y, far.x - p.x) + Math.PI / 2;
-        lines.push([Math.cos(ang) * 18, Math.sin(ang) * 18]);
-      }
-      for (const [ox, oy] of lines) {
-        hitLine(
-          p.x + ox,
-          p.y + oy,
-          far.x + ox,
-          far.y + oy,
-          7,
-          def.dmg[lv - 1],
-          { st: { mark: 2 } },
-        );
-        fx({
-          kind: "beam",
-          x0: p.x + ox,
-          y0: p.y + oy,
-          x1: far.x + ox,
-          y1: far.y + oy,
-          w: 2,
-          col: def.col,
-          dots: true,
-          life: 0.3,
-        });
-      }
+      hitLine(p.x, p.y, far.x, far.y, 7, def.dmg[lv - 1], { st: { mark: 2 } });
+      fx({
+        kind: "beam",
+        x0: p.x,
+        y0: p.y,
+        x1: far.x,
+        y1: far.y,
+        w: 2,
+        col: def.col,
+        dots: true,
+        life: 0.3,
+      });
     },
     riemann(s, def, lv, dt) {
       if (!ready(s, dt, def.cd[lv - 1])) return;
       const p = P(),
-        t = nearestFoe(p.x, p.y, 180 * area());
+        t = nearestFoe(p.x, p.y, 180);
       if (!t) return retry(s);
       const c = clusterAround(t),
-        spark = sparkOn("u6_riemann"),
-        n = def.n[lv - 1] + (spark ? 2 : 0),
-        w = 12 * area(),
+        n = def.n[lv - 1],
+        w = 12,
         x0 = c.x - (n * w) / 2,
         rects = [];
       for (let k = 0; k < n; k++) {
@@ -1937,32 +1038,20 @@ export function createKnowledgeFlow(api) {
               done.add(e);
               hit(e, def.dmg[lv - 1]);
             }
-        if (spark)
-          kfOf().zones.push({
-            kind: "bars",
-            x: x0,
-            y: c.y - 14,
-            w: n * w,
-            h: 30,
-            until: now() + 1.2,
-            dps: def.dmg[lv - 1] * 0.5,
-            col: def.col,
-          });
       });
     },
     accum(s, def, lv) {
       if ((s.n || 0) < def.need[lv - 1]) return;
       s.n = 0;
       const p = P(),
-        r = 70 * area() * (sparkOn("u6_accum") ? 1.3 : 1);
+        r = 70;
       blast(p.x, p.y, r, def.dmg[lv - 1], def.col);
       fx({ kind: "nova", x: p.x, y: p.y, r, col: def.col, life: 0.4 });
       api.sfx?.("boom");
     },
     field(s, def, lv, dt) {
       const p = P(),
-        r = 70 * area(),
-        slow = sparkOn("u7_field");
+        r = 70;
       s.tick = (s.tick ?? 0.5) - dt;
       const tick = s.tick <= 0;
       if (tick) s.tick = 0.5;
@@ -1972,36 +1061,33 @@ export function createKnowledgeFlow(api) {
           e.kx = (e.kx || 0) + Math.cos(ang) * 150 * dt * (e.kbr || 1);
           e.ky = (e.ky || 0) + Math.sin(ang) * 150 * dt * (e.kbr || 1);
         }
-        if (slow) e.slowUntil = Math.max(e.slowUntil || 0, now() + 0.3);
         if (tick) hit(e, def.dps[lv - 1] * 0.5, { quiet: true, nocrit: true });
       }
     },
     growth(s, def, lv, dt) {
-      const kf = kfOf(),
-        spark = sparkOn("u7_growth");
+      const kf = kfOf();
       if (kf.growth > 0 && now() - kf.growthT > 3) {
         s.decay = (s.decay ?? 0) - dt;
         if (s.decay <= 0) {
-          s.decay = spark ? 1 : 0.5;
+          s.decay = 0.5;
           kf.growth--;
         }
       }
     },
     area(s, def, lv, dt) {
-      const p = P(),
-        spark = sparkOn("u8_area");
+      const p = P();
       s.ph = (s.ph || 0) + dt * 1.6;
       s.tick = (s.tick ?? 0.35) - dt;
       if (s.tick > 0) return;
       s.tick = 0.35;
-      const outer = (60 + (spark ? 8 : 0)) * area();
+      const outer = 60;
       for (const e of foes(p.x, p.y, outer + 6)) {
         const th = Math.atan2(e.y - p.y, e.x - p.x),
           d = Math.hypot(e.x - p.x, e.y - p.y),
-          r1 = (28 + 5 * Math.sin(3 * th + s.ph)) * area(),
-          r2 = (54 + 5 * Math.sin(3 * th - s.ph) + (spark ? 8 : 0)) * area();
+          r1 = 28 + 5 * Math.sin(3 * th + s.ph),
+          r2 = 54 + 5 * Math.sin(3 * th - s.ph);
         if (d >= r1 - (e.r || 0) && d <= r2 + (e.r || 0))
-          hit(e, def.dps[lv - 1] * 0.35 * (spark ? 1.25 : 1), {
+          hit(e, def.dps[lv - 1] * 0.35, {
             quiet: true,
             nocrit: true,
           });
@@ -2009,9 +1095,8 @@ export function createKnowledgeFlow(api) {
     },
     disk(s, def, lv, dt) {
       const p = P(),
-        spark = sparkOn("u8_disk"),
-        n = def.n[lv - 1] + (spark ? 1 : 0),
-        R = (spark ? 34 + 10 * Math.sin(now() * 2) : 34) * area();
+        n = def.n[lv - 1],
+        R = 34;
       s.ph = (s.ph || 0) + dt * 2.4;
       s.pos = [];
       for (let k = 0; k < n; k++) {
@@ -2030,23 +1115,19 @@ export function createKnowledgeFlow(api) {
     rose(s, def, lv, dt) {
       const p = P(),
         k = def.k[lv - 1],
-        R = 58 * area(),
-        blades = sparkOn("u9_rose") ? 2 : 1;
+        R = 58;
       s.th = (s.th || 0) + dt * 1.9;
-      s.pos = [];
       s.k = k;
-      for (let b = 0; b < blades; b++) {
-        const th = s.th - (b * Math.PI) / (2 * k),
-          r = R * Math.cos(k * th),
-          x = p.x + r * Math.cos(th),
-          y = p.y + r * Math.sin(th) * 0.8;
-        s.pos.push([x, y]);
-        for (const e of foes(x, y, 7)) {
-          const hits = (e.kfHit ||= {});
-          if ((hits.rose || 0) > now()) continue;
-          hits.rose = now() + 0.35;
-          hit(e, def.dmg[lv - 1]);
-        }
+      const th = s.th,
+        r = R * Math.cos(k * th),
+        x = p.x + r * Math.cos(th),
+        y = p.y + r * Math.sin(th) * 0.8;
+      s.pos = [[x, y]];
+      for (const e of foes(x, y, 7)) {
+        const hits = (e.kfHit ||= {});
+        if ((hits.rose || 0) > now()) continue;
+        hits.rose = now() + 0.35;
+        hit(e, def.dmg[lv - 1]);
       }
     },
     vector(s, def, lv, dt) {
@@ -2066,8 +1147,8 @@ export function createKnowledgeFlow(api) {
       const sl = Math.hypot(sx, sy) || 1;
       sx /= sl;
       sy /= sl;
-      const len = 230 * area(),
-        width = sparkOn("u9_vector") ? 10 : 6,
+      const len = 230,
+        width = 6,
         x1 = p.x + sx * len,
         y1 = p.y + sy * len;
       fx({
@@ -2098,7 +1179,7 @@ export function createKnowledgeFlow(api) {
       const p = P();
       let cur = nearestFoe(p.x, p.y, 160);
       if (!cur) return retry(s);
-      const ratio = sparkOn("u10_geometric") ? 0.9 : 0.8,
+      const ratio = 0.8,
         seq = [cur];
       let prev = null;
       for (let k = 1; k < def.n[lv - 1]; k++) {
@@ -2133,19 +1214,17 @@ export function createKnowledgeFlow(api) {
           )
             continue;
           ring.hit.add(e);
-          hit(e, ring.dmg, ring.chill ? { st: { chill: 1 } } : {});
+          hit(e, ring.dmg);
         }
       }
       s.rings = (s.rings || []).filter((ring) => now() - ring.t0 < 0.4);
       if (!ready(s, dt, def.cd[lv - 1])) return;
-      const chill = sparkOn("u10_taylor");
       for (let k = 0; k < def.terms[lv - 1]; k++)
         s.rings.push({
           t0: now() + 0.22 * k,
-          R: (34 + 16 * k) * area(),
+          R: 34 + 16 * k,
           dmg: def.dmg[lv - 1] / (k + 1),
           hit: new Set(),
-          chill,
         });
     },
   };
@@ -2341,127 +1420,40 @@ export function createKnowledgeFlow(api) {
     }
   }
 
-  // ------------------------------------------------------------ chest meter
-  function addChest(amount, raw = false) {
-    const kf = kfOf();
-    if (!kf || !(amount > 0)) return 0;
-    const gain = raw
-      ? amount
-      : amount *
-        (1 + 0.08 * foundLv("f_area")) *
-        (weeklyHas("chestRush") ? 1.5 : 1);
-    kf.chest = Math.min(kf.chestOut ? 1 : 2, kf.chest + gain);
-    if (gain >= 0.05) {
-      kf.chestFlash = api.now;
-      hint("chest");
-    }
-    if (kf.chest >= 1 && !kf.chestOut) dropChest();
-    return gain;
-  }
-  function dropChest() {
-    const kf = kfOf(),
-      a = api.a,
-      [left, top, right, bottom] = api.bounds();
-    kf.chest = Math.max(0, kf.chest - 1);
-    kf.chestOut = true;
-    kf.stats.chests++;
-    const x = clamp(a.p.x + (a.p.dx || 1) * 34, left + 10, right - 10),
-      y = clamp(a.p.y + (a.p.dy || 0) * 34, top + 10, bottom - 10);
-    a.picks.push({ kind: "kfchest", kf: true, persist: true, x, y, t0: a.t });
-    whenPlaying(() => {
-      say(
-        L(["KNOWLEDGE CHEST!", "知识宝箱！"]),
-        "#29ADFF",
-        L(["Your answers filled the chest", "答题攒满了宝箱进度"]),
-      );
-      api.sfx?.("shard");
-    });
-  }
-
   // ------------------------------------------------------------ cards
-  const unitName = (n) => api.units?.[n - 1]?.name || "";
-  function unitCard(id) {
+  // `step` levels at once: ★★★ tablets give two (harder question, stronger skill).
+  function unitCard(id, step = 1) {
     const def = UNIT_SKILLS[id],
       lv = unitLv(id),
-      spark = FOUNDATIONS[def.spark];
+      to = Math.min(3, lv + step);
     return {
       type: "kf",
       kf: "unit",
       id,
+      step: to - lv,
       name: L(def.name),
       tag: lv
-        ? `Lv ${lv} → ${lv + 1}`
-        : api.zh
-          ? `新 · 仅限第 ${def.unit} 单元`
-          : `New · Unit ${def.unit} only`,
+        ? `Lv ${lv} → ${to}`
+        : to > 1
+          ? api.zh
+            ? `新 · 直接 Lv ${to}`
+            : `New · straight to Lv ${to}`
+          : api.zh
+            ? `新 · 仅限第 ${def.unit} 单元`
+            : `New · Unit ${def.unit} only`,
       cat: L(CAT.unit),
       desc: L(def.info),
-      next: `Lv ${lv + 1}: ${L(def.up[lv])}`,
+      next: `Lv ${to}: ${L(def.up[to - 1])}`,
       icon: "kf_" + id,
       col: def.col,
       bg: "#111D35",
       rare: true,
-      hint: api.zh
-        ? `火花：配合算力「${L(spark.name)}」→ ${L(def.sparkName)}${foundLv(def.spark) ? "（已拥有）" : ""}`
-        : `Spark: with ${L(spark.name)} → ${L(def.sparkName)}${foundLv(def.spark) ? " (owned)" : ""}`,
-      recommend: foundLv(def.spark)
-        ? {
-            score: 96,
-            reason:
-              (api.zh ? "马上触发火花：" : "Sparks right away: ") +
-              L(def.sparkName),
-          }
-        : {
-            score: lv ? 64 : 70,
-            reason: api.zh
-              ? `第 ${def.unit} 单元专属，整个单元都有效`
-              : `Built for Unit ${def.unit}; lasts the whole unit`,
-          },
-    };
-  }
-  function foundationCard(id) {
-    const def = FOUNDATIONS[id],
-      lv = foundLv(id),
-      partners = Object.keys(UNIT_SKILLS).filter(
-        (u) => UNIT_SKILLS[u].spark === id,
-      );
-    const live = partners.filter((u) => unitLv(u));
-    return {
-      type: "kf",
-      kf: "found",
-      id,
-      name: L(def.name),
-      tag: lv ? `Lv ${lv} → ${lv + 1}` : api.zh ? "永久" : "Permanent",
-      cat: L(CAT.found),
-      desc: L(def.info),
-      next: "",
-      icon: "kf_" + id,
-      col: def.col,
-      bg: "#111D35",
-      recommend: live.length
-        ? {
-            score: 94,
-            reason:
-              (api.zh ? "马上产生火花：" : "Sparks now: ") +
-              live
-                .map((u) => L(UNIT_SKILLS[u].sparkName))
-                .join(api.zh ? "、" : ", "),
-          }
-        : {
-            score: 40,
-            reason: api.zh
-              ? "永久提升，以后能和单元技能组合"
-              : "Permanent, and combines with unit skills later",
-          },
-      hint: live.length
-        ? (api.zh ? "马上产生火花：" : "Sparks now: ") +
-          live
-            .map((u) => L(UNIT_SKILLS[u].sparkName))
-            .join(api.zh ? "、" : ", ")
-        : (api.zh ? "火花：" : "Sparks with: ") +
-          partners
-            .map((u) => L(UNIT_SKILLS[u].name))
-            .join(api.zh ? "、" : ", "),
+      recommend: {
+        score: (lv ? 64 : 70) + (to - lv - 1) * 20,
+        reason: api.zh
+          ? `第 ${def.unit} 单元专属，整个单元都有效`
+          : `Built for Unit ${def.unit}; lasts the whole unit`,
+      },
     };
   }
   function unitChoices() {
@@ -2483,14 +1475,12 @@ export function createKnowledgeFlow(api) {
     for (const c of source)
       if (out.length < size && !out.some((o) => sameCard(o, c))) out.push(c);
   }
+  // Every tablet offers this unit's skills; harder ones offer more, and ★★★
+  // skills jump two levels. ★★★ also adds one rare card.
   function tabletCards(tier) {
-    const size = tier === 3 && weeklyHas("hardWeek") ? 4 : 3,
-      out = [];
-    for (const id of shuffle(unitChoices()).slice(
-      0,
-      tier === 3 ? 2 : tier === 2 ? 1 : 0,
-    ))
-      out.push(unitCard(id));
+    const out = [];
+    for (const id of shuffle(unitChoices()).slice(0, tier === 1 ? 1 : 2))
+      out.push(unitCard(id, tier === 3 ? 2 : 1));
     if (tier === 3) {
       const rare = api.bossCards();
       fill(
@@ -2498,59 +1488,22 @@ export function createKnowledgeFlow(api) {
         rare.filter((c) => c.type === "evo" || c.type === "thm"),
         out.length + 1,
       );
-      if (out.length < 2) fill(out, rare, 2);
+      if (out.length < 3) fill(out, rare, 3);
     }
-    fill(out, api.cards(size), size);
-    if (out.length < size) fill(out, api.bossCards(), size);
-    out.noReroll = tier >= 2;
-    return out;
-  }
-  function chestCards() {
-    const out = [];
-    const units = shuffle(unitChoices());
-    if (units.length) out.push(unitCard(units[0]));
-    const rare = api.bossCards();
-    fill(
-      out,
-      rare.filter((c) => c.type === "evo" || c.type === "thm"),
-      out.length + 1,
-    );
     fill(out, api.cards(3), 3);
-    fill(out, rare, 3);
-    out.noReroll = true;
+    if (out.length < 3) fill(out, api.bossCards(), 3);
+    out.noReroll = tier >= 2;
     return out;
   }
 
   // ------------------------------------------------------------ gaining things
-  function gainUnitSkill(id) {
+  function gainUnitSkill(id, step = 1) {
     const kf = kfOf(),
       def = UNIT_SKILLS[id];
-    if (kf.unit[id]) kf.unit[id].lv = Math.min(3, kf.unit[id].lv + 1);
-    else kf.unit[id] = { lv: 1, cd: 1, n: 0 };
+    if (kf.unit[id]) kf.unit[id].lv = Math.min(3, kf.unit[id].lv + step);
+    else kf.unit[id] = { lv: Math.min(3, step), cd: 1, n: 0 };
     hint("unit");
-    checkSparks();
     return def;
-  }
-  function gainFoundation(id) {
-    const kf = kfOf();
-    kf.found[id] = Math.min(FOUNDATION_MAX, (kf.found[id] || 0) + 1);
-    checkSparks();
-  }
-  function checkSparks() {
-    const kf = kfOf();
-    for (const id of Object.keys(kf.unit)) {
-      if (!sparkOn(id) || kf.sparks[id]) continue;
-      kf.sparks[id] = true;
-      const def = UNIT_SKILLS[id];
-      whenPlaying(() => {
-        say(
-          (api.zh ? "火花！" : "SPARK! ") + L(def.sparkName),
-          "#FFEC27",
-          L(def.sparkInfo),
-        );
-        api.sfx?.("power");
-      });
-    }
   }
   function equipGear(id, slot) {
     const kf = kfOf(),
@@ -2574,11 +1527,11 @@ export function createKnowledgeFlow(api) {
         owned.lv++;
         say(`${L(def.name)} Lv ${owned.lv}`, def.col, L(def.info));
       } else {
-        const gain = addChest(CHEST.salvage, true);
+        api.a.p.hp = api.a.p.maxHp;
         say(
           L(def.name) + " MAX",
           def.col,
-          (api.zh ? "宝箱进度 +" : "Chest +") + Math.round(gain * 100) + "%",
+          api.zh ? "已满级：生命回满" : "Already maxed: health restored",
         );
       }
       api.sfx?.("power");
@@ -2590,7 +1543,7 @@ export function createKnowledgeFlow(api) {
       api.sfx?.("power");
       return;
     }
-    // Both slots taken: swap one out or salvage it for chest progress.
+    // Both slots taken: swap one out or keep what you have.
     const cards = kf.gear.map((g, slot) => ({
       type: "kf",
       kf: "equipSwap",
@@ -2611,14 +1564,14 @@ export function createKnowledgeFlow(api) {
     }));
     cards.push({
       type: "kf",
-      kf: "salvage",
-      id: "salvage",
-      name: api.zh ? `分解 ${L(def.name)}` : `Salvage ${L(def.name)}`,
-      tag: api.zh ? "宝箱进度" : "Chest",
+      kf: "keep",
+      id: "keep",
+      name: api.zh ? "保留现有装备" : "Keep my gear",
+      tag: api.zh ? "生命回满" : "Full health",
       cat: L(CAT.gear),
       desc: api.zh
-        ? "不换装备，宝箱进度 +30%。"
-        : "Keep your gear and gain 30% chest progress.",
+        ? "不换装备，生命回满。"
+        : "Keep both items and restore your health.",
       next: "",
       icon: "kf_" + id,
       col: "#29ADFF",
@@ -2630,8 +1583,8 @@ export function createKnowledgeFlow(api) {
       (api.zh ? "新装备：" : "NEW EQUIPMENT: ") + L(def.name),
       api.zh ? "两个装备槽都满了" : "Both slots are full",
       api.zh
-        ? "换下一件，或者分解成宝箱进度"
-        : "Swap one out, or salvage it for chest progress",
+        ? "换下一件，或者保留现有装备"
+        : "Swap one out, or keep what you have",
     );
   }
   function openCardPanel(cards, title, sub, label) {
@@ -2717,17 +1670,11 @@ export function createKnowledgeFlow(api) {
     if (kf.world && kf.world.stage === stage && kf.world.theme === theme)
       return kf.world;
     const kind = worldKind(),
-      lairs = weeklyHas("bossHunt") ? 2 : 1,
       layout = worldLayout(
         api.world,
         api.themes?.[theme]?.zones || [],
         Math.floor(api.Math.random() * 4),
-        lairs,
-      ),
-      hard = weeklyHas("hardWeek") ? 0.6 : 1;
-    const others = Object.keys(MINI_BOSSES).filter(
-      (id) => id !== bossForWorld(kind),
-    );
+      );
     kf.tabletAt = Math.max(kf.tabletAt, a.t + fast(PACE.firstTablet));
     kf.world = {
       stage,
@@ -2738,22 +1685,17 @@ export function createKnowledgeFlow(api) {
       tablets: layout.tablets.map((p, n) => ({
         ...p,
         tier: n + 1,
-        cdMul: n === 2 ? hard : 1,
       })),
-      // Lairs start hidden and appear one at a time (see unlockLairs).
-      lairs: layout.lairs.map((p, n) => ({
+      // The lair starts hidden (see unlockLairs).
+      lairs: layout.lairs.map((p) => ({
         ...p,
-        boss:
-          n === 0
-            ? bossForWorld(kind)
-            : others[Math.floor(api.Math.random() * others.length)],
+        boss: bossForWorld(kind),
         state: "hidden",
         shownAt: -99,
         enemy: null,
         nextAtk: 0,
         atk: 0,
       })),
-      door: { ...layout.door, locked: true, revealed: false, used: false },
     };
     return kf.world;
   }
@@ -2783,7 +1725,7 @@ export function createKnowledgeFlow(api) {
     const a = api.a,
       kf = a.kf,
       rule = TABLETS[tab.tier - 1];
-    kf.tabletWait = fast(rule.cd * tab.cdMul);
+    kf.tabletWait = fast(rule.cd);
     kf.tabletAt = a.t + kf.tabletWait;
     kf.stats.tablets++;
     api.clearInput();
@@ -2831,35 +1773,6 @@ export function createKnowledgeFlow(api) {
       hint(tab.tier === 1 ? "tablet" : "tablet" + tab.tier);
       if (Math.hypot(p.x - tab.x, p.y - tab.y) > 11) continue;
       askTablet(tab);
-      return true;
-    }
-    return false;
-  }
-
-  // The hidden room can be found only after the world's first mini-boss falls
-  // (or after a while), so it never stacks on the first minutes.
-  function tickDoor() {
-    const a = api.a,
-      kf = kfOf(),
-      world = kf.world,
-      door = world.door;
-    if (!door || door.used) return false;
-    const p = P(),
-      d = Math.hypot(p.x - door.x, p.y - door.y);
-    if (door.locked) {
-      const wait = fast(PACE.doorAfter[world.first ? 0 : 1]);
-      if (!world.lairs.some((l) => l.state === "done") && a.t - world.t0 < wait)
-        return false;
-      door.locked = false;
-      hint("room", direction(door.x, door.y));
-    }
-    if (!door.revealed && d < (weeklyHas("roomWeek") ? 220 : 70)) {
-      door.revealed = true;
-      api.sfx?.("shard");
-      api.float(door.x, door.y - 20, "?", "#FFEC27", true);
-    }
-    if (door.revealed && d < 11) {
-      openRoom(door);
       return true;
     }
     return false;
@@ -3043,30 +1956,27 @@ export function createKnowledgeFlow(api) {
       }
     }
   }
-  // Lairs appear one at a time: the first after the first chest is opened or
-  // after PACE.lairAfter, the next once that one is beaten or a minute later.
+  // The lair appears after two tablets (and at least 30 s) in the first world,
+  // or after PACE.lairAfter, so it never lands on top of the first minute.
   function unlockLairs() {
     const a = api.a,
       kf = kfOf(),
       world = kf.world,
-      hidden = world.lairs.find((l) => l.state === "hidden");
-    if (!hidden || !calm()) return;
-    const shown = world.lairs.filter((l) => l.state !== "hidden"),
-      age = a.t - world.t0,
-      due = shown.length
-        ? shown.every((l) => l.state === "done") ||
-          a.t - Math.max(...shown.map((l) => l.shownAt)) >=
-            fast(PACE.secondLairAfter)
-        : age >= fast(PACE.lairAfter[world.first ? 0 : 1]) ||
-          (world.first && kf.stats.opened > 0 && age >= fast(30));
-    if (!due) return;
-    hidden.state = "sleep";
-    hidden.shownAt = a.t;
-    const def = MINI_BOSSES[hidden.boss];
+      lair = world.lairs.find((l) => l.state === "hidden");
+    if (!lair || !calm()) return;
+    const age = a.t - world.t0;
+    if (
+      age < fast(PACE.lairAfter[world.first ? 0 : 1]) &&
+      !(world.first && kf.stats.tablets >= 2 && age >= fast(30))
+    )
+      return;
+    lair.state = "sleep";
+    lair.shownAt = a.t;
+    const def = MINI_BOSSES[lair.boss];
     say(
       api.zh ? "小首领出现了" : "A MINI-BOSS APPEARED",
       def.col,
-      `${L(def.name)} · ${direction(hidden.x, hidden.y)}`,
+      `${L(def.name)} · ${direction(lair.x, lair.y)}`,
     );
     hint("lair");
   }
@@ -3118,132 +2028,6 @@ export function createKnowledgeFlow(api) {
       }
     }
     return false;
-  }
-
-  // ------------------------------------------------------------ hidden room
-  let room = null;
-  function openRoom(door) {
-    const a = api.a,
-      kf = a.kf;
-    door.used = true;
-    kf.stats.rooms++;
-    api.clearInput();
-    api.mode = "quiz";
-    api.sfx?.("quest");
-    room = {
-      drills: roomDrills(a.curUnit, api.Math.random, api.zh),
-      index: 0,
-      score: 0,
-      answered: false,
-    };
-    renderDrill();
-  }
-  function renderDrill() {
-    const d = room.drills[room.index],
-      topic = FOUNDATIONS[d.topic],
-      unit = api.a.curUnit;
-    api.overlay.show(
-      `<div class="panel qz pix kf-room">
-      <div class="qhd"><b>${api.zh ? "算力房" : "COMPUTATION ROOM"}</b><span>${api.zh ? `第 ${unit} 单元的基础 · 第 ${room.index + 1}/3 题` : `Unit ${unit} foundations · ${room.index + 1}/3`}</span><span class="qm">${api.esc(L(topic.name))}</span></div>
-      <div class="qbody"><div class="qstem">${d.stem}</div></div>
-      <div class="qopts">${d.opts.map((o, n) => `<button type="button" class="qo" data-k="${n}"><kbd>${"ABCD"[n]}</kbd><span>${o}</span></button>`).join("")}</div>
-      <div class="qfb" id="qfb" hidden></div>
-      <div class="cards" id="cards" hidden></div>
-      <div class="qfoot" id="qfoot">${api.zh ? "按 <kbd>A</kbd>–<kbd>D</kbd> 作答 · 游戏已暂停 · 不计入练习记录" : "Press <kbd>A</kbd>–<kbd>D</kbd> to answer · Game paused · Not saved to your practice record"}</div>
-    </div>`,
-      "kfdrill",
-    );
-    room.answered = false;
-    room.lock = performance.now() + 250;
-    api.overlay.el.querySelectorAll(".qo").forEach((b) => {
-      b.onclick = () => answerDrill(+b.dataset.k);
-    });
-  }
-  function answerDrill(k) {
-    if (!room || room.answered || performance.now() < room.lock) return;
-    room.answered = true;
-    const d = room.drills[room.index],
-      right = k === d.ans,
-      root = api.overlay.el;
-    if (right) room.score++;
-    right ? api.sfx?.("correct") : api.sfx?.("wrong");
-    root.querySelector(".qz")?.classList.add("answered");
-    root.querySelectorAll(".qo").forEach((b, n) => {
-      b.disabled = true;
-      if (n === d.ans) b.classList.add("right");
-      else if (n === k) b.classList.add("wrong");
-    });
-    const last = room.index === room.drills.length - 1,
-      fb = root.querySelector("#qfb");
-    fb.hidden = false;
-    fb.className = "qfb " + (right ? "ok" : "no");
-    fb.innerHTML = `<b>${right ? (api.zh ? "✓ 算对了！" : "✓ Correct!") : api.zh ? "再想想" : "Not quite"}</b><p>${d.why}</p><button type="button" class="go kf-next" id="kfNext">${last ? (api.zh ? "看结果" : "See result") : api.zh ? "下一题" : "Next"} <kbd>Enter</kbd></button>`;
-    root.querySelector("#kfNext").onclick = () => nextDrill();
-    // Small screens: bring the explanation and the Next button into view.
-    try {
-      fb.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    } catch {}
-  }
-  function nextDrill() {
-    if (!room?.answered) return;
-    if (room.index < room.drills.length - 1) {
-      room.index++;
-      renderDrill();
-      return;
-    }
-    finishRoom();
-  }
-  function finishRoom() {
-    const score = room.score,
-      unit = api.a.curUnit,
-      root = api.overlay.el,
-      fb = root.querySelector("#qfb");
-    room = null;
-    let cards, title;
-    if (score >= 2) {
-      const [a, b] = ROOM_TOPICS[unit] || ROOM_TOPICS[1];
-      cards = [a, b]
-        .filter((id) => foundLv(id) < FOUNDATION_MAX)
-        .map(foundationCard);
-      if (score === 3) addChest(CHEST.perfectRoom);
-      if (!cards.length) cards = api.cards(3);
-      title =
-        score === 3 && weeklyHas("roomWeek") && cards.length > 1
-          ? api.zh
-            ? "全对！两个都拿走"
-            : "Perfect! Take both"
-          : api.zh
-            ? `算力 ${score}/3：选一个算力技能`
-            : `Computation ${score}/3: pick a foundation`;
-      if (
-        score === 3 &&
-        weeklyHas("roomWeek") &&
-        cards.length > 1 &&
-        cards.every((c) => c.kf === "found")
-      ) {
-        // Computation Week: a perfect room gives both foundations.
-        const both = {
-          ...cards[0],
-          kf: "foundBoth",
-          ids: cards.map((c) => c.id),
-          name: cards.map((c) => c.name).join(" + "),
-          desc: cards.map((c) => c.desc).join(" "),
-        };
-        cards = [both];
-      }
-    } else {
-      cards = api.basicCards();
-      title = api.zh
-        ? `算力 ${score}/3：还要多练，先领基础奖励`
-        : `Computation ${score}/3: keep practising — take a basic reward`;
-    }
-    if (fb) {
-      fb.className = "qfb " + (score >= 2 ? "ok" : "no");
-      fb.innerHTML = `<b>${api.zh ? `算力 ${score}/3` : `Computation ${score}/3`}</b><p>${score === 3 ? (api.zh ? "全对！宝箱进度也涨了。" : "Perfect — the chest meter grew too.") : score === 2 ? (api.zh ? "基础扎实。" : "Solid foundations.") : api.zh ? "这些是本单元常用的基础计算，回头可以在练习里多做几道。" : "These are skills this unit leans on; try a few more in Practice."}</p>`;
-    }
-    cards.noReroll = true;
-    api.overlay.mode = "quizfb";
-    api.overlay.cardsFor(cards, title, true);
   }
 
   // ------------------------------------------------------------ drawing
@@ -3509,34 +2293,6 @@ export function createKnowledgeFlow(api) {
       d.r(1, 13, 12, 1, "#6b7489");
     });
   }
-  const doorSprite = () =>
-    sprite("door", 14, 18, (d) => {
-      d.r(0, 4, 14, 14, "#6b7489");
-      d.r(2, 1, 10, 3, "#6b7489");
-      d.r(3, 0, 8, 1, "#9aa3b5");
-      d.r(2, 5, 10, 13, "#5a3524");
-      d.r(3, 3, 8, 2, "#5a3524");
-      d.r(3, 6, 1, 12, "#7a4a2a");
-      d.r(7, 4, 1, 14, "#7a4a2a");
-      d.r(10, 6, 1, 12, "#7a4a2a");
-      d.r(9, 10, 2, 2, "#FFEC27");
-      d.p(9, 12, "#FFEC27");
-    });
-  const chestSprite = () =>
-    sprite("kfchest", 16, 13, (d) => {
-      d.r(1, 5, 14, 8, "#2d7fa8");
-      d.r(1, 1, 14, 5, "#1d5a7c");
-      d.r(2, 0, 12, 1, "#1d5a7c");
-      d.r(1, 5, 14, 1, "#FFCC4D");
-      d.r(1, 12, 14, 1, "#155072");
-      d.r(7, 4, 2, 4, "#FFCC4D");
-      d.r(4, 2, 3, 2, "#FFF1E8");
-      d.r(9, 2, 3, 2, "#FFF1E8");
-      d.p(7, 2, "#c2c3c7");
-      d.p(8, 2, "#c2c3c7");
-      d.r(2, 7, 1, 4, "#5fb4dc");
-    });
-
   // 24×24 icons for cards and the HUD (plugged in through illustratedIcon).
   const ICONS = {
     u1_squeeze: (d, c, w) => {
@@ -3712,59 +2468,6 @@ export function createKnowledgeFlow(api) {
           );
         }
     },
-    f_rationalize: (d, c, w) => {
-      d.line(3, 13, 6, 12, c, 2);
-      d.line(6, 12, 9, 19, c, 2);
-      d.line(9, 19, 12, 5, c, 2);
-      d.line(12, 5, 21, 5, c, 2);
-      d.r(14, 9, 2, 6, w);
-      d.r(18, 9, 2, 6, w);
-    },
-    f_factor: (d, c, w) => {
-      for (const x of [3, 13]) {
-        d.line(x + 2, 6, x, 12, c);
-        d.line(x, 12, x + 2, 18, c);
-        d.line(x + 6, 6, x + 8, 12, c);
-        d.line(x + 8, 12, x + 6, 18, c);
-        d.r(x + 3, 11, 3, 2, w);
-      }
-    },
-    f_slope: (d, c, w) => {
-      d.line(3, 19, 20, 5, c, 2);
-      d.line(6, 17, 16, 17, w);
-      d.line(16, 17, 16, 9, w);
-    },
-    f_exponent: (d, c, w) => {
-      d.line(3, 9, 12, 20, c, 2);
-      d.line(12, 9, 3, 20, c, 2);
-      d.r(15, 3, 5, 2, w);
-      d.r(18, 5, 2, 2, w);
-      d.r(15, 7, 5, 2, w);
-    },
-    f_compose: (d, c, w) => {
-      for (let k = 0; k < 48; k++) {
-        const t = (k / 48) * Math.PI * 2;
-        d.p(
-          9 + Math.round(Math.cos(t) * 6),
-          12 + Math.round(Math.sin(t) * 6),
-          c,
-        );
-        d.p(
-          15 + Math.round(Math.cos(t) * 6),
-          12 + Math.round(Math.sin(t) * 6),
-          w,
-        );
-      }
-    },
-    f_trig: (d, c, w) => {
-      for (let x = 2; x < 22; x++)
-        d.r(x, 12 - Math.round(Math.sin((x - 2) / 3.2) * 7), 1, 2, c);
-      d.line(2, 12, 21, 12, w);
-    },
-    f_area: (d, c, w) => {
-      for (let y = 6; y < 20; y++) d.r(4 + (19 - y) / 2, y, 1 + (y - 6), 1, c);
-      d.line(4, 19, 19, 19, w);
-    },
     laser: (d, c, w) => {
       d.r(3, 9, 9, 6, "#9daec4");
       d.r(3, 14, 4, 5, "#5b6b85");
@@ -3810,7 +2513,7 @@ export function createKnowledgeFlow(api) {
     const id = name.slice(3),
       draw = ICONS[id];
     if (!draw) return null;
-    const def = UNIT_SKILLS[id] || FOUNDATIONS[id] || EQUIPMENT[id],
+    const def = UNIT_SKILLS[id] || EQUIPMENT[id],
       col = def?.col || "#29ADFF";
     return sprite(
       "icon:" + id,
@@ -3923,26 +2626,6 @@ export function createKnowledgeFlow(api) {
         });
       }
     }
-    const door = kf.world.door;
-    if (door && !door.used && !door.locked) {
-      const x = Math.round(door.x - camX),
-        y = Math.round(door.y - camY),
-        dist = Math.hypot(api.px() - door.x, api.py() - door.y);
-      if (on(x, y)) {
-        if (door.revealed) {
-          api.drawShadow(ctx, x, y + 2, 16);
-          blit(ctx, doorSprite(), x, y + 3);
-          if (Math.floor(t * 3) % 2)
-            api.drawRect(ctx, x - 1, y - 24, 3, 3, "#FFEC27");
-        } else if (dist < 140) {
-          ctx.globalAlpha = 0.25 + 0.2 * Math.sin(t * 5);
-          api.drawLine(ctx, x - 5, y - 10, x - 1, y - 4, "#c2c3c7");
-          api.drawLine(ctx, x - 1, y - 4, x + 3, y - 8, "#c2c3c7");
-          api.drawLine(ctx, x + 3, y - 8, x + 6, y - 2, "#c2c3c7");
-          ctx.globalAlpha = 1;
-        }
-      }
-    }
     for (const z of kf.zones) {
       const left = z.until - a.t;
       ctx.globalAlpha = Math.min(0.5, left);
@@ -3999,19 +2682,7 @@ export function createKnowledgeFlow(api) {
   }
 
   function drawPick(ctx, item, x, y) {
-    if (item.kind === "kfchest") {
-      api.drawShadow(ctx, x, y + 6, 16);
-      blit(ctx, chestSprite(), x, y + 6);
-      if (Math.floor(api.now * 6) % 2)
-        api.drawRect(
-          ctx,
-          x + Math.round(Math.sin(api.now * 7) * 7),
-          y - 9,
-          2,
-          2,
-          "#c8ecff",
-        );
-    } else if (item.kind === "kfgear") {
+    if (item.kind === "kfgear") {
       const img = icon("kf_" + item.gear);
       api.drawShadow(ctx, x, y + 6, 14);
       api.drawRect(ctx, x - 8, y - 9, 16, 16, "#FFEC27");
@@ -4047,7 +2718,7 @@ export function createKnowledgeFlow(api) {
     for (const [id, s] of Object.entries(kf.unit)) {
       const def = UNIT_SKILLS[id];
       if (def.engine === "asymptote" && s.x !== undefined) {
-        const reach = 110 * area();
+        const reach = 110;
         ctx.globalAlpha = FX * 0.6;
         line(s.x, s.y - reach, s.x, s.y + reach, def.col, 1, 4);
         ctx.globalAlpha = FX;
@@ -4060,7 +2731,7 @@ export function createKnowledgeFlow(api) {
         ctx.globalAlpha = FX;
       } else if (def.engine === "field") {
         const p = P(),
-          r = 70 * area();
+          r = 70;
         ctx.globalAlpha = FX * 0.45;
         for (let gy = -r; gy <= r; gy += 16)
           for (let gx = -r; gx <= r; gx += 16) {
@@ -4076,15 +2747,12 @@ export function createKnowledgeFlow(api) {
           }
         ctx.globalAlpha = FX;
       } else if (def.engine === "area") {
-        const p = P(),
-          spark = sparkOn("u8_area");
+        const p = P();
         ctx.globalAlpha = FX * 0.7;
         for (let k = 0; k < 64; k++) {
           const th = (k / 64) * Math.PI * 2,
-            r1 = (28 + 5 * Math.sin(3 * th + (s.ph || 0))) * area(),
-            r2 =
-              (54 + 5 * Math.sin(3 * th - (s.ph || 0)) + (spark ? 8 : 0)) *
-              area();
+            r1 = 28 + 5 * Math.sin(3 * th + (s.ph || 0)),
+            r2 = 54 + 5 * Math.sin(3 * th - (s.ph || 0));
           api.drawRect(
             ctx,
             sx(p.x + Math.cos(th) * r1),
@@ -4120,7 +2788,7 @@ export function createKnowledgeFlow(api) {
           ctx.globalAlpha = FX * 0.25;
           for (let k = 0; k < 90; k++) {
             const th = (k / 90) * Math.PI * 2,
-              r = 58 * area() * Math.cos(s.k * th);
+              r = 58 * Math.cos(s.k * th);
             api.drawRect(
               ctx,
               sx(p.x + r * Math.cos(th)),
@@ -4311,7 +2979,7 @@ export function createKnowledgeFlow(api) {
     ctx.globalAlpha = 1;
   }
 
-  // Right-hand HUD column: a small chest bar, then unit skills and equipment.
+  // Right-hand HUD column: unit skills and equipment.
   function drawHud(ctx, right, y) {
     const a = api.a,
       kf = a?.kf;
@@ -4329,28 +2997,6 @@ export function createKnowledgeFlow(api) {
       y += 9;
     }
     y += 3;
-    // Chest bar: a small chest and a thin bar, no text. Bright for a moment
-    // after it grows, dim in calm moments; it blinks while a chest waits.
-    const lit = kf.chestOut || api.now - kf.chestFlash < 2.5,
-      blink = kf.chestOut && Math.floor(api.now * 3) % 2 === 0,
-      cx = right - 52;
-    ctx.globalAlpha = lit ? 1 : 0.6;
-    api.drawRect(ctx, cx - 1, y - 1, 9, 8, pal.black);
-    api.drawRect(ctx, cx, y + 1, 7, 5, blink ? pal.yellow : "#2d7fa8");
-    api.drawRect(ctx, cx + 1, y, 5, 1, "#1d5a7c");
-    api.drawRect(ctx, cx, y + 2, 7, 1, "#FFCC4D");
-    api.drawRect(ctx, cx + 3, y + 2, 1, 2, "#FFCC4D");
-    api.drawRect(ctx, right - 42, y + 1, 42, 5, pal.black);
-    api.drawRect(
-      ctx,
-      right - 41,
-      y + 2,
-      Math.round(40 * clamp(kf.chest, 0, 1)),
-      3,
-      kf.chestOut ? pal.yellow : "#29ADFF",
-    );
-    ctx.globalAlpha = 1;
-    y += 11;
     const row = [];
     for (const [id, s] of Object.entries(kf.unit))
       row.push({
@@ -4358,7 +3004,6 @@ export function createKnowledgeFlow(api) {
         col: UNIT_SKILLS[id].col,
         lv: s.lv,
         max: 3,
-        spark: sparkOn(id),
         count:
           UNIT_SKILLS[id].engine === "growth"
             ? kf.growth
@@ -4379,14 +3024,7 @@ export function createKnowledgeFlow(api) {
       let x = right - items.length * (size + 3) + 3;
       for (const it of items) {
         const img = icon(it.icon);
-        api.drawRect(
-          ctx,
-          x - 1,
-          y - 1,
-          size + 2,
-          size + 2,
-          it.spark ? pal.yellow : it.col,
-        );
+        api.drawRect(ctx, x - 1, y - 1, size + 2, size + 2, it.col);
         if (img) ctx.drawImage(img, x, y, size, size);
         if (it.cd > 0) {
           ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -4417,15 +3055,13 @@ export function createKnowledgeFlow(api) {
       drawRow(row, 12);
       y += 18;
     }
-    // Foundations and the weekly rules live on the pause screen; a spark
-    // shows as a yellow frame on its unit skill.
     return y;
   }
 
   // At most two edge arrows, and never for something already on screen: one
   // objective (the nearest ready tablet you cannot see, so standing at the ★
   // tablet points you to the ★★ one; else a lair that just appeared or is
-  // fighting; else a found room door) and the nearest dropped chest or gear.
+  // fighting) and the nearest dropped equipment.
   function markerTargets() {
     const a = api.a,
       kf = a?.kf;
@@ -4459,8 +3095,7 @@ export function createKnowledgeFlow(api) {
             (l.state === "sleep" &&
               (a.t - l.shownAt < PACE.lairArrow || (a.t - l.shownAt) % 60 < 8)),
         ),
-      ),
-      door = kf.world.door;
+      );
     if (tab)
       marks.push({
         x: tab.x,
@@ -4470,8 +3105,6 @@ export function createKnowledgeFlow(api) {
       });
     else if (lair)
       marks.push({ x: lair.x, y: lair.y, col: "#FF004D", label: "!" });
-    else if (door && door.revealed && !door.used && away(door))
-      marks.push({ x: door.x, y: door.y, col: "#FFEC27", label: "?" });
     const loot = nearest(a.picks.filter((item) => item.kf));
     if (loot) marks.push({ x: loot.x, y: loot.y, col: "#FFEC27", label: "+" });
     return marks;
@@ -4521,20 +3154,9 @@ export function createKnowledgeFlow(api) {
     onRunStart() {
       const a = api.a;
       a.kf = freshState();
-      a.testSpeed = armedWeekly ? 1 : testSpeedFor(api.save.d.setup);
+      a.testSpeed = testSpeedFor(api.save.d.setup);
       a.nextBossT = 180 / a.testSpeed;
       a.kf.tabletAt = fast(PACE.firstTablet);
-      if (!armedWeekly) return;
-      const w = armedWeekly;
-      armedWeekly = null;
-      a.kf.weekly = w;
-      a.units = [w.unit];
-      a.curUnit = w.unit;
-      a.diff = "normal";
-      a.qdiff = "mixed";
-      a.hero = w.hero;
-      api.recompute();
-      a.p.hp = a.p.maxHp;
     },
     update(dt) {
       const a = api.a,
@@ -4573,8 +3195,7 @@ export function createKnowledgeFlow(api) {
       ensureWorld();
       if (tickLairs(dt)) return;
       if (!calm()) return;
-      if (tickTablets()) return;
-      tickDoor();
+      tickTablets();
     },
     onKill(e) {
       const a = api.a,
@@ -4602,21 +3223,17 @@ export function createKnowledgeFlow(api) {
           def.col,
           (api.zh ? "掉落：" : "Dropped: ") + L(EQUIPMENT[def.gear].name),
         );
-        addChest(CHEST.miniBoss);
         return;
       }
-      addChest(e.elite ? CHEST.elite : CHEST.kill);
       const growth = kf.unit.u7_growth;
       if (growth) {
-        const cap =
-          UNIT_SKILLS.u7_growth.cap[growth.lv - 1] +
-          (sparkOn("u7_growth") ? 6 : 0);
-        kf.growth = Math.min(cap, kf.growth + 1);
+        kf.growth = Math.min(
+          UNIT_SKILLS.u7_growth.cap[growth.lv - 1],
+          kf.growth + 1,
+        );
         kf.growthT = a.t;
       }
       if (kf.unit.u6_accum) kf.unit.u6_accum.n = (kf.unit.u6_accum.n || 0) + 1;
-      if (e.kfBand > a.t && sparkOn("u1_asymptote"))
-        blast(e.x, e.y, 24, 20, UNIT_SKILLS.u1_asymptote.col);
     },
     onUnitChange(prev, next) {
       const kf = kfOf();
@@ -4625,13 +3242,7 @@ export function createKnowledgeFlow(api) {
         (id) => UNIT_SKILLS[id].unit !== next,
       );
       if (!faded.length) return;
-      let mastered = 0;
-      for (const id of faded) {
-        if (kf.unit[id].lv >= 3) mastered++;
-        delete kf.unit[id];
-        delete kf.sparks[id];
-      }
-      kf.residue += mastered * RESIDUE_PER_MASTERED;
+      for (const id of faded) delete kf.unit[id];
       if (!kf.unit.u7_growth) kf.growth = 0;
       const names = faded
         .map((id) => L(UNIT_SKILLS[id].name))
@@ -4640,44 +3251,15 @@ export function createKnowledgeFlow(api) {
         say(
           api.zh ? `第 ${prev} 单元技能结束` : `UNIT ${prev} SKILLS FADE`,
           "#83769C",
-          names +
-            (mastered
-              ? api.zh
-                ? ` · 知识沉淀 +${mastered * 3}% 伤害`
-                : ` · knowledge kept: +${mastered * 3}% damage`
-              : ""),
+          names,
         ),
       );
     },
     answerCards(q, correct, cards) {
       const kf = kfOf();
       if (!kf || !q) return cards;
-      const tier = q.kfTier || clamp(Math.round(q.tier || 1), 1, 3);
-      if (correct)
-        q.kfGain = addChest(
-          q.kfSource === "tablet"
-            ? TABLETS[tier - 1].chest
-            : CHEST.levelQuestion[tier - 1],
-        );
       if (q.kfSource !== "tablet" || !correct) return cards;
-      return tabletCards(tier);
-    },
-    afterReveal(root, q, correct) {
-      if (!kfOf() || !q || !root) return;
-      const fb = root.querySelector("#qfb");
-      if (!fb) return;
-      const notes = [];
-      if (correct && q.kfGain)
-        notes.push(
-          (api.zh ? "宝箱进度 +" : "Chest +") +
-            Math.round(q.kfGain * 100) +
-            "%",
-        );
-      if (!notes.length) return;
-      const p = (api.doc() || document).createElement("p");
-      p.className = "kf-note";
-      p.textContent = notes.join(" · ");
-      fb.appendChild(p);
+      return tabletCards(q.kfTier || 1);
     },
     decorateQuiz(root, q) {
       if (!root || q?.kfSource !== "tablet") return;
@@ -4703,54 +3285,29 @@ export function createKnowledgeFlow(api) {
     applyCard(card) {
       const kf = kfOf();
       if (!kf || card?.type !== "kf") return false;
-      if (card.kf === "unit") gainUnitSkill(card.id);
-      else if (card.kf === "found") gainFoundation(card.id);
-      else if (card.kf === "foundBoth") card.ids.forEach(gainFoundation);
+      if (card.kf === "unit") gainUnitSkill(card.id, card.step || 1);
       else if (card.kf === "equipSwap") equipGear(card.gear, card.slot);
-      else if (card.kf === "salvage") addChest(CHEST.salvage, true);
+      else if (card.kf === "keep") api.a.p.hp = api.a.p.maxHp;
       return true;
     },
     pickup(item) {
-      const kf = kfOf();
-      if (!kf || !item?.kf) return;
-      if (item.kind === "kfchest") {
-        kf.chestOut = false;
-        kf.stats.opened++;
-        if (kf.chest >= 1) dropChest();
-        openCardPanel(
-          chestCards(),
-          api.zh ? "知识宝箱" : "KNOWLEDGE CHEST",
-          api.zh ? "答题攒出来的奖励" : "Earned by your answers",
-          api.zh
-            ? "3 选 1：本单元技能、进化或升级"
-            : "Pick 1 of 3: a unit skill, an evolution or an upgrade",
-        );
-      } else if (item.kind === "kfgear") offerGear(item.gear);
+      if (kfOf() && item?.kind === "kfgear") offerGear(item.gear);
     },
     damageMult(e) {
       const kf = kfOf();
       if (!kf || !e) return 1;
-      let m = 1 + kf.residue + 0.04 * foundLv("f_factor");
+      let m = 1;
       if (kf.growth && kf.unit.u7_growth) m *= Math.pow(1.03, kf.growth);
-      const tough = e.elite || e.kf?.boss || e.role === "armor";
-      if (tough && foundLv("f_rationalize"))
-        m *= 1 + 0.08 * foundLv("f_rationalize");
       const lh = kf.unit.u4_lhopital;
-      if (lh && (e.elite || e.kf?.boss)) {
-        const spark = sparkOn("u4_lhopital");
-        m *= 1 + UNIT_SKILLS.u4_lhopital.bonus[lh.lv - 1] + (spark ? 0.2 : 0);
-        if (spark) e.slowUntil = Math.max(e.slowUntil || 0, api.a.t + 0.4);
-      }
-      if (weeklyHas("glass")) m *= 1.3;
+      if (lh && (e.elite || e.kf?.boss))
+        m *= 1 + UNIT_SKILLS.u4_lhopital.bonus[lh.lv - 1];
       return m;
     },
     cooldownFactor() {
       const kf = kfOf(),
         rate = kf?.unit?.u2_rate;
       if (!rate || !api.a.p?.moving) return 1;
-      let bonus = UNIT_SKILLS.u2_rate.bonus[rate.lv - 1];
-      if (sparkOn("u2_rate") && kf.moveT >= 2) bonus *= 2;
-      return 1 / (1 + bonus);
+      return 1 / (1 + UNIT_SKILLS.u2_rate.bonus[rate.lv - 1]);
     },
     spawnFactor() {
       const kf = kfOf();
@@ -4767,19 +3324,6 @@ export function createKnowledgeFlow(api) {
     },
     xpScale(e) {
       return kfOf() && !e?.elite && !e?.boss ? SMALL_ENEMY_XP : 1;
-    },
-    applyStats(st) {
-      const kf = kfOf();
-      if (!kf) return;
-      st.speed *=
-        (1 + 0.05 * foundLv("f_slope")) * (weeklyHas("swift") ? 1.15 : 1);
-      st.xp += 0.06 * foundLv("f_exponent");
-    },
-    afterStats() {
-      const a = api.a;
-      if (!weeklyHas("glass") || !a.p) return;
-      a.p.maxHp = Math.round(a.p.maxHp * 0.7);
-      a.p.hp = Math.min(a.p.hp, a.p.maxHp);
     },
     bossType() {
       const a = api.a,
@@ -4798,46 +3342,6 @@ export function createKnowledgeFlow(api) {
       if (spawnedType) kf.lastBossType = spawnedType;
       const prefix = WORLD_PREFIX[worldKind()];
       return prefix ? { ...def, name: L(prefix) + def.name } : def;
-    },
-    key(event) {
-      if (api.overlay.mode !== "kfdrill" || !room) return false;
-      const keys = {
-        KeyA: 0,
-        KeyB: 1,
-        KeyC: 2,
-        KeyD: 3,
-        Digit1: 0,
-        Digit2: 1,
-        Digit3: 2,
-        Digit4: 3,
-        Numpad1: 0,
-        Numpad2: 1,
-        Numpad3: 2,
-        Numpad4: 3,
-      };
-      if (!room.answered && event.code in keys && !event.repeat)
-        answerDrill(keys[event.code]);
-      else if (
-        room.answered &&
-        ["Enter", "Space", "NumpadEnter"].includes(event.code) &&
-        !event.repeat
-      ) {
-        event.preventDefault?.();
-        nextDrill();
-      }
-      return true;
-    },
-    weekly() {
-      const counts = api.bridge?.counts || {},
-        units = Object.keys(counts)
-          .map(Number)
-          .filter((n) => n >= 1 && n <= 10 && counts[n] > 0)
-          .sort((x, y) => x - y);
-      return weeklyChallenge(new Date(), {
-        heroes: api.heroIds(),
-        guns: api.gunIds(),
-        units: units.length ? units : undefined,
-      });
     },
     // Admin-only test speed row on the units & difficulty screen.
     decorateSetup(root, setup) {
@@ -4869,55 +3373,16 @@ export function createKnowledgeFlow(api) {
       );
       sync();
     },
-    decorateMenu(root) {
-      const row = root?.querySelector(".mrow");
-      if (!row || root.querySelector(".kf-week")) return;
-      const w = this.weekly(),
-        best = api.save.d.kfWeekly?.[w.id] || 0,
-        rules = w.rules
-          .map((r) => L(WEEKLY_RULES[r].name))
-          .join(api.zh ? "、" : ", ");
-      const box = (api.doc() || document).createElement("div");
-      box.className = "kf-week";
-      box.innerHTML = `<button type="button" id="mWeek">${api.zh ? "本周挑战" : "Weekly challenge"} <s>${api.esc(w.id)}</s></button><span>${api.esc(
-        api.zh
-          ? `第 ${w.unit} 单元 · ${api.heroName(w.hero)} + ${api.gunName(w.cls)} · ${rules}${best ? ` · 本周最佳 ${best}` : ""}`
-          : `Unit ${w.unit} · ${api.heroName(w.hero)} + ${api.gunName(w.cls)} · ${rules}${best ? ` · best this week ${best}` : ""}`,
-      )}</span>`;
-      row.after(box);
-      box.querySelector("#mWeek").onclick = () => {
-        armedWeekly = w;
-        api.startRun(w.cls);
-      };
-    },
-    onResults(result) {
-      const kf = kfOf(),
-        w = kf?.weekly;
-      if (speed() > 1) {
-        const panel = api.overlay.el?.querySelector(".panel");
-        if (!panel) return;
-        const p = (api.doc() || document).createElement("p");
-        p.className = "kf-week-result";
-        p.textContent = api.zh
-          ? `测试模式 ×${speed()}：这局不计入记录`
-          : `Test mode ×${speed()}: this run is not recorded`;
-        panel.prepend(p);
-        return;
-      }
-      if (!w) return;
-      const store = (api.save.d.kfWeekly ||= {}),
-        prev = store[w.id] || 0,
-        better = result.total > prev;
-      if (better) store[w.id] = result.total;
-      for (const id of Object.keys(store).sort().slice(0, -4)) delete store[id];
-      api.save.save();
+    // Test runs say so on the results screen.
+    onResults() {
+      if (!kfOf() || speed() <= 1) return;
       const panel = api.overlay.el?.querySelector(".panel");
       if (!panel) return;
       const p = (api.doc() || document).createElement("p");
-      p.className = "kf-week-result";
+      p.className = "kf-test-result";
       p.textContent = api.zh
-        ? `本周挑战 ${w.id}：${result.total}${better ? " · 本周新纪录！" : ` · 本周最佳 ${prev}`}`
-        : `Weekly ${w.id}: ${result.total}${better ? " · new best this week!" : ` · best this week ${prev}`}`;
+        ? `测试模式 ×${speed()}：这局不计入记录`
+        : `Test mode ×${speed()}: this run is not recorded`;
       panel.prepend(p);
     },
     // Extra rows for the pause screen's build list.
@@ -4925,39 +3390,16 @@ export function createKnowledgeFlow(api) {
       const kf = kfOf();
       if (!kf) return "";
       // Same tile shape as weapons and passives; the title carries the category.
-      const row = (id, name, tag, title, cls = "") =>
-        `<li${cls ? ` class="${cls}"` : ""} title="${api.esc(title)}"><span data-bi="k:kf_${id}"></span><b>${api.esc(name)}</b><em>${api.esc(tag)}</em></li>`;
+      const row = (id, name, tag, title) =>
+        `<li title="${api.esc(title)}"><span data-bi="k:kf_${id}"></span><b>${api.esc(name)}</b><em>${api.esc(tag)}</em></li>`;
       const out = [];
       for (const [id, s] of Object.entries(kf.unit))
-        out.push(
-          row(
-            id,
-            L(UNIT_SKILLS[id].name),
-            `Lv ${s.lv}`,
-            L(CAT.unit) +
-              (sparkOn(id)
-                ? " · " +
-                  (api.zh ? "火花：" : "Spark: ") +
-                  L(UNIT_SKILLS[id].sparkName)
-                : ""),
-            sparkOn(id) ? "evo" : "",
-          ),
-        );
-      for (const [id, lv] of Object.entries(kf.found))
-        out.push(row(id, L(FOUNDATIONS[id].name), `Lv ${lv}`, L(CAT.found)));
+        out.push(row(id, L(UNIT_SKILLS[id].name), `Lv ${s.lv}`, L(CAT.unit)));
       for (const g of kf.gear)
         if (g)
           out.push(
             row(g.id, L(EQUIPMENT[g.id].name), `Lv ${g.lv}`, L(CAT.gear)),
           );
-      if (kf.residue > 0)
-        out.push(
-          `<li><span></span><b>${api.zh ? "知识沉淀" : "Knowledge kept"}</b><em>+${Math.round(kf.residue * 100)}%</em></li>`,
-        );
-      if (kf.weekly?.rules?.length)
-        out.push(
-          `<li title="${api.esc(kf.weekly.rules.map((r) => L(WEEKLY_RULES[r].info)).join(" "))}"><span></span><b>${api.zh ? "本周挑战" : "Weekly"}</b><em>${api.esc(kf.weekly.rules.map((r) => L(WEEKLY_RULES[r].name)).join(" · "))}</em></li>`,
-        );
       return out.join("");
     },
     icon,
@@ -4969,11 +3411,8 @@ export function createKnowledgeFlow(api) {
     drawMarkers,
     // Exposed for tests.
     _: {
-      addChest,
       tabletCards,
-      chestCards,
       gainUnitSkill,
-      gainFoundation,
       ensureWorld,
       markerTargets,
       tabletOpen,
@@ -4982,7 +3421,6 @@ export function createKnowledgeFlow(api) {
       hit,
       offerGear,
       unitCard,
-      sparkOn,
       ENGINES,
       GEAR,
     },
