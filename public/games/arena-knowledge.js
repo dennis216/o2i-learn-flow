@@ -51,6 +51,35 @@ export const PACE = {
   hintGap: 3,
 };
 
+// Admin test speeds (setup screen, admins only). The run clock, XP, bosses
+// and the timings above all run this many times faster; runs are not recorded.
+export const TEST_SPEEDS = [1, 2, 4];
+export const ADMIN_KEY = "cq-arena-admin";
+// The site (src/pages/Arena.tsx) sets ADMIN_KEY for admins. A student who sets
+// it by hand only speeds up their own local run, which is never recorded.
+export function isArenaAdmin() {
+  try {
+    return globalThis.localStorage?.getItem(ADMIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+export function testSpeedFor(setup, admin = isArenaAdmin()) {
+  const value = Number(setup?.test);
+  return admin && TEST_SPEEDS.includes(value) ? value : 1;
+}
+const TEST_INFO = {
+  1: ["Normal speed.", "正常速度。"],
+  2: [
+    "XP ×2; enemy growth, spawns, bosses and tablets ×2. Not recorded.",
+    "经验 ×2；敌人成长、刷怪、首领、题碑都 ×2。不计入记录。",
+  ],
+  4: [
+    "XP ×4; enemy growth, spawns, bosses and tablets ×4. Not recorded.",
+    "经验 ×4；敌人成长、刷怪、首领、题碑都 ×4。不计入记录。",
+  ],
+};
+
 // First-time help, shown once per device as a short owl hint that never
 // pauses the game. Two sentences at most; {dir} is filled with a direction.
 export const HINTS = {
@@ -1499,7 +1528,11 @@ export function createKnowledgeFlow(api) {
   // ------------------------------------------------------------ geometry helpers
   const area = () => 1 + 0.1 * foundLv("f_trig");
   const cdMul = () => 1 - 0.08 * foundLv("f_compose");
-  const scale = () => api.dmgMul() * (1 + api.a.t / 300);
+  // Test speed of this run (1 unless an admin chose a faster one) and a
+  // helper that shortens a waiting time to match.
+  const speed = () => api.a?.testSpeed || 1;
+  const fast = (seconds) => seconds / speed();
+  const scale = () => api.dmgMul() * (1 + (api.a.t * speed()) / 300);
   function segDist(px, py, x0, y0, x1, y1) {
     const dx = x1 - x0,
       dy = y1 - y0,
@@ -2695,7 +2728,7 @@ export function createKnowledgeFlow(api) {
     const others = Object.keys(MINI_BOSSES).filter(
       (id) => id !== bossForWorld(kind),
     );
-    kf.tabletAt = Math.max(kf.tabletAt, a.t + PACE.firstTablet);
+    kf.tabletAt = Math.max(kf.tabletAt, a.t + fast(PACE.firstTablet));
     kf.world = {
       stage,
       theme,
@@ -2750,7 +2783,7 @@ export function createKnowledgeFlow(api) {
     const a = api.a,
       kf = a.kf,
       rule = TABLETS[tab.tier - 1];
-    kf.tabletWait = rule.cd * tab.cdMul;
+    kf.tabletWait = fast(rule.cd * tab.cdMul);
     kf.tabletAt = a.t + kf.tabletWait;
     kf.stats.tablets++;
     api.clearInput();
@@ -2814,7 +2847,7 @@ export function createKnowledgeFlow(api) {
     const p = P(),
       d = Math.hypot(p.x - door.x, p.y - door.y);
     if (door.locked) {
-      const wait = PACE.doorAfter[world.first ? 0 : 1];
+      const wait = fast(PACE.doorAfter[world.first ? 0 : 1]);
       if (!world.lairs.some((l) => l.state === "done") && a.t - world.t0 < wait)
         return false;
       door.locked = false;
@@ -2834,7 +2867,7 @@ export function createKnowledgeFlow(api) {
 
   // ------------------------------------------------------------ mini-bosses
   const enemyHp = (base) => {
-    const m = api.a.t / 60;
+    const m = (api.a.t * speed()) / 60;
     return base * (1 + 0.12 * m + 0.042 * m * m) * (api.enemyHpMul?.() || 1);
   };
   function wake(lair) {
@@ -3022,9 +3055,10 @@ export function createKnowledgeFlow(api) {
       age = a.t - world.t0,
       due = shown.length
         ? shown.every((l) => l.state === "done") ||
-          a.t - Math.max(...shown.map((l) => l.shownAt)) >= PACE.secondLairAfter
-        : age >= PACE.lairAfter[world.first ? 0 : 1] ||
-          (world.first && kf.stats.opened > 0 && age >= 30);
+          a.t - Math.max(...shown.map((l) => l.shownAt)) >=
+            fast(PACE.secondLairAfter)
+        : age >= fast(PACE.lairAfter[world.first ? 0 : 1]) ||
+          (world.first && kf.stats.opened > 0 && age >= fast(30));
     if (!due) return;
     hidden.state = "sleep";
     hidden.shownAt = a.t;
@@ -4283,6 +4317,17 @@ export function createKnowledgeFlow(api) {
       kf = a?.kf;
     if (!kf) return y;
     const pal = api.pal;
+    if (speed() > 1) {
+      api.hudText(
+        ctx,
+        (api.zh ? "测试 ×" : "TEST ×") + speed(),
+        right,
+        y,
+        pal.yellow,
+        { outline: pal.black, align: "right" },
+      );
+      y += 9;
+    }
     y += 3;
     // Chest bar: a small chest and a thin bar, no text. Bright for a moment
     // after it grows, dim in calm moments; it blinks while a chest waits.
@@ -4476,6 +4521,9 @@ export function createKnowledgeFlow(api) {
     onRunStart() {
       const a = api.a;
       a.kf = freshState();
+      a.testSpeed = armedWeekly ? 1 : testSpeedFor(api.save.d.setup);
+      a.nextBossT = 180 / a.testSpeed;
+      a.kf.tabletAt = fast(PACE.firstTablet);
       if (!armedWeekly) return;
       const w = armedWeekly;
       armedWeekly = null;
@@ -4495,7 +4543,7 @@ export function createKnowledgeFlow(api) {
       // Real time jumped: a question or panel just closed. Rest before any
       // tablet lights up again, so questions never come back to back.
       if (kf.lastNow && api.now - kf.lastNow > 0.5)
-        kf.restUntil = Math.max(kf.restUntil, a.t + PACE.restAfterModal);
+        kf.restUntil = Math.max(kf.restUntil, a.t + fast(PACE.restAfterModal));
       kf.lastNow = api.now;
       if (kf.queue.length) {
         const list = kf.queue.splice(0);
@@ -4791,6 +4839,36 @@ export function createKnowledgeFlow(api) {
         units: units.length ? units : undefined,
       });
     },
+    // Admin-only test speed row on the units & difficulty screen.
+    decorateSetup(root, setup) {
+      const panel = root?.querySelector(".panel"),
+        row = panel?.querySelector(".urow");
+      if (!row || !isArenaAdmin() || panel.querySelector(".kf-test")) return;
+      const box = (api.doc() || document).createElement("div");
+      box.className = "kf-test";
+      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
+        (v, n) =>
+          `<button type="button" class="dchip d-${["easy", "normal", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
+      ).join(
+        "",
+      )}<span>${api.zh ? "经验、敌人成长、刷怪、首领和题碑一起加速；测试局不计入记录。" : "XP, enemy growth, spawns, bosses and tablets all speed up; test runs are not recorded."}</span>`;
+      row.before(box);
+      const sync = () =>
+        box.querySelectorAll("[data-test]").forEach((button) => {
+          const on = testSpeedFor(setup) === Number(button.dataset.test);
+          button.classList.toggle("on", on);
+          button.setAttribute("aria-pressed", String(on));
+        });
+      box.querySelectorAll("[data-test]").forEach(
+        (button) =>
+          (button.onclick = () => {
+            setup.test = Number(button.dataset.test);
+            api.save.save();
+            sync();
+          }),
+      );
+      sync();
+    },
     decorateMenu(root) {
       const row = root?.querySelector(".mrow");
       if (!row || root.querySelector(".kf-week")) return;
@@ -4815,6 +4893,17 @@ export function createKnowledgeFlow(api) {
     onResults(result) {
       const kf = kfOf(),
         w = kf?.weekly;
+      if (speed() > 1) {
+        const panel = api.overlay.el?.querySelector(".panel");
+        if (!panel) return;
+        const p = (api.doc() || document).createElement("p");
+        p.className = "kf-week-result";
+        p.textContent = api.zh
+          ? `测试模式 ×${speed()}：这局不计入记录`
+          : `Test mode ×${speed()}: this run is not recorded`;
+        panel.prepend(p);
+        return;
+      }
       if (!w) return;
       const store = (api.save.d.kfWeekly ||= {}),
         prev = store[w.id] || 0,

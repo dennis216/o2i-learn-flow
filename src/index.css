@@ -493,7 +493,10 @@ p > span {
 body { font-variant-numeric: lining-nums; }
 .community-learners-copy strong { letter-spacing: -.015em; font-weight: 500; }
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
-.page-enter { animation: page-enter 320ms ease-out both; }
+/* backwards, not both: a held opacity animation keeps a stacking context, which traps
+   the full-screen Limit Arena (fixed, z-100) under the sticky header (z-40). */
+.page-enter { animation: page-enter 320ms ease-out backwards; }
+html.arena-expanded .glass-nav-wrap { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
 
 @media (max-width: 399px) { .glass-nav a > .brand-mark img { height: 2rem; } }

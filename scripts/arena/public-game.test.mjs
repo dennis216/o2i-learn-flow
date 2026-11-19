@@ -223,6 +223,18 @@ test("a start gesture upgrades the expanded page to native full screen; landscap
   );
 });
 
+test("Esc on a touch-screen laptop (mouse or trackpad) goes back to the website", async (t) => {
+  const f = fullscreenFixture(t);
+  const restored = [];
+  f.context.hasFinePointer = () => true;
+  f.context.restoreArenaDisplay = () => restored.push("restore");
+  await f.context.enterArenaFullscreen();
+  assert.equal(f.document.body.dataset.fullscreenMode, "native");
+  f.document.fullscreenElement = null;
+  f.context.arenaFullscreenChanged();
+  assert.deepEqual(restored, ["restore"]);
+});
+
 test("iPad and iPhone retain the safe page player instead of reentering native fullscreen", async (t) => {
   const f = fullscreenFixture(t, { ios: true });
   await f.context.enterArenaFullscreen();

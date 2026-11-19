@@ -7111,7 +7111,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (t.dead || !t.sg) return;
     const e = t.sg;
     ((t.sg = 0), (t.detT = a.t), a.stats.det++);
-    const o = e * 6 * gt() * (1 + a.t / 300),
+    const o = e * 6 * gt() * (1 + runT() / 300),
       r = 22 * a.st.area;
     (a.pfx.push({
       kind: "boom",
@@ -7158,7 +7158,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     t.olT = a.t;
     const e = ht("thermo"),
       o = 22 * a.st.area * (e ? 1.6 : 1),
-      r = 20 * gt() * (1 + a.t / 300) * (e ? 1.8 : 1) * (1 + (t.olBonus || 0));
+      r =
+        20 * gt() * (1 + runT() / 300) * (e ? 1.8 : 1) * (1 + (t.olBonus || 0));
     ((t.olBonus = 0),
       a.pfx.push({
         kind: "boom",
@@ -7202,7 +7203,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           });
       }));
   }
-  let Gn = () => 7 * gt() * (1 + 0.5 * H("heat")) * (1 + a.t / 300);
+  let Gn = () => 7 * gt() * (1 + 0.5 * H("heat")) * (1 + runT() / 300);
   function Wo(t, e, o) {
     let r = null,
       n = o;
@@ -7256,7 +7257,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
                 t0: a.t,
                 life: 0.14,
               }),
-              At(l, 10 * gt() * (1 + a.t / 300), {
+              At(l, 10 * gt() * (1 + runT() / 300), {
                 quiet: !0,
                 st: { shock: 2 },
               }));
@@ -7267,7 +7268,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         a.later.push(() =>
           Rt(t.x, t.y, 26 + 10 * (H("heat") - 2), (r) => Xa(r, "burn", 3)),
         ));
-    const e = a.t / 60,
+    const e = runT() / 60,
       o = Math.max(1, Math.round(t.xp * (1 + Math.floor(e / 3) * 0.5)));
     if (
       (ua(t.x, t.y, o * knowledge.xpScale(t)),
@@ -7332,11 +7333,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     });
   }
   let yo = (t) => (t >= 20 ? 2 : t >= 4 ? 1 : 0);
+  // Run clock for growth: game time × the admin test speed (1 for everyone
+  // else; see TEST_SPEEDS in arena-knowledge.js). Enemy and weapon growth,
+  // spawns and question tiers follow it; XP is multiplied by the same speed.
+  function runT() {
+    return a.t * (a.testSpeed || 1);
+  }
   function Kn(t) {
     for (
       a.xp +=
         t *
         a.st.xp *
+        (a.testSpeed || 1) *
         (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
       a.xp >= a.need;
 
@@ -8710,7 +8718,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     di = (t) => 1 + 0.12 * t + 0.042 * t * t;
   function ye(t, e, o, r = {}) {
     const n = hi[t],
-      l = a.t / 60,
+      l = runT() / 60,
       h = Object.assign(
         {
           id: ++a.eid,
@@ -8815,7 +8823,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ye(type, x, y, { swarm: !!a.waveN });
       a.nextQueuedSpawn = a.t + 0.22;
     }
-    const e = a.t / 60,
+    const e = runT() / 60,
       o = a.t > a.nextBossT - 9;
     if (!a.starter && a.t > 0.8) {
       a.starter = 1;
@@ -8903,7 +8911,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             (n.charge = !1),
             u < 200 &&
               Pt(n.x, n.y, Math.atan2(c, h), 58, {
-                dmg: 7 * (1 + a.t / 600),
+                dmg: 7 * (1 + runT() / 600),
                 kind: "small",
                 r: 2.5,
               })));
@@ -10432,7 +10440,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.spawnQueue = [];
     a.spawnAcc = 0;
     a.mathPulses = [];
-    a.nextBossT = Math.max(a.nextBossT || 0, a.t + 75);
+    a.nextBossT = Math.max(a.nextBossT || 0, a.t + 75 / (a.testSpeed || 1));
     a.bossWarned = false;
     a.p.inv = Math.max(a.p.inv, a.t + 2);
     a.nextWave = Math.max(a.nextWave, a.t + 15);
@@ -10593,7 +10601,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       a.lvQ = { status: "exhausted" };
       return;
     }
-    const t = a.t / 60,
+    const t = runT() / 60,
       e = fe().tier;
     let o =
       t < 2
@@ -11158,18 +11166,23 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function _a(t) {
     I = "results";
     const e = Ri(),
-      o = tt.record({
-        score: e.total,
-        t: Math.floor(a.t),
-        kills: a.kills,
-        bosses: a.bosses,
-        acc: e.acc,
-        lv: a.lv,
-        reason: t,
-        build: a.weapons.map((r) => r.id + (r.evo ? "*" : "") + r.lv).join(","),
-        cls: a.cls,
-        thm: Object.keys(a.thm).join(","),
-      });
+      o =
+        a.testSpeed > 1
+          ? { newBest: !1, rank: 0 }
+          : tt.record({
+              score: e.total,
+              t: Math.floor(a.t),
+              kills: a.kills,
+              bosses: a.bosses,
+              acc: e.acc,
+              lv: a.lv,
+              reason: t,
+              build: a.weapons
+                .map((r) => r.id + (r.evo ? "*" : "") + r.lv)
+                .join(","),
+              cls: a.cls,
+              thm: Object.keys(a.thm).join(","),
+            });
     (St.play("title"), Bt.results(e, o, t), knowledge.onResults(e));
   }
   let Oa = {
@@ -11338,7 +11351,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     ((a.ebul = []), yt(a.p.x, a.p.y - 7, 4, 260, 0.7, s.white));
     const h =
         (o < 3 ? Mo[o] : Mo[2] * Math.pow(1.75, o - 2)) *
-        (1 + 0.15 * Math.max(0, a.t / 60 - 3 * (o + 1))) *
+        (1 + 0.15 * Math.max(0, runT() / 60 - 3 * (o + 1))) *
         Jt().hp,
       c = {
         id: ++a.eid,
@@ -11594,7 +11607,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (i ? " \xB7 进入黑洞领取奖励" : " \xB7 enter the black hole"),
       ),
       (a.arena = null),
-      (a.nextBossT = Math.max(180 * (a.bossK + 1), a.t + 75)),
+      (a.nextBossT = Math.max(
+        (180 * (a.bossK + 1)) / (a.testSpeed || 1),
+        a.t + 75 / (a.testSpeed || 1),
+      )),
       (a.bossWarned = !1),
       (a.nextWave = Math.max(a.nextWave, a.t + 30)),
       (a.nextElite = Math.max(a.nextElite, a.t + 40)),
@@ -15712,7 +15728,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           if (!t.units.length) return;
           ($.coin(), this.hide(), qa(tt.d.cls));
         }),
-        e());
+        e(),
+        knowledge.decorateSetup(this.el, t));
     },
     classSelect() {
       this.heroSelect();
@@ -16443,6 +16460,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       matchMedia("(any-pointer: coarse)").matches
     );
   }
+  function hasFinePointer() {
+    try {
+      return matchMedia("(any-pointer: fine)").matches;
+    } catch {
+      return false;
+    }
+  }
   let displayNoticeTimer;
   function updateFullscreenLabel() {
     const expanded = document.body.classList.contains("arena-expanded");
@@ -16625,8 +16649,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (arenaNativeFullscreen && !active) {
       arenaNativeFullscreen = false;
       cancelArenaPointers();
+      // Phones and tablets without a mouse lose native full screen by swiping,
+      // so they keep the expanded page player. With a mouse or trackpad
+      // (including touch-screen laptops) Esc means "back to the website".
       if (
         hasArenaTouch() &&
+        !hasFinePointer() &&
         document.body.classList.contains("arena-expanded")
       ) {
         document.body.dataset.fullscreenMode = "page";
@@ -22372,6 +22400,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       },
       set hasArenaTouch(value) {
         hasArenaTouch = value;
+      },
+      get hasFinePointer() {
+        return hasFinePointer;
+      },
+      set hasFinePointer(value) {
+        hasFinePointer = value;
       },
       get displayNoticeTimer() {
         return displayNoticeTimer;

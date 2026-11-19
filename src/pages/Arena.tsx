@@ -16,11 +16,19 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
-function ArenaGame({ language }: { language: Language }) {
+function ArenaGame({ language, admin }: { language: Language; admin: boolean }) {
   useState(() => {
     try { localStorage.setItem('cq-arena-lang', language === 'zh' ? 'zh' : 'en'); } catch { /* the game falls back to the browser language */ }
     return language;
   });
+  // Admins get a test-speed row on the game's setup screen (arena-knowledge.js ADMIN_KEY).
+  // It only speeds up their own local run, and test runs are never recorded.
+  useEffect(() => {
+    try {
+      if (admin) localStorage.setItem('cq-arena-admin', '1');
+      else localStorage.removeItem('cq-arena-admin');
+    } catch { /* no test speed without storage */ }
+  }, [admin]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [viewport, setViewport] = useState<{ width: number; height: number; top: number; left: number } | null>(null);
@@ -50,13 +58,20 @@ function ArenaGame({ language }: { language: Language }) {
   }, [expanded]);
   useEffect(() => {
     if (!expanded) return;
+    const root = document.documentElement;
     const previousOverflow = document.body.style.overflow;
-    const previousOverscroll = document.documentElement.style.overscrollBehavior;
+    const previousOverscroll = root.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
-    document.documentElement.style.overscrollBehavior = 'none';
+    root.style.overscrollBehavior = 'none';
+    // Hides the site header while the game covers the screen (index.css).
+    root.classList.add('arena-expanded');
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.documentElement.style.overscrollBehavior = previousOverscroll;
+      root.style.overscrollBehavior = previousOverscroll;
+      root.classList.remove('arena-expanded');
+      // Leaving full screen can leave the page scrolled so the header covers the
+      // top of the game; bring the whole game back into view.
+      requestAnimationFrame(() => window.scrollTo(0, 0));
     };
   }, [expanded]);
 
@@ -108,9 +123,9 @@ function ArenaGame({ language }: { language: Language }) {
 }
 
 export default function Arena() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const { language, t } = useLanguage();
-  if (user) return <ArenaGame key={user.id + language} language={language} />;
+  if (user) return <ArenaGame key={user.id + language} language={language} admin={isAdmin} />;
   return (
     <main className="text-[#FFF1E8]">
       <Stars className="grid min-h-[calc(100dvh-77px)] place-items-center px-4 py-16">
