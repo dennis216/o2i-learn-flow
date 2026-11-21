@@ -1,3 +1,4 @@
+export const ARENA_STAGE_SECONDS = 210;
 // Knowledge flow for Limit Arena (#55), from Dennis's 2026-11-18 playtest notes.
 //
 // One idea: fight → answer → get stronger, and harder questions give stronger
@@ -1712,7 +1713,10 @@ export function createKnowledgeFlow(api) {
   };
 
   // Tier n opens after n − 1 tablets this run, so a new run starts with ★ only.
-  const tabletOpen = (tab) => tab.tier <= 1 + (kfOf().stats.tablets || 0);
+  const tabletOpen = (tab) =>
+    !tab.solved &&
+    (tab.attempts || 0) < 2 &&
+    tab.tier <= 1 + (kfOf().stats.tablets || 0);
   // All open tablets share one cooldown, and none lights up right after a
   // question or a panel closes.
   const tabletsReady = () => {
@@ -1727,6 +1731,7 @@ export function createKnowledgeFlow(api) {
       rule = TABLETS[tab.tier - 1];
     kf.tabletWait = fast(rule.cd);
     kf.tabletAt = a.t + kf.tabletWait;
+    tab.attempts = (tab.attempts || 0) + 1;
     kf.stats.tablets++;
     api.clearInput();
     api.mode = "lvup";
@@ -2985,17 +2990,6 @@ export function createKnowledgeFlow(api) {
       kf = a?.kf;
     if (!kf) return y;
     const pal = api.pal;
-    if (speed() > 1) {
-      api.hudText(
-        ctx,
-        (api.zh ? "测试 ×" : "TEST ×") + speed(),
-        right,
-        y,
-        pal.yellow,
-        { outline: pal.black, align: "right" },
-      );
-      y += 9;
-    }
     y += 3;
     const row = [];
     for (const [id, s] of Object.entries(kf.unit))
@@ -3155,7 +3149,7 @@ export function createKnowledgeFlow(api) {
       const a = api.a;
       a.kf = freshState();
       a.testSpeed = testSpeedFor(api.save.d.setup);
-      a.nextBossT = 180 / a.testSpeed;
+      a.nextBossT = ARENA_STAGE_SECONDS / a.testSpeed;
       a.kf.tabletAt = fast(PACE.firstTablet);
     },
     update(dt) {
@@ -3259,6 +3253,10 @@ export function createKnowledgeFlow(api) {
       const kf = kfOf();
       if (!kf || !q) return cards;
       if (q.kfSource !== "tablet" || !correct) return cards;
+      const tablet = kf.world?.tablets.find(
+        (tab) => tab.tier === (q.kfTier || 1),
+      );
+      if (tablet) tablet.solved = true;
       return tabletCards(q.kfTier || 1);
     },
     decorateQuiz(root, q) {

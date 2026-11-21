@@ -1,3 +1,4 @@
+import { ARENA_STAGE_SECONDS } from "./arena-knowledge.js";
 import { createKnowledgeFlow } from "./arena-knowledge.js";
 
 export const mathSvgDefinitions =
@@ -6654,7 +6655,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       wrongStreak: 0,
       boss: null,
       bossK: 0,
-      nextBossT: 180,
+      nextBossT: ARENA_STAGE_SECONDS,
       bossWarned: !1,
       arena: null,
       spawnAcc: 0,
@@ -10356,7 +10357,34 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const x = active.x - camX,
       y = active.y - camY;
     if (x < -40 || x > A + 40 || y < -40 || y > D + 40) return;
-    Ht(ctx, x, y, active.r + Math.sin(E * 3) * 2, s.green, 1, 3);
+    const colors = {
+      snow: ["#85dcff", "#38668a"],
+      desert: ["#ffd176", "#a7693c"],
+      rainforest: ["#9ce38b", "#315f4e"],
+      book: ["#d8baff", "#554678"],
+    };
+    const [light, dark] = colors[active.kind] || colors.rainforest;
+    const radius = active.r;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = dark;
+    for (let dy = -radius; dy <= radius; dy += 3) {
+      const half = Math.floor(Math.sqrt(radius * radius - dy * dy));
+      ctx.fillRect(Math.round(x - half), Math.round(y + dy), half * 2, 2);
+    }
+    ctx.restore();
+    Ht(ctx, x, y, radius, dark, 1, 3);
+    Ht(ctx, x, y, radius - 3, light, 1, 3);
+    for (let n = 0; n < 8; n++) {
+      const angle = (n * j) / 8;
+      const px = Math.round(x + Math.cos(angle) * (radius - 3));
+      const py = Math.round(y + Math.sin(angle) * (radius - 3));
+      ctx.fillStyle = dark;
+      ctx.fillRect(px - 2, py - 2, 5, 5);
+      ctx.fillStyle = light;
+      ctx.fillRect(px, py - 1, 1, 3);
+      ctx.fillRect(px - 1, py, 3, 1);
+    }
     for (let n = 0; n < 6; n++) {
       const angle = (n / 6) * j + E * 0.4;
       ctx.fillStyle = n % 2 ? s.yellow : s.white;
@@ -10419,7 +10447,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function updateWorldPortal() {
     const portal = a.worldPortal;
-    if (!portal || I !== "play" || a.boss || a.themeTr || a.t < portal.readyAt)
+    if (
+      !portal ||
+      I !== "play" ||
+      a.boss ||
+      a.themeTr ||
+      a.pendingLv > 0 ||
+      a.t < portal.readyAt
+    )
       return false;
     if (Math.hypot(X() - portal.x, _() - portal.y) > 15) return false;
     a.worldPortal = null;
@@ -10438,7 +10473,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.spawnQueue = [];
     a.spawnAcc = 0;
     a.mathPulses = [];
-    a.nextBossT = Math.max(a.nextBossT || 0, a.t + 75 / (a.testSpeed || 1));
+    a.nextBossT = a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1);
     a.bossWarned = false;
     a.p.inv = Math.max(a.p.inv, a.t + 2);
     a.nextWave = Math.max(a.nextWave, a.t + 15);
@@ -10494,7 +10529,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (
       (a.slowUntil > a.t && (t *= a.slow),
       (a.t += t),
-      a.themeAt && a.t >= a.themeAt && ((a.themeAt = 0), Xn()),
+      a.themeAt &&
+        !a.worldPortal &&
+        a.t >= a.themeAt &&
+        ((a.themeAt = 0), Xn()),
       (a.shake = Math.max(0, a.shake - 1.8 * t)),
       a.kick)
     ) {
@@ -10581,12 +10619,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             ? "\u62FE\u53D6[b]\u84DD\u8272\u5B9D\u77F3[/]\u83B7\u5F97\u7ECF\u9A8C\u3002\u7ECF\u9A8C\u6761\u6EE1\u540E\uFF0C\u4F1A\u51FA\u73B0\u4E00\u9053[y]\u5FAE\u79EF\u5206\u9898[/]\uFF01"
             : "Pick up [b]blue gems[/] for XP. When the XP bar is full, you get a [y]calculus question[/]!",
         ),
-      I === "play" &&
-        !a.worldPortal &&
-        !a.pendingBossReward &&
-        a.pendingLv > 0 &&
-        a.p.hp > 0 &&
-        ns());
+      I === "play" && a.pendingLv > 0 && a.p.hp > 0 && ns());
   }
   function ns() {
     const t = I !== "play";
@@ -11302,7 +11335,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return e.state === "fight" && a.t > e.invUntil;
     },
     ga = (t) => t.boss.state !== "intro" && t.boss.state !== "dying";
-  function Pi() {
+  function Pi(dt) {
+    if (
+      !a.boss &&
+      a.kf?.world?.lairs.some((lair) => lair.enemy && !lair.enemy.dead)
+    ) {
+      a.nextBossT += dt;
+      return;
+    }
     if (a.worldPortal || a.pendingBossReward || a.transitionReward) return;
     if (!a.boss) {
       if (!a.bossWarned && a.t >= a.nextBossT - 8) {
@@ -11605,10 +11645,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (i ? " \xB7 进入黑洞领取奖励" : " \xB7 enter the black hole"),
       ),
       (a.arena = null),
-      (a.nextBossT = Math.max(
-        (180 * (a.bossK + 1)) / (a.testSpeed || 1),
-        a.t + 75 / (a.testSpeed || 1),
-      )),
+      (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
       (a.bossWarned = !1),
       (a.nextWave = Math.max(a.nextWave, a.t + 30)),
       (a.nextElite = Math.max(a.nextElite, a.t + 40)),
@@ -13948,7 +13985,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             { outline: s.black },
           ),
       a.weapons.forEach((T, Q) => Ro(e, T.id, 5 + Q * 15, 43, T.lv, T.evo, 5)));
-    const k = Object.keys(a.passives);
+    const passives = Object.keys(a.passives);
+    const k = passives.slice(0, 8);
+    if (passives.length > k.length)
+      kt(e, "+" + (passives.length - k.length), 128, 65, s.lav, {
+        outline: s.black,
+      });
     if (
       (k.forEach((T, Q) =>
         Ro(
@@ -13961,7 +14003,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           Va(T),
         ),
       ),
-      Yi(k.length > 12 ? 98 : k.length ? 80 : 62),
+      Yi(k.length ? 80 : 62),
       Y(e, Et(a.t), A / 2, 7, {
         pixel: !0,
         size: 12,
@@ -16045,6 +16087,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (a.transitionReward) {
         a.transitionReward = false;
         a.pendingBossReward = false;
+        if (a.themeAt) {
+          a.themeAt = 0;
+          Xn();
+        }
         ls();
       } else I = "play";
     }
@@ -16466,6 +16512,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function updateFullscreenLabel() {
     const expanded = document.body.classList.contains("arena-expanded");
     const button = N("tFullscreen");
+    N("headerFullscreen").textContent = expanded
+      ? i
+        ? "退出全屏"
+        : "Exit full screen"
+      : i
+        ? "全屏"
+        : "Full screen";
     setArenaControlLabel(
       button,
       expanded ? (i ? "退出" : "Exit") : i ? "全屏" : "Full",
@@ -16672,11 +16725,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     document.addEventListener("webkitfullscreenchange", arenaFullscreenChanged);
   }
   if (!testing) {
-    N("tFullscreen").addEventListener("click", () => {
+    const toggleFullscreen = () => {
       if (document.body.classList.contains("arena-expanded"))
         leaveFullscreenByChoice();
       else enterFullscreenByChoice();
-    });
+    };
+    N("tFullscreen").addEventListener("click", toggleFullscreen);
+    N("headerFullscreen").addEventListener("click", toggleFullscreen);
   }
   // The player decides: an exit is remembered so later visits stay windowed,
   // an entry turns automatic full screen back on.
