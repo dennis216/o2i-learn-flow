@@ -567,19 +567,28 @@ test("themed followers replace the previous squad, use low damage, and ink slows
   assert.ok(!a.picks.some((item) => item.kind === "kfgear"));
 });
 
-test("boss followers move while idle and regroup when the player runs", () => {
-  const context = run();
+test("boss followers take short walks, pause, and regroup when the player runs", () => {
+  const context = run({
+    Math: Object.assign(Object.create(Math), { random: () => 0.25 }),
+  });
   const { a, knowledge } = context;
   knowledge.onKill({ kf: { boss: "crab" }, x: 120, y: 180 });
   const [shrimp, crab] = a.kf.bossFollowers;
   const start = [shrimp.x, shrimp.y];
   assert.equal(a.miniBossFarewell.until - a.t, 1.75);
   assert.deepEqual([a.miniBossFarewell.x, a.miniBossFarewell.y], [120, 180]);
-  for (let frame = 0; frame < 45; frame++) {
+  let pauseFrames = 0;
+  let moved = false;
+  for (let frame = 0; frame < 160; frame++) {
     a.t += 1 / 60;
+    const x = shrimp.x;
+    const y = shrimp.y;
     knowledge.update(1 / 60);
+    if (shrimp.x === x && shrimp.y === y) pauseFrames++;
+    if (Math.hypot(shrimp.x - start[0], shrimp.y - start[1]) > 4) moved = true;
   }
-  assert(Math.hypot(shrimp.x - start[0], shrimp.y - start[1]) > 5);
+  assert(moved);
+  assert(pauseFrames >= 25);
   assert(Math.hypot(shrimp.x - crab.x, shrimp.y - crab.y) > 10);
   Object.assign(a.p, { moving: true, dx: 1, dy: 0 });
   for (let frame = 0; frame < 90; frame++) {

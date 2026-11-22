@@ -2746,34 +2746,46 @@ export function createKnowledgeFlow(api) {
     if (!followers?.length) return;
     const p = P();
     a.kf.bossFollowers = followers.filter((follower, index) => {
-      const moving = api.a.p.moving;
-      const phase = a.t * 1.85 + index * Math.PI;
-      const headingX = moving ? a.p.dx || 0 : 0;
-      const headingY = moving ? a.p.dy || 0 : 0;
-      const tx = clamp(
-        p.x - headingX * 13 + Math.cos(phase) * 24,
-        8,
-        api.world.w - 8,
-      );
-      const ty = clamp(
-        p.y - headingY * 13 + 6 + Math.sin(phase) * 13,
-        18,
-        api.world.h - 8,
-      );
-      const dx = tx - follower.x;
-      const dy = ty - follower.y;
-      const distance = Math.hypot(dx, dy);
-      const gapToPlayer = Math.hypot(p.x - follower.x, p.y - follower.y);
-      const speed = gapToPlayer > 48 ? 115 : moving ? 85 : 39;
-      const travel = Math.min(distance, speed * dt);
-      if (distance > 140) {
-        follower.x = tx;
-        follower.y = ty;
-      } else if (travel > 0) {
-        follower.x += (dx / distance) * travel;
-        follower.y += (dy / distance) * travel;
-        follower.stride = (follower.stride || 0) + travel;
-        if (Math.abs(dx) > 1) follower.face = dx < 0 ? -1 : 1;
+      const gap = Math.hypot(p.x - follower.x, p.y - follower.y);
+      const side = index === 0 ? -1 : 1;
+      const random = api.Math.random;
+      follower.following = gap > (follower.following ? 26 : 42);
+      if (follower.following) {
+        const player = a.p;
+        const moving = player.moving;
+        follower.goal = {
+          x: p.x + side * 14 - (moving ? (player.dx || 0) * 10 : 0),
+          y: p.y + 8 - (moving ? (player.dy || 0) * 10 : 0),
+        };
+      } else if (!follower.goal && a.t >= (follower.restUntil ?? 0)) {
+        follower.goal = {
+          x: p.x + side * (12 + random() * 12),
+          y: p.y - 11 + random() * 32,
+        };
+      }
+
+      follower.walking = false;
+      if (follower.goal) {
+        const tx = clamp(follower.goal.x, 8, api.world.w - 8);
+        const ty = clamp(follower.goal.y, 18, api.world.h - 8);
+        const dx = tx - follower.x;
+        const dy = ty - follower.y;
+        const distance = Math.hypot(dx, dy);
+        const travel = Math.min(distance, (follower.following ? 112 : 33) * dt);
+        if (gap > 140) {
+          follower.x = tx;
+          follower.y = ty;
+        } else if (travel > 0) {
+          follower.x += (dx / distance) * travel;
+          follower.y += (dy / distance) * travel;
+          follower.stride = (follower.stride || 0) + travel;
+          follower.walking = distance - travel > 0.25;
+          if (Math.abs(dx) > 1) follower.face = dx < 0 ? -1 : 1;
+        }
+        if (!follower.following && distance - travel <= 0.25) {
+          follower.goal = null;
+          follower.restUntil = a.t + 0.5 + random() * 0.65;
+        }
       }
       let target;
       let range = 60;
@@ -2814,7 +2826,9 @@ export function createKnowledgeFlow(api) {
     for (const follower of a.kf.bossFollowers || []) {
       const x = Math.round(follower.x - cameraX);
       const ground = Math.round(follower.y - cameraY);
-      const step = Math.floor((follower.stride || 0) / 4) % 4;
+      const step = follower.walking
+        ? Math.floor((follower.stride || 0) / 4) % 4
+        : 0;
       const y = ground - (step === 1 || step === 3 ? 1 : 0);
       const face = follower.face || 1;
       const kind = follower.kind;
