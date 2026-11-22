@@ -10377,6 +10377,70 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.regionBuff?.kind === "snow" && a.regionBuff.until > a.t ? 1.15 : 1)
     );
   }
+  const regionScenery = {
+    desert: {
+      bank: "#9a754f",
+      floor: "#b99a62",
+      fleck: "#e3c78b",
+      prop: [
+        "...ll.ll...",
+        ".llhlllhl..",
+        "llhlhlhllll",
+        ".ll.l.l..ll",
+        "....bb.....",
+        "....bw.....",
+        "....bb.....",
+        "...bbb.....",
+      ],
+      palette: { l: "#346d52", h: "#79aa59", b: "#79533f", w: "#c5945d" },
+    },
+    rainforest: {
+      bank: "#315248",
+      floor: "#3e6756",
+      fleck: "#7d965d",
+      prop: [
+        "....ll.....",
+        "...lhl.ll..",
+        "..lhl.lhl..",
+        ".llllllhll.",
+        "....bb.....",
+        "..b.bb.b...",
+        ".bbbbbwb...",
+      ],
+      palette: { l: "#30634e", h: "#70a765", b: "#463646", w: "#b27977" },
+    },
+    snow: {
+      bank: "#34536e",
+      floor: "#527c95",
+      fleck: "#a1c9d6",
+      prop: [
+        ".....h.....",
+        "....hlh....",
+        "....hllh...",
+        "..h.hllh.h.",
+        ".hlhhllhhll",
+        "hlllhllhllh",
+        ".lllllllll.",
+      ],
+      palette: { l: "#5f9cc3", h: "#c0e9e9", b: "#4d6d93", w: "#f6ffff" },
+    },
+    book: {
+      bank: "#4d3d63",
+      floor: "#625171",
+      fleck: "#a08aaa",
+      prop: [
+        "....h......",
+        ".....h.....",
+        "..bbbbbb...",
+        ".bllllllb..",
+        ".blwwwwlb..",
+        ".blwwwwlb..",
+        ".bllllllb..",
+        "..bbbbbb...",
+      ],
+      palette: { l: "#7667ab", h: "#d8bfe4", b: "#30283f", w: "#453374" },
+    },
+  };
   function drawSpecialRegions(ctx, camX, camY) {
     const active =
       a.regionState?.active ||
@@ -10385,45 +10449,56 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const x = active.x - camX,
       y = active.y - camY;
     if (x < -40 || x > A + 40 || y < -40 || y > D + 40) return;
-    const colors = {
-      snow: ["#85dcff", "#38668a"],
-      desert: ["#ffd176", "#a7693c"],
-      rainforest: ["#9ce38b", "#315f4e"],
-      book: ["#d8baff", "#554678"],
-    };
-    const [light, dark] = colors[active.kind] || colors.rainforest;
+    const scenery = regionScenery[active.kind];
+    if (!scenery) return;
     const radius = active.r;
-    ctx.save();
-    ctx.globalAlpha = 0.28;
-    ctx.fillStyle = dark;
-    for (let dy = -radius; dy <= radius; dy += 3) {
-      const half = Math.floor(Math.sqrt(radius * radius - dy * dy));
-      ctx.fillRect(Math.round(x - half), Math.round(y + dy), half * 2, 2);
+    const rect = (dx, dy, width, height, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x + dx), Math.round(y + dy), width, height);
+    };
+    // Broken, stepped banks soften the edge while the shape stays readable during combat.
+    for (let row = -7; row <= 7; row++) {
+      const half = Math.round(radius * (1 - Math.abs(row) * 0.075));
+      const offset = (row % 3) * 2;
+      rect(offset - half, row * 3, half * 2, 3, scenery.bank);
+      rect(offset - half + 4, row * 3 + 1, half * 2 - 8, 2, scenery.floor);
     }
-    ctx.restore();
-    Ht(ctx, x, y, radius, dark, 1, 3);
-    Ht(ctx, x, y, radius - 3, light, 1, 3);
-    for (let n = 0; n < 8; n++) {
-      const angle = (n * j) / 8;
-      const px = Math.round(x + Math.cos(angle) * (radius - 3));
-      const py = Math.round(y + Math.sin(angle) * (radius - 3));
-      ctx.fillStyle = dark;
-      ctx.fillRect(px - 2, py - 2, 5, 5);
-      ctx.fillStyle = light;
-      ctx.fillRect(px, py - 1, 1, 3);
-      ctx.fillRect(px - 1, py, 3, 1);
+    for (let n = 0; n < 10; n++) {
+      const dx = ((n * 17) % 37) - 18,
+        dy = ((n * 11) % 29) - 14;
+      rect(dx, dy, 2 + (n % 4), 1, scenery.fleck);
     }
-    for (let n = 0; n < 6; n++) {
-      const angle = (n / 6) * j + E * 0.4;
-      ctx.fillStyle = n % 2 ? s.yellow : s.white;
-      ctx.fillRect(
-        Math.round(x + Math.cos(angle) * 21),
-        Math.round(y + Math.sin(angle) * 12),
-        2,
-        2,
+    for (const [index, offset] of [
+      [0, -1],
+      [1, 1],
+    ]) {
+      Ct(
+        ctx,
+        "region-prop:" + active.kind,
+        scenery.prop,
+        scenery.palette,
+        Math.round(x + offset * radius * 0.66),
+        Math.round(y + (index ? 10 : -8)),
+        { scale: 1 },
       );
     }
+    if (active.kind === "desert") {
+      for (let row = -4; row <= 4; row++) {
+        const half = 16 - Math.abs(row) * 2;
+        rect(-half, row * 2, half * 2, 2, row < -1 ? "#287e8c" : "#206277");
+      }
+      for (let n = 0; n < 4; n++) {
+        rect(
+          -10 + n * 5,
+          (n % 3) * 4 - 5,
+          4 + ((Math.floor(E * 4) + n) % 3),
+          1,
+          "#6bc8bc",
+        );
+      }
+    }
   }
+
   function drawRegionHud() {
     const active =
       a.regionState?.active ||
@@ -10656,70 +10731,72 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
 
   const arenaPetSprites = [
     [
-      "..k......k..",
-      "..ok....ko..",
-      ".koxkkkkxok.",
-      "koxxxwwxxk..",
-      "koxxxkwxxokk",
-      ".koxxxxoooxk",
-      "..koxoooxxk.",
-      "...koooxk...",
-      "..kk..kk....",
+      "..k..........k..",
+      ".kok........kok.",
+      "kook..kkkk..kook",
+      "koxokkxxxxkkoxok",
+      ".koxxoxwkwxoxxk.",
+      "..koxxxxxxxxok..",
+      "...kkxkkxxxxk...",
+      "..koxoooxxxokk..",
+      ".kkxooooookxkkk.",
+      "...kkk..kkk.....",
     ],
     [
-      ".....kk.....",
-      "....koxk....",
-      "...koxxok...",
-      "..kxxwxxok..",
-      ".koxwwwxxok.",
-      "koxxxwxxxxok",
-      ".koxxxxxxxk.",
-      "..kkoxokk...",
-      "....kk......",
+      ".......ww.......",
+      "......wxxw......",
+      "...k.wxwwxw.k...",
+      "..kxkwxxxxwkxk..",
+      ".kxxokxxxxkoxxk.",
+      "kxxoookwwkoooxxk",
+      ".kxxooxxxxoxxk..",
+      "..kkoxoxxoxkk...",
+      "....kk..kk......",
     ],
     [
-      "...kkkkk....",
-      "..koxoxok...",
-      ".koxoxoxok..",
-      "koxoxoxoxokk",
-      "kxoxoxoxkwwk",
-      ".kkxxxxxxk.k",
-      "..kkkkkkokk.",
-      "..ko...ko...",
-      "..kk...kk...",
+      "....kkkkkk......",
+      "...kxxoooxk.....",
+      "..kxoxxoxoxk....",
+      ".kxoxwooxxoxkkk.",
+      "kxoxoxxoxoxkxwk.",
+      "kxoxxoxxoxxkxxkk",
+      ".kkoxxxxxokkkk..",
+      "..kkkkkkkkokk...",
+      "...kk....kk.....",
     ],
     [
-      ".k......k...",
-      ".kk....kk...",
-      ".kwkkkkwk...",
-      "koxxxxxxxk..",
-      "kwxkxxkxwk..",
-      ".kwwxwwkk.kk",
-      "..kwwk...kox",
-      "...kxxkkkoxk",
-      "...kk.kkkkk.",
+      ".k..........k...",
+      ".kwk......kwk...",
+      "..kwwkkkkwwk....",
+      ".kkxwxxxxwxkk...",
+      "kxwwkxwxkwwxk..k",
+      ".kxwwxwxwwxk..kw",
+      "..kkwwwwwkk..kwk",
+      "...kxxoxxkkkkwk.",
+      "...kk..kk.kkkk..",
     ],
     [
-      "....kk......",
-      "...kxxk.....",
-      "..koxwxkk...",
-      ".koxxkxok...",
-      "koxxxxxk....",
-      ".koxoxxkkkk.",
-      "..koxxxoxok.",
-      "...kxxxkkk..",
-      "....kk.k....",
+      "k...........kk..",
+      "kxk.......kkxk..",
+      "kxxk...kkkxok...",
+      ".kxxk.kxwxokkk..",
+      ".koxxkxxkoxxwk..",
+      "..koxxxooxkkkk..",
+      "...kkxxxkk......",
+      "..koxxxook......",
+      "....kk.kk.......",
     ],
     [
-      ".k......k...",
-      ".kk.kk.kk...",
-      "koxxxxxxxk..",
-      "kxwwxxwwxk..",
-      "kxwkxxkwxk..",
-      "koxxwwxxok..",
-      ".koxxxxok...",
-      "..koxxok....",
-      "...kk.kk....",
+      ".k..........k...",
+      ".kxkk....kkxk...",
+      "..koxkkkkxok....",
+      ".koxoxxxxoxok...",
+      "koxwwxxxxwwxok..",
+      "koxwkxxxxkwxok..",
+      "koxxxwwwwxxxok..",
+      ".kkoxoxxoxokk...",
+      "...koxxok.......",
+      "....kk.kk.......",
     ],
   ];
   const arenaMerchantSprite = [
@@ -10808,6 +10885,32 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
   }
 
+  function drawMerchantFurniture(ctx, x, y, kind, shop) {
+    const width = kind === "mount" ? 58 : Math.max(46, shop.items.length * 17);
+    const left = x - Math.floor(width / 2);
+    const block = (dx, dy, w, h, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(left + dx, y + dy, w, h);
+    };
+    block(0, 20, width, 15, "#231b2e");
+    if (kind === "mount") {
+      block(0, -16, width, 38, "#34273a");
+      block(3, -12, width - 6, 31, "#795440");
+      block(8, -7, width - 16, 26, "#403039");
+      block(0, -20, width, 7, shop.coat);
+      block(3, -19, width - 6, 2, shop.trim);
+      for (const dx of [3, width - 8]) block(dx, -12, 5, 44, "#a37452");
+      block(2, 23, width - 4, 3, "#a37452");
+      block(10, 22, 13, 1, "#dbb06a");
+      return;
+    }
+    for (const dx of [3, width - 8]) block(dx, 20, 5, 15, "#734738");
+    block(0, 18, width, 9, "#915a42");
+    block(2, 18, width - 4, 2, "#d49663");
+    block(4, 23, width - 8, 6, shop.coat);
+    block(6, 23, width - 12, 1, shop.trim);
+  }
+
   function drawArenaCompanions(ctx, camX, camY) {
     const merchant = a.portalMerchant;
     if (merchant) {
@@ -10815,6 +10918,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const y = Math.round(merchant.y - camY);
       const kind = merchant.kind || "pet";
       const shop = merchantShops[kind];
+      drawMerchantFurniture(ctx, x, y, kind, shop);
       Ct(
         ctx,
         "arena-merchant:" + kind,
@@ -10826,12 +10930,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       );
       if (!merchant.visited) {
         const left = x - (shop.items.length - 1) * 8;
-        ctx.fillStyle = "#36243b";
-        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 6);
-        ctx.fillStyle = shop.trim;
-        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 2);
         shop.items.forEach((item, index) =>
-          drawStallItem(ctx, item.id, left + index * 16, y + 17),
+          drawStallItem(
+            ctx,
+            item.id,
+            kind === "mount" ? x + 12 : left + index * 16,
+            kind === "mount" ? y + 12 : y + 18,
+            kind === "mount" ? 2 : 1,
+          ),
         );
         kt(ctx, "?", x, y - 24, shop.trim, {
           align: "center",
