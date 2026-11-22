@@ -16651,17 +16651,31 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
   }
 
+  function accessoryUpgradeColor(color, level) {
+    if (level < 2) return color;
+    const amount = level >= 3 ? 0.34 : 0.18;
+    return (
+      "#" +
+      color
+        .slice(1)
+        .match(/../g)
+        .map((pair) => {
+          const channel = Number.parseInt(pair, 16);
+          return Math.round(channel + (255 - channel) * amount)
+            .toString(16)
+            .padStart(2, "0");
+        })
+        .join("")
+    );
+  }
+
   function drawAccessory(ctx, slot, index, x, y, scale = 1) {
     const item = arenaAccessories[slot][index];
     if (!item) return;
     const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
     const color = item[4]?.number
       ? item[2]
-      : level >= 3
-        ? "#e8a4ff"
-        : level === 2
-          ? "#65e4cc"
-          : item[2];
+      : accessoryUpgradeColor(item[2], level);
     const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
     re(
       ctx,
@@ -16712,7 +16726,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           k: "#172138",
           w: "#fff2d9",
           h: "#6d8ea5",
-          c: level >= 3 ? "#e8a4ff" : level === 2 ? "#65e4cc" : outfit[2],
+          c: accessoryUpgradeColor(outfit[2], level),
         },
         Math.round(x) - 5,
         Math.round(feet) - 18 + bob,
