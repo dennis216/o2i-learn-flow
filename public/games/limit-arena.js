@@ -7381,11 +7381,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         o *
         a.st.speed *
         terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
         (a.pet?.id === "support" ? 1.1 : 1),
       c =
         r *
         a.st.speed *
         terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
         (a.pet?.id === "support" ? 1.1 : 1);
     l &&
       ((h = e.ddx * 250),
@@ -7489,6 +7491,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function ma(t, e = "?") {
     const o = a.p;
     if (a.god || a.t < o.inv || I !== "play" || o.hp <= 0) return !1;
+    if (a.potionWard) {
+      a.potionWard = false;
+      yt(o.x, o.y - 7, 9, 26, 0.4, s.blue);
+      return false;
+    }
     if (a.pet?.id === "defense") {
       if (a.pet.shield) {
         a.pet.shield = false;
@@ -10500,6 +10507,44 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     },
   ];
 
+  const merchantShops = {
+    pet: {
+      name: ["Pet Merchant", "宠物商人"],
+      coat: "#675093",
+      trim: "#f2cd70",
+      items: arenaPets,
+    },
+    mount: {
+      name: ["Mount Merchant", "坐骑商人"],
+      coat: "#38664f",
+      trim: "#dba270",
+      items: [
+        {
+          id: "mount",
+          name: ["Wind Runner", "疾风坐骑"],
+          desc: ["+12% movement speed for this run.", "本局移速提高12%。"],
+        },
+      ],
+    },
+    potion: {
+      name: ["Potion Merchant", "药水商人"],
+      coat: "#2e6382",
+      trim: "#8ce8db",
+      items: [
+        {
+          id: "healPotion",
+          name: ["Healing Potion", "治疗药水"],
+          desc: ["Restore 45 HP now.", "立即恢复45点生命。"],
+        },
+        {
+          id: "guardPotion",
+          name: ["Guard Potion", "护盾药水"],
+          desc: ["Block the next hit.", "抵挡下一次攻击。"],
+        },
+      ],
+    },
+  };
+
   function tickPortalMerchant() {
     const merchant = a.portalMerchant;
     if (
@@ -10511,11 +10556,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     )
       return;
     merchant.visited = true;
+    const shop = merchantShops[merchant.kind || "pet"];
     I = "pause";
     const lang = i ? 1 : 0;
     Bt.show(
-      `<div class="panel pix merchant-panel"><div class="qhd"><b>${i ? "神秘商人" : "Mystery Merchant"}</b><span>${i ? "本局任选一只伙伴" : "Choose one companion for this run"}</span></div>
-      <div class="merchant-pets">${arenaPets.map((pet) => `<button type="button" data-pet="${pet.id}"><b style="color:${pet.color}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
+      `<div class="panel pix merchant-panel"><div class="qhd"><b>${shop.name[lang]}</b><span>${i ? "任选一项" : "Choose one"}</span></div>
+      <div class="merchant-pets">${shop.items.map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
       <button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
       "merchant",
     );
@@ -10525,15 +10571,27 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     };
     N("merchantLeave").onclick = leave;
     for (const button of N("ov").querySelectorAll("[data-pet]")) {
+      const id = button.dataset.pet;
+      drawStallItem(
+        button.querySelector("canvas").getContext("2d"),
+        id,
+        20,
+        12,
+        2,
+      );
       button.onclick = () => {
-        a.pet = {
-          id: button.dataset.pet,
-          xp: 0,
-          level: 1,
-          tickAt: a.t,
-          pulseAt: a.t + 20,
-          shield: false,
-        };
+        if (id === "mount") a.mount = true;
+        else if (id === "healPotion") a.p.hp = Math.min(a.p.maxHp, a.p.hp + 45);
+        else if (id === "guardPotion") a.potionWard = true;
+        else
+          a.pet = {
+            id,
+            xp: 0,
+            level: 1,
+            tickAt: a.t,
+            pulseAt: a.t + 20,
+            shield: false,
+          };
         leave();
       };
     }
@@ -10682,25 +10740,104 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     "..kkxkxkk...k...",
     "...kk.kk....k...",
   ];
+  const merchantSprites = {
+    pet: arenaMerchantSprite,
+    mount: [
+      ...[
+        "................",
+        "................",
+        ".....kkkkk......",
+        "....kxxxxxk.....",
+        "..kkooooookkk...",
+      ],
+      ...arenaMerchantSprite.slice(5),
+    ],
+    potion: [
+      ...[
+        ".......k........",
+        "......kxk.......",
+        ".....kxxxk......",
+        "....kxxoxxk.....",
+        "...kxxxxxxxk....",
+      ],
+      ...arenaMerchantSprite.slice(5),
+    ],
+  };
+  const petShadows = [
+    "#a42e45",
+    "#3f886c",
+    "#526b87",
+    "#4288a3",
+    "#c58a32",
+    "#7650a0",
+  ];
+  function drawStallItem(ctx, id, x, y, scale = 1) {
+    const index = arenaPets.findIndex((pet) => pet.id === id);
+    const pixels =
+      index >= 0
+        ? arenaPetSprites[index]
+        : id === "mount"
+          ? [
+              "......kk....",
+              ".....kxxk...",
+              "..kkkkxxxk..",
+              ".kxxxxxxwk..",
+              "kkxxxxkkk...",
+              "..kxkxk.....",
+              "..kk.kk.....",
+            ]
+          : [
+              "...kkkk...",
+              "...kwwk...",
+              "....kk....",
+              "...kxxk...",
+              "..kxwxxk..",
+              "..kxxxxk..",
+              "...kkkk...",
+            ];
+    const color =
+      arenaPets[index]?.color || (id === "guardPotion" ? "#7ebcfa" : "#ee7d93");
+    Ct(
+      ctx,
+      "stall-item:" + id + ":" + scale,
+      pixels,
+      { k: s.black, x: color, o: petShadows[index], w: "#fff3de" },
+      x,
+      y,
+      { scale },
+    );
+  }
+
   function drawArenaCompanions(ctx, camX, camY) {
     const merchant = a.portalMerchant;
     if (merchant) {
       const x = Math.round(merchant.x - camX);
       const y = Math.round(merchant.y - camY);
+      const kind = merchant.kind || "pet";
+      const shop = merchantShops[kind];
       Ct(
         ctx,
-        "arena-merchant",
-        arenaMerchantSprite,
-        { k: s.black, x: "#594270", o: "#c28a52", w: "#ffc9a5" },
+        "arena-merchant:" + kind,
+        merchantSprites[kind],
+        { k: s.black, x: shop.coat, o: shop.trim, w: "#ffc9a5" },
         x,
         y + 4,
         { scale: 1 },
       );
-      if (!merchant.visited)
-        kt(ctx, "?", x, y - 24, s.yellow, {
+      if (!merchant.visited) {
+        const left = x - (shop.items.length - 1) * 8;
+        ctx.fillStyle = "#36243b";
+        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 6);
+        ctx.fillStyle = shop.trim;
+        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 2);
+        shop.items.forEach((item, index) =>
+          drawStallItem(ctx, item.id, left + index * 16, y + 17),
+        );
+        kt(ctx, "?", x, y - 24, shop.trim, {
           align: "center",
           outline: s.black,
         });
+      }
     }
     if (!a.pet) return;
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
@@ -10712,7 +10849,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ctx,
       "arena-pet:" + index,
       arenaPetSprites[index],
-      { k: s.black, x: arenaPets[index].color, o: "#765577", w: s.white },
+      {
+        k: s.black,
+        x: arenaPets[index].color,
+        o: petShadows[index],
+        w: "#fff3de",
+      },
       px,
       py,
       { scale: 1, sq: [size, size] },
@@ -10734,10 +10876,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (Math.hypot(x - X(), y - _()) < 32)
       x = F(origin.x - 58, left + 18, right - 18);
     a.worldPortal = { x, y, target, readyAt: a.t + 0.8 };
-    if (a.bossK === 1) {
-      const direction = x + 38 <= right - 18 ? 1 : -1;
-      a.portalMerchant = { x: x + 38 * direction, y, visited: false };
-    }
+    if (!a.merchantBag?.length) a.merchantBag = Object.keys(merchantShops);
+    const shopIndex = Math.floor(Math.random() * a.merchantBag.length);
+    const kind = a.merchantBag.splice(shopIndex, 1)[0];
+    const stallY = y + 76 <= bottom - 30 ? y + 76 : y - 76;
+    a.portalMerchant = { x, y: stallY, kind, visited: false };
     oe(
       i ? "黑洞已开启" : "PORTAL OPEN",
       s.lav,

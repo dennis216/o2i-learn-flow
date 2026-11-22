@@ -1,4 +1,4 @@
-export const ARENA_STAGE_SECONDS = 210;
+export const ARENA_STAGE_SECONDS = 240;
 // Knowledge flow for Limit Arena (#55), from Dennis's 2026-11-18 playtest notes.
 //
 // One idea: fight → answer → get stronger, and harder questions give stronger
