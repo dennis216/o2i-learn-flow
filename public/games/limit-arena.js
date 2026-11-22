@@ -509,6 +509,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       }
     }
   }
+  const heroCollar = "...bBBBBb...";
   let la = {
       r: s.red,
       R: s.crimson,
@@ -532,7 +533,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hsssssks..",
       "..hhsSssss..",
       "...ssssss...",
-      "....bbbb....",
+      heroCollar,
     ],
     Rs = [
       [
@@ -635,7 +636,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const jacket = Es.length + 1;
     u[jacket] = u[jacket].replace("bb", "Bb");
     u[u.length - 1] = u[u.length - 1].replace("oo", "ow");
-    const top = Math.round(o) - u.length + c;
+    const top = Math.round(o) - u.length + (l.steadyBody ? 0 : c);
     re(t, u, la, Math.round(e) - 6, top, {
       flip: l.flip,
       recolor: l.recolor,
@@ -2023,7 +2024,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hssssssh..",
       "..hskssksh..",
       "...ssSSss...",
-      "....ssss....",
+      "...ssssss...",
     ],
     Ks = [
       "....rrrr....",
@@ -2033,17 +2034,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hhhhhhhh..",
       "..hhhhhhhh..",
       "...hhhhhh...",
-      "....ssss....",
+      "...ssssss...",
     ],
     Ws = [
-      "...bbbbbb...",
+      heroCollar,
       "..sbbBBbbs..",
       "..sbbbbbbs..",
       "...bbbbbb...",
       "...nnnnnn...",
     ],
     tn = [
-      "...bbbbbb...",
+      heroCollar,
       "..sbbbbbbs..",
       "..sbbbbbbs..",
       "...bbbbbb...",
@@ -2055,9 +2056,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ["...nn..nn...", "...nn..nn...", "...oo..oo..."],
       ["...nn..nn...", "...oo..nn...", ".......oo..."],
     ];
-  function Qa(t, e, o, r, n, l, h, c, showHeadwear = false) {
+  function Qa(t, e, o, r, n, l, h, c, livePlayer = false) {
     const u = c ? qo : la;
-    const headwear = showHeadwear && hasHeroHeadwear();
+    const headwear = livePlayer && hasHeroHeadwear();
     if (r === "left" || r === "right") {
       if (c) {
         const m = {};
@@ -2065,6 +2066,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         return Ve(t, e, o, n ? "run" : "idle", l, {
           flip: r === "left",
           headwear,
+          steadyBody: livePlayer,
           recolor: m,
         });
       }
@@ -2072,13 +2074,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         flip: r === "left",
         recolor: h,
         headwear,
+        steadyBody: livePlayer,
       });
     }
     const f = n ? [1, 2, 3, 2][Math.floor(ae(l, 8) * 8) % 4] : 0,
       p = n ? (f === 2 ? -1 : 0) : Math.floor(ae(l, 2) * 2) % 2,
       k = (r === "up" ? Ks.concat(tn) : Ys.concat(Ws)).concat(en[f]);
     if (headwear) k.fill("............", 0, 4);
-    const top = Math.round(o) - 16 + p;
+    const top = Math.round(o) - 16 + (livePlayer ? 0 : p);
     re(t, k, u, Math.round(e) - 6, top, {
       recolor: c ? null : h,
     });
@@ -11039,6 +11042,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "....kk.kk.......",
     ],
   ];
+  const petIdleSprites = arenaPetSprites.map((pixels, index) => {
+    // Fold the raised ear or wing tips in alternate frames.
+    const alternate = [...pixels];
+    const tips = [2, 1, 1, 2, 2, 2][index];
+    for (let row = 0; row < tips; row++)
+      alternate[row] = alternate[row].replace(/[kchw]/g, ".");
+    return alternate;
+  });
+
   const merchantHats = {
     pet: [
       "........kkkkkk......",
@@ -11077,9 +11089,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     ".....kwwwwwwwk......",
     ".....kwtwwwtwk......",
     ".....kwwwswwwk..kk..",
-    "......kgggggk...koYk",
-    "......kkgggkk...koYk",
-    "....kxooooxxk...ok..",
+    ".....kwzzwzzwk..koYk",
+    "......kzzgzzk...koYk",
+    ".....kxkzgzkxk...ok.",
+    "....kxookgkooxk..ok.",
     "...kxhxYxxhxk...ok..",
     "...kxwxoxxwxkk..ok..",
     "...kxhxoxhxxkk..ok..",
@@ -11094,6 +11107,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       [...hat, ...merchantBody],
     ]),
   );
+  const merchantBlinkSprites = Object.fromEntries(
+    Object.entries(merchantSprites).map(([kind, sprite]) => {
+      const blinking = [...sprite];
+      blinking[7] = ".....kwsswsswk......";
+      return [kind, blinking];
+    }),
+  );
+
   const petShadows = [
     "#a42e45",
     "#3f886c",
@@ -11209,6 +11230,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     "......kmmmggmmkk.........",
     ".......kkkkkkk...........",
   ];
+  const mountNodBody = mountBody.map(
+    (row, index) =>
+      row.slice(0, 16) + (index ? mountBody[index - 1].slice(16) : "........."),
+  );
   const mountPalette = {
     k: "#1a1420",
     a: "#dda36a",
@@ -11242,7 +11267,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       x(ctx, hoof + 1, -4, 1, 2, offset < 0 ? mountPalette.m : mountPalette.g);
       x(ctx, hoof, -1, 3, 1, offset < 0 ? "#4c3c45" : "#8c7373");
     }
-    Ct(ctx, "wind-runner-body", mountBody, mountPalette, 1, -9 - bounce);
+    const nod = !moving && ae(E + 0.35, 3.2) < 0.32;
+    Ct(
+      ctx,
+      nod ? "wind-runner-nod" : "wind-runner-body",
+      nod ? mountNodBody : mountBody,
+      mountPalette,
+      1,
+      -9 - bounce,
+    );
     ctx.restore();
     return bounce;
   }
@@ -11274,9 +11307,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return;
     }
     const index = arenaPets.findIndex((pet) => pet.id === id);
+    const petMoves = index >= 0 && ae(E + index * 0.24, 1.7) < 0.46;
     const pixels =
       index >= 0
-        ? arenaPetSprites[index]
+        ? (petMoves ? petIdleSprites : arenaPetSprites)[index]
         : [
             "...kkkk...",
             "...kwwk...",
@@ -11300,7 +11334,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "#ee7d93";
     Ct(
       ctx,
-      "stall-item:" + id + ":" + scale,
+      "stall-item:" + id + ":" + scale + (petMoves ? ":idle" : ""),
       pixels,
       {
         k: s.black,
@@ -11363,10 +11397,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const kind = merchant.kind || "pet";
       const shop = merchantShops[kind];
       drawMerchantFurniture(ctx, x, y, kind, shop);
+      const blink = ae(E + 0.48, 3.4) < 0.13;
+      const breath = Math.sin(E * 2.5) > 0.35 ? 1 : 0;
       Ct(
         ctx,
-        "arena-merchant:" + kind,
-        merchantSprites[kind],
+        "arena-merchant:" + kind + (blink ? ":blink" : ""),
+        (blink ? merchantBlinkSprites : merchantSprites)[kind],
         {
           k: "#1a1428",
           x: shop.coat,
@@ -11375,11 +11411,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           Y: "#fff1ba",
           w: "#ffc9a5",
           s: "#bc765e",
-          g: "#d1b6ae",
+          g: "#b0b6c5",
+          z: "#f5e3ce",
           t: "#28192b",
         },
         x,
-        y + 1,
+        y + 1 - breath,
         { scale: 1.5 },
       );
       if (!merchant.visited && kind === "talent") {
@@ -11408,13 +11445,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (!a.pet) return;
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
     const px = Math.round((a.pet.x ?? a.p.x - 14) - camX);
-    const py = Math.round((a.pet.y ?? a.p.y - 4) - camY + Math.sin(E * 8) * 2);
+    const flying = a.pet.id === "support" || a.pet.id === "attack";
+    const motion = ae(E + index * 0.24, 1.7) < 0.46;
+    const hover = flying ? Math.sin(E * 7) * 2 : motion ? 1 : 0;
+    const py = Math.round((a.pet.y ?? a.p.y - 4) - camY - hover);
     const level = a.pet.level;
     const size = level === 10 ? 1.4 : level >= 5 ? 1.2 : 1;
     Ct(
       ctx,
-      "arena-pet:" + index,
-      arenaPetSprites[index],
+      "arena-pet:" + index + (motion ? ":idle" : ""),
+      (motion ? petIdleSprites : arenaPetSprites)[index],
       {
         k: s.black,
         x: arenaPets[index].color,
