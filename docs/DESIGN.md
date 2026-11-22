@@ -127,6 +127,7 @@ Same forest hue and champagne gold. Measured first: every rendered text on Home,
 - Course covers are deep forest / slate / bronze "book covers" with gold or ivory line art and a serif mark in both themes.
 - Type: the serif and Chinese faces are loaded at 400–600 only, so headings and Chinese `font-bold` now render at the real 600 instead of a browser-faked bold. No negative tracking on Chinese. Small labels are at least 12px (Chinese 13px).
 - `scripts/check-theme-contrast.mjs` also checks the tone inks (40 combinations, all pass).
+- Small interactive details, pointer only (no autoplay): on the homepage graph the marked point follows the pointer along f(x) with a dashed tangent, and the f(x) label sits above-left of the point so the curve never covers it. On course covers, AB's point slides along f with a live tangent and "f′(x) = slope"; BC's point follows the pointer's direction around r = cos 3θ (resting at the centre between petals) with "θ = …°" in the empty top-right. Phones drag sideways (`touch-action: pan-y` keeps vertical scrolling); the whole card still opens the course.
 
 # November 21 palette and readability update (#57)
 
