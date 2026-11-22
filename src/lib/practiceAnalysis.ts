@@ -33,7 +33,10 @@ const analysisSchema = z.object({
   && new Set(a.topics.map(t => t.topic_id)).size === a.topics.length
   && a.topics.every(t => a.units.some(u => u.unit_id === t.unit_id))
   && a.units.every(u => a.topics.filter(t => t.unit_id === u.unit_id).reduce((n, t) => n + t.attempt_count, 0) === u.attempt_count));
-const adminSchema = z.object({ version_id: z.string().uuid(), versions: z.array(z.object({ id: z.string().uuid(), version_number: count.min(1), is_current: z.boolean() })), attempt_count: count, correct_count: count, student_count: count, timing_count: count, average_seconds: seconds, median_seconds: seconds })
+// SQL's `v.id = q.current_version_id` is NULL for a never-published draft.
+// That means there is no current version, not that the statistics failed.
+const currentVersionFlag = z.boolean().nullable().transform(value => value ?? false);
+const adminSchema = z.object({ version_id: z.string().uuid(), versions: z.array(z.object({ id: z.string().uuid(), version_number: count.min(1), is_current: currentVersionFlag })), attempt_count: count, correct_count: count, student_count: count, timing_count: count, average_seconds: seconds, median_seconds: seconds })
   .refine(a => a.correct_count <= a.attempt_count && a.student_count <= a.attempt_count && a.timing_count <= a.attempt_count
     && (a.timing_count === 0 ? a.average_seconds === null && a.median_seconds === null : a.average_seconds !== null && a.median_seconds !== null)
     && a.versions.some(v => v.id === a.version_id));

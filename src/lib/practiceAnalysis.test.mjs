@@ -4,6 +4,15 @@ import { practicePeriodBounds, loadPracticeAnalysis, loadAdminPracticeStatistics
 import { readPracticeSession, submitPractice, selectionRationale } from './studentPractice.ts';
 const id='11111111-1111-4111-8111-111111111111',qid='22222222-2222-4222-8222-222222222222',oid='33333333-3333-4333-8333-333333333333';
 const totals={attempt_count:0,distinct_count:0,correct_count:0,timing_count:0,average_seconds:null};
+
+test('Never-published draft statistics accept SQL null current flags without weakening aggregate checks',async()=>{
+  const good={version_id:id,versions:[{id,version_number:1,is_current:null}],attempt_count:0,correct_count:0,student_count:0,timing_count:0,average_seconds:null,median_seconds:null};
+  const read=data=>loadAdminPracticeStatistics({rpc:async()=>({data,error:null})},qid,id,{});
+  const parsed=await read(good);
+  assert.equal(parsed.versions[0].is_current,false);
+  for(const flag of [true,false]) assert.equal((await read({...good,versions:[{...good.versions[0],is_current:flag}]})).versions[0].is_current,flag);
+  for(const data of [{...good,correct_count:1},{...good,student_count:1},{...good,versions:[{...good.versions[0],is_current:'false'}]},{...good,versions:[]}]) await assert.rejects(read(data),/verify/);
+});
 test('Period uses local inclusive calendar dates and exclusive next midnight, including DST',()=>{
   const original=process.env.TZ;process.env.TZ='America/Los_Angeles';
   try{

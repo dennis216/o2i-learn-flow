@@ -119,3 +119,7 @@ Profile was successfully opened with the existing preview account; the reported 
 - Header mark: `public/o2i-mark.png`, the original o2i infinity mark cut out of its white circle (transparent background, 181×120), shown 36px tall (32px under 400px wide). Dark mode swaps in `public/o2i-mark-dark.png`, the same mark with brightened colours so the navy strokes read on the green header. The heraldic crest (`public/o2i-crest.png`, `o2i-crest-512.png`) is kept as an asset but no longer shown. The sign-in page uses the same mark and Cormorant wordmark as the header.
 - "O2I" in headings: h1–h3 put the Inter digit subset (`O2I Numerals`) before the serif, which made the "2" sans-serif between a serif O and I. Wrap such strings with `brandText()` (`src/lib/brand.tsx`); it puts each "O2I" in `.o2i-name` (Cormorant Garamond) without changing translation keys. The favicon and social image still use `o2i-icon.png`.
 
+# November 21 palette and readability update (#57)
+
+Based on the latest Dennis branch at the owner's request. Light appearance retains ivory surfaces with muted champagne gold accents; gold fills use dark text and gold labels use a separate darker ink token. Dark appearance uses a quieter charcoal forest green with warmer white text and clearer secondary text. Primary text/surface combinations have automated 4.5:1 minimum contrast checks in `scripts/check-theme-contrast.mjs` (28 combinations). Light remains the default and manual theme switching is retained. This authorized release supersedes earlier local-only notes below.
+
