@@ -3451,7 +3451,7 @@ export function createKnowledgeFlow(api) {
           x: e.x,
           y: e.y,
           start: a.t,
-          until: a.t + 1.75,
+          until: a.t + 1.25,
         };
         if (reward) {
           const p = P();

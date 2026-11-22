@@ -580,7 +580,7 @@ test("boss followers take short walks, pause, and regroup when the player runs",
   knowledge.onKill({ kf: { boss: "crab" }, x: 120, y: 180 });
   const [shrimp, crab] = a.kf.bossFollowers;
   const start = [shrimp.x, shrimp.y];
-  assert.equal(a.miniBossFarewell.until - a.t, 1.75);
+  assert.equal(a.miniBossFarewell.until - a.t, 1.25);
   assert.deepEqual([a.miniBossFarewell.x, a.miniBossFarewell.y], [120, 180]);
   let pauseFrames = 0;
   let moved = false;

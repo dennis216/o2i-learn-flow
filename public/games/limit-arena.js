@@ -6630,7 +6630,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function _n() {}
   let Go = (t) =>
-    Math.round(1.25 * (26 + 17 * (t - 1) + 2.35 * (t - 1) * (t - 1)));
+    Math.round(10 + 1.55 * (26 + 17 * (t - 1) + 2.35 * (t - 1) * (t - 1)));
   function On(t = "rifle") {
     for (const o in a) delete a[o];
     Object.assign(a, {
@@ -10901,7 +10901,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const player = a.p;
     if (a.t >= (pet.speechAt ?? (pet.speechAt = a.t + 25))) {
       pet.speechAt = a.t + 35 + Math.random() * 20;
-      pet.speechUntil = a.t + 1.2;
+      pet.speechUntil = a.t + 0.8;
       pet.speech = pet.id === "control" ? (i ? "嗷！" : "Awoo!") : "(^_^)";
     }
     const phase = a.t * 1.65;
@@ -11039,47 +11039,61 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "....kk.kk.......",
     ],
   ];
-  const arenaMerchantSprite = [
-    ".....kkkkk......",
-    "....kxxxxxk.....",
-    "....koxxxxk.....",
-    "....koxxxxk.....",
-    "....koooook.....",
-    "..kkkkkkkkkkk...",
-    "...kwwwwkk......",
-    "...kwkwkk..kk...",
-    "...kwwwwk.kook..",
-    "..kkwwkkk...k...",
-    "..kxooooxk..k...",
-    "..kowxxowk..k...",
-    "..koxwoxxkkkk...",
-    "..koxxxxxk..k...",
-    "..kkxkxkk...k...",
-    "...kk.kk....k...",
-  ];
-  const merchantSprites = {
-    pet: arenaMerchantSprite,
+  const merchantHats = {
+    pet: [
+      "........kkkkkk......",
+      "......kkxxxxxxkk....",
+      ".....kxxxhxxhxxxk...",
+      ".....kxxxxxxxxxk....",
+      ".....koooooooooook..",
+      "...kkkkkkkkkkkkkkk..",
+    ],
     mount: [
-      ...[
-        "................",
-        "................",
-        ".....kkkkk......",
-        "....kxxxxxk.....",
-        "..kkooooookkk...",
-      ],
-      ...arenaMerchantSprite.slice(5),
+      "....................",
+      "......kkkkkk........",
+      ".....kxhhhxxk.......",
+      "....kxxxxxxxkk......",
+      "..kkooooooooookkk...",
+      "..kkkkkkkkkkkkkkk...",
     ],
     potion: [
-      ...[
-        ".......k........",
-        "......kxk.......",
-        ".....kxxxk......",
-        "....kxxoxxk.....",
-        "...kxxxxxxxk....",
-      ],
-      ...arenaMerchantSprite.slice(5),
+      ".........kk.........",
+      "........kxxk........",
+      ".......kxhxk........",
+      "......kxxxxkk.......",
+      ".....kxohxxxxk......",
+      "...kkkkkkkkkkkkkkk..",
+    ],
+    talent: [
+      ".......kkkkkk.......",
+      "......kxxxxhxk......",
+      "......kxhhxxxk......",
+      "......kxxxxxhk......",
+      "......kooYooook.....",
+      "...kkkkkkkkkkkkkkkk.",
     ],
   };
+  const merchantBody = [
+    ".....kwwwwwwkk......",
+    "....kwtWtwkwwk......",
+    ".....kwwwwwwk...kk..",
+    "......ksgswk...koYk.",
+    ".....kkgggkk...koYk.",
+    "....kxooooxxk...ok..",
+    "...kxhxYxxhxk...ok..",
+    "...kxwxoxxwxkk..ok..",
+    "...kxhxoxhxxkk..ok..",
+    "..kxhhxoxhhxxkk.ok..",
+    "..kxxxoYoxxxxxk.ok..",
+    "...kkkkkkkkkkk..ok..",
+    ".....kk...kk....kk..",
+  ];
+  const merchantSprites = Object.fromEntries(
+    Object.entries(merchantHats).map(([kind, hat]) => [
+      kind,
+      [...hat, ...merchantBody],
+    ]),
+  );
   const petShadows = [
     "#a42e45",
     "#3f886c",
@@ -11310,7 +11324,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ctx.fillStyle = color;
       ctx.fillRect(left + dx, y + dy, w, h);
     };
-    block(0, 20, width, 15, "#231b2e");
+    block(2, 28, width, 6, "rgba(20, 13, 28, 0.54)");
     if (kind === "mount") {
       block(0, -16, width, 38, "#34273a");
       block(3, -12, width - 6, 31, "#795440");
@@ -11322,11 +11336,23 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       block(10, 22, 13, 1, "#dbb06a");
       return;
     }
-    for (const dx of [3, width - 8]) block(dx, 20, 5, 15, "#734738");
-    block(0, 18, width, 9, "#915a42");
-    block(2, 18, width - 4, 2, "#d49663");
-    block(4, 23, width - 8, 6, shop.coat);
-    block(6, 23, width - 12, 1, shop.trim);
+    for (const dx of [4, width - 8]) {
+      block(dx, 20, 4, 13, "#513245");
+      block(dx, 27, 2, 5, "#a86850");
+    }
+    block(0, 17, width, 10, "#372238");
+    block(1, 16, width - 2, 6, "#986047");
+    block(2, 16, width - 4, 2, "#d79767");
+    block(0, 21, width, 2, "#e4ad74");
+    block(2, 23, width - 4, 4, "#704638");
+    block(9, 24, width - 18, 3, shop.coat);
+    for (const dx of [4, width - 5]) block(dx, 24, 1, 2, "#e5c389");
+    if (kind === "talent") {
+      block(width / 2 - 16, 17, 32, 3, "#644267");
+      block(width / 2 - 13, 20, 26, 1, shop.trim);
+      block(width / 2 - 2, 23, 4, 4, shop.trim);
+      block(width / 2 - 1, 24, 2, 2, "#5a3a61");
+    }
   }
 
   function drawArenaCompanions(ctx, camX, camY) {
@@ -11340,14 +11366,31 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Ct(
         ctx,
         "arena-merchant:" + kind,
-        merchantSprites[kind] || arenaMerchantSprite,
-        { k: s.black, x: shop.coat, o: shop.trim, w: "#ffc9a5" },
+        merchantSprites[kind],
+        {
+          k: "#1a1428",
+          x: shop.coat,
+          h: "#332e53",
+          o: shop.trim,
+          Y: "#fff1ba",
+          w: "#ffc9a5",
+          s: "#bc765e",
+          g: "#d1b6ae",
+          t: "#28192b",
+          W: "#fff4dc",
+        },
         x,
-        y + 4,
-        { scale: 1 },
+        y + 1,
+        { scale: 1.5 },
       );
+      if (!merchant.visited && kind === "talent") {
+        drawStallItem(ctx, "blink", x - 10, y + 15);
+        drawStallItem(ctx, "rate", x, y + 15);
+        drawStallItem(ctx, "cool", x + 10, y + 15);
+      }
       if (!merchant.visited) {
-        shop.items.forEach((item, index) => {
+        const displayedItems = kind === "talent" ? [] : shop.items;
+        displayedItems.forEach((item, index) => {
           const point = stallItemPosition(merchant, index, shop.items.length);
           drawStallItem(
             ctx,
@@ -12112,7 +12155,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const reactions = upgradeReactions.filter(
       (line) => line !== a.playerSpeech?.line,
     );
-    a.playerSpeech = { line: Gt(reactions), until: a.t + 1.8 };
+    a.playerSpeech = { line: Gt(reactions), until: a.t + 1.15 };
   }
 
   function Li(t) {
@@ -12924,7 +12967,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         x: t.x,
         y: t.y,
         start: a.t,
-        until: a.t + 3.2,
+        until: a.t + 2.1,
       };
       for (const o of a.enemies)
         (o.type === "turret" || o.bossMinion) &&
@@ -16087,12 +16130,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
 
   function drawSmallPlayerBubble(text) {
     R.save();
-    R.font = "600 15px system-ui, sans-serif";
-    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 16);
+    R.font = "600 12px system-ui, sans-serif";
+    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 12);
     const anchor = ((a.p.x - a.cam.x) * G) / A;
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
     const left = Math.round(center - width / 2);
-    const top = Math.round(F(((a.p.y - a.cam.y) * mt) / D - 54, 44, mt - 60));
+    const top = Math.round(F(((a.p.y - a.cam.y) * mt) / D - 44, 35, mt - 48));
     const right = left + width;
     const tail = Math.round(center);
     const edge = [
@@ -16102,24 +16145,24 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       [right - 2, top + 2],
       [right - 2, top + 4],
       [right, top + 4],
-      [right, top + 16],
-      [right - 2, top + 16],
-      [right - 2, top + 18],
-      [right - 4, top + 18],
-      [right - 4, top + 20],
-      [tail + 4, top + 20],
-      [tail + 4, top + 22],
-      [tail + 2, top + 22],
-      [tail + 2, top + 24],
-      [tail, top + 24],
-      [tail, top + 22],
-      [tail - 2, top + 22],
-      [tail - 2, top + 20],
-      [left + 4, top + 20],
-      [left + 4, top + 18],
-      [left + 2, top + 18],
-      [left + 2, top + 16],
-      [left, top + 16],
+      [right, top + 12],
+      [right - 2, top + 12],
+      [right - 2, top + 14],
+      [right - 4, top + 14],
+      [right - 4, top + 16],
+      [tail + 4, top + 16],
+      [tail + 4, top + 18],
+      [tail + 2, top + 18],
+      [tail + 2, top + 20],
+      [tail, top + 20],
+      [tail, top + 18],
+      [tail - 2, top + 18],
+      [tail - 2, top + 16],
+      [left + 4, top + 16],
+      [left + 4, top + 14],
+      [left + 2, top + 14],
+      [left + 2, top + 12],
+      [left, top + 12],
       [left, top + 4],
       [left + 2, top + 4],
       [left + 2, top + 2],
@@ -16144,7 +16187,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.fillStyle = "#171828";
     R.textAlign = "center";
     R.textBaseline = "middle";
-    R.fillText(text, center, top + 10, width - 12);
+    R.fillText(text, center, top + 8, width - 8);
     R.restore();
   }
 
