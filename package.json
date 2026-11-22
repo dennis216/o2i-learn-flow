@@ -17,7 +17,7 @@
     "test:question-bank:browser": "node --experimental-strip-types scripts/question-bank/task4d-browser.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:arena": "node --experimental-strip-types --test src/lib/arenaBridge.test.mjs scripts/arena/public-game.test.mjs scripts/arena/zh-cn.test.mjs scripts/arena/magnet.test.mjs scripts/arena/manual-attack.test.mjs scripts/arena/spawn.test.mjs scripts/arena/portal.test.mjs scripts/arena/drop.test.mjs scripts/arena/regions.test.mjs scripts/arena/skill-effects.test.mjs scripts/arena/recommendations.test.mjs scripts/arena/math-expansion.test.mjs scripts/arena/feedback-visuals.test.mjs scripts/arena/advanced-equipment.test.mjs",
+    "test:arena": "node --experimental-strip-types --test src/lib/arenaBridge.test.mjs scripts/arena/public-game.test.mjs scripts/arena/zh-cn.test.mjs scripts/arena/magnet.test.mjs scripts/arena/manual-attack.test.mjs scripts/arena/spawn.test.mjs scripts/arena/portal.test.mjs scripts/arena/drop.test.mjs scripts/arena/regions.test.mjs scripts/arena/skill-effects.test.mjs scripts/arena/recommendations.test.mjs scripts/arena/math-expansion.test.mjs scripts/arena/feedback-visuals.test.mjs scripts/arena/advanced-equipment.test.mjs scripts/arena/knowledge.test.mjs",
     "test:arena:legacy": "node --experimental-strip-types --test scripts/arena/legacy/*.test.mjs",
     "test:arena:legacy:source:db": "O2I_LEGACY_ARENA_SOURCE_DB=1 node --test supabase/tests/question_bank_draft_management.integration.test.mjs",
     "test:arena:practice:db": "O2I_COURSE_DB_EXTRA=1 O2I_COURSE_CONTINUOUS_DB=1 O2I_ARENA_PRACTICE_DB=1 node scripts/course-content-db.test.mjs",
@@ -39,7 +39,9 @@
     "test:migrations": "node --test scripts/migrations/reconciliation.test.mjs scripts/continuous-practice-migration.test.mjs",
     "test:migrations:db": "O2I_MIGRATION_RECONCILIATION_DB=1 npm run test:courses:login:db",
     "test:courses:login:browser": "node scripts/course-login-browser.test.mjs",
-    "test:courses:browser": "node scripts/course-custom-browser.test.mjs"
+    "test:courses:browser": "node scripts/course-custom-browser.test.mjs",
+    "format:arena": "prettier --ignore-path scripts/arena/.prettierignore --write public/games/limit-arena.js public/games/arena-scratchpad.js public/games/arena-knowledge.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs",
+    "check:arena:format": "prettier --ignore-path scripts/arena/.prettierignore --check public/games/limit-arena.js public/games/arena-scratchpad.js public/games/arena-knowledge.js \"scripts/arena/*.test.mjs\" scripts/arena/test-runtime.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -94,6 +96,7 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sonner": "^1.7.4",
+    "suncalc": "^2.1.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
@@ -106,6 +109,7 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^4.3.3",
+    "acorn": "8.15.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -113,6 +117,7 @@
     "globals": "^15.15.0",
     "pg": "8.23.1",
     "postcss": "^8.5.6",
+    "prettier": "3.6.2",
     "supabase": "2.119.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

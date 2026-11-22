@@ -11,17 +11,68 @@ import PixelOwl from '@/components/PixelOwl';
 import { HudTag, NameTag, Stars, pixelButton, pixelPanel } from '@/components/PixelUi';
 
 const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never);
+// Height of the floating site header in Navbar.tsx (12px top gap + 64px bar + 1px border),
+// so the embedded game fills the rest of the screen without scrolling the page.
+const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
-function ArenaGame({ language }: { language: Language }) {
-  try { localStorage.setItem('cq-arena-lang', language); } catch { /* the game falls back to the browser language */ }
+function ArenaGame({ language, admin }: { language: Language; admin: boolean }) {
+  useState(() => {
+    try { localStorage.setItem('cq-arena-lang', language === 'zh' ? 'zh' : 'en'); } catch { /* the game falls back to the browser language */ }
+    return language;
+  });
+  // Admins get a test-speed row on the game's setup screen (arena-knowledge.js ADMIN_KEY).
+  // It only speeds up their own local run, and test runs are never recorded.
+  useEffect(() => {
+    try {
+      if (admin) localStorage.setItem('cq-arena-admin', '1');
+      else localStorage.removeItem('cq-arena-admin');
+    } catch { /* no test speed without storage */ }
+  }, [admin]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [viewport, setViewport] = useState<{ width: number; height: number; top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!expanded) { setViewport(null); return; }
+    let queued = 0;
+    const update = () => {
+      cancelAnimationFrame(queued);
+      queued = requestAnimationFrame(() => {
+        const view = window.visualViewport;
+        setViewport({ width: view?.width || window.innerWidth, height: view?.height || window.innerHeight,
+          top: view?.offsetTop || 0, left: view?.offsetLeft || 0 });
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    window.visualViewport?.addEventListener('resize', update);
+    window.visualViewport?.addEventListener('scroll', update);
+    return () => {
+      cancelAnimationFrame(queued);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+      window.visualViewport?.removeEventListener('resize', update);
+      window.visualViewport?.removeEventListener('scroll', update);
+    };
+  }, [expanded]);
   useEffect(() => {
     if (!expanded) return;
+    const root = document.documentElement;
     const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = root.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previousOverflow; };
+    root.style.overscrollBehavior = 'none';
+    // Hides the site header while the game covers the screen (index.css).
+    root.classList.add('arena-expanded');
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      root.style.overscrollBehavior = previousOverscroll;
+      root.classList.remove('arena-expanded');
+      // Leaving full screen can leave the page scrolled so the header covers the
+      // top of the game; bring the whole game back into view.
+      requestAnimationFrame(() => window.scrollTo(0, 0));
+    };
   }, [expanded]);
 
   // Layout effect: the listener must exist before the iframe's first message.
@@ -64,18 +115,20 @@ function ArenaGame({ language }: { language: Language }) {
         frame.current?.focus();
       }}
       className={`${expanded ? 'fixed inset-0 z-[100]' : 'block'} w-full border-0 bg-black`}
-      style={{ height: expanded ? '100dvh' : 'calc(100dvh - 4rem)' }}
+      style={expanded ? { height: viewport?.height ?? '100dvh', width: viewport?.width ?? '100%',
+        top: viewport?.top ?? 0, left: viewport?.left ?? 0, right: 'auto', bottom: 'auto' }
+        : { height: `calc(100dvh - ${SITE_NAV_HEIGHT})` }}
     />
   );
 }
 
 export default function Arena() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const { language, t } = useLanguage();
-  if (user) return <ArenaGame key={user.id + language} language={language} />;
+  if (user) return <ArenaGame key={user.id + language} language={language} admin={isAdmin} />;
   return (
     <main className="text-[#FFF1E8]">
-      <Stars className="grid min-h-[calc(100dvh-4rem)] place-items-center px-4 py-16">
+      <Stars className="grid min-h-[calc(100dvh-77px)] place-items-center px-4 py-16">
         <div className={`w-full max-w-lg p-6 sm:p-8 ${pixelPanel}`}>
           <HudTag title="LIMIT ARENA" />
           <h1 className="mt-5 text-3xl font-bold tracking-tight">{t('Limit Arena', '极限竞技场')}</h1>

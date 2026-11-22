@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Book } from 'lucide-react';
 import { z } from 'zod';
+import { brandText } from '@/lib/brand';
 import { authReturnTo } from '@/lib/authReturnTo';
 
 const passwordSchema = z.string()
@@ -52,8 +52,8 @@ export default function Auth() {
   const requestedReturn = params.get('returnTo') ?? '/';
   const returnTo = authReturnTo(requestedReturn);
   const { toast } = useToast();
-  const { language, t } = useLanguage();
-  const validationText = (message: string) => language === 'zh' ? VALIDATION_ZH[message] ?? message : message;
+  const { t } = useLanguage();
+  const validationText = (message: string) => t(message, VALIDATION_ZH[message] ?? message);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -147,7 +147,7 @@ export default function Auth() {
         });
       } else {
         toast({
-          title: t('🎉 Account Created Successfully!', '🎉 注册成功！'),
+          title: t('Your account is ready', '注册成功'),
           description: t('You can now sign in with your email and password. Welcome to O2I Institute!', '现在可以用邮箱和密码登录了。欢迎来到 O2I Institute！'),
           duration: 6000,
         });
@@ -169,19 +169,21 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-4">
-            <Book className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold text-primary">O2I Institute</span>
+          {/* Same mark and wordmark as the site header (Navbar.tsx). */}
+          <Link to="/" className="mb-4 flex items-center justify-center gap-2">
+            <img src="/o2i-mark.png" alt="" width={60} height={40} className="h-10 w-auto dark:hidden" />
+            <img src="/o2i-mark-dark.png" alt="" width={60} height={40} className="hidden h-10 w-auto dark:block" />
+            <span className="o2i-name text-3xl font-semibold text-primary">O2I Institute</span>
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">{t('Welcome to Math Tutoring', '欢迎来学数学')}</h1>
-          <p className="text-muted-foreground mt-2">{t('Sign in to your account or create a new one', '登录，或注册一个新账号')}</p>
+          <h1 className="text-3xl font-bold text-foreground">{brandText(t('Welcome to O2I', '欢迎来到 O2I'))}</h1>
+          <p className="text-muted-foreground mt-2">{t('Sign in to continue, or create an account to get started.', '登录继续学习，或注册一个新账号。')}</p>
         </div>
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>{t('Authentication', '账号登录')}</CardTitle>
+            <CardTitle>{brandText(t('Your O2I account', 'O2I 账号'))}</CardTitle>
             <CardDescription>
-              {t('Access your learning dashboard and math tutoring resources', '登录后进入学习主页，使用课程和练习')}
+              {t('Keep your practice history and questions in one place.', '保存练习记录，随时查看自己的提问。')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -260,7 +262,7 @@ export default function Auth() {
                       onChange={() => setPasswordError('')}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {t('Must be 8+ characters with uppercase, lowercase, number, and special character', '至少 8 位，需包含大写字母、小写字母、数字和特殊字符')}
+                      {t('Use at least 8 characters, including an uppercase letter, a lowercase letter, a number and a symbol.', '密码至少 8 位，需包含大写字母、小写字母、数字和符号。')}
                     </p>
                     {passwordError && (
                       <p className="text-xs text-destructive">{passwordError}</p>

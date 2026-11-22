@@ -5,10 +5,10 @@ import { signImages, type Bilingual } from '@/lib/solutionRequests';
 
 /** t() for a [en, zh] pair. */
 export function useBilingual() {
-  const { t, language } = useLanguage();
-  const tt = useCallback((pair: Bilingual) => t(pair[0], pair[1]), [t]);
-  const when = useCallback((iso: string) => new Date(iso).toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US',
-    { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), [language]);
+  const { t, language, locale } = useLanguage();
+  const tt = useCallback((pair: Bilingual) => t(pair[0], pair[1], pair[2]), [t]);
+  const when = useCallback((iso: string) => new Date(iso).toLocaleString(locale,
+    { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), [locale]);
   return { t, tt, when, language };
 }
 

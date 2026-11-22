@@ -5,6 +5,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { mathSvgDefinitions } from '../../../public/games/limit-arena.js';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { privateDirectory, sha256, verifySnapshot } from './snapshot.mjs';
@@ -15,7 +16,8 @@ export function shuffledChoices(options, seed, id) {
  return { choices:ordered.map((o,i)=>({label:'ABCD'[i],text:o.text})), originalIndexes:ordered.map(o=>o.index), correctLabel:'ABCD'[ordered.findIndex(o=>o.index===0)] };
 }
 export function mathDefinitions(html) {
- const found=[];
+ const found=html===undefined?[mathSvgDefinitions]:[];
+ html=html??'';
  for (const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) {
   const file=ts.createSourceFile('legacy-game.js',script[1],ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
   const visit=node=>{if(ts.isStringLiteralLike(node)&&node.text.includes('<defs')&&node.text.includes('MJX-TEX-'))found.push(node.text);ts.forEachChild(node,visit);};
@@ -39,7 +41,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
  const keyPath=resolve(output,'review-key.json');
  const seed=existsSync(keyPath)?JSON.parse(readFileSync(keyPath,'utf8')).seed:randomBytes(32).toString('hex');
  const key={seed,items:[]},input={instructions:'Independently solve every question and check all four choices. Original answers and explanations are deliberately absent. Compare source and converted display. Return uncertain rather than guessing.',topics:snapshot.topics,skills:snapshot.skills,items:[]};
- const defs=mathDefinitions(readFileSync(resolve(root,'public/games/limit-arena.html'),'utf8'));
+ const defs=mathDefinitions();
  const cache=resolve(root,'node_modules/.cache/arena-legacy');mkdirSync(cache,{recursive:true});
  let renderer=readFileSync(resolve(root,'src/components/MarkdownWithMath.tsx'),'utf8');
  renderer=renderer.replace("import 'katex/dist/katex.min.css';",'').replace("'@/lib/questionBankMath'",JSON.stringify(pathToFileURL(resolve(root,'src/lib/questionBankMath.ts')).href));
