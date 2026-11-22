@@ -39,9 +39,10 @@ export const PACE = {
   hintGap: 3,
 };
 
-// Admin test speeds (setup screen, admins only). The run clock, XP, bosses
+// Test speeds for admins and the Brian preview. The run clock, XP, bosses
 // and the timings above all run this many times faster; runs are not recorded.
-export const TEST_SPEEDS = [1, 2, 4];
+export const TEST_SPEEDS = [1, 2, 4, 8];
+const BRIAN_PREVIEW_HOST = "brian.o2i-website.pages.dev";
 export const ADMIN_KEY = "cq-arena-admin";
 // The site (src/pages/Arena.tsx) sets ADMIN_KEY for admins. A student who sets
 // it by hand only speeds up their own local run, which is never recorded.
@@ -52,9 +53,16 @@ export function isArenaAdmin() {
     return false;
   }
 }
-export function testSpeedFor(setup, admin = isArenaAdmin()) {
+export function testSpeedFor(
+  setup,
+  admin = isArenaAdmin(),
+  hostname = globalThis.location?.hostname,
+) {
   const value = Number(setup?.test);
-  return admin && TEST_SPEEDS.includes(value) ? value : 1;
+  return (admin || hostname === BRIAN_PREVIEW_HOST) &&
+    TEST_SPEEDS.includes(value)
+    ? value
+    : 1;
 }
 const TEST_INFO = {
   1: ["Normal speed.", "正常速度。"],
@@ -65,6 +73,10 @@ const TEST_INFO = {
   4: [
     "XP ×4; enemy growth, spawns, bosses and tablets ×4. Not recorded.",
     "经验 ×4；敌人成长、刷怪、首领、题碑都 ×4。不计入记录。",
+  ],
+  8: [
+    "XP ×8; enemy growth, boss and tablet timers are accelerated. Not recorded.",
+    "经验 ×8；敌人成长、首领和题碑加速。不计入记录。",
   ],
 };
 
@@ -3582,16 +3594,22 @@ export function createKnowledgeFlow(api) {
       const prefix = WORLD_PREFIX[worldKind()];
       return prefix ? { ...def, name: L(prefix) + def.name } : def;
     },
-    // Admin-only test speed row on the units & difficulty screen.
+    // Test speed row on the units & difficulty screen.
     decorateSetup(root, setup) {
       const panel = root?.querySelector(".panel"),
         row = panel?.querySelector(".urow");
-      if (!row || !isArenaAdmin() || panel.querySelector(".kf-test")) return;
+      const preview = globalThis.location?.hostname === BRIAN_PREVIEW_HOST;
+      if (
+        !row ||
+        (!preview && !isArenaAdmin()) ||
+        panel.querySelector(".kf-test")
+      )
+        return;
       const box = (api.doc() || document).createElement("div");
       box.className = "kf-test";
-      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
+      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${preview ? (api.zh ? "试玩站" : "Preview") : api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
         (v, n) =>
-          `<button type="button" class="dchip d-${["easy", "normal", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
+          `<button type="button" class="dchip d-${["easy", "normal", "hard", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
       ).join(
         "",
       )}<span>${api.zh ? "经验、敌人成长、刷怪、首领和题碑一起加速；测试局不计入记录。" : "XP, enemy growth, spawns, bosses and tablets all speed up; test runs are not recorded."}</span>`;

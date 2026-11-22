@@ -466,6 +466,11 @@ test("the HUD shows only unit skills and equipment; the pause list names them", 
 test("admin test speed: only admins, only listed speeds, everything runs faster", (t) => {
   assert.equal(testSpeedFor({ test: 4 }, true), 4);
   assert.equal(testSpeedFor({ test: 4 }, false), 1);
+  assert.equal(
+    testSpeedFor({ test: 8 }, false, "brian.o2i-website.pages.dev"),
+    8,
+  );
+  assert.equal(testSpeedFor({ test: 8 }, false, "www.o2iinstitute.org"), 1);
   assert.equal(testSpeedFor({ test: 3 }, true), 1);
   assert.equal(testSpeedFor({}, true), 1);
   const store = new Map([["cq-arena-admin", "1"]]),
