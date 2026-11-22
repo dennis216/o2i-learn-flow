@@ -2749,13 +2749,35 @@ export function createKnowledgeFlow(api) {
     if (!followers?.length) return;
     const p = P();
     a.kf.bossFollowers = followers.filter((follower, index) => {
-      const tx = p.x + (index === 0 ? -17 : 17);
-      const ty = p.y + 7;
-      const distance = Math.hypot(tx - follower.x, ty - follower.y);
-      const fraction =
-        distance > 140 ? 1 : Math.min(1, (55 * dt) / Math.max(1, distance));
-      follower.x += (tx - follower.x) * fraction;
-      follower.y += (ty - follower.y) * fraction;
+      const moving = api.a.p.moving;
+      const phase = a.t * 1.85 + index * Math.PI;
+      const headingX = moving ? a.p.dx || 0 : 0;
+      const headingY = moving ? a.p.dy || 0 : 0;
+      const tx = clamp(
+        p.x - headingX * 13 + Math.cos(phase) * 24,
+        8,
+        api.world.w - 8,
+      );
+      const ty = clamp(
+        p.y - headingY * 13 + 6 + Math.sin(phase) * 13,
+        18,
+        api.world.h - 8,
+      );
+      const dx = tx - follower.x;
+      const dy = ty - follower.y;
+      const distance = Math.hypot(dx, dy);
+      const gapToPlayer = Math.hypot(p.x - follower.x, p.y - follower.y);
+      const speed = gapToPlayer > 48 ? 115 : moving ? 85 : 39;
+      const travel = Math.min(distance, speed * dt);
+      if (distance > 140) {
+        follower.x = tx;
+        follower.y = ty;
+      } else if (travel > 0) {
+        follower.x += (dx / distance) * travel;
+        follower.y += (dy / distance) * travel;
+        follower.stride = (follower.stride || 0) + travel;
+        if (Math.abs(dx) > 1) follower.face = dx < 0 ? -1 : 1;
+      }
       let target;
       let range = 60;
       let touching = false;
@@ -2794,7 +2816,10 @@ export function createKnowledgeFlow(api) {
     const a = api.a;
     for (const follower of a.kf.bossFollowers || []) {
       const x = Math.round(follower.x - cameraX);
-      const y = Math.round(follower.y - cameraY);
+      const ground = Math.round(follower.y - cameraY);
+      const step = Math.floor((follower.stride || 0) / 4) % 4;
+      const y = ground - (step === 1 || step === 3 ? 1 : 0);
+      const face = follower.face || 1;
       const kind = follower.kind;
       const rect = (dx, dy, w, h, color) =>
         api.drawRect(ctx, x + dx, y + dy, w, h, color);
@@ -2825,33 +2850,45 @@ export function createKnowledgeFlow(api) {
           dot(-1, -2, 3, 2, "#ffe0a6");
         }
       }
+      api.drawRect(ctx, x - 4, ground + 5, 9, 1, "rgba(12, 15, 26, 0.6)");
       if (kind === "snowman") {
         rect(-5, -3, 11, 9, "#accbdc");
         rect(-4, -4, 9, 9, "#ecf9ff");
         rect(-4, -10, 9, 7, "#ecf9ff");
         rect(-3, -8, 2, 2, "#23324d");
         rect(2, -8, 2, 2, "#23324d");
-        rect(0, -6, 4, 1, "#f28a51");
+        rect(face < 0 ? -4 : 0, -6, 4, 1, "#f28a51");
         rect(-4, -3, 9, 2, "#4e8bba");
       } else {
-        const sprite = bossSprite(kind, Math.floor(api.now * 5) % 2, false);
+        const sprite = bossSprite(kind, step % 2, false);
         const width = Math.max(1, Math.round(sprite.width * 0.57));
         const height = Math.max(1, Math.round(sprite.height * 0.57));
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(face, 1);
         ctx.drawImage(
           sprite,
-          x - Math.floor(width / 2),
-          y - Math.floor(height / 2),
+          -Math.floor(width / 2),
+          -Math.floor(height / 2),
           width,
           height,
         );
+        ctx.restore();
         if (kind === "scorpion") {
-          rect(2, -6, 9, 4, "#392938");
-          rect(3, -5, 7, 2, "#c1b3a4");
-          rect(8, -5, 2, 2, "#f2884d");
+          rect(face < 0 ? -11 : 2, -6, 9, 4, "#392938");
+          rect(face < 0 ? -10 : 3, -5, 7, 2, "#c1b3a4");
+          rect(face < 0 ? -10 : 8, -5, 2, 2, "#f2884d");
         }
       }
-      rect(-6, 8, 12, 3, "#24253c");
-      rect(-5, 9, Math.ceil((10 * follower.hp) / 30), 1, "#7adba4");
+      api.drawRect(ctx, x - 6, ground + 8, 12, 3, "#24253c");
+      api.drawRect(
+        ctx,
+        x - 5,
+        ground + 9,
+        Math.ceil((10 * follower.hp) / 30),
+        1,
+        "#7adba4",
+      );
     }
   }
 
@@ -3371,7 +3408,7 @@ export function createKnowledgeFlow(api) {
             : api.zh
               ? "收下我的激光炮吧。"
               : "Take my laser cannon.",
-          until: a.t + 3.5,
+          until: a.t + 2,
         };
         if (reward) {
           const p = P();

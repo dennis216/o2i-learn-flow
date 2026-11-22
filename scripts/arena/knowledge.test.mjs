@@ -566,3 +566,28 @@ test("themed followers replace the previous squad, use low damage, and ink slows
   assert.equal(a.kf.bossFollowers.length, 0);
   assert.ok(!a.picks.some((item) => item.kind === "kfgear"));
 });
+
+test("boss followers move while idle and regroup when the player runs", () => {
+  const context = run();
+  const { a, knowledge } = context;
+  knowledge.onKill({ kf: { boss: "crab" }, x: 0, y: 0 });
+  const [shrimp, crab] = a.kf.bossFollowers;
+  const start = [shrimp.x, shrimp.y];
+  assert.equal(a.miniBossFarewell.until - a.t, 2);
+  for (let frame = 0; frame < 45; frame++) {
+    a.t += 1 / 60;
+    knowledge.update(1 / 60);
+  }
+  assert(Math.hypot(shrimp.x - start[0], shrimp.y - start[1]) > 5);
+  assert(Math.hypot(shrimp.x - crab.x, shrimp.y - crab.y) > 10);
+  Object.assign(a.p, { moving: true, dx: 1, dy: 0 });
+  for (let frame = 0; frame < 90; frame++) {
+    a.t += 1 / 60;
+    a.p.x += 1.25;
+    knowledge.update(1 / 60);
+  }
+  for (const follower of a.kf.bossFollowers) {
+    assert(Math.hypot(follower.x - a.p.x, follower.y - a.p.y) < 55);
+    assert(follower.stride > 30);
+  }
+});

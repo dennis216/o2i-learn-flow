@@ -631,13 +631,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ((h = As[f]), (c = f));
     }
     const u = Es.concat(h);
+    if (l.headwear) u.fill("............", 0, 4);
     const jacket = Es.length + 1;
     u[jacket] = u[jacket].replace("bb", "Bb");
     u[u.length - 1] = u[u.length - 1].replace("oo", "ow");
-    re(t, u, la, Math.round(e) - 6, Math.round(o) - u.length + c, {
+    const top = Math.round(o) - u.length + c;
+    re(t, u, la, Math.round(e) - 6, top, {
       flip: l.flip,
       recolor: l.recolor,
     });
+    if (l.headwear) drawHeroHeadwear(t, e, top + 3, l.flip, true);
   }
   let Io = [
       ".....kkkkkkkkkkk........",
@@ -2052,28 +2055,34 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ["...nn..nn...", "...nn..nn...", "...oo..oo..."],
       ["...nn..nn...", "...oo..nn...", ".......oo..."],
     ];
-  function Qa(t, e, o, r, n, l, h, c) {
+  function Qa(t, e, o, r, n, l, h, c, showHeadwear = false) {
     const u = c ? qo : la;
+    const headwear = showHeadwear && hasHeroHeadwear();
     if (r === "left" || r === "right") {
       if (c) {
         const m = {};
         for (const y in la) m[y] = s.white;
         return Ve(t, e, o, n ? "run" : "idle", l, {
           flip: r === "left",
+          headwear,
           recolor: m,
         });
       }
       return Ve(t, e, o, n ? "run" : "idle", l, {
         flip: r === "left",
         recolor: h,
+        headwear,
       });
     }
     const f = n ? [1, 2, 3, 2][Math.floor(ae(l, 8) * 8) % 4] : 0,
       p = n ? (f === 2 ? -1 : 0) : Math.floor(ae(l, 2) * 2) % 2,
       k = (r === "up" ? Ks.concat(tn) : Ys.concat(Ws)).concat(en[f]);
-    re(t, k, u, Math.round(e) - 6, Math.round(o) - 16 + p, {
+    if (headwear) k.fill("............", 0, 4);
+    const top = Math.round(o) - 16 + p;
+    re(t, k, u, Math.round(e) - 6, top, {
       recolor: c ? null : h,
     });
+    if (headwear) drawHeroHeadwear(t, e, top + 3, false, false);
   }
   function Xe(t, e, o, r = 8) {
     t.fillStyle = s.black;
@@ -12764,8 +12773,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           3,
           50,
         ),
-        Math.floor(n * 10) !== Math.floor((n - t) * 10) &&
-          (K("pop", 0), (a.shake = Math.min(1, a.shake + 0.2))),
+        Math.floor(n * 10) !== Math.floor((n - t) * 10) && K("pop", 0),
         n > 1.7 && Ii());
       return;
     }
@@ -12916,7 +12924,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       for (const o of a.haz) o.end = Math.min(o.end, a.t);
       ((a.slow = 0.35),
         (a.slowUntil = a.t + 0.7),
-        (a.shake = 1),
+        (a.shake = 0.46),
+        (a.kick = { x: 0, y: 0 }),
         $.boom(),
         $.roar());
     }
@@ -13936,10 +13945,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     });
   }
   function ji() {
-    const t = I === "results" ? 0 : a.shake * a.shake,
+    const dying = a.boss?.state === "dying";
+    const shake = dying ? Math.min(a.shake, 0.46) : a.shake;
+    const t = I === "results" ? 0 : shake * shake,
       e = Math.round(3 * t * Math.sin(E * 47)),
       o = Math.round(2 * t * Math.sin(E * 61)),
-      r = I === "results" ? { x: 0, y: 0 } : a.kick || { x: 0, y: 0 },
+      r = I === "results" || dying ? { x: 0, y: 0 } : a.kick || { x: 0, y: 0 },
       n = Math.round(a.cam.x + r.x) - e,
       l = Math.round(a.cam.y + r.y) - o,
       h = (d, g) => [Math.round(d - n), Math.round(g - l)],
@@ -14664,6 +14675,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           E,
           ne().rc,
           !dashing && f - k.hurtT < 0.08,
+          true,
         );
       c.globalAlpha = 1;
       if (!g) {
@@ -17374,6 +17386,42 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
   }
 
+  function hasHeroHeadwear() {
+    const worn = tt.d.accessories;
+    return !!(
+      arenaAccessories.hat[worn?.hat] || outfitHeadpieces[worn?.outfit]
+    );
+  }
+
+  function drawHeroHeadwear(ctx, x, brimY, flip, profile) {
+    const worn = tt.d.accessories;
+    const hat = arenaAccessories.hat[worn.hat];
+    ctx.save();
+    ctx.translate(Math.round(x), brimY);
+    if (flip) ctx.scale(-1, 1);
+    const offset = profile ? -4 : -5;
+    if (hat) {
+      drawAccessory(ctx, "hat", worn.hat, offset, 1 - hat[3].length);
+    } else {
+      const pixels = outfitHeadpieces[worn.outfit];
+      const outfit = arenaAccessories.outfit[worn.outfit];
+      const level = tt.d.accessoryWallet?.owned["outfit:" + worn.outfit] || 1;
+      re(
+        ctx,
+        pixels,
+        {
+          k: "#172138",
+          w: "#fff2d9",
+          h: "#6d8ea5",
+          c: accessoryUpgradeColor(outfit[2], level),
+        },
+        offset,
+        1 - pixels.length,
+      );
+    }
+    ctx.restore();
+  }
+
   function drawEquippedAccessories(ctx, x, feet, facing, bob = 0) {
     const worn = tt.d.accessories;
     if (!worn) return;
@@ -17383,29 +17431,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       worn.outfit,
       Math.round(x) - 5,
       Math.round(feet) - 8 + bob,
-    );
-    if (worn.hat == null && outfitHeadpieces[worn.outfit]) {
-      const outfit = arenaAccessories.outfit[worn.outfit];
-      const level = tt.d.accessoryWallet?.owned["outfit:" + worn.outfit] || 1;
-      re(
-        ctx,
-        outfitHeadpieces[worn.outfit],
-        {
-          k: "#172138",
-          w: "#fff2d9",
-          h: "#6d8ea5",
-          c: accessoryUpgradeColor(outfit[2], level),
-        },
-        Math.round(x) - 5,
-        Math.round(feet) - 18 + bob,
-      );
-    }
-    drawAccessory(
-      ctx,
-      "hat",
-      worn.hat,
-      Math.round(x) - 5,
-      Math.round(feet) - 19 + bob,
     );
     if (facing !== "up")
       drawAccessory(
@@ -18441,7 +18466,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const boss = Object.hasOwn(MINI_BOSSES, requested) ? requested : "crab";
       a.theme = { scorpion: 6, crab: 5, yeti: 7, octopus: 4 }[boss] || 0;
       knowledge.onKill({ kf: { boss }, x: X() + 24, y: _() - 12 });
-      a.miniBossFarewell.until = a.t + 18;
       return;
     }
     Bi();
