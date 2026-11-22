@@ -11874,71 +11874,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       heading?.append(reward);
     }
   }
-  const newBossSprites = [
-    [
-      ".........k.........",
-      "........klk........",
-      "....k..klwlk..k....",
-      "...klkkllhllkklk...",
-      "..klggglllggggllk..",
-      "..kggkhlllhkggglk..",
-      "...kkkgwwwgkkgkk...",
-      "....kkgwhwgkkk.....",
-      "...kggkhhhkgggk....",
-      "..kgggkklkkggggk...",
-      ".kggghgklkghggggk..",
-      ".kghhggklkggghggk..",
-      "kgggggkklkkggggggk.",
-      "kgggkkgklkgkkggggk.",
-      ".kkkkggklkgggkkkk..",
-      "...kgggklkgggk.....",
-      "..kgggk.k.kgggk....",
-      "..kkgk.....kgkk....",
-      "....k.......k......",
-    ],
-    [
-      ".........k.........",
-      "........kwk........",
-      ".......kwhwk.......",
-      "......kwhlhwk......",
-      ".....kwhlllhwk.....",
-      "...kkwhllwllhwkk...",
-      "..kggkhlwwwlhkggk..",
-      ".kghgkglwhwlgkghgk.",
-      "kghggkkhlwlhkkgghgk",
-      "kgggkgkhlllhkgkgggk",
-      ".kgkgggkhlhkgggkgk.",
-      "..kggghgkwkghgggk..",
-      "...kkggggkggggkk...",
-      "....kgghgkgghgk....",
-      "....kggggkggggk....",
-      ".....kkggkggkk.....",
-      "......kgkkkgk......",
-      ".......kk.kk.......",
-    ],
-    [
-      "......kkkkkkk......",
-      "....kkghlhlhgkk....",
-      "...kggglllllgggk...",
-      "..kggkkkglgkkkggk..",
-      ".kggkgwwkwkwwgkggk.",
-      "kggkgwllwwwllwgkggk",
-      "kggkgwlhhhhhlwgkggk",
-      ".kggkgllllllllkggk.",
-      "..kggkkkglgkkkggk..",
-      "..kggghkglgkhgggk..",
-      "...kkkkkglgkkkkk...",
-      "...kglggkwkgglgk...",
-      "..kglgggkwkggglgk..",
-      "..kgkkggkwkggkkgk..",
-      "..kk..kkklkkk..kk..",
-      ".......kglgk.......",
-      ".......kglgk.......",
-      "........kkk........",
-    ],
-  ];
-  function drawNewBoss(
-    index,
+  function drawCalculusBoss(
+    theme,
     color,
     shadow,
     ctx,
@@ -11950,51 +11887,89 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const cx = Math.round(centerX);
     const cy = Math.round(centerY + Math.sin(time * 3) * 2);
     const energy = flash ? s.white : rage ? s.orange : color;
-    for (const side of [-1, 1]) {
-      const swing = Math.sin(time * 3 + side) * 5;
-      const px = cx + side * (index === 1 ? 32 : 29);
-      const py = Math.round(cy + swing);
-      if (index === 0) {
-        // Paired mirrors on articulated arms.
-        pt(ctx, cx, cy + 6, px, py, shadow, 2);
-        x(ctx, px - 6, py - 12, 13, 24, s.black);
-        x(ctx, px - 4, py - 10, 9, 20, shadow);
-        x(ctx, px - 3, py - 8, 7, 16, energy);
-        x(ctx, px - 2, py - 7, 2, 12, s.white);
-      } else if (index === 1) {
-        // Detached facets lift and brighten while the volley charges.
-        const lift = cast ? 6 : 0;
-        for (let row = -7; row <= 7; row++) {
-          const width = 8 - Math.abs(row);
-          x(ctx, px - width, py + row - lift, width * 2, shadow);
-          if (width > 2)
-            x(ctx, px - width + 2, py + row - lift, width * 2 - 4, energy);
-        }
-      } else {
-        // Rotating weight and a broken orbital rail.
-        if (side < 0) Ht(ctx, cx, cy + 1, 33, shadow, 1, 2);
-        const angle = time * 2 + (side < 0 ? Math.PI : 0);
-        const ox = Math.round(cx + Math.cos(angle) * 34);
-        const oy = Math.round(cy + Math.sin(angle) * 19);
-        x(ctx, ox - 4, oy - 4, 9, 9, s.black);
-        x(ctx, ox - 3, oy - 3, 7, 7, energy);
-        x(ctx, ox - 2, oy - 2, 2, 2, s.white);
+    const pixel = (dx, dy, w, h, col) =>
+      x(
+        ctx,
+        cx + Math.round(dx),
+        cy + Math.round(dy),
+        w,
+        h,
+        flash ? s.white : col,
+      );
+    if (theme === "squeeze") {
+      // A hooded figure framed by |f(x)| <= x²: both bounds meet at zero.
+      for (let row = 0; row < 25; row++) {
+        const half = 7 + Math.floor(row * 0.55);
+        pixel(-half, row - 2, half * 2 + 1, 1, s.black);
+        pixel(-half + 2, row - 2, half * 2 - 3, 1, shadow);
+        if (row % 3 === 0) pixel(-half + 4, row - 2, 3, 1, "#7895ab");
       }
+      pixel(-12, -24, 25, 23, s.black);
+      pixel(-9, -22, 19, 19, shadow);
+      pixel(-7, -18, 15, 11, "#15253a");
+      pixel(-3, -15, 7, 2, energy);
+      for (let dx = -34; dx <= 34; dx++) {
+        const bound = (dx * dx) / (cast ? 67 : 56);
+        pixel(dx, 5 - bound, 2, 2, "#91d8ff");
+        pixel(dx, 5 + bound, 2, 2, "#50b8a5");
+      }
+      pixel(-2, 3, 5, 5, s.white);
+    } else if (theme === "slope") {
+      // A mechanical surveyor measures the tangent to a quadratic track.
+      pixel(-15, -20, 31, 38, s.black);
+      pixel(-13, -18, 27, 34, shadow);
+      pixel(-12, -17, 5, 31, "#9f6396");
+      pixel(7, -16, 6, 29, "#4b2f65");
+      pixel(-9, -13, 19, 10, "#17192b");
+      pixel(-7, -11, 15, 3, energy);
+      pixel(-10, 19, 7, 7, s.black);
+      pixel(4, 19, 7, 7, s.black);
+      for (let dx = -34; dx <= 34; dx++) {
+        pixel(dx, 23 - (dx * dx) / 63, 2, 2, "#847fb3");
+      }
+      const point = Math.round(Math.sin(time * 2.6) * 17);
+      const tangentY = 23 - (point * point) / 63;
+      for (let dx = -17; dx <= 17; dx++)
+        pixel(
+          point + dx,
+          tangentY - (dx * 2 * point) / 63,
+          2,
+          cast ? 3 : 2,
+          energy,
+        );
+      pixel(point - 2, tangentY - 2, 5, 5, s.white);
+    } else {
+      // Three polynomial pages fan out around a gilded series engine.
+      for (const side of [-1, 1]) {
+        for (let page = 0; page < 3; page++) {
+          const dx = side * (14 + page * 6);
+          const dy = -15 + page * 6 + Math.sin(time * 3 + page) * 2;
+          pixel(dx - 7, dy, 15, 26, s.black);
+          pixel(dx - 5, dy + 2, 11, 21, page % 2 ? "#a78066" : "#daba8e");
+          for (let line = 0; line < 3; line++)
+            pixel(
+              dx - 3,
+              dy + 7 + line * 4,
+              4 + ((line + page) % 3),
+              1,
+              shadow,
+            );
+        }
+      }
+      pixel(-14, -25, 29, 47, s.black);
+      pixel(-12, -23, 25, 43, shadow);
+      pixel(-11, -22, 23, 3, energy);
+      pixel(-10, 11, 21, 6, "#b27c48");
+      // Sigma embossed on the center cover.
+      pixel(-7, -15, 15, 2, energy);
+      pixel(-7, 2, 15, 2, energy);
+      for (let row = 0; row < 16; row++)
+        pixel(-7 + Math.min(row, 15 - row), -14 + row, 2, 1, energy);
+      pixel(-2, 21, 5, 8, "#b34e56");
     }
-    Ct(
-      ctx,
-      "extended-boss:" + index + ":" + (rage ? "rage" : "calm"),
-      newBossSprites[index],
-      { k: s.black, g: shadow, l: energy, w: s.white, h: "#8a9bb6" },
-      cx,
-      cy,
-      { scale: 2, flash },
-    );
     if (cast || rage) {
-      const pulse = Math.floor(time * 12) % 4;
-      x(ctx, cx - 2, cy - 8, 5, 4, pulse < 2 ? s.white : energy);
-      Pe(ctx, cx - 18, cy - 15, 0.2, energy);
-      Pe(ctx, cx + 19, cy + 10, 0.2, energy);
+      Pe(ctx, cx - 23, cy - 20, 0.2, energy);
+      Pe(ctx, cx + 24, cy + 12, 0.2, energy);
     }
   }
 
@@ -12007,7 +11982,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       visual: true,
       follow: boss.e,
       a: aim,
-      spread,
+      spread: spread + (pattern === "prism" ? 0.3 : 0),
       len: 130,
       warnFrom: a.t,
       fire: a.t + warning,
@@ -12020,22 +11995,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     for (let wave = 0; wave < waves; wave++) {
       const count = pattern === "prism" ? 7 : 5;
       for (let shot = 0; shot < count; shot++) {
-        const lane = (shot / (count - 1) - 0.5) * spread;
+        const normalized = shot / (count - 1) - 0.5;
+        const lane =
+          normalized * spread * (pattern === "mirror" ? 1 - wave * 0.15 : 1);
         if (pattern === "orbit" && shot === (wave + 1) % count) continue;
-        const offset =
-          pattern === "mirror"
-            ? wave % 2
-              ? 0.13
-              : -0.13
-            : pattern === "orbit"
-              ? (wave - 1) * 0.12
-              : wave * 0.025;
+        const offset = pattern === "prism" ? (wave - 1.5) * 0.095 : 0;
         const speed =
-          (pattern === "prism"
-            ? 56 + wave * 8
-            : pattern === "mirror"
-              ? 68 - wave * 4
-              : 60) * boss.spd;
+          (pattern === "orbit"
+            ? 55 +
+              9 * (wave > 0 ? normalized : 0) +
+              12 * (wave > 1 ? normalized ** 2 : 0) +
+              18 * (wave > 2 ? normalized ** 3 : 0)
+            : pattern === "prism"
+              ? 62 + normalized * 13 * (wave - 1.5)
+              : 64) * boss.spd;
         Pt(qt(boss), Dt(boss), aim + lane + offset, speed, {
           kind: "dot",
           r: 3,
@@ -12139,59 +12112,70 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : "Rectangle by rectangle... until your area is zero.",
       },
       mirror: {
-        name: i ? "镜界守卫" : "Mirror Warden",
+        name: i ? "夹逼守门人" : "Squeeze Sentinel",
         sub: i ? "弹幕首领" : "Bullet hell boss",
         col: s.teal,
         r: 16,
         hp: 1,
         oy: 27,
         move: "hover",
-        draw: (...args) => drawNewBoss(0, s.teal, "#32557b", ...args),
+        draw: (...args) =>
+          drawCalculusBoss("squeeze", s.teal, "#32557b", ...args),
         kit: ["mirrorFan", "holeRing", "homingDots"],
         p2kit: ["mirrorFan", "fanBurst", "sineStreams"],
         gap2: 0.65,
         p2dr: 0.1,
         capK: 0.026,
-        quote: i ? "镜像弹幕会左右交替。" : "Watch the mirrored lanes.",
-        p2msg: i ? "镜像弹幕会左右交替。" : "Watch the mirrored lanes.",
+        quote: i
+          ? "上界和下界正向中间收拢。"
+          : "The upper and lower bounds squeeze inward.",
+        p2msg: i
+          ? "上界和下界正向中间收拢。"
+          : "The upper and lower bounds squeeze inward.",
       },
       prism: {
-        name: i ? "棱镜领主" : "Prism Regent",
+        name: i ? "斜率测绘师" : "Slope Surveyor",
         sub: i ? "弹幕首领" : "Bullet hell boss",
         col: s.pink,
         r: 16,
         hp: 1,
         oy: 27,
         move: "hover",
-        draw: (...args) => drawNewBoss(1, s.pink, "#713d7c", ...args),
+        draw: (...args) =>
+          drawCalculusBoss("slope", s.pink, "#713d7c", ...args),
         kit: ["prismRain", "sineStreams", "crossLanes"],
         p2kit: ["prismRain", "holeRing", "crossLanes"],
         gap2: 0.65,
         p2dr: 0.1,
         capK: 0.026,
         quote: i
-          ? "别被棱镜的快慢弹迷惑。"
-          : "Read the prism’s fast and slow volleys.",
+          ? "切点在动，斜率也在变。"
+          : "As the point moves, the slope changes.",
         p2msg: i
-          ? "别被棱镜的快慢弹迷惑。"
-          : "Read the prism’s fast and slow volleys.",
+          ? "切点在动，斜率也在变。"
+          : "As the point moves, the slope changes.",
       },
       orbit: {
-        name: i ? "轨道工匠" : "Orbit Architect",
+        name: i ? "泰勒藏书官" : "Taylor Archivist",
         sub: i ? "弹幕首领" : "Bullet hell boss",
         col: s.orange,
         r: 16,
         hp: 1,
         oy: 27,
         move: "hover",
-        draw: (...args) => drawNewBoss(2, s.orange, "#7d4d45", ...args),
+        draw: (...args) =>
+          drawCalculusBoss("series", s.orange, "#7d4d45", ...args),
         kit: ["orbitSweep", "areaBomb", "accSpiral"],
         p2kit: ["orbitSweep", "accSpiral", "areaBomb"],
         gap2: 0.65,
         p2dr: 0.1,
         capK: 0.026,
-        quote: i ? "找到正在移动的缺口。" : "Follow the shifting gaps.",
-        p2msg: i ? "找到正在移动的缺口。" : "Follow the shifting gaps.",
+        quote: i
+          ? "近似式每一波都多一项。"
+          : "Each approximation adds another term.",
+        p2msg: i
+          ? "近似式每一波都多一项。"
+          : "Each approximation adds another term.",
       },
     },
     vo = ["dne", "knight", "riemann", "mirror", "prism", "orbit"],
