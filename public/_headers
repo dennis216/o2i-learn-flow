@@ -4,3 +4,5 @@
   Cache-Control: no-cache
 /games/arena-scratchpad.js
   Cache-Control: no-cache
+/games/arena-knowledge.js
+  Cache-Control: no-cache

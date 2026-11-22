@@ -196,14 +196,22 @@ function fullscreenFixture(t, { ios = false, denied = false } = {}) {
   return { context, document, calls, classes, notices, notice };
 }
 
-test("a start gesture upgrades the already expanded page to native landscape", async (t) => {
+test("a start gesture upgrades the expanded page to native full screen; landscape waits for the battle", async (t) => {
   const f = fullscreenFixture(t);
   await f.context.enterArenaFullscreen(true);
   assert.deepEqual(f.calls, []);
   await f.context.enterArenaFullscreen();
-  assert.deepEqual(f.calls, ["fullscreen", "landscape"]);
+  assert.deepEqual(
+    f.calls,
+    ["fullscreen"],
+    "hero, gun and unit menus stay free to be used upright",
+  );
   assert.equal(f.document.body.dataset.fullscreenMode, "native");
-  assert.equal(f.notice.hidden, true);
+  f.context.I = "play";
+  f.context.lockLandscapeForRun();
+  assert.deepEqual(f.calls, ["fullscreen", "landscape"]);
+  f.context.lockLandscapeForRun();
+  assert.equal(f.calls.length, 2, "the lock is requested once per run");
   await f.context.enterArenaFullscreen();
   assert.equal(f.calls.length, 2, "an active native session is reused");
   f.document.fullscreenElement = null;
@@ -215,21 +223,122 @@ test("a start gesture upgrades the already expanded page to native landscape", a
   );
 });
 
+test("Esc on a touch-screen laptop (mouse or trackpad) goes back to the website", async (t) => {
+  const f = fullscreenFixture(t);
+  const restored = [];
+  f.context.hasFinePointer = () => true;
+  f.context.restoreArenaDisplay = () => restored.push("restore");
+  await f.context.enterArenaFullscreen();
+  assert.equal(f.document.body.dataset.fullscreenMode, "native");
+  f.document.fullscreenElement = null;
+  f.context.arenaFullscreenChanged();
+  assert.deepEqual(restored, ["restore"]);
+});
+
 test("iPad and iPhone retain the safe page player instead of reentering native fullscreen", async (t) => {
   const f = fullscreenFixture(t, { ios: true });
   await f.context.enterArenaFullscreen();
   assert.deepEqual(f.calls, []);
   assert.equal(f.document.body.dataset.fullscreenMode, "page");
-  assert.match(f.notices[0], /landscape/);
+  assert.deepEqual(
+    f.notices,
+    [],
+    "no rotate notice on the menus; the battle shows the turn-your-device screen",
+  );
 });
 
-test("a denied native request keeps the expanded player and explains manual rotation", async (t) => {
+test("a denied native request keeps the expanded player and says so", async (t) => {
   const f = fullscreenFixture(t, { denied: true });
   await f.context.enterArenaFullscreen();
   assert.deepEqual(f.calls, ["fullscreen"]);
   assert.equal(f.document.body.dataset.fullscreenMode, "page");
   assert(f.classes.has("arena-expanded"));
-  assert.match(f.notices[0], /rotate.*landscape/);
+  assert.match(f.notices[0], /expanded/);
+});
+
+test("an upright battle on a touch screen pauses behind the turn-your-device screen and resumes when turned", (t) => {
+  const classes = new Set(["arena-expanded", "touch"]);
+  const events = [];
+  const gate = { id: "landscapeGate" };
+  const document = {
+    body: {
+      dataset: { mode: "run" },
+      classList: {
+        contains: (name) => classes.has(name),
+        toggle: (name, on) => (on ? classes.add(name) : classes.delete(name)),
+      },
+    },
+  };
+  const context = arenaContext({
+    i: false,
+    document,
+    N: (id) => (id === "landscapeGate" ? gate : null),
+    screen: {},
+    innerWidth: 390,
+    innerHeight: 664,
+  });
+  for (const [key, value] of Object.entries({
+    innerWidth: 390,
+    innerHeight: 664,
+  })) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, {
+      configurable: true,
+      writable: true,
+      value,
+    });
+    t.after(() =>
+      previous
+        ? Object.defineProperty(globalThis, key, previous)
+        : delete globalThis[key],
+    );
+  }
+  const previousDocument = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "document",
+  );
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: document,
+  });
+  t.after(() =>
+    previousDocument
+      ? Object.defineProperty(globalThis, "document", previousDocument)
+      : delete globalThis.document,
+  );
+  context.usesTouchControls = () => classes.has("touch");
+  context.Bt = {
+    pause() {
+      events.push("pause");
+      context.I = "pause";
+    },
+    unpause() {
+      events.push("unpause");
+      context.I = "play";
+    },
+  };
+  context.I = "play";
+  context.syncLandscapeGate();
+  assert.deepEqual(events, ["pause"]);
+  assert(classes.has("landscape-gate"), "the turn-your-device screen shows");
+  context.syncLandscapeGate();
+  assert.deepEqual(events, ["pause"], "still upright: stays paused");
+  globalThis.innerWidth = 844;
+  globalThis.innerHeight = 390;
+  context.syncLandscapeGate();
+  assert.deepEqual(events, ["pause", "unpause"]);
+  assert(!classes.has("landscape-gate"));
+  document.body.dataset.mode = "title";
+  globalThis.innerWidth = 390;
+  globalThis.innerHeight = 664;
+  context.I = "title";
+  context.syncLandscapeGate();
+  assert.deepEqual(
+    events,
+    ["pause", "unpause"],
+    "menus are left alone when upright",
+  );
+  assert(!classes.has("landscape-gate"));
 });
 
 test("scratchpad coordinates remain normalized and erasing removes ink", () => {

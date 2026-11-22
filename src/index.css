@@ -9,105 +9,108 @@ All colors MUST be HSL.
 @layer base {
   :root, .dark {
     color-scheme: dark;
-    --background: 158 31% 11%;
-    --foreground: 45 25% 92%;
+    --background: 166 19% 11%;
+    --foreground: 42 18% 89%;
 
-    --card: 157 26% 13%;
-    --card-foreground: 45 25% 92%;
+    --card: 166 17% 14%;
+    --card-foreground: 42 18% 89%;
 
-    --popover: 157 26% 15%;
-    --popover-foreground: 45 25% 92%;
+    --popover: 166 16% 17%;
+    --popover-foreground: 42 18% 89%;
 
-    --primary: 39 37% 73%;
-    --primary-foreground: 158 29% 9%;
+    --primary: 44 38% 73%;
+    --primary-foreground: 166 22% 11%;
 
-    --secondary: 155 22% 19%;
-    --secondary-foreground: 45 25% 92%;
+    --secondary: 166 14% 21%;
+    --secondary-foreground: 42 18% 89%;
 
-    --muted: 155 20% 17%;
-    --muted-foreground: 145 12% 68%;
+    --muted: 166 13% 18%;
+    --muted-foreground: 155 9% 72%;
 
-    --accent: 39 37% 73%;
-    --accent-foreground: 157 30% 13%;
+    --accent: 44 43% 70%;
+    --accent-text: 44 43% 70%;
+    --accent-foreground: 166 22% 11%;
 
     --destructive: 0 68% 57%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 152 16% 25%;
-    --input: 152 16% 31%;
-    --ring: 39 37% 73%;
+    --border: 166 12% 29%;
+    --input: 166 12% 37%;
+    --ring: 44 43% 70%;
 
     /* Math tutoring theme colors */
     --education-blue: 157 40% 24%;
     --education-orange: 43 96% 56%;
-    --education-green: 142 76% 36%;
+    --education-green: 145 40% 64%;
     --education-purple: 259 86% 40%;
     --education-teal: 174 82% 29%;
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     --gradient-secondary: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
 
-    --studio-ink: 158 31% 11%;
-    --studio-white: 45 30% 94%;
-    --quest-background: 155 24% 16%;
-    --quest-panel: 158 27% 12%;
-    --detail-sage: 145 23% 64%;
+    --studio-ink: 166 19% 11%;
+    --studio-white: 42 18% 89%;
+    --quest-background: 166 17% 15%;
+    --quest-panel: 166 18% 12%;
+    --detail-sage: 155 18% 69%;
     --detail-bronze: 30 28% 62%;
-    --studio-ice: 39 37% 73%;
+    --studio-ice: 44 43% 70%;
     --studio-cobalt: 156 32% 42%;
-    --studio-muted: 145 15% 73%;
+    --studio-muted: 155 9% 72%;
     --glass-white: 0 0% 100%;
-    --glass-edge: 152 16% 25%;
+    --glass-edge: 166 12% 29%;
     --glass-blue: 156 32% 42%;
     --radius: 0.75rem;
 
-    --sidebar-background: 157 26% 13%;
+    --sidebar-background: 166 17% 14%;
 
-    --sidebar-foreground: 45 25% 92%;
+    --sidebar-foreground: 42 18% 89%;
 
-    --sidebar-primary: 39 37% 73%;
+    --sidebar-primary: 44 38% 73%;
 
-    --sidebar-primary-foreground: 158 29% 9%;
+    --sidebar-primary-foreground: 166 22% 11%;
 
-    --sidebar-accent: 155 22% 19%;
+    --sidebar-accent: 166 14% 21%;
 
-    --sidebar-accent-foreground: 45 25% 92%;
+    --sidebar-accent-foreground: 42 18% 89%;
 
-    --sidebar-border: 152 16% 25%;
+    --sidebar-border: 166 12% 29%;
 
-    --sidebar-ring: 39 37% 73%;
+    --sidebar-ring: 44 43% 70%;
   }
 
   .light {
     color-scheme: light;
     --background: 45 30% 96%;
-    --foreground: 158 29% 15%;
+    --foreground: 164 22% 19%;
     --card: 45 35% 99%;
-    --card-foreground: 158 29% 15%;
+    --card-foreground: 164 22% 19%;
     --popover: 45 35% 99%;
-    --popover-foreground: 158 29% 15%;
+    --popover-foreground: 164 22% 19%;
     --primary: 157 36% 25%;
     --primary-foreground: 45 30% 97%;
     --secondary: 145 18% 89%;
     --secondary-foreground: 158 29% 18%;
     --muted: 145 14% 91%;
-    --muted-foreground: 155 12% 38%;
-    --accent: 36 39% 37%;
-    --accent-foreground: 45 30% 98%;
+    --muted-foreground: 158 10% 35%;
+    --accent: 44 48% 62%;
+    --accent-text: 44 47% 35%;
+    --accent-foreground: 164 24% 15%;
+    --education-green: 145 48% 29%;
     --destructive: 0 68% 43%;
     --border: 145 15% 80%;
     --input: 145 15% 73%;
     --ring: 157 36% 25%;
     --studio-ink: 45 30% 96%;
-    --studio-white: 158 29% 15%;
-    --studio-muted: 155 12% 38%;
-    --studio-ice: 36 39% 37%;
+    --studio-white: 164 22% 19%;
+    --studio-muted: 158 10% 35%;
+    --studio-ice: 44 48% 62%;
     --quest-background: 145 19% 91%;
     --quest-panel: 45 30% 97%;
     --detail-sage: 148 25% 35%;
     --detail-bronze: 30 32% 40%;
     --glass-edge: 145 15% 80%;
     --sidebar-background: 45 35% 99%;
-    --sidebar-foreground: 158 29% 15%;
+    --sidebar-foreground: 164 22% 19%;
     --sidebar-primary: 157 36% 25%;
     --sidebar-primary-foreground: 45 30% 97%;
     --sidebar-accent: 145 18% 89%;
@@ -254,24 +257,24 @@ p > span {
   .glass-menu [role='menuitem'] { border-radius: .4rem; padding: .65rem .8rem; }
   .glass-mobile-menu { border-radius: 1rem; }
   .glass-hero { margin: 0; border-radius: 0; color: hsl(var(--studio-white)); background: hsl(var(--studio-ink)); }
-  .glass-eyebrow { display: flex; align-items: center; gap: .8rem; color: hsl(var(--accent)); font-size: .625rem; letter-spacing: .18em; font-weight: 500; }
+  .glass-eyebrow { display: flex; align-items: center; gap: .8rem; color: hsl(var(--accent-text)); font-size: .625rem; letter-spacing: .18em; font-weight: 500; }
   .hero-eyebrow-line { width: 1.5rem; height: 1px; background: currentColor; }
   .hero-title { max-width: 660px; font-family: 'O2I Numerals', 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; font-size: clamp(3rem, 5.1vw, 5.1rem); font-weight: 500; letter-spacing: -.025em; line-height: 1.06; text-wrap: balance; }
   .hero-title-zh { font-family: 'O2I Numerals', 'Noto Serif SC', 'Songti SC', 'SimSun', serif; font-size: clamp(2.4rem, 4.2vw, 4.2rem); line-height: 1.5; font-weight: 500; letter-spacing: .015em; }
-  .hero-title-accent { display: block; color: hsl(var(--accent)); }
+  .hero-title-accent { display: block; color: hsl(var(--accent-text)); }
   .hero-description { color: hsl(var(--studio-muted)); }
-  .glass-hero .glass-primary { border-radius: .4rem; color: hsl(var(--studio-ink)); background: hsl(var(--accent)); box-shadow: none; }
-  .glass-hero .glass-primary:hover { background: hsl(var(--studio-white)); }
+  .glass-hero .glass-primary { border-radius: .4rem; color: hsl(var(--accent-foreground)); background: hsl(var(--accent)); box-shadow: none; }
+  .glass-hero .glass-primary:hover { background: hsl(var(--accent) / .82); }
   .hero-secondary { color: hsl(var(--studio-white)); border-bottom: 1px solid hsl(var(--studio-white) / .35); }
-  .hero-secondary:hover { color: hsl(var(--accent)); border-color: currentColor; }
+  .hero-secondary:hover { color: hsl(var(--accent-text)); border-color: currentColor; }
   .hero-stats { border-top: 1px solid hsl(var(--studio-white) / .2); padding-top: 1.75rem; max-width: 440px; }
   .hero-stats dd { font-weight: 500; font-family: 'O2I Numerals', 'Cormorant Garamond', Georgia, serif; font-size: 2rem; line-height: 1.1; }
   .hero-stats dt { color: hsl(var(--studio-muted)); font-size: .8rem; }
   .learning-graph { padding: 1.5rem 0; min-width: 0; }
-  .graph-heading { display: flex; justify-content: space-between; padding-bottom: 1.25rem; border-bottom: 1px solid hsl(var(--studio-white) / .2); color: hsl(var(--studio-white) / .7); font-size: .6rem; letter-spacing: .17em; }
+  .graph-heading { display: flex; justify-content: space-between; padding-bottom: 1.25rem; border-bottom: 1px solid hsl(var(--studio-white) / .2); color: hsl(var(--studio-muted)); font-size: .6rem; letter-spacing: .17em; }
   .learning-graph svg { margin-top: 2rem; }
   .graph-caption { margin: 1rem 0 2.5rem; color: hsl(var(--studio-muted)); font-size: .75rem; }
-  .graph-subjects { display: flex; justify-content: space-between; gap: 1rem; border-top: 1px solid hsl(var(--studio-white) / .2); padding-top: 1.25rem; font-size: .55rem; letter-spacing: .14em; color: hsl(var(--accent)); }
+  .graph-subjects { display: flex; justify-content: space-between; gap: 1rem; border-top: 1px solid hsl(var(--studio-white) / .2); padding-top: 1.25rem; font-size: .55rem; letter-spacing: .14em; color: hsl(var(--accent-text)); }
   .section-kicker { font-size: .6rem; font-weight: 500; letter-spacing: .16em; color: hsl(var(--primary)); }
   .glass-trait { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: background-color 200ms, border-color 200ms; }
   .glass-trait:hover { background: hsl(var(--secondary)); border-color: hsl(var(--primary) / .45); }
@@ -493,5 +496,13 @@ p > span {
 body { font-variant-numeric: lining-nums; }
 .community-learners-copy strong { letter-spacing: -.015em; font-weight: 500; }
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
-.page-enter { animation: page-enter 320ms ease-out both; }
+/* backwards, not both: a held opacity animation keeps a stacking context, which traps
+   the full-screen Limit Arena (fixed, z-100) under the sticky header (z-40). */
+.page-enter { animation: page-enter 320ms ease-out backwards; }
+html.arena-expanded .glass-nav-wrap { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
+
+@media (max-width: 399px) { .glass-nav a > .brand-mark img { height: 2rem; } }
+/* "O2I" inside headings and the auth wordmark: one serif face for O, 2 and I (no Inter digit). */
+.o2i-name { font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; }
+
