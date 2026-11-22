@@ -202,18 +202,7 @@ test("a defeated mini-boss leaves its equipment and its lair stays cleared", () 
   assert.ok(Math.abs(boss.hp - MINI_BOSSES.mech.hp * scale * 0.9) < 1e-6);
   context.At(boss, boss.hp + 1, { nocrit: true });
   assert.equal(lair.state, "done");
-  const robot = context.a.kf.giftRobot;
-  assert.equal(robot.hp, 16);
-  const target = context.ye("slime", robot.x, robot.y, { hp: 30 });
-  context.a.t = robot.fireAt;
-  k.update(0);
-  assert.equal(target.hp, 26);
-  assert.equal(robot.hp, 12);
-  for (let hits = 0; hits < 3; hits++) {
-    context.a.t = robot.hurtAt;
-    k.update(0);
-  }
-  assert.equal(context.a.kf.giftRobot, null);
+  assert.ok(!context.a.kf.bossFollowers?.length);
   const drop = context.a.picks.find((p) => p.kind === "kfgear");
   assert.equal(drop.gear, MINI_BOSSES.mech.gear);
   assert.ok(!context.a.picks.some((p) => p.kind === "kfchest"));
@@ -541,4 +530,35 @@ test("new bosses warn before firing and add a volley in phase two", () => {
       assert.equal(boss.cast, false);
     }
   }
+});
+
+test("themed followers replace the previous squad, use low damage, and ink slows", () => {
+  const context = run();
+  const k = context.knowledge,
+    a = context.a;
+  for (const [boss, expected] of [
+    ["crab", ["shrimp", "crab"]],
+    ["yeti", ["snowman"]],
+    ["scorpion", ["scorpion"]],
+    ["octopus", ["octopus"]],
+  ]) {
+    k.onKill({ kf: { boss }, x: 0, y: 0 });
+    assert.deepEqual(
+      a.kf.bossFollowers.map(({ kind, hp }) => [kind, hp]),
+      expected.map((kind) => [kind, 30]),
+    );
+  }
+  const follower = a.kf.bossFollowers[0];
+  const target = context.ye("slime", follower.x, follower.y, { hp: 30 });
+  a.t = follower.fireAt;
+  k.update(0);
+  assert.equal(target.hp, 27);
+  assert.ok(target.slowUntil > a.t);
+  assert.equal(follower.hp, 26);
+  for (let n = 0; n < 7; n++) {
+    a.t = follower.hurtAt;
+    k.update(0);
+  }
+  assert.equal(a.kf.bossFollowers.length, 0);
+  assert.ok(!a.picks.some((item) => item.kind === "kfgear"));
 });

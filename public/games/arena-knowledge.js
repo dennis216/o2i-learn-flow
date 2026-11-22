@@ -2704,88 +2704,142 @@ export function createKnowledgeFlow(api) {
     }
   }
 
-  function tickGiftRobot(dt) {
-    const a = api.a;
-    const robot = a.kf.giftRobot;
-    if (!robot) return;
-    const p = P();
-    const tx = p.x - 16;
-    const ty = p.y + 6;
-    const distance = Math.hypot(tx - robot.x, ty - robot.y);
-    if (distance > 140) {
-      robot.x = tx;
-      robot.y = ty;
-    } else if (distance > 2) {
-      const fraction = Math.min(1, (55 * dt) / distance);
-      robot.x += (tx - robot.x) * fraction;
-      robot.y += (ty - robot.y) * fraction;
-    }
+  const followerRewards = {
+    crab: {
+      kinds: ["shrimp", "crab"],
+      line: ["My little squad is yours.", "我的虾兵蟹将，就托付给你了。"],
+    },
+    yeti: {
+      kinds: ["snowman"],
+      line: ["Take my little snowman.", "带上我的小雪人吧。"],
+    },
+    octopus: {
+      kinds: ["octopus"],
+      line: [
+        "My little octopus will slow them down.",
+        "小章鱼会用墨水帮你拖住敌人。",
+      ],
+    },
+    scorpion: {
+      kinds: ["scorpion"],
+      line: ["Take my little rocket scorpion.", "带上这只拿火箭筒的小蝎子吧。"],
+    },
+  };
 
-    let target;
-    let range = 60;
-    let touching = false;
-    for (const enemy of a.enemies) {
-      if (enemy.dead) continue;
-      const gap = Math.hypot(enemy.x - robot.x, enemy.y - robot.y);
-      if (gap < (enemy.r || 5) + 5) touching = true;
-      if (gap < range) {
-        target = enemy;
-        range = gap;
+  function tickBossFollowers(dt) {
+    const a = api.a;
+    const followers = a.kf.bossFollowers;
+    if (!followers?.length) return;
+    const p = P();
+    a.kf.bossFollowers = followers.filter((follower, index) => {
+      const tx = p.x + (index === 0 ? -17 : 17);
+      const ty = p.y + 7;
+      const distance = Math.hypot(tx - follower.x, ty - follower.y);
+      const fraction =
+        distance > 140 ? 1 : Math.min(1, (55 * dt) / Math.max(1, distance));
+      follower.x += (tx - follower.x) * fraction;
+      follower.y += (ty - follower.y) * fraction;
+      let target;
+      let range = 60;
+      let touching = false;
+      for (const enemy of a.enemies) {
+        if (enemy.dead) continue;
+        const gap = Math.hypot(enemy.x - follower.x, enemy.y - follower.y);
+        if (gap < (enemy.r || 5) + 5) touching = true;
+        if (gap < range) {
+          target = enemy;
+          range = gap;
+        }
       }
-    }
-    if (touching && a.t >= robot.hurtAt) {
-      robot.hurtAt = a.t + 0.75;
-      robot.hp -= 4;
-      if (robot.hp <= 0) {
-        a.kf.giftRobot = null;
-        return;
+      if (touching && a.t >= follower.hurtAt) {
+        follower.hurtAt = a.t + 0.75;
+        follower.hp -= 4;
+        if (follower.hp <= 0) return false;
       }
-    }
-    if (target && a.t >= robot.fireAt) {
-      robot.fireAt = a.t + 1.5;
-      robot.beam = { x: target.x, y: target.y, until: a.t + 0.15 };
-      api.damage(target, 4, { nocrit: true, quiet: true });
-    }
+      if (target && a.t >= follower.fireAt) {
+        follower.fireAt = a.t + 1.7;
+        follower.shot = { x: target.x, y: target.y, until: a.t + 0.22 };
+        if (follower.kind === "octopus" && !target.boss && !target.kf?.boss)
+          target.slowUntil = Math.max(target.slowUntil || 0, a.t + 1.15);
+        const damage =
+          follower.kind === "scorpion"
+            ? 5
+            : ["crab", "shrimp"].includes(follower.kind)
+              ? 2
+              : 3;
+        api.damage(target, damage, { nocrit: true, quiet: true });
+      }
+      return true;
+    });
   }
 
-  function drawGiftRobot(ctx, cameraX, cameraY) {
+  function drawBossFollowers(ctx, cameraX, cameraY) {
     const a = api.a;
-    const robot = a.kf.giftRobot;
-    if (!robot) return;
-    const x = Math.round(robot.x - cameraX);
-    const y = Math.round(robot.y - cameraY);
-    if (robot.beam?.until > a.t)
-      api.drawLine(
-        ctx,
-        x,
-        y,
-        Math.round(robot.beam.x - cameraX),
-        Math.round(robot.beam.y - cameraY),
-        "#84efff",
-        1,
-        0,
-        0,
-      );
-    api.drawRect(ctx, x - 5, y - 4, 11, 9, "#15152a");
-    api.drawRect(ctx, x - 4, y - 3, 9, 6, "#6f899e");
-    api.drawRect(ctx, x - 2, y - 2, 5, 2, "#9cf7dc");
-    api.drawRect(ctx, x, y - 6, 1, 2, "#ffda78");
-    api.drawRect(ctx, x - 5, y + 6, 10, 2, "#24253c");
-    api.drawRect(
-      ctx,
-      x - 5,
-      y + 6,
-      Math.ceil((10 * robot.hp) / 16),
-      2,
-      "#7adba4",
-    );
+    for (const follower of a.kf.bossFollowers || []) {
+      const x = Math.round(follower.x - cameraX);
+      const y = Math.round(follower.y - cameraY);
+      const kind = follower.kind;
+      const rect = (dx, dy, w, h, color) =>
+        api.drawRect(ctx, x + dx, y + dy, w, h, color);
+      if (follower.shot?.until > a.t) {
+        const sx = Math.round(follower.shot.x - cameraX),
+          sy = Math.round(follower.shot.y - cameraY);
+        const color =
+          kind === "octopus"
+            ? "#ab73ee"
+            : kind === "scorpion"
+              ? "#ff9a51"
+              : kind === "snowman"
+                ? "#b9efff"
+                : "#ffa983";
+        api.drawLine(
+          ctx,
+          x,
+          y,
+          sx,
+          sy,
+          color,
+          kind === "octopus" ? 2 : 1,
+          0,
+          0,
+        );
+        api.drawRect(ctx, sx - 2, sy - 2, 5, 5, color);
+      }
+      if (kind === "snowman") {
+        rect(-5, -3, 11, 9, "#accbdc");
+        rect(-4, -4, 9, 9, "#ecf9ff");
+        rect(-4, -10, 9, 7, "#ecf9ff");
+        rect(-3, -8, 2, 2, "#23324d");
+        rect(2, -8, 2, 2, "#23324d");
+        rect(0, -6, 4, 1, "#f28a51");
+        rect(-4, -3, 9, 2, "#4e8bba");
+      } else {
+        const sprite = bossSprite(kind, Math.floor(api.now * 5) % 2, false);
+        const width = Math.max(1, Math.round(sprite.width * 0.57));
+        const height = Math.max(1, Math.round(sprite.height * 0.57));
+        ctx.drawImage(
+          sprite,
+          x - Math.floor(width / 2),
+          y - Math.floor(height / 2),
+          width,
+          height,
+        );
+        if (kind === "scorpion") {
+          rect(2, -6, 9, 4, "#392938");
+          rect(3, -5, 7, 2, "#c1b3a4");
+          rect(8, -5, 2, 2, "#f2884d");
+        }
+      }
+      rect(-6, 8, 12, 3, "#24253c");
+      rect(-5, 9, Math.ceil((10 * follower.hp) / 30), 1, "#7adba4");
+    }
   }
 
   function drawEffects(ctx, camX, camY) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return;
-    drawGiftRobot(ctx, camX, camY);
+    drawBossFollowers(ctx, camX, camY);
     // Player-side effects stay a step behind enemies and their bullets.
     const FX = 0.75;
     ctx.globalAlpha = FX;
@@ -3270,7 +3324,7 @@ export function createKnowledgeFlow(api) {
       }
       tickGear(dt);
       tickShots(dt);
-      tickGiftRobot(dt);
+      tickBossFollowers(dt);
       if (a.themeTr) return;
       ensureWorld();
       if (tickLairs(dt)) return;
@@ -3289,36 +3343,34 @@ export function createKnowledgeFlow(api) {
           lair.enemy = null;
         }
         kf.stats.miniBosses++;
-        const p = P();
-        kf.giftRobot = {
-          x: p.x - 16,
-          y: p.y + 6,
-          hp: 16,
-          hurtAt: a.t,
-          fireAt: a.t + 1,
-        };
-        say(
-          L(def.name),
-          def.col,
-          api.zh
-            ? "你赢了。这个小机器人就送给你吧！"
-            : "You win. Take my little robot with you!",
-        );
-
-        a.picks.push({
-          kind: "kfgear",
-          kf: true,
-          persist: true,
-          gear: def.gear,
-          x: e.x,
-          y: e.y,
-          t0: a.t,
-        });
-        say(
-          api.zh ? "小首领被击败！" : "MINI-BOSS DOWN!",
-          def.col,
-          (api.zh ? "掉落：" : "Dropped: ") + L(EQUIPMENT[def.gear].name),
-        );
+        const reward = followerRewards[e.kf.boss];
+        if (reward) {
+          const p = P();
+          kf.bossFollowers = reward.kinds.map((kind, index) => ({
+            kind,
+            x: p.x + (index ? 17 : -17),
+            y: p.y + 7,
+            hp: 30,
+            hurtAt: a.t,
+            fireAt: a.t + 1,
+          }));
+          say(L(def.name), def.col, L(reward.line));
+        } else {
+          a.picks.push({
+            kind: "kfgear",
+            kf: true,
+            persist: true,
+            gear: def.gear,
+            x: e.x,
+            y: e.y,
+            t0: a.t,
+          });
+          say(
+            L(def.name),
+            def.col,
+            api.zh ? "收下我的激光炮吧。" : "Take my laser cannon.",
+          );
+        }
         return;
       }
       const growth = kf.unit.u7_growth;
