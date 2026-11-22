@@ -1,4 +1,4 @@
-import { ARENA_STAGE_SECONDS } from "./arena-knowledge.js";
+import { ARENA_STAGE_SECONDS, MINI_BOSSES } from "./arena-knowledge.js";
 import { createKnowledgeFlow } from "./arena-knowledge.js";
 
 export const mathSvgDefinitions =
@@ -81,9 +81,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     restoreArenaDisplay();
     location.reload();
   };
-  if (!testing) {
-    window.parent === window && location.replace("/arena");
-  }
+  const previewParams =
+    !testing && window.parent === window
+      ? new URLSearchParams(location.search)
+      : null;
+  const previewMode = previewParams?.get("preview");
+  const isPreview = [
+    "merchant",
+    "boss-reward",
+    "boss-farewell",
+    "mini-boss",
+  ].includes(previewMode);
+  if (!testing && window.parent === window && !isPreview)
+    location.replace("/arena");
   let Po = "cq-arena-lang",
     i = Object.prototype.hasOwnProperty.call(overrides, "i")
       ? overrides.i
@@ -118,6 +128,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     seq: 0,
     pending: new Map(),
     call(t, e) {
+      if (isPreview)
+        return Promise.reject(new Error("Preview has no game service"));
       return new Promise((o, r) => {
         const n = ++this.seq,
           l = setTimeout(() => {
@@ -6608,7 +6620,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.shake = Math.min(1, a.shake + 0.3)));
   }
   function _n() {}
-  let Go = (t) => Math.round(26 + 17 * (t - 1) + 2.35 * (t - 1) * (t - 1));
+  let Go = (t) =>
+    Math.round(1.25 * (26 + 17 * (t - 1) + 2.35 * (t - 1) * (t - 1)));
   function On(t = "rifle") {
     for (const o in a) delete a[o];
     Object.assign(a, {
@@ -6675,6 +6688,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       questionPoolExhausted: false,
       nextMagnetAt: 10,
       pendingLv: 0,
+      stageXpUpgrades: 0,
       tips: {},
       banner: null,
       stageCleared: !1,
@@ -7342,33 +7356,35 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function runT() {
     return a.t * (a.testSpeed || 1);
   }
-  const BOSS_QUIZ_LIMIT = 2;
-  function Kn(
-    t,
-    maxLevels = a.boss || a.bossFarewell?.until > a.t
-      ? BOSS_QUIZ_LIMIT
-      : Infinity,
-  ) {
+  const STAGE_XP_LIMIT = 6;
+  const BOSS_XP_LIMIT = 1;
+  function Kn(t, bossExperience = !!a.boss) {
     rewardPet(t * 0.25);
-    let gained =
+    if (!bossExperience && a.pendingBossReward) return 0;
+    const stageUpgrades = a.stageXpUpgrades ?? 0;
+    const normalLimit = STAGE_XP_LIMIT - BOSS_XP_LIMIT;
+    const slots = bossExperience
+      ? Math.min(STAGE_XP_LIMIT - stageUpgrades, BOSS_XP_LIMIT - a.pendingLv)
+      : normalLimit - stageUpgrades;
+    if (slots <= 0) return 0;
+
+    let budget = a.need - a.xp;
+    for (let level = 1; level < slots; level++) budget += Go(a.lv + level);
+    const gained = Math.min(
+      budget,
       t *
-      a.st.xp *
-      (a.pet?.id === "wisdom" ? 1.15 : 1) *
-      (a.testSpeed || 1) *
-      (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
-    if (Number.isFinite(maxLevels)) {
-      const slots = maxLevels - a.pendingLv;
-      if (slots <= 0) return;
-      let budget = a.need - a.xp;
-      for (let level = 1; level < slots; level++) budget += Go(a.lv + level);
-      gained = Math.min(gained, budget);
-    }
+        a.st.xp *
+        (a.pet?.id === "wisdom" ? 1.15 : 1) *
+        (a.testSpeed || 1) *
+        (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1),
+    );
     a.xp += gained;
     while (a.xp + 1e-9 >= a.need) {
       a.xp = Math.max(0, a.xp - a.need);
       a.lv++;
       a.need = Go(a.lv);
       a.pendingLv++;
+      a.stageXpUpgrades = (a.stageXpUpgrades ?? 0) + 1;
     }
     return gained;
   }
@@ -11407,9 +11423,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.worldPortal = null;
     a.portalMerchant = null;
     a.bossFarewell = null;
+    a.miniBossFarewell = null;
     a.p.x = U + 40;
     a.p.y = ot + 40;
     a.worldStage = (a.worldStage || 1) + 1;
+    a.stageXpUpgrades = 0;
     a.regionState = null;
     a.regionBuff = null;
     a.regionSlow = false;
@@ -12187,14 +12205,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.shake = 0;
     a.kick = { x: 0, y: 0 };
     const e = Ri();
-    if (!a.cosmeticCoinsPaid && !(a.testSpeed > 1)) {
+    if (!isPreview && !a.cosmeticCoinsPaid && !(a.testSpeed > 1)) {
       a.cosmeticCoinsPaid = true;
       e.cosmeticCoins = Math.max(0, Math.floor(e.total / 10));
       accessoryWallet().coins += e.cosmeticCoins;
       tt.save();
     }
     const o =
-      a.testSpeed > 1
+      isPreview || a.testSpeed > 1
         ? { newBest: !1, rank: 0 }
         : tt.record({
             score: e.total,
@@ -12929,7 +12947,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.themeAt = a.t + 2.6));
     a.portalOrigin = { x: e.x, y: e.y + 10 };
     a.pendingBossReward = true;
-    collectBossExperience(BOSS_QUIZ_LIMIT);
+    collectBossExperience();
     spawnWorldPortal();
   }
   function wt(t) {
@@ -16131,6 +16149,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const farewell = a.bossFarewell;
     if (I === "play" && farewell?.until > a.t)
       drawArenaBubble(farewell.name, farewell.text, 83);
+    else if (I === "play" && a.miniBossFarewell?.until > a.t)
+      drawArenaBubble(a.miniBossFarewell.name, a.miniBossFarewell.text, 83);
     else if (I === "play" && a.playerSpeech?.until > a.t)
       drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
     else if (I === "play" && a.pet?.speechUntil > a.t)
@@ -16474,6 +16494,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         } catch {}
       },
       save() {
+        if (isPreview) return;
         try {
           localStorage.setItem("cq-arena-en", JSON.stringify(this.d));
         } catch {}
@@ -17086,8 +17107,76 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "#402254",
       "sleeves",
     ],
+    [
+      "Boston Celtics",
+      "波士顿凯尔特人",
+      "#16985e",
+      "#dff8ea",
+      "#fff9e5",
+      "tank",
+    ],
+    ["Chicago Bulls", "芝加哥公牛", "#d32046", "#201524", "#fff1db", "tank"],
+    ["Phoenix Suns", "菲尼克斯太阳", "#522d87", "#f38942", "#fff3e0", "sun"],
+    ["AC Milan", "AC 米兰", "#29202a", "#df3246", "#fff1e1", "stripes"],
+    ["Inter Milan", "国际米兰", "#20233d", "#397aed", "#f0c369", "stripes"],
+    [
+      "Borussia Dortmund",
+      "多特蒙德",
+      "#f5d41c",
+      "#202027",
+      "#201921",
+      "sleeves",
+    ],
+    [
+      "Kansas City Chiefs",
+      "堪萨斯城酋长",
+      "#da3148",
+      "#f0b846",
+      "#fff4df",
+      "pads",
+    ],
+    [
+      "Philadelphia Eagles",
+      "费城老鹰",
+      "#186e70",
+      "#a9c6cb",
+      "#fff4df",
+      "pads",
+    ],
+    [
+      "Minnesota Vikings",
+      "明尼苏达维京人",
+      "#643da0",
+      "#fabf37",
+      "#fff3de",
+      "pads",
+    ],
   ];
   const jerseyPatterns = {
+    tank: [
+      "..kw..wk..",
+      "..kcwwck..",
+      "..kcccck..",
+      "..kcccck..",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    sun: [
+      "..kh..hk..",
+      "..kcwwck..",
+      "..kcccck..",
+      "..khhhck..",
+      "..kchhhk..",
+      "..kwwwwk..",
+    ],
+    pads: [
+      ".khw..whk.",
+      "khhcccchhk",
+      "khcccccchk",
+      "kwccccccwk",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
     solid: [
       "..kw..wk..",
       ".kcccccck.",
@@ -17197,9 +17286,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
   }
 
-  function drawAccessory(ctx, slot, index, x, y, scale = 1) {
+  const wornGlasses = arenaAccessories.glasses.map((item) =>
+    item[3].map((row) => row[0] + row.slice(2, 8) + row[9]),
+  );
+
+  function drawAccessory(ctx, slot, index, x, y, scale = 1, compact = false) {
     const item = arenaAccessories[slot][index];
     if (!item) return;
+    const pixels = compact ? wornGlasses[index] : item[3];
+    const lensRight = compact ? 5 : 7;
     const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
     const color = item[4]?.number
       ? item[2]
@@ -17207,7 +17302,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
     re(
       ctx,
-      item[3],
+      pixels,
       { c: outline, w: outline, k: outline, h: outline, n: outline },
       x,
       y + scale,
@@ -17215,7 +17310,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
     re(
       ctx,
-      item[3],
+      pixels,
       {
         c: color,
         w: "#fff3db",
@@ -17235,9 +17330,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ctx.fillStyle = lensColor;
       if (!mono)
         ctx.fillRect(x + 2 * scale, y + scale, (wide ? 2 : 1) * scale, scale);
-      ctx.fillRect(x + 7 * scale, y + scale, (wide ? 2 : 1) * scale, scale);
+      ctx.fillRect(
+        x + lensRight * scale,
+        y + scale,
+        (wide ? 2 : 1) * scale,
+        scale,
+      );
       ctx.fillStyle = "#fff6e0";
-      if (mirror || wide) ctx.fillRect(x + 7 * scale, y, scale, scale);
+      if (mirror || wide) ctx.fillRect(x + lensRight * scale, y, scale, scale);
     } else if (slot === "hat" || !item[4]?.number) {
       // Place the highlight inside the first solid patch of the item itself.
       const row = item[3].findIndex((line) => /ccc/.test(line));
@@ -17251,7 +17351,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         );
       }
     }
-    if (!item[4]?.number && level >= 3 && Math.floor(E * 5) % 5 < 2) {
+    if (
+      !compact &&
+      !item[4]?.number &&
+      level >= 3 &&
+      Math.floor(E * 5) % 5 < 2
+    ) {
       ctx.fillStyle = "#fff4b5";
       ctx.fillRect(x + 10 * scale, y, scale, 3 * scale);
       ctx.fillRect(x + 9 * scale, y + scale, 3 * scale, scale);
@@ -17296,8 +17401,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ctx,
         "glasses",
         worn.glasses,
-        Math.round(x) - 5,
+        Math.round(x) - 4,
         Math.round(feet) - 13 + bob,
+        1,
+        true,
       );
   }
 
@@ -18020,7 +18127,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         : "\u2014";
       (this.show(
         i
-          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span></div>
+          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>本关经验升级 ${a.stageXpUpgrades ?? 0}/${STAGE_XP_LIMIT}</span></div>
       <div class="stats">${[
         [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
@@ -18045,7 +18152,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         .join("")}</div>
       ${this.buildHTML()}
       <div class="row2"><button type="button" id="pzGo" class="go">\u7EE7\u7EED<span class="kbd-hint"> (Esc)</span></button><button type="button" id="pzEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
-          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span></div>
+          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>Stage XP upgrades ${a.stageXpUpgrades ?? 0}/${STAGE_XP_LIMIT}</span></div>
       <div class="stats">${[
         [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
@@ -18297,6 +18404,52 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ),
       (document.body.dataset.mode = "run"));
     requestAnimationFrame(fitTouchStage);
+  }
+  function startArenaPreview() {
+    qa("rifle");
+    a.banner = null;
+    a.p.inv = 30;
+    a.nextBossT = 210;
+    if (previewMode === "merchant") {
+      const requested = previewParams.get("shop");
+      const kind = Object.hasOwn(merchantShops, requested)
+        ? requested
+        : "talent";
+      const origin = stallItemPosition(
+        { x: 0, y: 0, kind },
+        0,
+        merchantShops[kind].items.length,
+      );
+      a.portalMerchant = { kind, x: X() - origin.x, y: _() - origin.y - 9 };
+      a.worldPortal = { x: X() + 70, y: _() - 65, target: 6, readyAt: 0 };
+      tickPortalMerchant();
+      return;
+    }
+    if (previewMode === "mini-boss") {
+      const requested = previewParams.get("boss");
+      const boss = Object.hasOwn(MINI_BOSSES, requested) ? requested : "crab";
+      a.theme = { scorpion: 6, crab: 5, yeti: 7, octopus: 4 }[boss] || 0;
+      knowledge.onKill({ kf: { boss }, x: X() + 24, y: _() - 12 });
+      a.miniBossFarewell.until = a.t + 18;
+      return;
+    }
+    Bi();
+    a.bossCard = null;
+    a.boss.e.x = X() + 28;
+    a.boss.e.y = _() - 36;
+    a.boss.fightT0 = a.t;
+    Xi(a.boss.e);
+    if (previewMode === "boss-farewell") {
+      a.bossFarewell.until = a.t + 12;
+      return;
+    }
+    Ii();
+    a.pendingLv = 0;
+    a.bossFarewell = null;
+    a.worldPortal.readyAt = a.t;
+    a.p.x = a.worldPortal.x;
+    a.p.y = a.worldPortal.y;
+    updateWorldPortal();
   }
   let Te = null;
   let ds = () => {
@@ -21285,19 +21438,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       palette = { w: s.white, r: s.red, b: s.blue };
     re(ctx, sprite, palette, -5, -4, { scale: 1 });
   }
-  function collectBossExperience(maxLevels = Infinity) {
+  function collectBossExperience() {
     const total = a.gems.reduce((sum, gem) => sum + gem.v, 0);
     a.gems = [];
     if (total <= 0) return;
-    const gained = Kn(total, maxLevels);
+    Kn(total, true);
     Yn();
-    if (gained > 0)
-      bt(
-        a.p.x,
-        a.p.y - 24,
-        (i ? "经验 +" : "XP +") + Math.ceil(gained),
-        s.blue,
-      );
   }
   function drawRegionArrow(zone) {
     const cam = a.cam || { x: 0, y: 0 },
@@ -22003,7 +22149,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Hide touch buttons")),
         ks(),
         us());
-      if (!hasArenaTouch() && arenaFullPref() !== "off")
+      if (isPreview) {
+        startArenaPreview();
+        updateFullscreenLabel();
+      } else if (!hasArenaTouch() && arenaFullPref() !== "off")
         void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),

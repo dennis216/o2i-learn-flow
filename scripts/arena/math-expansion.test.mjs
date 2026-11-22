@@ -150,45 +150,50 @@ test("new passives compose without replacing existing armor or raising healing p
   f.ctx.skillRecoveryTick(1);
   assert.equal(f.a.p.hp, 60);
 });
-test("boss vacuum collects every gem once and queues all resulting levels without opening a quiz", () => {
+test("a stage reserves one of six XP upgrades for the boss", () => {
   const f = fixture();
   Object.assign(f.a, {
     xp: 0,
-    need: 10,
+    need: 20,
     lv: 1,
     pendingLv: 0,
-    st: { xp: 1 },
-    gems: [{ v: 7 }, { v: 12 }, { v: 11 }],
+    st: { xp: 1.15 },
+    testSpeed: 4,
+    gems: [{ v: 200 }],
   });
-  Object.assign(f.ctx, { Go: () => 10, Yn() {}, bt() {} });
+  Object.assign(f.ctx, { Go: () => 20, Yn() {}, bt() {} });
+  f.ctx.Kn(200);
+  assert.equal(f.a.stageXpUpgrades, 5);
+  assert.equal(f.a.pendingLv, 5);
+  f.a.pendingLv = 0; // Regular upgrades have already been answered.
+  f.a.pendingBossReward = true;
   f.ctx.collectBossExperience();
-  assert.equal(f.a.gems.length, 0);
-  assert.equal(f.a.lv, 4);
-  assert.equal(f.a.pendingLv, 3);
+  assert.equal(f.a.stageXpUpgrades, 6);
+  assert.equal(f.a.lv, 7);
+  assert.equal(f.a.pendingLv, 1);
   assert.equal(f.a.xp, 0);
-  f.ctx.collectBossExperience();
-  assert.equal(f.a.pendingLv, 3);
+  assert.equal(f.a.gems.length, 0);
+  f.ctx.Kn(200);
+  assert.equal(f.a.stageXpUpgrades, 6);
 });
-test("boss combat XP and the final vacuum share a two-question budget", () => {
+test("boss combat XP and the final vacuum share one upgrade", () => {
   const f = fixture();
   Object.assign(f.a, {
     boss: {},
-    testSpeed: 4,
     xp: 5,
     need: 20,
     lv: 3,
     pendingLv: 0,
-    st: { xp: 1.15 },
+    st: { xp: 1 },
     gems: [{ v: 200 }],
   });
   Object.assign(f.ctx, { Go: () => 20, Yn() {}, bt() {} });
-  f.ctx.Kn(4);
+  f.ctx.Kn(15);
   assert.equal(f.a.pendingLv, 1);
   f.a.boss = null;
-  f.ctx.collectBossExperience(2);
-  assert.equal(f.a.pendingLv, 2);
-  assert.equal(f.a.lv, 5);
-  assert.equal(f.a.xp, 0);
+  f.ctx.collectBossExperience();
+  assert.equal(f.a.pendingLv, 1);
+  assert.equal(f.a.lv, 4);
   assert.equal(f.a.gems.length, 0);
 });
 test("region arrows persist only while the buff is offscreen and disappear as soon as it becomes visible", () => {

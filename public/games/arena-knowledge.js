@@ -3364,6 +3364,15 @@ export function createKnowledgeFlow(api) {
         }
         kf.stats.miniBosses++;
         const reward = followerRewards[e.kf.boss];
+        a.miniBossFarewell = {
+          name: L(def.name),
+          text: reward
+            ? L(reward.line)
+            : api.zh
+              ? "收下我的激光炮吧。"
+              : "Take my laser cannon.",
+          until: a.t + 3.5,
+        };
         if (reward) {
           const p = P();
           kf.bossFollowers = reward.kinds.map((kind, index) => ({
@@ -3374,7 +3383,6 @@ export function createKnowledgeFlow(api) {
             hurtAt: a.t,
             fireAt: a.t + 1,
           }));
-          say(L(def.name), def.col, L(reward.line));
         } else {
           a.picks.push({
             kind: "kfgear",
@@ -3385,11 +3393,6 @@ export function createKnowledgeFlow(api) {
             y: e.y,
             t0: a.t,
           });
-          say(
-            L(def.name),
-            def.col,
-            api.zh ? "收下我的激光炮吧。" : "Take my laser cannon.",
-          );
         }
         return;
       }
