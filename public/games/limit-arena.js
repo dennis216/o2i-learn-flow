@@ -11053,7 +11053,117 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     "#c58a32",
     "#7650a0",
   ];
+  const potionBottles = {
+    healPotion: {
+      color: "#e34d66",
+      seal: "#ffd5dc",
+      body: [
+        "...kkkk...",
+        "...kwwk...",
+        "....kk....",
+        "..kkxxkk..",
+        ".kxwxxxxk.",
+        ".kxxllxxk.",
+        "..kkkkkk..",
+      ],
+    },
+    rate: {
+      color: "#e3932d",
+      seal: "#fff0ae",
+      body: [
+        "....kk....",
+        "...kwwk...",
+        "....kk....",
+        "...kxxk...",
+        "..kxwxk...",
+        "..kxlxxk..",
+        "..kkkkkk..",
+      ],
+    },
+    max: {
+      color: "#b34879",
+      seal: "#ffe4f0",
+      body: [
+        "...kkkk...",
+        "....kk....",
+        "..kkxxkk..",
+        ".kxxxxxxk.",
+        ".kxwllxxk.",
+        ".kxxxxxxk.",
+        "..kkkkkk..",
+      ],
+    },
+    dash: {
+      color: "#18896d",
+      seal: "#94ffde",
+      body: [
+        ".....kk...",
+        "....kwk...",
+        "....kk....",
+        "...kxxk...",
+        "..kxlxk...",
+        "..kxxk....",
+        "..kkkk....",
+      ],
+    },
+    cool: {
+      color: "#3675d1",
+      seal: "#c7e6ff",
+      body: [
+        "...kkkk...",
+        "...kwwk...",
+        "...kxxk...",
+        "...kwxk...",
+        "...kllk...",
+        "...kxxk...",
+        "...kkkk...",
+      ],
+    },
+    blink: {
+      color: "#8648bf",
+      seal: "#f4cfff",
+      body: [
+        "....kk....",
+        "...kwwk...",
+        "...kxxk...",
+        "..kxlxxk..",
+        ".kxxwxxxk.",
+        "..kxxxxk..",
+        "...kkkk...",
+      ],
+    },
+    mix: {
+      color: "#bda338",
+      seal: "#fff9b0",
+      body: [
+        "..kk..kk..",
+        "..kwkkwk..",
+        "..kxllxk..",
+        "..kxllxk..",
+        ".kxxllxxk.",
+        ".kxxllxxk.",
+        "..kkkkkk..",
+      ],
+    },
+  };
   function drawStallItem(ctx, id, x, y, scale = 1) {
+    const potion = potionBottles[id];
+    if (potion) {
+      Ct(
+        ctx,
+        "potion:" + id + ":" + scale,
+        potion.body,
+        { k: "#171628", x: potion.color, w: "#fff9e3", l: potion.seal },
+        x,
+        y,
+        { scale },
+      );
+      return;
+    }
+    if (O[id]) {
+      ja(ctx, id, x - 6 * scale, y - 6 * scale, scale, O[id].col || s.yellow);
+      return;
+    }
     const index = arenaPets.findIndex((pet) => pet.id === id);
     const pixels =
       index >= 0
@@ -15732,17 +15842,42 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
   }
   function drawArenaMinimap(ctx) {
-    const width = 63,
-      height = 41;
+    const width = 68,
+      height = 45;
     const left = A - width - 5,
       top = 5 + topRightControlOffset();
-    x(ctx, left, top, width, height, "#080e21");
-    x(ctx, left + 1, top + 1, width - 2, height - 2, "#283655");
-    const marker = (point, color, size = 3) => {
+    const paint = (dx, dy, w, h, c) => x(ctx, left + dx, top + dy, w, h, c);
+    paint(2, 3, width, height, "#080b18");
+    paint(0, 0, width, height, "#080e21");
+    paint(1, 1, width - 2, height - 2, "#616987");
+    paint(2, 2, width - 4, height - 4, "#1b2848");
+    for (let dx = 9; dx < width - 3; dx += 8)
+      paint(dx, 3, 1, height - 6, "#293856");
+    for (let dy = 9; dy < height - 3; dy += 8)
+      paint(3, dy, width - 6, 1, "#293856");
+    for (const dx of [1, width - 6]) {
+      paint(dx, 1, 5, 1, "#d2b384");
+      paint(dx, height - 2, 5, 1, "#d2b384");
+    }
+    const marker = (point, color, kind) => {
       if (!point) return;
-      const px = left + 3 + Math.round(F(point.x / et, 0, 1) * (width - 7));
-      const py = top + 3 + Math.round(F(point.y / dt, 0, 1) * (height - 7));
-      x(ctx, px - 1, py - 1, size, size, color);
+      const px = 4 + Math.round(F(point.x / et, 0, 1) * (width - 9));
+      const py = 4 + Math.round(F(point.y / dt, 0, 1) * (height - 9));
+      paint(px - 2, py - 2, 5, 5, "#101729");
+      if (kind === "tablet") {
+        paint(px - 1, py - 2, 3, 4, color);
+        paint(px + 1, py - 1, 1, 1, "#fffad9");
+      } else if (kind === "region") {
+        paint(px - 2, py, 5, 1, color);
+        paint(px, py - 2, 1, 5, color);
+      } else if (kind === "boss") {
+        paint(px - 2, py - 1, 5, 3, color);
+        paint(px - 2, py - 2, 1, 1, color);
+        paint(px + 2, py - 2, 1, 1, color);
+      } else {
+        paint(px - 1, py, 3, 1, color);
+        paint(px, py - 1, 1, 3, color);
+      }
     };
     for (const tab of a.kf?.world?.tablets || [])
       if (
@@ -15750,13 +15885,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         !tab.used &&
         a.t >= Math.max(a.kf.tabletAt, a.kf.restUntil)
       )
-        marker(tab, s.yellow);
+        marker(tab, "#ffdc75", "tablet");
     for (const lair of a.kf?.world?.lairs || [])
       if (lair.state === "awake" || lair.state === "sleep")
-        marker(lair.enemy || lair, s.coral, 4);
-    marker(a.regionState?.active, s.green);
-    marker(a.worldPortal, s.lav);
-    marker(a.p, s.white);
+        marker(lair.enemy || lair, "#ff7d8e", "boss");
+    marker(a.regionState?.active, "#76efac", "region");
+    marker(a.worldPortal, "#bd94ff", "portal");
+    marker(a.p, "#fff8e6", "player");
   }
 
   function drawArenaBubble(title, message, y) {
@@ -15766,6 +15901,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     x(R, left + 3, y, width - 6, 42, "#151726");
     x(R, left, y + 3, width, 36, "#151726");
     x(R, left + 3, y + 3, width - 6, 36, "#f9ead5");
+    x(R, left + 6, y + 35, width - 12, 2, "#e5cfb5");
+    x(R, left + 16, y + 19, width - 32, 1, "#d9bfd0");
     x(R, G / 2 - 5, y + 39, 11, 6, "#151726");
     x(R, G / 2 - 3, y + 38, 7, 4, "#f9ead5");
     x(R, G / 2 - 2, y + 44, 5, 4, "#151726");
@@ -17356,7 +17493,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       <div class="msub">Last run: ${z(e.name)} + ${z(o.name)} \xB7 Units ${z((t.units && t.units.length ? t.units : [1]).join(", "))} \xB7 ${z((Zt[t.diff] || Zt.normal).name)} enemies \xB7 ${z((Ut[t.qdiff] || Ut.mixed).name)} questions</div></div>`,
         "menu",
       ),
-        appendSkillKeySetting(this.el.querySelector(".mz")),
         (N("mStart").onclick = () => {
           ($.init(), St.start());
           this.heroSelect();
@@ -17386,6 +17522,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `<div class="panel sz pix"><div class="qhd"><b>${e}</b><span class="sp"></span><button type="button" id="sBack">\u2190 Back (Esc)</button></div>${o}</div>`,
         "sub",
       ),
+        t === "howto" && appendSkillKeySetting(this.el.querySelector(".sz")),
         t === "guide" && ms(),
         t === "records" && ka(),
         (N("sBack").onclick = () => {
@@ -18749,7 +18886,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       tt.save();
     };
     label.append(select);
-    panel.append(label);
+    panel.querySelector(".qhd")?.after(label);
   }
 
   function appendAttackSetting(panel) {
