@@ -7,6 +7,7 @@ export const mathSvgDefinitions =
 // Runtime text is maintained here; no external translation JSON is generated into this file.
 export const legacyStaticTranslations = {
   "#lang": "English",
+  "#hFull": "全屏",
   "#music": "\u97F3\u4E50\uFF1A\u5F00",
   "#mute": "\u97F3\u6548\uFF1A\u5F00",
   "#tDash": "\u51B2\u523A",
@@ -16677,6 +16678,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         leaveFullscreenByChoice();
       else enterFullscreenByChoice();
     });
+    // Phones / iPads in the windowed player: "Full" sits next to the language button.
+    N("hFull")?.addEventListener("click", enterFullscreenByChoice);
   }
   // The player decides: an exit is remembered so later visits stay windowed,
   // an entry turns automatic full screen back on.

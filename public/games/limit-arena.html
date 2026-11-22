@@ -163,6 +163,7 @@ body[data-ov=menu] .mz .mrow button{font-size:12px;padding:8px 6px}
     <div class="brand"><canvas id="logo" width="72" height="24" aria-label="o2i"></canvas><div><h1>CALC QUEST Limit Arena</h1><div class="sub">by o2i · AP Calculus AB &amp; BC, Units 1–10 · Roguelite survival quiz</div></div></div>
     <div class="spacer"></div>
     <button id="lang" type="button" title="Change language">中文</button>
+    <button id="hFull" type="button">Full</button>
     <button id="music" type="button" aria-pressed="false">Music: ON</button>
     <button id="mute" type="button" aria-pressed="false">Sound: ON</button>
   </header>
@@ -415,6 +416,16 @@ body.landscape-gate .display-controls{z-index:230}
 /* Windowed play on a phone/iPad: panels (pause, quiz, picks, results) cover the page,
    so the small "Full" button would float in the middle of them. Show it only in play. */
 body.touch:not(.arena-expanded)[data-ov]:not([data-ov=menu]) #tFullscreen{display:none}
+/* Phones / iPads, windowed: "Full" lives in the header next to the language button
+   instead of floating on the arena. Desktop keeps its own Full control. */
+#hFull{display:none}
+body.touch:not(.arena-expanded) #hFull{display:inline-block}
+body.touch:not(.arena-expanded) #tFullscreen{display:none!important}
+@media(max-width:480px){body.touch:not(.arena-expanded) .wrap>header{column-gap:8px}body.touch:not(.arena-expanded) .wrap>header button{padding:9px 10px}}
+/* Narrow screens make #ov fixed over the whole page (max-width:760px above). For the
+   windowed main menu that also covered the header, so language / Full / music / sound
+   could not be tapped. Keep that menu on the arena, where its panel already sits. */
+@media(max-width:760px){body:not(.arena-expanded)[data-ov=menu] #ov{position:absolute;inset:0;z-index:5;background:transparent}}
 body.touch.arena-expanded[data-ov=menu] header{right:calc(28px + clamp(34px,8vmin,72px) + env(safe-area-inset-right,0px))}
 /* Knowledge flow (#55): card category colours, admin test speed. */
 .card em s.c-unit{box-shadow:inset 0 0 0 2px #4fb4ff;color:#4fb4ff}
