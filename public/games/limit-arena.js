@@ -11267,7 +11267,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       x(ctx, hoof + 1, -4, 1, 2, offset < 0 ? mountPalette.m : mountPalette.g);
       x(ctx, hoof, -1, 3, 1, offset < 0 ? "#4c3c45" : "#8c7373");
     }
-    const nod = !moving && ae(E + 0.35, 3.2) < 0.32;
+    const nod = !moving && (E + 0.35) % 3.2 < 0.32;
     Ct(
       ctx,
       nod ? "wind-runner-nod" : "wind-runner-body",
@@ -11307,7 +11307,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return;
     }
     const index = arenaPets.findIndex((pet) => pet.id === id);
-    const petMoves = index >= 0 && ae(E + index * 0.24, 1.7) < 0.46;
+    const petMoves = index >= 0 && (E + index * 0.24) % 1.7 < 0.46;
     const pixels =
       index >= 0
         ? (petMoves ? petIdleSprites : arenaPetSprites)[index]
@@ -11397,7 +11397,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const kind = merchant.kind || "pet";
       const shop = merchantShops[kind];
       drawMerchantFurniture(ctx, x, y, kind, shop);
-      const blink = ae(E + 0.48, 3.4) < 0.13;
+      const blink = (E + 0.48) % 3.4 < 0.13;
       const breath = Math.sin(E * 2.5) > 0.35 ? 1 : 0;
       Ct(
         ctx,
@@ -11446,7 +11446,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
     const px = Math.round((a.pet.x ?? a.p.x - 14) - camX);
     const flying = a.pet.id === "support" || a.pet.id === "attack";
-    const motion = ae(E + index * 0.24, 1.7) < 0.46;
+    const motion = (E + index * 0.24) % 1.7 < 0.46;
     const hover = flying ? Math.sin(E * 7) * 2 : motion ? 1 : 0;
     const py = Math.round((a.pet.y ?? a.p.y - 4) - camY - hover);
     const level = a.pet.level;
