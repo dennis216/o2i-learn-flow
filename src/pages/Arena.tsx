@@ -16,7 +16,18 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
-function ArenaGame({ language, admin }: { language: Language; admin: boolean }) {
+function ArenaGame({ language, admin, email }: { language: Language; admin: boolean; email?: string }) {
+  const [testCoins, setTestCoins] = useState(false);
+  useEffect(() => {
+    if (!email || location.hostname !== 'brian.o2i-website.pages.dev' || !crypto.subtle) return;
+    let active = true;
+    const bytes = new TextEncoder().encode(email.trim().toLowerCase());
+    void crypto.subtle.digest('SHA-256', bytes).then((digest) => {
+      const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      if (active) setTestCoins(fingerprint === '977d71156e66e6481718578647a6c7971906d9d453bd564f7c14d5e5370d539a');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [email]);
   useState(() => {
     try { localStorage.setItem('cq-arena-lang', language === 'zh' ? 'zh' : 'en'); } catch { /* the game falls back to the browser language */ }
     return language;
@@ -101,6 +112,7 @@ function ArenaGame({ language, admin }: { language: Language; admin: boolean }) 
   return (
     <iframe
       ref={frame}
+      data-arena-test-coins={testCoins ? "true" : undefined}
       src="/games/limit-arena.html"
       title="CALC QUEST Limit Arena"
       allowFullScreen
@@ -125,7 +137,7 @@ function ArenaGame({ language, admin }: { language: Language; admin: boolean }) 
 export default function Arena() {
   const { user, loading, isAdmin } = useAuth();
   const { language, t } = useLanguage();
-  if (user) return <ArenaGame key={user.id + language} language={language} admin={isAdmin} />;
+  if (user) return <ArenaGame key={user.id + language} language={language} admin={isAdmin} email={user.email} />;
   return (
     <main className="text-[#FFF1E8]">
       <Stars className="grid min-h-[calc(100dvh-77px)] place-items-center px-4 py-16">

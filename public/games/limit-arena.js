@@ -16739,6 +16739,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const wallet = accessoryWallet(),
       lang = i ? 1 : 0;
     const best = tt.d.best?.score || 0;
+    const testCoins =
+      location.hostname === "brian.o2i-website.pages.dev" &&
+      window.frameElement?.dataset.arenaTestCoins === "true";
     const worn = tt.d.accessories || {};
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
@@ -16775,16 +16778,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
                 ? i
                   ? "地图奖励"
                   : "Map reward"
-                : best < threshold
+                : !testCoins && best < threshold
                   ? `${i ? "分数" : "Score"} ${threshold}`
                   : `${price} ${i ? "币" : "coins"}`;
             const canBuy =
-              !mapGift && best >= threshold && wallet.coins >= price;
+              !mapGift &&
+              (testCoins || (best >= threshold && wallet.coins >= price));
             const upgradeCost = level * 200;
             const canUpgrade =
               isPremiumAccessory(slot, index) && level > 0 && level < 3;
             return `<div class="accessory-item"><button data-slot="${slot}" data-index="${index}" data-action="${level ? "equip" : "buy"}" aria-pressed="${worn[slot] === index}" ${level || canBuy ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${label}</small></button>
-            ${canUpgrade ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
+            ${canUpgrade ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${!testCoins && wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
           </div>`;
           })
           .join("")}</div></section>`;
@@ -16792,7 +16796,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       .join("");
     const scroll = Bt.el.querySelector(".accessories")?.scrollTop || 0;
     Bt.show(
-      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "饰品币" : "Cosmetic coins"} ${wallet.coins} · ${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
+      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "饰品币" : "Cosmetic coins"} ${testCoins ? "∞" : wallet.coins} · ${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
       "sub",
     );
     Bt.el.querySelector(".accessories").scrollTop = scroll;
@@ -16809,11 +16813,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           if (
             wallet.owned[key] ||
             mapAccessoryKeys.has(key) ||
-            best < accessoryThreshold(index) ||
-            wallet.coins < cost
+            (!testCoins &&
+              (best < accessoryThreshold(index) || wallet.coins < cost))
           )
             return;
-          wallet.coins -= cost;
+          if (!testCoins) wallet.coins -= cost;
           wallet.owned[key] = 1;
         } else if (action === "upgrade") {
           const level = wallet.owned[key];
@@ -16821,11 +16825,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           if (
             !level ||
             level >= 3 ||
-            wallet.coins < cost ||
+            (!testCoins && wallet.coins < cost) ||
             !isPremiumAccessory(slot, index)
           )
             return;
-          wallet.coins -= cost;
+          if (!testCoins) wallet.coins -= cost;
           wallet.owned[key]++;
         }
         const selection = tt.d.accessories || (tt.d.accessories = {});
