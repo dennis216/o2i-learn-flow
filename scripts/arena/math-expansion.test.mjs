@@ -150,7 +150,7 @@ test("new passives compose without replacing existing armor or raising healing p
   f.ctx.skillRecoveryTick(1);
   assert.equal(f.a.p.hp, 60);
 });
-test("a stage reserves one of six XP upgrades for the boss", () => {
+test("the first map caps at Lv 8, then the next map allows eight upgrades", () => {
   const f = fixture();
   Object.assign(f.a, {
     xp: 0,
@@ -163,18 +163,22 @@ test("a stage reserves one of six XP upgrades for the boss", () => {
   });
   Object.assign(f.ctx, { Go: () => 20, Yn() {}, bt() {} });
   f.ctx.Kn(200);
-  assert.equal(f.a.stageXpUpgrades, 5);
-  assert.equal(f.a.pendingLv, 5);
-  f.a.pendingLv = 0; // Regular upgrades have already been answered.
+  assert.equal(f.a.stageXpUpgrades, 7);
+  assert.equal(f.a.lv, 8);
+  assert.equal(f.a.pendingLv, 7);
+  f.a.pendingLv = 0;
   f.a.pendingBossReward = true;
   f.ctx.collectBossExperience();
-  assert.equal(f.a.stageXpUpgrades, 6);
-  assert.equal(f.a.lv, 7);
-  assert.equal(f.a.pendingLv, 1);
-  assert.equal(f.a.xp, 0);
   assert.equal(f.a.gems.length, 0);
+  assert.equal(f.a.pendingLv, 0);
+  assert.equal(f.a.xp, 0);
+  f.a.pendingBossReward = false;
+  assert.equal(f.ctx.Kn(200), 0);
+
+  Object.assign(f.a, { worldStage: 2, stageXpUpgrades: 0 });
   f.ctx.Kn(200);
-  assert.equal(f.a.stageXpUpgrades, 6);
+  assert.equal(f.a.stageXpUpgrades, 8);
+  assert.equal(f.a.lv, 16);
 });
 test("boss combat XP and the final vacuum share one upgrade", () => {
   const f = fixture();

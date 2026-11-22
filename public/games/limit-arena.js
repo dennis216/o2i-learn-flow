@@ -6632,8 +6632,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.shake = Math.min(1, a.shake + 0.3)));
   }
   function _n() {}
-  let Go = (t) =>
-    Math.round(10 + 1.55 * (26 + 17 * (t - 1) + 2.35 * (t - 1) * (t - 1)));
+  let Go = (level) => 68 + 36 * (level - 1) + 5 * (level - 1) ** 2;
   function On(t = "rifle") {
     for (const o in a) delete a[o];
     Object.assign(a, {
@@ -7297,10 +7296,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         a.later.push(() =>
           Rt(t.x, t.y, 26 + 10 * (H("heat") - 2), (r) => Xa(r, "burn", 3)),
         ));
-    const e = runT() / 60,
-      o = Math.max(1, Math.round(t.xp * (1 + Math.floor(e / 3) * 0.5)));
+    const bonus =
+      t.elite || t.kf?.boss ? 1 + Math.floor(runT() / 180) * 0.5 : 1;
+    const o = Math.max(1, Math.round(t.xp * bonus));
     if (
-      (ua(t.x, t.y, o * knowledge.xpScale(t)),
+      (ua(t.x, t.y, Math.max(1, Math.round(o * knowledge.xpScale(t)))),
       _t(
         t.x,
         t.y,
@@ -7328,7 +7328,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         spawnMagnetPickup(t.x, t.y, true);
       ($.boom(), (a.shake = Math.min(1, a.shake + 0.4)));
     } else {
-      if (Math.random() < 0.009)
+      const heartChance =
+        a.diff !== "hard" && a.p.hp < a.p.maxHp * 0.35 ? 0.018 : 0.009;
+      if (Math.random() < heartChance)
         a.picks.push({ kind: "heart", x: t.x, y: t.y, t0: a.t });
       if (Math.random() < 0.009 * 0.95 * 0.9 * 0.95)
         spawnMagnetPickup(t.x, t.y, true);
@@ -7368,16 +7370,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function runT() {
     return a.t * (a.testSpeed || 1);
   }
-  const STAGE_XP_LIMIT = 6;
   const BOSS_XP_LIMIT = 1;
+  function stageXpUpgradeLimit() {
+    // The first map begins at Lv 1, so seven upgrades reach Lv 8.
+    return (a.worldStage || 1) === 1 ? 7 : 8;
+  }
   function Kn(t, bossExperience = !!a.boss) {
     rewardPet(t * 0.25);
     if (!bossExperience && a.pendingBossReward) return 0;
     const stageUpgrades = a.stageXpUpgrades ?? 0;
-    const normalLimit = STAGE_XP_LIMIT - BOSS_XP_LIMIT;
+    const remaining = stageXpUpgradeLimit() - stageUpgrades;
     const slots = bossExperience
-      ? Math.min(STAGE_XP_LIMIT - stageUpgrades, BOSS_XP_LIMIT - a.pendingLv)
-      : normalLimit - stageUpgrades;
+      ? Math.min(remaining, BOSS_XP_LIMIT - a.pendingLv)
+      : remaining;
     if (slots <= 0) return 0;
 
     let budget = a.need - a.xp;
@@ -7561,7 +7566,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
     if (
       ((o.hp -= r),
-      (o.inv = a.t + 0.75),
+      (o.inv =
+        a.t + (a.diff === "hard" ? 0.75 : a.diff === "easy" ? 1.05 : 0.95)),
       ((a.dmgLog || (a.dmgLog = {}))[e] = (a.dmgLog[e] || 0) + r),
       (o.hurtT = a.t),
       (a.shake = Math.min(1, a.shake + 0.45)),
@@ -8734,7 +8740,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         hp: 12,
         sp: 23,
         dmg: 6,
-        xp: 2,
+        xp: 4,
         r: 6,
         pal: [s.peach, s.brown, s.white],
       },
@@ -8742,17 +8748,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         hp: 9,
         sp: 26,
         dmg: 7,
-        xp: 1,
+        xp: 3,
         r: 5,
         pal: [s.green, s.mgreen, s.white],
       },
-      bat: { hp: 5, sp: 43, dmg: 5, xp: 1, r: 4, pal: [s.lav, s.dpurple] },
-      ghost: { hp: 14, sp: 24, dmg: 7, xp: 2, r: 5, pal: [s.lgray, s.lav] },
+      bat: { hp: 5, sp: 43, dmg: 5, xp: 3, r: 4, pal: [s.lav, s.dpurple] },
+      ghost: { hp: 14, sp: 24, dmg: 7, xp: 3, r: 5, pal: [s.lgray, s.lav] },
       charger: {
         hp: 20,
         sp: 20,
         dmg: 13,
-        xp: 2,
+        xp: 4,
         r: 6,
         pal: [s.dorange, s.rust, s.yellow],
       },
@@ -12980,6 +12986,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             (e.phase > 1 ? e.def.gap2 || 0.7 : 1) * (1 - 0.08 * e.tier),
           )));
   }
+  const bossFarewellLines = {
+    dne: ["My patience has a limit, too.", "看来我的耐心也有极限。"],
+    knight: ["A fine cut. Right on the tangent.", "这一剑，切得正好。"],
+    riemann: ["Well, that about sums me up.", "这一回，算你把我加完了。"],
+    mirror: ["Your proof squeezed right through.", "两边一夹，我认输了。"],
+    prism: ["My slope is all downhill now.", "这下我的斜率全是负的了。"],
+    orbit: ["File this under: close enough.", "这场就归档为：近似正确。"],
+  };
   function Xi(t) {
     const e = t.boss;
     if (e.state !== "dying") {
@@ -12989,18 +13003,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (e.charge = null),
         (t.hp = 0),
         (a.lastBossFight = { type: e.type, dur: a.t - e.fightT0, k: e.k }));
-      const farewell = [
-        i ? "你解开了我的难题。" : "You solved my puzzle.",
-        i
-          ? "下一道题在黑洞后等你。"
-          : "Your next challenge waits beyond the portal.",
-        i
-          ? "把你的答案带进下一关吧。"
-          : "Take your answers into the next world.",
-      ][a.bossK % 3];
+      const farewell = bossFarewellLines[e.type] || bossFarewellLines.dne;
       a.bossFarewell = {
         name: e.def.name,
-        text: farewell,
+        text: farewell[i ? 1 : 0],
         def: e.def,
         aim: e.aim,
         x: t.x,
@@ -14343,9 +14349,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ),
         (!(M && Math.floor(E * 16) % 2 === 0) || S) &&
           d.def.draw(c, T, Q, E, {
-            flash:
-              (f - g.hitT < 0.04 && Math.floor(E * 12) % 4 === 0) ||
-              (S && Math.floor(E * 14) % 2 === 0),
+            flash: !S && f - g.hitT < 0.04 && Math.floor(E * 12) % 4 === 0,
             cast: d.cast,
             rage: d.phase > 1,
             aim: d.aim,
@@ -18312,7 +18316,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         : "\u2014";
       (this.show(
         i
-          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>本关经验升级 ${a.stageXpUpgrades ?? 0}/${STAGE_XP_LIMIT}</span></div>
+          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>本关经验升级 ${a.stageXpUpgrades ?? 0}/${stageXpUpgradeLimit()}</span></div>
       <div class="stats">${[
         [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
@@ -18337,7 +18341,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         .join("")}</div>
       ${this.buildHTML()}
       <div class="row2"><button type="button" id="pzGo" class="go">\u7EE7\u7EED<span class="kbd-hint"> (Esc)</span></button><button type="button" id="pzEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
-          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>Stage XP upgrades ${a.stageXpUpgrades ?? 0}/${STAGE_XP_LIMIT}</span></div>
+          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>Stage XP upgrades ${a.stageXpUpgrades ?? 0}/${stageXpUpgradeLimit()}</span></div>
       <div class="stats">${[
         [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],

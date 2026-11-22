@@ -108,7 +108,7 @@ export const HINTS = {
     "装备会自动开火，再捡到同一件就会升级。",
   ],
 };
-export const SMALL_ENEMY_XP = 0.6;
+const SPECIAL_ENEMY_XP = 0.6;
 
 // Offsets from the world centre; flipped per world so maps differ. They stay
 // outside the ring where Brian's special regions and landmarks live.
@@ -3574,7 +3574,11 @@ export function createKnowledgeFlow(api) {
       return f;
     },
     xpScale(e) {
-      return kfOf() && !e?.elite && !e?.boss ? SMALL_ENEMY_XP : 1;
+      return kfOf() &&
+        !e?.elite &&
+        (e?.kf?.boss || e?.kf?.minion || e?.bossMinion)
+        ? SPECIAL_ENEMY_XP
+        : 1;
     },
     bossType() {
       const a = api.a,

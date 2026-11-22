@@ -84,25 +84,33 @@ test("big bosses follow the unit being studied", () => {
   assert.equal(context.a.kf.bossPlan.type, "prism");
 });
 
-test("small enemies give less XP while elites keep theirs", () => {
+test("ordinary monsters drop one 3–4 XP gem and the first level needs 68", () => {
   const context = run();
-  const enemy = (elite) => ({
-    x: 300,
-    y: 300,
-    r: 5,
-    xp: 2,
-    hp: 0,
-    maxHp: 10,
-    elite,
-    pal: ["#fff"],
-  });
-  context.Jn(enemy(false));
-  assert.equal(context.a.gems[0].v, 2 * 0.6);
+  assert.equal(context.a.need, 68);
+  assert.equal(context.Go(2), 109);
+  for (const [type, xp] of [
+    ["slime", 3],
+    ["bat", 3],
+    ["ghost", 3],
+    ["sprout", 4],
+    ["charger", 4],
+    ["golem", 4],
+  ]) {
+    context.a.gems = [];
+    context.Jn(context.ye(type, 300, 300));
+    assert.deepEqual(
+      context.a.gems.map((gem) => gem.v),
+      [xp],
+    );
+  }
+  context.a.t = 190;
   context.a.gems = [];
-  context.Jn(enemy(true));
-  assert.equal(context.a.gems[0].v, 2);
+  context.Jn(context.ye("slime", 300, 300));
+  assert.deepEqual(
+    context.a.gems.map((gem) => gem.v),
+    [3],
+  );
 });
-
 test("tablets offer at most one unit skill; hard tablets grant two levels", () => {
   const context = run(),
     k = context.knowledge,

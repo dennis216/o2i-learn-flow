@@ -62,3 +62,20 @@ test("Emergency Shell reduces low-HP hits and cannot retrigger before cooldown",
   assert.equal(f.a.p.hp, 11);
   assert.equal(f.a.emergencyUntil, 13);
 });
+
+test("easy and normal leave breathing room between hits without changing hard", () => {
+  for (const [difficulty, grace] of [
+    ["easy", 1.05],
+    ["normal", 0.95],
+    ["hard", 0.75],
+  ]) {
+    const { a, ctx } = fixture();
+    a.diff = difficulty;
+    a.p.hp = 100;
+    ctx.ma(5);
+    assert.equal(a.p.inv, a.t + grace);
+    a.t += grace - 0.1;
+    ctx.ma(5);
+    assert.equal(a.p.hp, 95);
+  }
+});
