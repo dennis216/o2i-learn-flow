@@ -619,6 +619,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ((h = As[f]), (c = f));
     }
     const u = Es.concat(h);
+    const jacket = Es.length + 1;
+    u[jacket] = u[jacket].replace("bb", "Bb");
     re(t, u, la, Math.round(e) - 6, Math.round(o) - u.length + c, {
       flip: l.flip,
       recolor: l.recolor,
@@ -10847,8 +10849,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     "...kwwwwk.kook..",
     "..kkwwkkk...k...",
     "..kxooooxk..k...",
-    "..kxxxxxwk..k...",
-    "..koxxxxxkkkk...",
+    "..kowxxowk..k...",
+    "..koxwoxxkkkk...",
     "..koxxxxxk..k...",
     "..kkxkxkk...k...",
     "...kk.kk....k...",
@@ -13935,6 +13937,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         } else Qa(c, m, y, k.face, k.moving, E, ne().rc, f - k.hurtT < 0.08);
       c.globalAlpha = 1;
       if (!g) {
+        drawEquippedAccessories(c, m, y, k.face);
         if (Ja()) c.globalAlpha = 0.35;
         drawHeldWeapon(c, m, y);
         c.globalAlpha = 1;
@@ -15753,6 +15756,201 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     meter.title = i ? "答题正确率" : "Answer accuracy";
   }
 
+  const arenaAccessories = {
+    hat: [
+      [
+        "Santa Hat",
+        "圣诞帽",
+        "#dc405b",
+        ["....ccc...", "...ccccc.w", "..ccccccww", ".wwwwwwww."],
+      ],
+      [
+        "Moto Helmet",
+        "摩托车头盔",
+        "#557dca",
+        ["..cccccc..", ".cccccccc.", ".wwwwccccc", "..wwcccccc"],
+      ],
+      [
+        "Dino Hood",
+        "恐龙头帽饰",
+        "#63bb72",
+        [".c..c..c..", "cccccccc..", "ccccwcccc.", "..ccccwwc."],
+      ],
+      [
+        "Wizard Hat",
+        "魔法帽",
+        "#9563bc",
+        ["...cc.....", "...ccc....", "..ccwcc...", ".ccccccccc"],
+      ],
+      [
+        "Captain Cap",
+        "船长帽",
+        "#425f83",
+        ["..cccccc..", ".cccccccc.", ".wwwwwwww.", "..ccccccc."],
+      ],
+      [
+        "Crown",
+        "王冠",
+        "#e5a844",
+        ["c...c...c.", "cw.cwc.wc.", "cccccccccc", ".wwwwwwww."],
+      ],
+      [
+        "Viking Helmet",
+        "角盔",
+        "#9aacc2",
+        ["w........w", "ww.cccc.ww", ".wccccccw.", "..ccwwcc.."],
+      ],
+      [
+        "Forest Hood",
+        "森林兜帽",
+        "#379585",
+        ["...cccc...", "..cccccc..", ".ccccwccc.", ".ccc..ccc."],
+      ],
+      [
+        "Space Helmet",
+        "太空头盔",
+        "#669ed0",
+        ["..wwwwww..", ".wccccccw.", "wccccccccw", "wwwwwwwwww"],
+      ],
+      [
+        "Dragon Crest",
+        "龙冠",
+        "#ed7651",
+        ["c........c", "cc..ww..cc", ".cccccccc.", "..cwcwcc.."],
+      ],
+    ],
+    glasses: [
+      [
+        "Sunglasses",
+        "墨镜",
+        "#383d63",
+        ["cccc..cccc", "cwwccccwwc", ".cc....cc."],
+      ],
+      [
+        "Round Glasses",
+        "圆框眼镜",
+        "#cba65d",
+        [".cc....cc.", "cwwccccwwc", ".cc....cc."],
+      ],
+      [
+        "Heart Glasses",
+        "爱心眼镜",
+        "#ef719a",
+        ["cc.cccc.cc", "cccccccccc", ".cc....cc."],
+      ],
+      [
+        "Star Glasses",
+        "星星眼镜",
+        "#ffcb60",
+        [".w......w.", "cccc..cccc", ".cc....cc."],
+      ],
+      [
+        "Frost Goggles",
+        "冰晶护目镜",
+        "#8bd8ee",
+        [".cccccccc.", "cwwccccwwc", ".cccccccc."],
+      ],
+      [
+        "Neon Visor",
+        "荧光面罩",
+        "#67d5a0",
+        ["cccccccccc", ".wwwwwwww.", "..cccccc.."],
+      ],
+      [
+        "Pilot Goggles",
+        "飞行护目镜",
+        "#ad774d",
+        [".ccc..ccc.", "cwwwccwwwc", ".ccc..ccc."],
+      ],
+      [
+        "Tinted Lens",
+        "彩色镜片",
+        "#b47ed7",
+        ["cccccccccc", "cwwccccwwc", "..cc..cc.."],
+      ],
+      [
+        "Monocle",
+        "单片眼镜",
+        "#e7c566",
+        [".....ccc..", "....cwwwc.", ".....cccc."],
+      ],
+      [
+        "Pixel Shades",
+        "像素墨镜",
+        "#6878ac",
+        ["cccccccccc", "ccc..wcccc", "..c....cc."],
+      ],
+    ],
+  };
+  function accessoryThreshold(index) {
+    return 250 + index * 500;
+  }
+
+  function drawAccessory(ctx, slot, index, x, y, scale = 1) {
+    const item = arenaAccessories[slot][index];
+    if (!item) return;
+    re(ctx, item[3], { c: item[2], w: "#fff3db" }, x, y, { scale });
+  }
+
+  function drawEquippedAccessories(ctx, x, feet, facing, bob = 0) {
+    const worn = tt.d.accessories;
+    if (!worn) return;
+    drawAccessory(
+      ctx,
+      "hat",
+      worn.hat,
+      Math.round(x) - 5,
+      Math.round(feet) - 19 + bob,
+    );
+    if (facing !== "up")
+      drawAccessory(
+        ctx,
+        "glasses",
+        worn.glasses,
+        Math.round(x) - 5,
+        Math.round(feet) - 13 + bob,
+      );
+  }
+
+  function showAccessories() {
+    const best = tt.d.best?.score || 0;
+    const lang = i ? 1 : 0;
+    const worn = tt.d.accessories || {};
+    const sections = Object.entries(arenaAccessories)
+      .map(([slot, items]) => {
+        const title =
+          slot === "hat" ? (i ? "帽饰" : "Hats") : i ? "眼镜" : "Glasses";
+        return `<section><h3>${title}</h3><div class="accessory-grid"><button data-slot="${slot}" data-index="-1" aria-pressed="${worn[slot] == null}">${i ? "取下" : "Remove"}</button>${items
+          .map((item, index) => {
+            const threshold = accessoryThreshold(index);
+            const unlocked = best >= threshold;
+            return `<button data-slot="${slot}" data-index="${index}" aria-pressed="${worn[slot] === index}" ${unlocked ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${unlocked ? (i ? "已解锁" : "Unlocked") : threshold}</small></button>`;
+          })
+          .join("")}</div></section>`;
+      })
+      .join("");
+    Bt.show(
+      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
+      "sub",
+    );
+    N("accessoryBack").onclick = () => Bt.menu();
+    Bt.el.querySelectorAll("[data-slot]").forEach((button) => {
+      const { slot, index: value } = button.dataset;
+      const index = Number(value);
+      const canvas = button.querySelector("canvas");
+      if (canvas) drawAccessory(canvas.getContext("2d"), slot, index, 6, 5, 2);
+      button.onclick = () => {
+        if (index >= 0 && best < accessoryThreshold(index)) return;
+        const selection = tt.d.accessories || (tt.d.accessories = {});
+        if (index < 0) delete selection[slot];
+        else selection[slot] = index;
+        tt.save();
+        for (const card of Bt.el.querySelectorAll(`[data-slot="${slot}"]`))
+          card.setAttribute("aria-pressed", String(card === button));
+      };
+    });
+  }
+
   let Bt = {
     el: null,
     mode: null,
@@ -16058,10 +16256,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (this.show(
         i
           ? `<div class="panel mz pix"><button type="button" class="go big" id="mStart">\u25B6 \u5F00\u59CB\u6E38\u620F <kbd>Enter</kbd></button>
-      <div class="mrow"><button type="button" id="mGuide">\u6280\u80FD\u56FE\u9274</button><button type="button" id="mHow">\u73A9\u6CD5\u8BF4\u660E</button><button type="button" id="mRec">\u6211\u7684\u8BB0\u5F55</button></div>
+      <div class="mrow"><button type="button" id="mGuide">\u6280\u80FD\u56FE\u9274</button><button type="button" id="mHow">\u73A9\u6CD5\u8BF4\u660E</button><button type="button" id="mAccessories">${i ? "饰品" : "Accessories"}</button><button type="button" id="mRec">\u6211\u7684\u8BB0\u5F55</button></div>
       <div class="msub">\u4E0A\u4E00\u5C40\uFF1A${z(e.name)} + ${z(o.name)} \xB7 \u5355\u5143 ${z((t.units && t.units.length ? t.units : [1]).join(", "))} \xB7 ${z((Zt[t.diff] || Zt.normal).name)}\u654C\u4EBA \xB7 ${z((Ut[t.qdiff] || Ut.mixed).name)}\u9898\u76EE</div></div>`
           : `<div class="panel mz pix"><button type="button" class="go big" id="mStart">\u25B6 Start run <kbd>Enter</kbd></button>
-      <div class="mrow"><button type="button" id="mGuide">Skill guide</button><button type="button" id="mHow">How to play</button><button type="button" id="mRec">Records</button></div>
+      <div class="mrow"><button type="button" id="mGuide">Skill guide</button><button type="button" id="mHow">How to play</button><button type="button" id="mAccessories">${i ? "饰品" : "Accessories"}</button><button type="button" id="mRec">Records</button></div>
       <div class="msub">Last run: ${z(e.name)} + ${z(o.name)} \xB7 Units ${z((t.units && t.units.length ? t.units : [1]).join(", "))} \xB7 ${z((Zt[t.diff] || Zt.normal).name)} enemies \xB7 ${z((Ut[t.qdiff] || Ut.mixed).name)} questions</div></div>`,
         "menu",
       ),
@@ -16071,6 +16269,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
         (N("mHow").onclick = () => this.sub("howto")),
+        (N("mAccessories").onclick = showAccessories),
         (N("mRec").onclick = () => this.sub("records")));
     },
     sub(t) {
