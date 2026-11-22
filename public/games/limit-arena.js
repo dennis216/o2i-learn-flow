@@ -10660,23 +10660,36 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     },
   };
 
+  function stallItemPosition(merchant, index, count) {
+    if (merchant.kind === "mount")
+      return { x: merchant.x + 12, y: merchant.y + 12 };
+    return { x: merchant.x - (count - 1) * 8 + index * 16, y: merchant.y + 18 };
+  }
+
   function tickPortalMerchant() {
     const merchant = a.portalMerchant;
-    if (
-      !merchant ||
-      merchant.visited ||
-      a.pendingLv ||
-      I !== "play" ||
-      Math.hypot(merchant.x - X(), merchant.y - _()) > 13
-    )
-      return;
-    merchant.visited = true;
+    if (!merchant || merchant.visited || a.pendingLv || I !== "play") return;
     const shop = merchantShops[merchant.kind || "pet"];
+    const index = shop.items.findIndex((item, index) => {
+      const point = stallItemPosition(merchant, index, shop.items.length);
+      return (
+        Math.abs(X() - point.x) <= 7 && Math.abs(_() - (point.y + 9)) <= 12
+      );
+    });
+    if (index < 0) {
+      merchant.lastItem = null;
+      return;
+    }
+    if (merchant.lastItem === index) return;
+    merchant.lastItem = index;
+    const item = shop.items[index];
+    cancelArenaPointers();
+    for (const key in Tt) Tt[key] = 0;
     I = "pause";
     const lang = i ? 1 : 0;
     Bt.show(
       `<div class="panel pix merchant-panel"><div class="qhd"><b>${shop.name[lang]}</b><span>${i ? "任选一项" : "Choose one"}</span></div>
-      <div class="merchant-pets">${shop.items.map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
+      <div class="merchant-pets">${[item].map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
       <button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
       "merchant",
     );
@@ -10695,6 +10708,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         2,
       );
       button.onclick = () => {
+        merchant.visited = true;
         if (id === "mount") a.mount = true;
         else if (id === "healPotion") a.p.hp = Math.min(a.p.maxHp, a.p.hp + 45);
         else if (id === "guardPotion") a.potionWard = true;
@@ -10722,6 +10736,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const pet = a.pet;
     if (!pet) return;
     const player = a.p;
+    const phase = a.t * 1.65;
+    const targetX = X() + Math.cos(phase) * 21;
+    const targetY = _() + Math.sin(phase) * 13 + 4;
+    if (pet.x == null || Math.hypot(targetX - pet.x, targetY - pet.y) > 96) {
+      pet.x = targetX;
+      pet.y = targetY;
+    } else {
+      const follow = 1 - Math.exp(-8 * dt);
+      pet.x += (targetX - pet.x) * follow;
+      pet.y += (targetY - pet.y) * follow;
+    }
     const stage = pet.level === 10 ? 2 : pet.level >= 5 ? 1 : 0;
     if (pet.id === "support")
       a.skillReady = Math.max(a.t, a.skillReady - dt * 0.1);
@@ -10734,7 +10759,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (pet.id === "attack") {
         const enemy = a.enemies.find(
           (enemy) =>
-            !enemy.dead && Math.hypot(enemy.x - X(), enemy.y - _()) < 70,
+            !enemy.dead && Math.hypot(enemy.x - pet.x, enemy.y - pet.y) < 70,
         );
         if (enemy) {
           Xa(enemy, "burn", 1.4);
@@ -10743,7 +10768,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }
       }
       if (pet.id === "control")
-        Rt(X(), _(), 42 + stage * 8, (enemy) => {
+        Rt(pet.x, pet.y, 42 + stage * 8, (enemy) => {
           enemy.petSlowUntil = a.t + 0.65;
         });
     }
@@ -10756,13 +10781,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (pet.id === "heal" && player.hp < player.maxHp * 0.35)
       player.hp = Math.min(player.maxHp, player.hp + 15);
     if (pet.id === "control")
-      Rt(X(), _(), 46 + stage * 8, (enemy) => {
+      Rt(pet.x, pet.y, 46 + stage * 8, (enemy) => {
         enemy.petFreezeUntil = a.t + 2;
         Xa(enemy, "chill", 2);
       });
     if (pet.id === "attack") {
-      yt(X(), _(), 10, 55, 0.4, s.orange);
-      Rt(X(), _(), 55, (enemy) => {
+      yt(pet.x, pet.y, 10, 55, 0.4, s.orange);
+      Rt(pet.x, pet.y, 55, (enemy) => {
         Xa(enemy, "burn", 2);
         At(enemy, 16 + stage * 4);
       });
@@ -10969,16 +10994,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { scale: 1 },
       );
       if (!merchant.visited) {
-        const left = x - (shop.items.length - 1) * 8;
-        shop.items.forEach((item, index) =>
+        shop.items.forEach((item, index) => {
+          const point = stallItemPosition(merchant, index, shop.items.length);
           drawStallItem(
             ctx,
             item.id,
-            kind === "mount" ? x + 12 : left + index * 16,
-            kind === "mount" ? y + 12 : y + 18,
+            Math.round(point.x - camX),
+            Math.round(point.y - camY),
             kind === "mount" ? 2 : 1,
-          ),
-        );
+          );
+        });
         kt(ctx, "?", x, y - 24, shop.trim, {
           align: "center",
           outline: s.black,
@@ -10987,8 +11012,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     if (!a.pet) return;
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
-    const px = Math.round(a.p.x - camX - 14);
-    const py = Math.round(a.p.y - camY - 4 + Math.sin(E * 6) * 2);
+    const px = Math.round((a.pet.x ?? a.p.x - 14) - camX);
+    const py = Math.round((a.pet.y ?? a.p.y - 4) - camY + Math.sin(E * 8) * 2);
     const level = a.pet.level;
     const size = level === 10 ? 1.4 : level >= 5 ? 1.2 : 1;
     Ct(
@@ -11051,6 +11076,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     rewardPet(12);
     a.worldPortal = null;
     a.portalMerchant = null;
+    a.bossFarewell = null;
     a.p.x = U + 40;
     a.p.y = ot + 40;
     a.worldStage = (a.worldStage || 1) + 1;
@@ -12250,22 +12276,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       }, 6500));
     for (let o = 0; o < 24; o++)
       ua(e.x + q(-40, 40), e.y + q(-30, 30), Math.round(4 + a.lv * 0.6));
+    const farewell = [
+      i ? "你解开了我的难题。" : "You solved my puzzle.",
+      i
+        ? "下一道题在黑洞后等你。"
+        : "Your next challenge waits beyond the portal.",
+      i ? "把你的答案带进下一关吧。" : "Take your answers into the next world.",
+    ][(a.bossK - 1) % 3];
+    a.bossFarewell = { name: t.def.name, text: farewell, until: a.t + 7 };
     (a.picks.push({ kind: "heart", x: e.x - 24, y: e.y + 14, t0: a.t }),
-      oe(
-        i ? "\u9996\u9886\u88AB\u51FB\u8D25\uFF01" : "BOSS DOWN!",
-        s.yellow,
-        t.def.name +
-          " · " +
-          [
-            i ? "你解开了我的难题。" : "You solved my puzzle.",
-            i
-              ? "下一道题在黑洞后等你。"
-              : "Your next challenge waits beyond the portal.",
-            i
-              ? "把你的答案带进下一关吧。"
-              : "Take your answers into the next world.",
-          ][(a.bossK - 1) % 3],
-      ),
       (a.arena = null),
       (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
       (a.bossWarned = !1),
@@ -15278,6 +15297,23 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     drawRegionHud();
     drawAbilityCooldown();
     drawUnitBadge();
+    const farewell = a.bossFarewell;
+    if (I === "play" && farewell?.until > a.t) {
+      const y = 84;
+      R.fillStyle = "#131c31";
+      R.fillRect(G / 2 - 185, y - 8, 370, 47);
+      Y(R, farewell.name, G / 2, y, {
+        pixel: true,
+        size: 12,
+        col: s.yellow,
+        align: "center",
+      });
+      Y(R, farewell.text, G / 2, y + 18, {
+        size: 12,
+        col: s.white,
+        align: "center",
+      });
+    }
     const t = a.banner;
     if (t && E - t.t0 < 2.4) {
       const r = E - t.t0;
