@@ -3,13 +3,15 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 const CURVE = 'M65 255C190 255 282 225 340 159S408 59 442 35';
 const REST = { x: 340, y: 159 };
 
-// Flat mathematical illustration for the editorial green concept. Moving the pointer over it
-// (or dragging sideways on a phone) slides the marked point along f(x) with its tangent; the
-// f(x) label rides above-left of the point so the curve never covers it.
+// Flat mathematical illustration for the editorial green concept. A small extra: press and
+// drag (sideways on a phone) to slide the marked point along f(x) with its tangent. Hovering
+// or a plain tap does nothing. The f(x) label rides above-left of the point so the curve
+// never covers it.
 export default function LearningGraph() {
   const svg = useRef<SVGSVGElement>(null);
   const curve = useRef<SVGPathElement>(null);
   const samples = useRef<{ x: number; y: number }[]>([]);
+  const pressed = useRef(false);
   const [point, setPoint] = useState(REST);
 
   useEffect(() => {
@@ -22,7 +24,13 @@ export default function LearningGraph() {
     });
   }, []);
 
+  const press = (event: PointerEvent<SVGSVGElement>) => {
+    pressed.current = true;
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* keep working without capture */ }
+  };
+  const release = () => { pressed.current = false; };
   const follow = (event: PointerEvent<SVGSVGElement>) => {
+    if (!pressed.current) return;
     const matrix = svg.current?.getScreenCTM();
     const list = samples.current;
     if (!matrix || !list.length) return;
@@ -51,9 +59,11 @@ export default function LearningGraph() {
         ref={svg}
         viewBox="0 0 500 340"
         fill="none"
-        className="w-full cursor-crosshair touch-pan-y select-none"
+        className="w-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
+        onPointerDown={press}
         onPointerMove={follow}
-        onPointerDown={follow}
+        onPointerUp={release}
+        onPointerCancel={release}
       >
         <path d="M65 65H455M65 125H455M65 185H455M65 245H455M145 35V285M225 35V285M305 35V285M385 35V285" stroke="hsl(var(--studio-white) / .07)" />
         <path d="M65 255C190 255 282 225 340 159S408 59 442 35V285H65Z" fill="hsl(var(--accent-text) / .035)" />

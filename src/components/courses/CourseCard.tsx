@@ -41,14 +41,34 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
   const [t, setT] = useState(T0);
   const [theta, setTheta] = useState<number | null>(null);
 
-  // Hovering the cover (or dragging sideways on a phone) moves the point; the card still opens on click.
-  const follow = (event: PointerEvent<HTMLElement>) => {
+  // A small extra: press on the cover and drag to move the point (sideways on a phone).
+  // Hovering does nothing; a plain tap still opens the course, a drag does not.
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const dragged = useRef(false);
+  const inCover = (event: PointerEvent<HTMLElement>) => {
     const box = cover.current?.getBoundingClientRect();
+    return !!box && event.clientY >= box.top && event.clientY <= box.bottom && event.clientX >= box.left && event.clientX <= box.right;
+  };
+  const start = (event: PointerEvent<HTMLElement>) => {
+    dragged.current = false;
+    press.current = inCover(event) ? { x: event.clientX, y: event.clientY } : null;
+  };
+  const end = () => { press.current = null; };
+  const follow = (event: PointerEvent<HTMLElement>) => {
+    if (!press.current || !inCover(event)) return;
+    if (!dragged.current && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) < 4) return;
+    dragged.current = true;
     const matrix = art.current?.getScreenCTM();
-    if (!box || !matrix || event.clientY < box.top || event.clientY > box.bottom || event.clientX < box.left || event.clientX > box.right) return;
+    if (!matrix) return;
     const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
     if (mark === 'BC') setTheta(Math.atan2(70 - p.y, p.x - 140));
     else setT(Math.min(0.97, Math.max(0.03, (p.x - 12) / 220)));
+  };
+  const swallowDragClick = (event: React.MouseEvent) => {
+    if (!dragged.current) return;
+    dragged.current = false;
+    event.preventDefault();
+    event.stopPropagation();
   };
   const tangent = tangentAt(t);
   // Follow the pointer's direction: on a petal the point sits on the rose; between petals
@@ -58,7 +78,15 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
   const degrees = theta === null ? 0 : Math.round((((theta * 180) / Math.PI) % 360 + 360) % 360);
 
   return (
-    <article className="group relative touch-pan-y rounded-2xl p-3 transition-colors hover:bg-muted/60" onPointerMove={follow} onPointerDown={follow}>
+    <article
+      className="group relative touch-pan-y rounded-2xl p-3 transition-colors hover:bg-muted/60"
+      onPointerDown={start}
+      onPointerMove={follow}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onPointerLeave={end}
+      onClickCapture={swallowDragClick}
+    >
       <div ref={cover} aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ring-1 ring-inset ring-white/[0.06] ${TONES[index % TONES.length]}`}>
         <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-[0.07]" />
         <svg ref={art} viewBox="0 0 240 140" fill="none" stroke="currentColor" className="absolute bottom-0 right-0 h-[88%] w-[64%] transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
