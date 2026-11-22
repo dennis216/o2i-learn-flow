@@ -2,11 +2,12 @@ import { Course } from './types';
 
 export const LEVEL_ZH: Record<string, string> = { beginner: '入门', intermediate: '中级', advanced: '高级' };
 
-// Same colours as the homepage feature tiles; cards cycle through them so neighbours differ.
+// Covers read like cloth-bound books: deep forest / slate / bronze with gold or ivory line
+// art, the same in both themes. Cards cycle through them so neighbours differ.
 const TONES = [
-  'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white',
-  'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white',
-  'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950',
+  'from-[hsl(160_34%_18%)] to-[hsl(166_30%_10%)] text-[hsl(44_45%_76%)]',
+  'from-[hsl(172_20%_21%)] to-[hsl(176_22%_11%)] text-[hsl(40_30%_86%)]',
+  'from-[hsl(30_24%_23%)] to-[hsl(26_20%_12%)] text-[hsl(40_48%_76%)]',
 ];
 
 // Tile art in a 240×140 box: a wavy f with Riemann rectangles (integral) and a tangent line (derivative, flat at the minimum).
@@ -34,8 +35,8 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
 
   return (
     <article className="group relative rounded-2xl p-3 transition-colors hover:bg-muted/60">
-      <div aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ${TONES[index % TONES.length]}`}>
-        <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-10" />
+      <div aria-hidden="true" className={`relative h-40 overflow-hidden rounded-xl bg-gradient-to-br ring-1 ring-inset ring-white/[0.06] ${TONES[index % TONES.length]}`}>
+        <div className="absolute inset-0 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:20px_20px] opacity-[0.07]" />
         <svg viewBox="0 0 240 140" fill="none" stroke="currentColor" className="absolute bottom-0 right-0 h-[88%] w-[64%] transition-transform duration-300 motion-safe:group-hover:-translate-y-1">
           {mark === 'BC' ? <>
             <path d="M60 70H230M140 8V132" strokeWidth="1" strokeOpacity="0.4" />
@@ -51,11 +52,11 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
             <text x={X(T0) - 24} y={Y(T0) + 18} fill="currentColor" stroke="none" fontSize="12" fontStyle="italic" opacity="0.8">f′(x) = 0</text>
           </>}
         </svg>
-        <span className="absolute left-5 top-4 text-sm font-semibold opacity-80">{course.subject === 'AP Calc' ? 'AP Calculus' : course.subject}</span>
-        <span className="absolute bottom-3 left-5 text-6xl font-bold tracking-tight">{mark}</span>
+        <span className="absolute left-5 top-4 text-xs font-medium uppercase tracking-[0.18em] opacity-80">{course.subject === 'AP Calc' ? 'AP Calculus' : course.subject}</span>
+        <span className="absolute bottom-2 left-5 font-display text-6xl font-medium">{mark}</span>
       </div>
       <div className="px-2 pb-2 pt-4">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">
+        <h2 className="text-[1.375rem] font-semibold leading-snug text-foreground">
           <button
             type="button"
             onClick={() => onSelect(course)}
@@ -64,7 +65,7 @@ export function CourseCard({ course, index, onSelect }: CourseCardProps) {
             {course.title}
           </button>
         </h2>
-        <p className="mt-2 line-clamp-2 text-muted-foreground">{course.description}</p>
+        <p className="mt-2 line-clamp-3 text-[0.95rem] leading-relaxed text-muted-foreground">{course.description}</p>
         {/* the whole card opens the course; only a paid course needs a price line */}
         {course.price > 0 && <p className="mt-3 text-sm font-medium text-muted-foreground">${course.price}</p>}
       </div>

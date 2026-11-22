@@ -9,13 +9,13 @@ import { groupTeamMembers, loadTeamMembers, teamLabel, type TeamMember } from "@
 import { Users } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-// The site's subject colours, solid; --on is the text colour that reads on each.
+// Quiet subject tones (--tone-* in index.css): --c tints the surface, --on is the ink on it.
 const TONE = {
-  blue: { '--c': 'var(--education-blue)', '--on': '0 0% 100%' },
-  teal: { '--c': 'var(--education-teal)', '--on': '0 0% 100%' },
-  purple: { '--c': 'var(--education-purple)', '--on': '0 0% 100%' },
-  green: { '--c': 'var(--education-green)', '--on': '0 0% 100%' },
-  amber: { '--c': 'var(--education-orange)', '--on': '26 83% 14%' },
+  blue: { '--c': 'var(--tone-forest)', '--on': 'var(--tone-forest-ink)' },
+  teal: { '--c': 'var(--tone-sage)', '--on': 'var(--tone-sage-ink)' },
+  purple: { '--c': 'var(--tone-bronze)', '--on': 'var(--tone-bronze-ink)' },
+  green: { '--c': 'var(--tone-sage)', '--on': 'var(--tone-sage-ink)' },
+  amber: { '--c': 'var(--tone-gold)', '--on': 'var(--tone-gold-ink)' },
 } as const;
 type Tone = keyof typeof TONE;
 
@@ -47,7 +47,7 @@ const TeamMemberCard = ({ member, tone, showGroups = false }: { member: TeamMemb
   const otherRoles = member.roles.filter(role => !KEY_ROLES.includes(role) && !(keyRoles.length > 0 && role === 'Team Member'));
   return (
     <li className="flex items-start gap-4 py-3">
-      <div aria-hidden="true" style={TONE[tone] as React.CSSProperties} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[hsl(var(--c))] font-semibold text-[hsl(var(--on))]">
+      <div aria-hidden="true" style={TONE[tone] as React.CSSProperties} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[hsl(var(--c)/0.16)] font-semibold text-[hsl(var(--on))] ring-1 ring-inset ring-[hsl(var(--c)/0.35)]">
         {initials(member.name)}
       </div>
       <div className="min-w-0">
@@ -106,7 +106,7 @@ const Team = () => {
   ) : (
     <h3 className="mb-3 flex items-center gap-3 text-xl font-bold tracking-tight text-foreground">
       {DOODLES[name] && (
-        <svg aria-hidden="true" viewBox="0 0 72 48" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={TONE[SECTION_TONE[name]] as React.CSSProperties} className="h-12 w-[4.5rem] shrink-0 text-[hsl(var(--c))]">
+        <svg aria-hidden="true" viewBox="0 0 72 48" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={TONE[SECTION_TONE[name]] as React.CSSProperties} className="h-12 w-[4.5rem] shrink-0 text-[hsl(var(--on))]">
           {DOODLES[name]}
         </svg>
       )}

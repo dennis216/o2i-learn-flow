@@ -8,6 +8,7 @@ import { Award, CheckCircle2, Clock, EyeOff, Lock, MessageSquare, ShieldCheck, U
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { analyzeQuestionBankMath } from '@/lib/questionBankMath';
 import { STATUS_LABELS, type SrAuthor, type SrStatus } from '@/lib/solutionRequests';
+import { TONE_TILE } from '@/lib/tones';
 import { useBilingual } from './hooks';
 
 /** Student text: Markdown and $math$, no raw HTML and no remote images. */
@@ -23,13 +24,12 @@ export function PostBody({ text, className = '' }: { text: string; className?: s
 }
 
 const statusIcon: Record<SrStatus, typeof Clock> = { awaiting: Clock, replied: MessageSquare, answered: ShieldCheck, solved: CheckCircle2 };
-// Same colour tiles as the homepage features; yellow tiles take dark text.
-const BLUE = 'from-[hsl(var(--education-blue))] to-[hsl(212_90%_52%)] text-white shadow-[hsl(var(--education-blue)/0.3)]';
+// Quiet tone tiles (src/lib/tones.ts): waiting = gold, replied/answered = forest, solved = sage.
 const statusStyle: Record<SrStatus, { pill: string; tile: string }> = {
-  awaiting: { pill: 'bg-accent/25 text-foreground', tile: 'from-[hsl(var(--education-orange))] to-[hsl(32_95%_55%)] text-amber-950 shadow-[hsl(var(--education-orange)/0.35)]' },
-  replied: { pill: 'bg-primary/10 text-primary', tile: BLUE },
-  answered: { pill: 'bg-primary text-primary-foreground', tile: BLUE },
-  solved: { pill: 'bg-[hsl(var(--education-teal)/0.12)] text-[hsl(var(--education-teal))]', tile: 'from-[hsl(var(--education-teal))] to-[hsl(168_70%_40%)] text-white shadow-[hsl(var(--education-teal)/0.3)]' },
+  awaiting: { pill: 'bg-accent/25 text-foreground', tile: TONE_TILE.amber },
+  replied: { pill: 'bg-primary/10 text-primary', tile: TONE_TILE.blue },
+  answered: { pill: 'bg-primary text-primary-foreground', tile: TONE_TILE.blue },
+  solved: { pill: 'bg-[hsl(var(--tone-sage)/0.16)] text-[hsl(var(--tone-sage-ink))]', tile: TONE_TILE.teal },
 };
 
 export function Pill({ icon: Icon, className, children }: { icon?: typeof Clock; className: string; children: ReactNode }) {
@@ -56,7 +56,7 @@ export function StatusBadges({ status, closed, isPublic, hidden }: { status: SrS
 export function StatusTile({ status, className = 'h-11 w-11' }: { status: SrStatus; className?: string }) {
   const Icon = statusIcon[status] ?? Clock;
   return (
-    <div aria-hidden="true" className={`grid shrink-0 place-items-center rounded-xl bg-gradient-to-br shadow-md ${(statusStyle[status] ?? statusStyle.awaiting).tile} ${className}`}>
+    <div aria-hidden="true" className={`grid shrink-0 place-items-center rounded-xl ${(statusStyle[status] ?? statusStyle.awaiting).tile} ${className}`}>
       <Icon strokeWidth={2.25} className="h-5 w-5" />
     </div>
   );

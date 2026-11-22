@@ -119,6 +119,15 @@ Profile was successfully opened with the existing preview account; the reported 
 - Header mark: `public/o2i-mark.png`, the original o2i infinity mark cut out of its white circle (transparent background, 181×120), shown 36px tall (32px under 400px wide). Dark mode swaps in `public/o2i-mark-dark.png`, the same mark with brightened colours so the navy strokes read on the green header. The heraldic crest (`public/o2i-crest.png`, `o2i-crest-512.png`) is kept as an asset but no longer shown. The sign-in page uses the same mark and Cormorant wordmark as the header.
 - "O2I" in headings: h1–h3 put the Inter digit subset (`O2I Numerals`) before the serif, which made the "2" sans-serif between a serif O and I. Wrap such strings with `brandText()` (`src/lib/brand.tsx`); it puts each "O2I" in `.o2i-name` (Cormorant Garamond) without changing translation keys. The favicon and social image still use `o2i-icon.png`.
 
+# November 21 follow-up: quieter dark mode, one tile style, real font weights
+
+Same forest hue and champagne gold. Measured first: every rendered text on Home, Courses, Solution Request and Team already passed WCAG in both themes, so the "hard to read" reports came from type and surfaces, not the ratios.
+- Dark: deeper base (`--background` 166 18% 8%), clear steps to card 11% and popover 13%, hairline borders (20%), warm grey secondary text (38 10% 68%) to match the ivory body text (40 22% 88%).
+- Feature colours stay in the family: forest, sage, champagne, bronze (`--tone-*` with a tint and an ink per theme). Icon and status tiles use `TONE_TILE` from `src/lib/tones.ts`: tinted surface, hairline ring, ink icon; no bright gradients or coloured shadows. Used by PageHeader, SignInPrompt, solution-request status and Team.
+- Course covers are deep forest / slate / bronze "book covers" with gold or ivory line art and a serif mark in both themes.
+- Type: the serif and Chinese faces are loaded at 400–600 only, so headings and Chinese `font-bold` now render at the real 600 instead of a browser-faked bold. No negative tracking on Chinese. Small labels are at least 12px (Chinese 13px).
+- `scripts/check-theme-contrast.mjs` also checks the tone inks (40 combinations, all pass).
+
 # November 21 palette and readability update (#57)
 
 Based on the latest Dennis branch at the owner's request. Light appearance retains ivory surfaces with muted champagne gold accents; gold fills use dark text and gold labels use a separate darker ink token. Dark appearance uses a quieter charcoal forest green with warmer white text and clearer secondary text. Primary text/surface combinations have automated 4.5:1 minimum contrast checks in `scripts/check-theme-contrast.mjs` (28 combinations). Light remains the default and manual theme switching is retained. This authorized release supersedes earlier local-only notes below.
