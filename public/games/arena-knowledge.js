@@ -2758,7 +2758,7 @@ export function createKnowledgeFlow(api) {
       }
       if (target && a.t >= follower.fireAt) {
         follower.fireAt = a.t + 1.7;
-        follower.shot = { x: target.x, y: target.y, until: a.t + 0.22 };
+        follower.shot = { x: target.x, y: target.y, until: a.t + 0.28 };
         if (follower.kind === "octopus" && !target.boss && !target.kf?.boss)
           target.slowUntil = Math.max(target.slowUntil || 0, a.t + 1.15);
         const damage =
@@ -2784,26 +2784,29 @@ export function createKnowledgeFlow(api) {
       if (follower.shot?.until > a.t) {
         const sx = Math.round(follower.shot.x - cameraX),
           sy = Math.round(follower.shot.y - cameraY);
-        const color =
-          kind === "octopus"
-            ? "#ab73ee"
-            : kind === "scorpion"
-              ? "#ff9a51"
-              : kind === "snowman"
-                ? "#b9efff"
-                : "#ffa983";
-        api.drawLine(
-          ctx,
-          x,
-          y,
-          sx,
-          sy,
-          color,
-          kind === "octopus" ? 2 : 1,
-          0,
-          0,
-        );
-        api.drawRect(ctx, sx - 2, sy - 2, 5, 5, color);
+        const progress = clamp(1 - (follower.shot.until - a.t) / 0.28, 0, 1);
+        const px = Math.round(x + (sx - x) * progress);
+        const py = Math.round(y + (sy - y) * progress);
+        const dot = (dx, dy, w, h, color) =>
+          api.drawRect(ctx, px + dx, py + dy, w, h, color);
+        if (kind === "octopus") {
+          dot(-2, -2, 5, 4, "#492660");
+          dot(-1, -3, 3, 5, "#8a50c5");
+          dot(0, -2, 2, 2, "#db9fee");
+          dot(-5, 2, 2, 2, "#66418b");
+          if (progress > 0.8)
+            api.drawRect(ctx, sx - 4, sy + 2, 9, 3, "#633482");
+        } else if (kind === "scorpion") {
+          dot(-2, -1, 5, 3, "#26273b");
+          dot(-1, -1, 3, 2, "#e4b38a");
+          dot(-3, 0, 2, 1, "#ff8d53");
+        } else if (kind === "snowman") {
+          dot(-2, -1, 5, 3, "#acdcef");
+          dot(-1, -2, 3, 4, "#effcff");
+        } else {
+          dot(-2, -1, 5, 3, "#e18d82");
+          dot(-1, -2, 3, 2, "#ffe0a6");
+        }
       }
       if (kind === "snowman") {
         rect(-5, -3, 11, 9, "#accbdc");
