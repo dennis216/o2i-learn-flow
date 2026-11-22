@@ -15853,57 +15853,92 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       badge.append(item);
     }
   }
+  const minimapTerrain = new WeakMap();
+  const minimapIcons = {
+    tablet: [" .++ ", " .#+ ", " .#+ ", " .++ ", " .++."],
+    region: ["  +  ", " +#+ ", "++#++", " +#+ ", "  +  "],
+    boss: ["++ ++", "+++++", "+#+#+", " +++ ", "  +  "],
+    portal: [" +++ ", "+...+", "+.+.+", "+...+", " +++ "],
+    merchant: [" +++ ", "++#++", ".....", " +++ ", " + + "],
+    player: ["  +  ", " +#+ ", "+###+", " +++ ", "  +  "],
+  };
+
   function drawArenaMinimap(ctx) {
-    const width = 68,
-      height = 45;
+    const width = 76,
+      height = 49;
     const left = A - width - 5,
       top = 5 + topRightControlOffset();
-    const paint = (dx, dy, w, h, c) => x(ctx, left + dx, top + dy, w, h, c);
+    const inset = 3;
+    const mapWidth = width - inset * 2;
+    const mapHeight = height - inset * 2;
+    const paint = (dx, dy, w, h, color) =>
+      x(ctx, left + dx, top + dy, w, h, color);
+    const project = (value, worldSize, mapSize) =>
+      inset + Math.round(F(value / worldSize, 0, 1) * (mapSize - 1));
+
     paint(2, 3, width, height, "#080b18");
     paint(0, 0, width, height, "#080e21");
-    paint(1, 1, width - 2, height - 2, "#616987");
-    paint(2, 2, width - 4, height - 4, "#1b2848");
-    for (let dx = 9; dx < width - 3; dx += 8)
-      paint(dx, 3, 1, height - 6, "#293856");
-    for (let dy = 9; dy < height - 3; dy += 8)
-      paint(3, dy, width - 6, 1, "#293856");
-    for (const dx of [1, width - 6]) {
-      paint(dx, 1, 5, 1, "#d2b384");
-      paint(dx, height - 2, 5, 1, "#d2b384");
+    paint(1, 1, width - 2, height - 2, "#646b83");
+    paint(2, 2, width - 4, height - 4, "#20293d");
+
+    const world = Ze(a.theme || 0);
+    let terrain = minimapTerrain.get(world);
+    if (!terrain) {
+      terrain = document.createElement("canvas");
+      terrain.width = mapWidth;
+      terrain.height = mapHeight;
+      const terrainCtx = terrain.getContext("2d");
+      terrainCtx.drawImage(world, 0, 0, mapWidth, mapHeight);
+      terrainCtx.fillStyle = "rgba(11, 16, 28, 0.28)";
+      terrainCtx.fillRect(0, 0, mapWidth, mapHeight);
+      minimapTerrain.set(world, terrain);
+    }
+    ctx.drawImage(terrain, left + inset, top + inset);
+
+    // The outline tracks the part of the map currently visible in the arena.
+    const viewLeft = project(a.cam.x, et, mapWidth);
+    const viewTop = project(a.cam.y, dt, mapHeight);
+    const viewWidth = project(a.cam.x + A, et, mapWidth) - viewLeft + 1;
+    const viewHeight = project(a.cam.y + D, dt, mapHeight) - viewTop + 1;
+    const viewColor = "rgba(224, 237, 252, 0.32)";
+    paint(viewLeft, viewTop, viewWidth, 1, viewColor);
+    paint(viewLeft, viewTop + viewHeight - 1, viewWidth, 1, viewColor);
+    paint(viewLeft, viewTop + 1, 1, viewHeight - 2, viewColor);
+    paint(viewLeft + viewWidth - 1, viewTop + 1, 1, viewHeight - 2, viewColor);
+
+    for (const dx of [0, width - 7]) {
+      paint(dx, 1, 7, 1, "#d2b384");
+      paint(dx, height - 2, 7, 1, "#d2b384");
     }
     const marker = (point, color, kind) => {
       if (!point) return;
-      const px = 4 + Math.round(F(point.x / et, 0, 1) * (width - 9));
-      const py = 4 + Math.round(F(point.y / dt, 0, 1) * (height - 9));
-      paint(px - 2, py - 2, 5, 5, "#101729");
-      if (kind === "tablet") {
-        paint(px - 1, py - 2, 3, 4, color);
-        paint(px + 1, py - 1, 1, 1, "#fffad9");
-      } else if (kind === "region") {
-        paint(px - 2, py, 5, 1, color);
-        paint(px, py - 2, 1, 5, color);
-      } else if (kind === "boss") {
-        paint(px - 2, py - 1, 5, 3, color);
-        paint(px - 2, py - 2, 1, 1, color);
-        paint(px + 2, py - 2, 1, 1, color);
-      } else {
-        paint(px - 1, py, 3, 1, color);
-        paint(px, py - 1, 1, 3, color);
-      }
+      const px = project(point.x, et, mapWidth);
+      const py = project(point.y, dt, mapHeight);
+      const ink = { ".": "#111626", "+": color, "#": "#fff4dc" };
+      const icon = minimapIcons[kind];
+      for (let row = 0; row < icon.length; row++)
+        for (let col = 0; col < icon[row].length; col++) {
+          const tint = ink[icon[row][col]];
+          if (tint) paint(px + col - 2, py + row - 2, 1, 1, tint);
+        }
     };
-    for (const tab of a.kf?.world?.tablets || [])
+    const knowledgeState = a.kf;
+    for (const tablet of knowledgeState?.world?.tablets || [])
       if (
-        tab.tier &&
-        !tab.used &&
-        a.t >= Math.max(a.kf.tabletAt, a.kf.restUntil)
+        tablet.tier &&
+        !tablet.used &&
+        a.t >= Math.max(knowledgeState.tabletAt, knowledgeState.restUntil)
       )
-        marker(tab, "#ffdc75", "tablet");
-    for (const lair of a.kf?.world?.lairs || [])
+        marker(tablet, "#ffcf65", "tablet");
+    for (const lair of knowledgeState?.world?.lairs || [])
       if (lair.state === "awake" || lair.state === "sleep")
         marker(lair.enemy || lair, "#ff7d8e", "boss");
-    marker(a.regionState?.active, "#76efac", "region");
-    marker(a.worldPortal, "#bd94ff", "portal");
-    marker(a.p, "#fff8e6", "player");
+    const region = a.regionState?.active;
+    if (region?.expires > a.t) marker(region, "#76efac", "region");
+    if (!a.portalMerchant?.visited)
+      marker(a.portalMerchant, "#b9e8ff", "merchant");
+    marker(a.worldPortal, "#c29aff", "portal");
+    marker(a.p, "#85dcff", "player");
   }
 
   function drawSmallPlayerBubble(text) {
