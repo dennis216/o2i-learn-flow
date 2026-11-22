@@ -16470,6 +16470,97 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     ],
   ];
 
+  // Classic team palettes, drawn as original pixel jerseys.
+  const jerseyTeams = [
+    ["Arsenal", "阿森纳", "#d83246", "#f6eee0", "#b81935", "sleeves"],
+    ["Bayern Munich", "拜仁慕尼黑", "#d82c49", "#f7eee8", "#a52039", "solid"],
+    ["Real Madrid", "皇家马德里", "#ece9df", "#d8ad55", "#283354", "solid"],
+    ["Barcelona", "巴塞罗那", "#29499f", "#b53052", "#f3ce65", "stripes"],
+    [
+      "Paris Saint-Germain",
+      "巴黎圣日耳曼",
+      "#24376f",
+      "#eb4a57",
+      "#fff0e1",
+      "center",
+    ],
+    ["Manchester United", "曼联", "#cd3542", "#292738", "#f6eee0", "sleeves"],
+    ["Manchester City", "曼城", "#80c1ed", "#f4eee1", "#263451", "sleeves"],
+    [
+      "San Francisco 49ers",
+      "旧金山49人",
+      "#c53342",
+      "#e0b778",
+      "#fff3e5",
+      "sleeves",
+    ],
+    [
+      "San Francisco Giants",
+      "旧金山巨人",
+      "#f1dec2",
+      "#f77b43",
+      "#29232e",
+      "center",
+    ],
+    [
+      "Golden State Warriors",
+      "金州勇士",
+      "#3b68d6",
+      "#f9cb55",
+      "#fff1bd",
+      "sleeves",
+    ],
+    [
+      "Los Angeles Lakers",
+      "洛城湖人",
+      "#efc24c",
+      "#814ca9",
+      "#402254",
+      "sleeves",
+    ],
+  ];
+  const jerseyPatterns = {
+    solid: [
+      "..kw..wk..",
+      ".kcccccck.",
+      "kcccccccck",
+      "kcccccccck",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    sleeves: [
+      "..kw..wk..",
+      ".khcccchk.",
+      "khcccccchk",
+      "kcccccccck",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    stripes: [
+      "..kw..wk..",
+      ".khchchck.",
+      "khchchchck",
+      "kchchchchk",
+      "..khchck..",
+      "..kchchk..",
+    ],
+    center: [
+      "..kw..wk..",
+      ".kchhhck..",
+      "kcchhhccck",
+      "kcchhhccck",
+      "..kchhck..",
+      "..kwwwwk..",
+    ],
+  };
+  for (const [en, zh, color, trim, number, style] of jerseyTeams) {
+    const art = jerseyPatterns[style].slice();
+    art[2] = art[2].slice(0, 4) + "nnn" + art[2].slice(7);
+    art[3] = art[3].slice(0, 5) + "n" + art[3].slice(6);
+    art[4] = art[4].slice(0, 5) + "n" + art[4].slice(6);
+    arenaAccessories.outfit.push([en, zh, color, art, { trim, number }]);
+  }
+
   function accessoryWallet() {
     if (!tt.d.accessoryWallet) {
       const owned = {};
@@ -16506,7 +16597,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     re(
       ctx,
       item[3],
-      { c: outline, w: outline, k: outline, h: outline },
+      { c: outline, w: outline, k: outline, h: outline, n: outline },
       x,
       y + scale,
       { scale },
@@ -16514,7 +16605,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     re(
       ctx,
       item[3],
-      { c: color, w: "#fff3db", k: outline, h: "#59617f" },
+      {
+        c: color,
+        w: "#fff3db",
+        k: outline,
+        h: item[4]?.trim || "#59617f",
+        n: item[4]?.number || "#fff3db",
+      },
       x,
       y,
       { scale },
@@ -16560,6 +16657,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const worn = tt.d.accessories || {};
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
+        const entries = items.map((item, index) => ({ item, index }));
+        if (slot !== "outfit")
+          entries.sort(
+            (left, right) =>
+              Number((wallet.owned[slot + ":" + left.index] || 0) > 1) -
+              Number((wallet.owned[slot + ":" + right.index] || 0) > 1),
+          );
         const title =
           slot === "hat"
             ? i
@@ -16574,8 +16678,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
                 : "Glasses";
         return `<section><h3>${title}</h3><div class="accessory-grid">
         <button data-slot="${slot}" data-index="-1" data-action="equip">${i ? "取下" : "Remove"}</button>
-        ${items
-          .map((item, index) => {
+        ${entries
+          .map(({ item, index }) => {
             const level = wallet.owned[slot + ":" + index] || 0;
             const mapGift = mapAccessoryKeys.has(slot + ":" + index);
             const price = 150 + index * 50;
