@@ -1685,7 +1685,8 @@ export function createKnowledgeFlow(api) {
       first: kf.stats.worlds++ === 0,
       tablets: layout.tablets.map((p, n) => ({
         ...p,
-        tier: n + 1,
+        tier:
+          n === 0 ? 1 + Math.floor(api.Math.random() * TABLETS.length) : null,
       })),
       // The lair starts hidden (see unlockLairs).
       lairs: layout.lairs.map((p) => ({
@@ -1712,13 +1713,8 @@ export function createKnowledgeFlow(api) {
     );
   };
 
-  // Tier n opens after n − 1 tablets this run, so a new run starts with ★ only.
-  const tabletOpen = (tab) =>
-    !tab.solved &&
-    (tab.attempts || 0) < 2 &&
-    tab.tier <= 1 + (kfOf().stats.tablets || 0);
-  // All open tablets share one cooldown, and none lights up right after a
-  // question or a panel closes.
+  // Each authored location is used once. Only the current site has a tier.
+  const tabletOpen = (tab) => tab.tier != null && !tab.used;
   const tabletsReady = () => {
     const kf = kfOf(),
       t = api.a.t;
@@ -1731,7 +1727,9 @@ export function createKnowledgeFlow(api) {
       rule = TABLETS[tab.tier - 1];
     kf.tabletWait = fast(rule.cd);
     kf.tabletAt = a.t + kf.tabletWait;
-    tab.attempts = (tab.attempts || 0) + 1;
+    tab.used = true;
+    const next = kf.world.tablets.find((site) => !site.used);
+    if (next) next.tier = 1 + Math.floor(api.Math.random() * TABLETS.length);
     kf.stats.tablets++;
     api.clearInput();
     api.mode = "lvup";
@@ -1790,7 +1788,7 @@ export function createKnowledgeFlow(api) {
   };
   function wake(lair) {
     const def = MINI_BOSSES[lair.boss],
-      hp = enemyHp(def.hp);
+      hp = enemyHp(def.hp) * 0.9;
     const e = api.spawnEnemy("elite", lair.x, lair.y, {
       type: "kfboss",
       kf: { boss: lair.boss },
@@ -2555,7 +2553,7 @@ export function createKnowledgeFlow(api) {
       left = Math.max(kf.tabletAt, kf.restUntil) - a.t,
       wait = Math.max(kf.tabletWait || 1, left);
     for (const tab of kf.world.tablets) {
-      if (!tabletOpen(tab)) continue;
+      if (!ready || !tabletOpen(tab)) continue;
       const x = Math.round(tab.x - camX),
         y = Math.round(tab.y - camY);
       if (!on(x, y)) continue;
@@ -2697,10 +2695,88 @@ export function createKnowledgeFlow(api) {
     }
   }
 
+  function tickGiftRobot(dt) {
+    const a = api.a;
+    const robot = a.kf.giftRobot;
+    if (!robot) return;
+    const p = P();
+    const tx = p.x - 16;
+    const ty = p.y + 6;
+    const distance = Math.hypot(tx - robot.x, ty - robot.y);
+    if (distance > 140) {
+      robot.x = tx;
+      robot.y = ty;
+    } else if (distance > 2) {
+      const fraction = Math.min(1, (55 * dt) / distance);
+      robot.x += (tx - robot.x) * fraction;
+      robot.y += (ty - robot.y) * fraction;
+    }
+
+    let target;
+    let range = 60;
+    let touching = false;
+    for (const enemy of a.enemies) {
+      if (enemy.dead) continue;
+      const gap = Math.hypot(enemy.x - robot.x, enemy.y - robot.y);
+      if (gap < (enemy.r || 5) + 5) touching = true;
+      if (gap < range) {
+        target = enemy;
+        range = gap;
+      }
+    }
+    if (touching && a.t >= robot.hurtAt) {
+      robot.hurtAt = a.t + 0.75;
+      robot.hp -= 4;
+      if (robot.hp <= 0) {
+        a.kf.giftRobot = null;
+        return;
+      }
+    }
+    if (target && a.t >= robot.fireAt) {
+      robot.fireAt = a.t + 1.5;
+      robot.beam = { x: target.x, y: target.y, until: a.t + 0.15 };
+      api.damage(target, 4, { nocrit: true, quiet: true });
+    }
+  }
+
+  function drawGiftRobot(ctx, cameraX, cameraY) {
+    const a = api.a;
+    const robot = a.kf.giftRobot;
+    if (!robot) return;
+    const x = Math.round(robot.x - cameraX);
+    const y = Math.round(robot.y - cameraY);
+    if (robot.beam?.until > a.t)
+      api.drawLine(
+        ctx,
+        x,
+        y,
+        Math.round(robot.beam.x - cameraX),
+        Math.round(robot.beam.y - cameraY),
+        "#84efff",
+        1,
+        0,
+        0,
+      );
+    api.drawRect(ctx, x - 5, y - 4, 11, 9, "#15152a");
+    api.drawRect(ctx, x - 4, y - 3, 9, 6, "#6f899e");
+    api.drawRect(ctx, x - 2, y - 2, 5, 2, "#9cf7dc");
+    api.drawRect(ctx, x, y - 6, 1, 2, "#ffda78");
+    api.drawRect(ctx, x - 5, y + 6, 10, 2, "#24253c");
+    api.drawRect(
+      ctx,
+      x - 5,
+      y + 6,
+      Math.ceil((10 * robot.hp) / 16),
+      2,
+      "#7adba4",
+    );
+  }
+
   function drawEffects(ctx, camX, camY) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return;
+    drawGiftRobot(ctx, camX, camY);
     // Player-side effects stay a step behind enemies and their bullets.
     const FX = 0.75;
     ctx.globalAlpha = FX;
@@ -3185,6 +3261,7 @@ export function createKnowledgeFlow(api) {
       }
       tickGear(dt);
       tickShots(dt);
+      tickGiftRobot(dt);
       if (a.themeTr) return;
       ensureWorld();
       if (tickLairs(dt)) return;
@@ -3203,6 +3280,22 @@ export function createKnowledgeFlow(api) {
           lair.enemy = null;
         }
         kf.stats.miniBosses++;
+        const p = P();
+        kf.giftRobot = {
+          x: p.x - 16,
+          y: p.y + 6,
+          hp: 16,
+          hurtAt: a.t,
+          fireAt: a.t + 1,
+        };
+        say(
+          L(def.name),
+          def.col,
+          api.zh
+            ? "你赢了。这个小机器人就送给你吧！"
+            : "You win. Take my little robot with you!",
+        );
+
         a.picks.push({
           kind: "kfgear",
           kf: true,
@@ -3253,10 +3346,6 @@ export function createKnowledgeFlow(api) {
       const kf = kfOf();
       if (!kf || !q) return cards;
       if (q.kfSource !== "tablet" || !correct) return cards;
-      const tablet = kf.world?.tablets.find(
-        (tab) => tab.tier === (q.kfTier || 1),
-      );
-      if (tablet) tablet.solved = true;
       return tabletCards(q.kfTier || 1);
     },
     decorateQuiz(root, q) {

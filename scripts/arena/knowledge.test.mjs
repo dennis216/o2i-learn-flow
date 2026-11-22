@@ -197,8 +197,23 @@ test("a defeated mini-boss leaves its equipment and its lair stays cleared", () 
   assert.equal(lair.state, "awake");
   const boss = lair.enemy;
   assert.equal(boss.type, "kfboss");
+  const minutes = context.a.t / 60;
+  const scale = 1 + 0.12 * minutes + 0.042 * minutes * minutes;
+  assert.ok(Math.abs(boss.hp - MINI_BOSSES.mech.hp * scale * 0.9) < 1e-6);
   context.At(boss, boss.hp + 1, { nocrit: true });
   assert.equal(lair.state, "done");
+  const robot = context.a.kf.giftRobot;
+  assert.equal(robot.hp, 16);
+  const target = context.ye("slime", robot.x, robot.y, { hp: 30 });
+  context.a.t = robot.fireAt;
+  k.update(0);
+  assert.equal(target.hp, 26);
+  assert.equal(robot.hp, 12);
+  for (let hits = 0; hits < 3; hits++) {
+    context.a.t = robot.hurtAt;
+    k.update(0);
+  }
+  assert.equal(context.a.kf.giftRobot, null);
   const drop = context.a.picks.find((p) => p.kind === "kfgear");
   assert.equal(drop.gear, MINI_BOSSES.mech.gear);
   assert.ok(!context.a.picks.some((p) => p.kind === "kfchest"));
@@ -225,7 +240,8 @@ test("hard tablets bring more enemies only near them", () => {
   context.a.p.y = world.tablets[2].y + 30;
   // Not open yet in a new run, so it changes nothing.
   assert.equal(k.spawnFactor(), 1);
-  context.a.kf.stats.tablets = 2;
+  world.tablets[0].used = true;
+  world.tablets[2].tier = 3;
   assert.equal(k.spawnFactor(), TABLETS[2].spawn);
 });
 
@@ -282,7 +298,7 @@ test("level-up questions keep their usual cards; tablet text only on tablets", (
   assert.equal(k.levelText().title, "TABLET!");
 });
 
-test("tablets open one tier at a time and share one cooldown", () => {
+test("one tablet appears at a time and moves after use", () => {
   const context = run(),
     k = context.knowledge,
     a = context.a,
@@ -302,10 +318,10 @@ test("tablets open one tier at a time and share one cooldown", () => {
   k.update(1 / 60);
   assert.equal(context.I, "lvup");
   assert.equal(a.kf.stats.tablets, 1);
-  assert.deepEqual(world.tablets.map(k._.tabletOpen), [true, true, false]);
+  assert.deepEqual(world.tablets.map(k._.tabletOpen), [false, true, false]);
   // Every tablet dims for the cooldown of the tier that was answered.
   assert.ok(!k._.tabletsReady());
-  a.t += TABLETS[0].cd - 0.1;
+  a.t += TABLETS[easy.tier - 1].cd - 0.1;
   assert.ok(!k._.tabletsReady());
   a.t += 0.1;
   assert.ok(k._.tabletsReady());
@@ -366,14 +382,13 @@ test("at most one objective arrow and one loot arrow", () => {
   let marks = k._.markerTargets();
   assert.equal(marks.length, 1);
   assert.match(marks[0].label, /^\*+$/);
-  // Standing at a tablet, the arrow points to the next one you cannot see.
+  // The only active tablet is on screen, so there is no objective arrow.
   const [first] = world.tablets;
   a.p.x = first.x;
   a.p.y = first.y;
   a.cam = { x: first.x - 200, y: first.y - 120 };
   marks = k._.markerTargets();
-  assert.equal(marks.length, 1);
-  assert.notEqual(marks[0].x, first.x);
+  assert.equal(marks.length, 0);
   a.cam = { x: -5000, y: -5000 };
   for (let n = 0; n < 3; n++)
     a.picks.push({ kind: "kfgear", kf: true, x: 100 + n * 50, y: 100 });
