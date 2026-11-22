@@ -10936,71 +10936,78 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
 
   const arenaPetSprites = [
     [
-      "..k..........k..",
-      ".kok........kok.",
-      "kook..kkkk..kook",
-      "koxokkxxxxkkoxok",
-      ".koxxoxwkwxoxxk.",
-      "..koxxxxxxxxok..",
-      "...kkxkkxxxxk...",
-      "..koxoooxxxokk..",
-      ".kkxooooookxkkk.",
-      "...kkk..kkk.....",
+      "..k.........k...",
+      ".kck.......kck..",
+      "kcock.kkk.kcocc.",
+      "kcoookxwxkoocck.",
+      ".kcooxxwxxocck..",
+      "..kkxkwxwkkk....",
+      "...kxxwwxxkxk...",
+      "..koxxhxxkoxxk..",
+      ".kocxxhxkkoxok..",
+      "..kkkkkkkkkkk...",
+      "....kk...kk.....",
     ],
     [
-      ".......ww.......",
-      "......wxxw......",
-      "...k.wxwwxw.k...",
-      "..kxkwxxxxwkxk..",
-      ".kxxokxxxxkoxxk.",
-      "kxxoookwwkoooxxk",
-      ".kxxooxxxxoxxk..",
-      "..kkoxoxxoxkk...",
-      "....kk..kk......",
+      "......khk.......",
+      ".....khwhk......",
+      "....khwwwhk.....",
+      "...kxhhwhhxk....",
+      "..khxwwhxwxhk...",
+      "kxkxxhwhxxkxkk..",
+      "koxxwxxwxwxxok..",
+      ".koxxwxwwxxok...",
+      "..kkoxxxxxkk....",
+      "....kkxxkk......",
+      "......kk........",
     ],
     [
-      "....kkkkkk......",
-      "...kxxoooxk.....",
-      "..kxoxxoxoxk....",
-      ".kxoxwooxxoxkkk.",
-      "kxoxoxxoxoxkxwk.",
-      "kxoxxoxxoxxkxxkk",
-      ".kkoxxxxxokkkk..",
-      "..kkkkkkkkokk...",
+      "...kkkkkk.......",
+      "..koxhxoxk......",
+      ".koxhxhxoxk..kk.",
+      "koxhxxhxxoxkkwk.",
+      "koxxhhxhxoxkxwk.",
+      "koxxhxxhxoxxxkk.",
+      ".koxxxhxxokxk...",
+      "..kkkkkkkkkk....",
+      "..kwkk..kwwk....",
       "...kk....kk.....",
     ],
     [
-      ".k..........k...",
-      ".kwk......kwk...",
-      "..kwwkkkkwwk....",
-      ".kkxwxxxxwxkk...",
-      "kxwwkxwxkwwxk..k",
-      ".kxwwxwxwwxk..kw",
-      "..kkwwwwwkk..kwk",
-      "...kxxoxxkkkkwk.",
-      "...kk..kk.kkkk..",
+      "..k......k......",
+      ".kwwk..kwwk.....",
+      ".kwxkkkkxwk.....",
+      ".kxwhwhwwk......",
+      "kxwkwxwkwxk..kk.",
+      ".kxwwwwwwk..kwhk",
+      "..kkwxxkk..kwhwk",
+      "..koxxoxkhkwhwk.",
+      "..kwwwxwwkwwkk..",
+      "...kk..kk.kk....",
     ],
     [
-      "k...........kk..",
-      "kxk.......kkxk..",
-      "kxxk...kkkxok...",
-      ".kxxk.kxwxokkk..",
-      ".koxxkxxkoxxwk..",
-      "..koxxxooxkkkk..",
-      "...kkxxxkk......",
-      "..koxxxook......",
+      "k..........k....",
+      "kxk......kkxk...",
+      "khxk....kxhxk...",
+      ".khxk..khwxk....",
+      "..kxkkkxhoxkkk..",
+      "...kxwxhxxkwkk..",
+      "..khxhhxxkkk....",
+      ".koxxhxxk.......",
+      "..kkoxxkk.......",
       "....kk.kk.......",
     ],
     [
       ".k..........k...",
       ".kxkk....kkxk...",
-      "..koxkkkkxok....",
-      ".koxoxxxxoxok...",
-      "koxwwxxxxwwxok..",
-      "koxwkxxxxkwxok..",
-      "koxxxwwwwxxxok..",
-      ".kkoxoxxoxokk...",
-      "...koxxok.......",
+      "..khxkkkkxhk....",
+      ".koxhxxhxxok....",
+      "koxwwwxxwwwxok..",
+      "koxwkhxxhkwxok..",
+      "khxxwwxxwwxxhk..",
+      "koxxxhwwhxxxok..",
+      ".kkoxhxxhxokk...",
+      "...koxxoxk......",
       "....kk.kk.......",
     ],
   ];
@@ -11170,16 +11177,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ? arenaPetSprites[index]
         : id === "mount"
           ? [
-              "........kkk.....",
-              ".......kwwgk....",
-              "..kk...kgxwxk...",
-              ".kgkkkkkgxxgk...",
-              ".kggghhgggkk....",
-              "kgggghhggk......",
-              "kkggggggggk.....",
-              "..kgkkkggk......",
-              "..kk...kk.......",
-              ".kk....kk.......",
+              "............kkkk..",
+              "...........kggwwwk",
+              "..kk......kgggxhkk",
+              ".kxxk.kkkkkgghxwk.",
+              "kxgkkkggggggxkkk..",
+              "kgggggghhggggk....",
+              ".kkgggghhgggk.....",
+              "...kggkkgggk......",
+              "...kxk.kgxk.......",
+              "..kwkk.kwwwk......",
             ]
           : [
               "...kkkk...",
@@ -11210,6 +11217,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         k: s.black,
         x: color,
         o: petShadows[index],
+        c: "#f88c4f",
         g: "#966846",
         h: "#467e83",
         w: "#fff3de",
@@ -11301,6 +11309,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         k: s.black,
         x: arenaPets[index].color,
         o: petShadows[index],
+        h: "#9cb3cb",
+        c: "#f88c4f",
         w: "#fff3de",
       },
       px,
@@ -12011,8 +12021,24 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       r.push(o.splice(Math.floor(Math.random() * o.length), 1)[0]);
     return r;
   }
+  const upgradeReactions = [
+    ["I like this one!", "我喜欢这个！"],
+    ["Now we're talking!", "这才像话！"],
+    ["Time to test it!", "试试看！"],
+    ["The slimes won't see it coming.", "史莱姆可猜不到！"],
+    ["That adds up!", "这笔账算对了！"],
+    ["Worth the math.", "这题没白算！"],
+  ];
+
+  function maybeSayUpgradeReaction() {
+    if (a.playerSpeech && a.t < a.playerSpeech.until + 12) return;
+    if (Math.random() >= 0.35) return;
+    const reactions = upgradeReactions.filter((line) => line !== a.playerSpeech?.line);
+    a.playerSpeech = { line: Gt(reactions), until: a.t + 1.8 };
+  }
+
   function Li(t) {
-    if (t.name) a.playerSpeech = { text: t.name, until: a.t + 1.5 };
+    maybeSayUpgradeReaction();
     if (t.type === "weapon") {
       const e = zt(t.id);
       e ? e.lv++ : Fa(t.id);
@@ -15894,6 +15920,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     marker(a.p, "#fff8e6", "player");
   }
 
+  function drawSmallPlayerBubble(text) {
+    const size = 10;
+    const width = Math.ceil(we(text, size, { pixel: true })) + 14;
+    const anchor = ((a.p.x - a.cam.x) * G) / A;
+    const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
+    const left = Math.round(center - width / 2);
+    const top = Math.round(F(((a.p.y - a.cam.y) * mt) / D - 54, 44, mt - 60));
+    x(R, left + 2, top + 3, width, 22, "#101423");
+    x(R, left + 2, top, width - 4, 22, "#151827");
+    x(R, left, top + 2, width, 18, "#151827");
+    x(R, left + 2, top + 2, width - 4, 18, "#fff2dc");
+    x(R, center - 2, top + 21, 5, 4, "#151827");
+    x(R, center - 1, top + 20, 3, 3, "#fff2dc");
+    Y(R, text, center, top + 6, { size, col: "#242238", align: "center" });
+  }
+
   function drawArenaBubble(title, message, y) {
     const width = Math.min(G - 20, 360);
     const left = Math.round((G - width) / 2);
@@ -15923,7 +15965,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (I === "play" && farewell?.until > a.t)
       drawArenaBubble(farewell.name, farewell.text, 83);
     else if (I === "play" && a.playerSpeech?.until > a.t)
-      drawArenaBubble(i ? "玩家" : "Player", a.playerSpeech.text, 83);
+      drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
     else if (I === "play" && a.pet?.speechUntil > a.t)
       drawArenaBubble(
         arenaPets.find((pet) => pet.id === a.pet.id).name[i ? 1 : 0],
@@ -17019,11 +17061,28 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       { scale },
     );
     if (slot === "glasses") {
-      ctx.fillStyle = outline;
-      ctx.fillRect(x + 4 * scale, y + scale, 2 * scale, scale);
-      ctx.fillStyle = "#fcf2dd";
-      ctx.fillRect(x + 2 * scale, y + scale, scale, scale);
-      ctx.fillRect(x + 7 * scale, y + scale, scale, scale);
+      const mono = index === 8;
+      const wide = [4, 5, 15, 17].includes(index);
+      const mirror = index === 0 || index === 9 || index === 12;
+      const lensColor = mirror ? "#203052" : wide ? "#a8dbf6" : "#eaf7fa";
+      ctx.fillStyle = lensColor;
+      if (!mono)
+        ctx.fillRect(x + 2 * scale, y + scale, (wide ? 2 : 1) * scale, scale);
+      ctx.fillRect(x + 7 * scale, y + scale, (wide ? 2 : 1) * scale, scale);
+      ctx.fillStyle = "#fff6e0";
+      if (mirror || wide) ctx.fillRect(x + 7 * scale, y, scale, scale);
+    } else if (slot === "hat" || !item[4]?.number) {
+      // Place the highlight inside the first solid patch of the item itself.
+      const row = item[3].findIndex((line) => /ccc/.test(line));
+      if (row >= 0) {
+        ctx.fillStyle = accessoryUpgradeColor(color, 3);
+        ctx.fillRect(
+          x + (item[3][row].indexOf("ccc") + 1) * scale,
+          y + row * scale,
+          2 * scale,
+          scale,
+        );
+      }
     }
     if (!item[4]?.number && level >= 3 && Math.floor(E * 5) % 5 < 2) {
       ctx.fillStyle = "#fff4b5";

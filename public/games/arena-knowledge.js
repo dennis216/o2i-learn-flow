@@ -1485,11 +1485,11 @@ export function createKnowledgeFlow(api) {
     for (const c of source)
       if (out.length < size && !out.some((o) => sameCard(o, c))) out.push(c);
   }
-  // Every tablet offers this unit's skills; harder ones offer more, and ★★★
+  // Every tablet offers at most one unit skill, and ★★★
   // skills jump two levels. ★★★ also adds one rare card.
   function tabletCards(tier) {
     const out = [];
-    for (const id of shuffle(unitChoices()).slice(0, tier === 1 ? 1 : 2))
+    for (const id of shuffle(unitChoices()).slice(0, 1))
       out.push(unitCard(id, tier === 3 ? 2 : 1));
     if (tier === 3) {
       const rare = api.bossCards();

@@ -103,7 +103,7 @@ test("small enemies give less XP while elites keep theirs", () => {
   assert.equal(context.a.gems[0].v, 2);
 });
 
-test("every tablet offers this unit's skills; harder ones offer more and stronger", () => {
+test("tablets offer at most one unit skill; hard tablets grant two levels", () => {
   const context = run(),
     k = context.knowledge,
     offer = (tier) =>
@@ -113,8 +113,8 @@ test("every tablet offers this unit's skills; harder ones offer more and stronge
     medium = offer(2),
     hard = offer(3);
   assert.equal(units(easy).length, 1);
-  assert.equal(units(medium).length, 2);
-  assert.equal(units(hard).length, 2);
+  assert.equal(units(medium).length, 1);
+  assert.equal(units(hard).length, 1);
   for (const card of [...units(easy), ...units(hard)])
     assert.equal(UNIT_SKILLS[card.id].unit, 1);
   assert.ok(units(easy).every((card) => card.step === 1));
