@@ -598,6 +598,8 @@ export const BOSS_FOR_UNIT = {
   6: "riemann",
   7: "riemann",
   8: "riemann",
+  9: "prism",
+  10: "orbit",
 };
 export const WORLD_PREFIX = {
   desert: ["Dune ", "沙海·"],
@@ -638,7 +640,14 @@ export function worldLayout(world, zones = [], variant = 0) {
 
 export function bossTypeFor(unit, lastType) {
   const mapped = BOSS_FOR_UNIT[unit] || null;
-  return mapped && mapped !== lastType ? mapped : null;
+  const alternates = {
+    dne: "mirror",
+    knight: "prism",
+    riemann: "orbit",
+    prism: "knight",
+    orbit: "riemann",
+  };
+  return mapped === lastType ? alternates[mapped] || null : mapped;
 }
 
 // ---------------------------------------------------------------- runtime

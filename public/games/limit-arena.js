@@ -11855,6 +11855,116 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       heading?.append(reward);
     }
   }
+  const newBossSprites = [
+    [
+      "....kk.......kk....",
+      "...kgkk.....kkgk...",
+      "..kgllkk...kkllgk..",
+      ".kgllggkkkkkggllgk.",
+      "kgllgggggggggllgggk",
+      "kgggkkwgggwkkggggk.",
+      "kgggkkwglgwkkggggk.",
+      ".kggggggwgggggggk..",
+      "..kkgggggggggkk....",
+      "....kkgggggkk......",
+      ".....kkkkkkk.......",
+    ],
+    [
+      "......kkkkkk.......",
+      ".....kggllggk......",
+      "..kkkkgllllgkkkk...",
+      ".kgggglwwwwlggggk..",
+      "kggkkgglwwlggkkggk.",
+      "kgk..kggllggk..kgk.",
+      "kggkkggllllggkkggk.",
+      ".kggggggggggggggk..",
+      "..kkkkggggggkkkk...",
+      ".....kkkkkkkk......",
+    ],
+    [
+      "..........k........",
+      ".......kkgkk.......",
+      ".....kkgglggkk.....",
+      "...kkgglwwwlggkk...",
+      ".kkggggwwlwwggggkk.",
+      "kggkkgglwwwlggkkgk.",
+      "kgggkkggglgggkkggk.",
+      ".kkgggkgggggkggkk..",
+      "...kkggggggggkk....",
+      ".....kkkkkkkk......",
+    ],
+  ];
+  function drawNewBoss(
+    index,
+    color,
+    shadow,
+    ctx,
+    x,
+    y,
+    time,
+    { flash = false } = {},
+  ) {
+    Ct(
+      ctx,
+      "extended-boss:" + index,
+      newBossSprites[index],
+      { k: s.black, g: shadow, l: color, w: s.white },
+      x,
+      y + Math.round(Math.sin(time * 3) * 2),
+      { scale: 3, flash },
+    );
+  }
+
+  function* patternedBossVolley(boss, pattern) {
+    const aim = _e(boss);
+    const spread = pattern === "prism" ? 1.25 : 0.88;
+    const warning = 0.65;
+    wt({
+      kind: "cone",
+      visual: true,
+      follow: boss.e,
+      a: aim,
+      spread,
+      len: 130,
+      warnFrom: a.t,
+      fire: a.t + warning,
+      end: a.t + warning,
+    });
+    boss.cast = true;
+    $.tele();
+    yield warning;
+    const waves = boss.phase > 1 ? 4 : 3;
+    for (let wave = 0; wave < waves; wave++) {
+      const count = pattern === "prism" ? 7 : 5;
+      for (let shot = 0; shot < count; shot++) {
+        const lane = (shot / (count - 1) - 0.5) * spread;
+        if (pattern === "orbit" && shot === (wave + 1) % count) continue;
+        const offset =
+          pattern === "mirror"
+            ? wave % 2
+              ? 0.13
+              : -0.13
+            : pattern === "orbit"
+              ? (wave - 1) * 0.12
+              : wave * 0.025;
+        const speed =
+          (pattern === "prism"
+            ? 56 + wave * 8
+            : pattern === "mirror"
+              ? 68 - wave * 4
+              : 60) * boss.spd;
+        Pt(qt(boss), Dt(boss), aim + lane + offset, speed, {
+          kind: "dot",
+          r: 3,
+          dmg: Ot,
+        });
+      }
+      $.shot();
+      yield 0.24;
+    }
+    boss.cast = false;
+    yield 0.45;
+  }
   let Oa = {
       dne: {
         name: i ? "DNE \u9886\u4E3B" : "DNE Lord",
@@ -11945,8 +12055,63 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           ? "\u4E00\u4E2A\u77E9\u5F62\u63A5\u4E00\u4E2A\u77E9\u5F62\u2026\u2026\u76F4\u5230\u4F60\u7684\u9762\u79EF\u5F52\u96F6\u3002"
           : "Rectangle by rectangle... until your area is zero.",
       },
+      mirror: {
+        name: i ? "镜界守卫" : "Mirror Warden",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.teal,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) => drawNewBoss(0, s.teal, "#32557b", ...args),
+        kit: ["mirrorFan", "holeRing", "homingDots"],
+        p2kit: ["mirrorFan", "fanBurst", "sineStreams"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i ? "镜像弹幕会左右交替。" : "Watch the mirrored lanes.",
+        p2msg: i ? "镜像弹幕会左右交替。" : "Watch the mirrored lanes.",
+      },
+      prism: {
+        name: i ? "棱镜领主" : "Prism Regent",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.pink,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) => drawNewBoss(1, s.pink, "#713d7c", ...args),
+        kit: ["prismRain", "sineStreams", "crossLanes"],
+        p2kit: ["prismRain", "holeRing", "crossLanes"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i
+          ? "别被棱镜的快慢弹迷惑。"
+          : "Read the prism’s fast and slow volleys.",
+        p2msg: i
+          ? "别被棱镜的快慢弹迷惑。"
+          : "Read the prism’s fast and slow volleys.",
+      },
+      orbit: {
+        name: i ? "轨道工匠" : "Orbit Architect",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.orange,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) => drawNewBoss(2, s.orange, "#7d4d45", ...args),
+        kit: ["orbitSweep", "areaBomb", "accSpiral"],
+        p2kit: ["orbitSweep", "accSpiral", "areaBomb"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i ? "找到正在移动的缺口。" : "Follow the shifting gaps.",
+        p2msg: i ? "找到正在移动的缺口。" : "Follow the shifting gaps.",
+      },
     },
-    vo = ["dne", "knight", "riemann"],
+    vo = ["dne", "knight", "riemann", "mirror", "prism", "orbit"],
     Mo = [1100, 3400, 6e3];
   function Ai(t, e) {
     t.phase > 1 && t.def.p2dr && (e *= 1 - t.def.p2dr);
@@ -12047,7 +12212,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       f = Object.values(Oa)
         .flatMap((k) => k.kit)
         .filter((k) => !u.includes(k) && !["summonDx"].includes(k));
-    for (let k = 0; k < r; k++)
+    for (let k = 0; k < r && f.length; k++)
       u.push(f.splice(Math.floor(Math.random() * f.length), 1)[0]);
     const p = {
       def: e,
@@ -12430,6 +12595,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             });
           ($.shot(), (t.cast = !1), yield 0.32);
         }
+      },
+      *mirrorFan(boss) {
+        yield* patternedBossVolley(boss, "mirror");
+      },
+      *prismRain(boss) {
+        yield* patternedBossVolley(boss, "prism");
+      },
+      *orbitSweep(boss) {
+        yield* patternedBossVolley(boss, "orbit");
       },
       *asymLasers(t) {
         const e = a.arena,

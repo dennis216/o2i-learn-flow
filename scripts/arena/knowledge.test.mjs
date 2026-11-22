@@ -73,15 +73,15 @@ test("world layout stays on the map and away from special regions", () => {
 test("big bosses follow the unit being studied", () => {
   assert.equal(bossTypeFor(1, null), "dne");
   assert.equal(bossTypeFor(6, null), "riemann");
-  assert.equal(bossTypeFor(6, "riemann"), null);
-  assert.equal(bossTypeFor(10, null), null);
+  assert.equal(bossTypeFor(6, "riemann"), "orbit");
+  assert.equal(bossTypeFor(10, null), "orbit");
   const context = run();
   context.a.curUnit = 3;
   assert.equal(context.cs(), BOSS_FOR_UNIT[3]);
   context.knowledge.bossDef({ name: "Sir Tangent" }, "knight");
   context.a.bossK = 1;
-  assert.equal(context.cs(), "knight"); // repeat in the same unit: original order
-  assert.equal(context.a.kf.bossPlan.type, null);
+  assert.equal(context.cs(), "prism");
+  assert.equal(context.a.kf.bossPlan.type, "prism");
 });
 
 test("small enemies give less XP while elites keep theirs", () => {
@@ -518,4 +518,27 @@ test("admin test speed: only admins, only listed speeds, everything runs faster"
   // A student who is not an admin gets normal speed even with a saved choice.
   store.delete("cq-arena-admin");
   assert.equal(fast(4).a.testSpeed, 1);
+});
+
+test("new bosses warn before firing and add a volley in phase two", () => {
+  const context = run();
+  for (const [id, attack, perWave] of [
+    ["mirror", "mirrorFan", 5],
+    ["prism", "prismRain", 7],
+    ["orbit", "orbitSweep", 4],
+  ]) {
+    assert.ok(context.Oa[id].kit.includes(attack));
+    for (const phase of [1, 2]) {
+      context.a.ebul = [];
+      context.a.haz = [];
+      const boss = { e: { x: 100, y: 100 }, spd: 1, phase };
+      const volley = context.Le[attack](boss);
+      assert.equal(volley.next().value, 0.65);
+      assert.equal(context.a.haz[0].kind, "cone");
+      assert.equal(context.a.ebul.length, 0);
+      for (const step of volley) assert.ok(step > 0);
+      assert.equal(context.a.ebul.length, perWave * (phase === 1 ? 3 : 4));
+      assert.equal(boss.cast, false);
+    }
+  }
 });
