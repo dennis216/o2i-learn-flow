@@ -11874,6 +11874,79 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       heading?.append(reward);
     }
   }
+  const calculusBossBodies = [
+    [
+      "........kkk.kkk........",
+      ".......kllkklllk.......",
+      "......klhllllhllk......",
+      ".....klhwwhhwwhllk.....",
+      ".....kggggggggggk......",
+      "....kkghkggkgghgkk.....",
+      "...kggghwggwhhggggk....",
+      "..khggggghhgggggghk....",
+      "..klkkgglhhlggkkllk....",
+      "...kkgkgllllgkgkkk.....",
+      "...kgggklwwlkgghgk.....",
+      "..kghgggkllkggghggk....",
+      "..kgggghgkkghgggggk....",
+      ".kggghhggllgghhggggk...",
+      ".kggggggkllkgggggggk...",
+      "kggghgggkllkgggghgggk..",
+      "kgggggkkgllgkkggggggk..",
+      ".kkggk.kgllgk.kgggkk...",
+      "...kk..kgllgk..kkk.....",
+      "......kkgllgkk.........",
+      "......kggkkggk.........",
+      "......kkkkkkkk.........",
+    ],
+    [
+      "..........kkk..........",
+      "........kkwlhkk........",
+      ".......khhhllhgk.......",
+      "......khlhllhhggk......",
+      "......khkkkkkkhgk......",
+      "......kkwllllwkkk......",
+      ".......kgggggggk.......",
+      ".....kkkhhllhhkkk......",
+      "....klhhkkggkkhhlk.....",
+      "...klghgkgwwgkghglk....",
+      "..klkkggkghhgkggkklk...",
+      "..khkkgghkllkhggkkhk...",
+      "..khlkggggkkggggklhk...",
+      "...kk.kghllllhgk.kk....",
+      "......kggllllggk.......",
+      "......kggkkggggk.......",
+      ".....kgghkkhgggk.......",
+      ".....kghkk.kkhgk.......",
+      "....khggk...kgghk......",
+      "....kllkk...kkllk......",
+      "....kkkk.....kkkk......",
+    ],
+    [
+      ".........kkk...........",
+      ".......kklhlkk.........",
+      "......klhhwhhlk........",
+      ".....klhwwwwhhlk.......",
+      ".....kghggggghgk.......",
+      "....kkggwggwgggkk......",
+      "...kggghgllghggggk.....",
+      "..kghggllhhllgggghk....",
+      "..klkkgkkggkkgkkllk....",
+      "..kllkgkhllhkgklllk....",
+      "...kkwkkkkkkkkkwkk.....",
+      "....klkhwwkkwwhklk.....",
+      "....klkhlhkkhlhklk.....",
+      "....klkhhlkkhhlklk.....",
+      "....klkkkkkkkkkklk.....",
+      "...kllgggllgggggllk....",
+      "..kllgghgllghgggllk....",
+      "..klgggggllggggggllk...",
+      ".klggghggllggghgggllk..",
+      ".kllgggggllgggggglllk..",
+      "..kkkgggkllkgggkkkk....",
+      ".....kkkkkkkkkk........",
+    ],
+  ];
   function drawCalculusBoss(
     theme,
     color,
@@ -11896,76 +11969,59 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         h,
         flash ? s.white : col,
       );
+    const bodyIndex = theme === "squeeze" ? 0 : theme === "slope" ? 1 : 2;
+    Ct(
+      ctx,
+      "calculus-boss:" + theme + ":" + rage,
+      calculusBossBodies[bodyIndex],
+      { k: s.black, g: shadow, l: energy, h: "#899bb3", w: "#fff3dc" },
+      cx,
+      cy + 5,
+      { scale: 2, flash },
+    );
     if (theme === "squeeze") {
-      // A hooded figure framed by |f(x)| <= x²: both bounds meet at zero.
-      for (let row = 0; row < 25; row++) {
-        const half = 7 + Math.floor(row * 0.55);
-        pixel(-half, row - 2, half * 2 + 1, 1, s.black);
-        pixel(-half + 2, row - 2, half * 2 - 3, 1, shadow);
-        if (row % 3 === 0) pixel(-half + 4, row - 2, 3, 1, "#7895ab");
-      }
-      pixel(-12, -24, 25, 23, s.black);
-      pixel(-9, -22, 19, 19, shadow);
-      pixel(-7, -18, 15, 11, "#15253a");
-      pixel(-3, -15, 7, 2, energy);
-      for (let dx = -34; dx <= 34; dx++) {
-        const bound = (dx * dx) / (cast ? 67 : 56);
+      for (let dx = -39; dx <= 39; dx++) {
+        const bound = (dx * dx) / (cast ? 84 : 72);
         pixel(dx, 5 - bound, 2, 2, "#91d8ff");
         pixel(dx, 5 + bound, 2, 2, "#50b8a5");
       }
       pixel(-2, 3, 5, 5, s.white);
     } else if (theme === "slope") {
-      // A mechanical surveyor measures the tangent to a quadratic track.
-      pixel(-15, -20, 31, 38, s.black);
-      pixel(-13, -18, 27, 34, shadow);
-      pixel(-12, -17, 5, 31, "#9f6396");
-      pixel(7, -16, 6, 29, "#4b2f65");
-      pixel(-9, -13, 19, 10, "#17192b");
-      pixel(-7, -11, 15, 3, energy);
-      pixel(-10, 19, 7, 7, s.black);
-      pixel(4, 19, 7, 7, s.black);
-      for (let dx = -34; dx <= 34; dx++) {
-        pixel(dx, 23 - (dx * dx) / 63, 2, 2, "#847fb3");
-      }
-      const point = Math.round(Math.sin(time * 2.6) * 17);
-      const tangentY = 23 - (point * point) / 63;
-      for (let dx = -17; dx <= 17; dx++)
+      for (let dx = -37; dx <= 37; dx++)
+        pixel(dx, 25 - (dx * dx) / 68, 2, 2, "#847fb3");
+      const point = Math.round(Math.sin(time * 2.6) * 19);
+      const tangentY = 25 - (point * point) / 68;
+      for (let dx = -18; dx <= 18; dx++)
         pixel(
           point + dx,
-          tangentY - (dx * 2 * point) / 63,
+          tangentY - (dx * 2 * point) / 68,
           2,
           cast ? 3 : 2,
           energy,
         );
       pixel(point - 2, tangentY - 2, 5, 5, s.white);
+      pixel(-21, -17, 3, 13, "#ad7b66");
+      pixel(18, -18, 3, 14, "#ad7b66");
     } else {
-      // Three polynomial pages fan out around a gilded series engine.
       for (const side of [-1, 1]) {
-        for (let page = 0; page < 3; page++) {
-          const dx = side * (14 + page * 6);
-          const dy = -15 + page * 6 + Math.sin(time * 3 + page) * 2;
-          pixel(dx - 7, dy, 15, 26, s.black);
-          pixel(dx - 5, dy + 2, 11, 21, page % 2 ? "#a78066" : "#daba8e");
-          for (let line = 0; line < 3; line++)
-            pixel(
-              dx - 3,
-              dy + 7 + line * 4,
-              4 + ((line + page) % 3),
-              1,
-              shadow,
-            );
-        }
+        const pageX = side * 34 - 7;
+        const pageY = Math.sin(time * 4 + side) * 3 - 15;
+        pixel(pageX, pageY, 15, 25, s.black);
+        pixel(pageX + 2, pageY + 2, 11, 21, "#e2c49a");
+        for (let line = 0; line < 4; line++)
+          pixel(
+            pageX + 4,
+            pageY + 6 + line * 4,
+            4 + ((line + 1) % 3),
+            1,
+            shadow,
+          );
+        pixel(pageX + 8, pageY + 19, 2, 5, "#a64b61");
       }
-      pixel(-14, -25, 29, 47, s.black);
-      pixel(-12, -23, 25, 43, shadow);
-      pixel(-11, -22, 23, 3, energy);
-      pixel(-10, 11, 21, 6, "#b27c48");
-      // Sigma embossed on the center cover.
-      pixel(-7, -15, 15, 2, energy);
-      pixel(-7, 2, 15, 2, energy);
-      for (let row = 0; row < 16; row++)
-        pixel(-7 + Math.min(row, 15 - row), -14 + row, 2, 1, energy);
-      pixel(-2, 21, 5, 8, "#b34e56");
+      pixel(-5, 0, 11, 1, energy);
+      pixel(-5, 10, 11, 1, energy);
+      for (let row = 0; row < 10; row++)
+        pixel(-5 + Math.min(row, 9 - row), 1 + row, 1, 1, energy);
     }
     if (cast || rage) {
       Pe(ctx, cx - 23, cy - 20, 0.2, energy);
@@ -16545,6 +16601,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     arenaAccessories.outfit.push([en, zh, color, art, { trim, number }]);
   }
 
+  const outfitHeadpieces = [
+    ["..kkkkkk..", ".khhhhhhk.", "khhwwwhhkk", "khhchcchhk", ".kcccccck."],
+    ["..kkkkkk..", ".kcccccck.", "kccwccwcck", "cccccccccc", ".wwwwwwww."],
+    ["w.....c...", "ww...ccc..", ".hcccccch.", "..cwwccc..", "...cccc..."],
+    ["..kwwwwk..", ".kcccccck.", "kwhhhhhhwk", "kwhhhhhhwk", ".kwwwwwwk."],
+    [".........w", "w..kkkk.ww", "wwcwwwwcww", ".kcccccck.", "..kwwwwk.."],
+    ["kk......kk", "kck....kck", "kcccccccck", "kcwwccwwck", ".kcccccck."],
+    ["..kkkkkk..", ".kcccccck.", "kccwccwcck", ".kcwwwwck.", "..kcccck.."],
+    ["...kcck...", "..kcccck..", "..kchhck..", "kcccccccck", ".kwwwwwwk."],
+    ["..kwwwwk..", ".wccccccw.", "wchhhhhhcw", "wccccccwcw", ".kwwwwwwk."],
+    ["h........h", ".h......h.", "..kcccck..", "whcwwwcchw", "..kcccck.."],
+  ];
+
   function accessoryWallet() {
     if (!tt.d.accessoryWallet) {
       const owned = {};
@@ -16572,11 +16641,27 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     return 250 + index * 500;
   }
 
+  function isPremiumAccessory(slot, index) {
+    const item = arenaAccessories[slot][index];
+    return (
+      !!item &&
+      index >= 6 &&
+      !item[4]?.number &&
+      !mapAccessoryKeys.has(slot + ":" + index)
+    );
+  }
+
   function drawAccessory(ctx, slot, index, x, y, scale = 1) {
     const item = arenaAccessories[slot][index];
     if (!item) return;
     const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
-    const color = level >= 3 ? "#e8a4ff" : level === 2 ? "#65e4cc" : item[2];
+    const color = item[4]?.number
+      ? item[2]
+      : level >= 3
+        ? "#e8a4ff"
+        : level === 2
+          ? "#65e4cc"
+          : item[2];
     const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
     re(
       ctx,
@@ -16600,7 +16685,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       y,
       { scale },
     );
-    if (level >= 3 && Math.floor(E * 5) % 5 < 2) {
+    if (!item[4]?.number && level >= 3 && Math.floor(E * 5) % 5 < 2) {
       ctx.fillStyle = "#fff4b5";
       ctx.fillRect(x + 10 * scale, y, scale, 3 * scale);
       ctx.fillRect(x + 9 * scale, y + scale, 3 * scale, scale);
@@ -16617,6 +16702,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Math.round(x) - 5,
       Math.round(feet) - 8 + bob,
     );
+    if (worn.hat == null && outfitHeadpieces[worn.outfit]) {
+      const outfit = arenaAccessories.outfit[worn.outfit];
+      const level = tt.d.accessoryWallet?.owned["outfit:" + worn.outfit] || 1;
+      re(
+        ctx,
+        outfitHeadpieces[worn.outfit],
+        {
+          k: "#172138",
+          w: "#fff2d9",
+          h: "#6d8ea5",
+          c: level >= 3 ? "#e8a4ff" : level === 2 ? "#65e4cc" : outfit[2],
+        },
+        Math.round(x) - 5,
+        Math.round(feet) - 18 + bob,
+      );
+    }
     drawAccessory(
       ctx,
       "hat",
@@ -16680,8 +16781,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             const canBuy =
               !mapGift && best >= threshold && wallet.coins >= price;
             const upgradeCost = level * 200;
+            const canUpgrade =
+              isPremiumAccessory(slot, index) && level > 0 && level < 3;
             return `<div class="accessory-item"><button data-slot="${slot}" data-index="${index}" data-action="${level ? "equip" : "buy"}" aria-pressed="${worn[slot] === index}" ${level || canBuy ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${label}</small></button>
-            ${level > 0 && level < 3 ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
+            ${canUpgrade ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
           </div>`;
           })
           .join("")}</div></section>`;
@@ -16715,7 +16818,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         } else if (action === "upgrade") {
           const level = wallet.owned[key];
           const cost = level * 200;
-          if (!level || level >= 3 || wallet.coins < cost) return;
+          if (
+            !level ||
+            level >= 3 ||
+            wallet.coins < cost ||
+            !isPremiumAccessory(slot, index)
+          )
+            return;
           wallet.coins -= cost;
           wallet.owned[key]++;
         }
