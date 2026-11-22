@@ -2000,7 +2000,24 @@ export function createKnowledgeFlow(api) {
       if (lair.state === "done" || lair.state === "hidden") continue;
       const d = Math.hypot(p.x - lair.x, p.y - lair.y);
       if (lair.state === "sleep") {
-        if (calm() && d < 105) wake(lair);
+        if (d >= 105) lair.approachHelp = false;
+        if (calm() && d < 105) {
+          if (!lair.approachHelp) {
+            lair.approachHelp = true;
+            const def = MINI_BOSSES[lair.boss];
+            if (
+              api.encounterHelp?.(
+                "mini:" + lair.boss,
+                L(def.name),
+                api.zh
+                  ? "小首领就在附近。留意弹幕预警，击败后可获得奖励。"
+                  : "A mini-boss is nearby. Watch its attack warnings and defeat it for a reward.",
+              )
+            )
+              return true;
+          }
+          wake(lair);
+        }
         continue;
       }
       const e = lair.enemy;
