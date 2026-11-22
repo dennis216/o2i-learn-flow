@@ -621,6 +621,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const u = Es.concat(h);
     const jacket = Es.length + 1;
     u[jacket] = u[jacket].replace("bb", "Bb");
+    u[u.length - 1] = u[u.length - 1].replace("oo", "ow");
     re(t, u, la, Math.round(e) - 6, Math.round(o) - u.length + c, {
       flip: l.flip,
       recolor: l.recolor,
@@ -6733,6 +6734,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Jo(),
       (a.p.hp = a.p.maxHp));
     knowledge.onRunStart();
+    if (!testing) unlockMapAccessory("base");
   }
   function Fa(t) {
     a.weapons.push({ id: t, lv: 1, evo: !1, t: 0.3, n: 0, a: 0, tick: 0 });
@@ -11072,6 +11074,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     // Preserve the player's build, health, XP and question-unit progress.
     In(portal.target, Yt[portal.target].name, Yt[portal.target].sub);
     a.transitionReward = !!a.pendingBossReward;
+    if (!testing) unlockMapAccessory(Yt[portal.target].worldKind);
     return true;
   }
   function drawWorldPortal(ctx, camX, camY) {
@@ -11793,25 +11796,38 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function _a(t) {
     I = "results";
-    const e = Ri(),
-      o =
-        a.testSpeed > 1
-          ? { newBest: !1, rank: 0 }
-          : tt.record({
-              score: e.total,
-              t: Math.floor(a.t),
-              kills: a.kills,
-              bosses: a.bosses,
-              acc: e.acc,
-              lv: a.lv,
-              reason: t,
-              build: a.weapons
-                .map((r) => r.id + (r.evo ? "*" : "") + r.lv)
-                .join(","),
-              cls: a.cls,
-              thm: Object.keys(a.thm).join(","),
-            });
+    const e = Ri();
+    if (!a.cosmeticCoinsPaid && !(a.testSpeed > 1)) {
+      a.cosmeticCoinsPaid = true;
+      e.cosmeticCoins = Math.max(0, Math.floor(e.total / 10));
+      accessoryWallet().coins += e.cosmeticCoins;
+      tt.save();
+    }
+    const o =
+      a.testSpeed > 1
+        ? { newBest: !1, rank: 0 }
+        : tt.record({
+            score: e.total,
+            t: Math.floor(a.t),
+            kills: a.kills,
+            bosses: a.bosses,
+            acc: e.acc,
+            lv: a.lv,
+            reason: t,
+            build: a.weapons
+              .map((r) => r.id + (r.evo ? "*" : "") + r.lv)
+              .join(","),
+            cls: a.cls,
+            thm: Object.keys(a.thm).join(","),
+          });
     (St.play("title"), Bt.results(e, o, t), knowledge.onResults(e));
+    if (!testing && e.cosmeticCoins != null) {
+      const heading = N("ov").querySelector(".qhd");
+      const reward = document.createElement("span");
+      reward.textContent =
+        (i ? "饰品币 +" : "Cosmetic coins +") + e.cosmeticCoins;
+      heading?.append(reward);
+    }
   }
   let Oa = {
       dne: {
@@ -12239,7 +12255,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         i ? "\u9996\u9886\u88AB\u51FB\u8D25\uFF01" : "BOSS DOWN!",
         s.yellow,
         t.def.name +
-          (i ? " \xB7 进入黑洞领取奖励" : " \xB7 enter the black hole"),
+          " · " +
+          [
+            i ? "你解开了我的难题。" : "You solved my puzzle.",
+            i
+              ? "下一道题在黑洞后等你。"
+              : "Your next challenge waits beyond the portal.",
+            i
+              ? "把你的答案带进下一关吧。"
+              : "Take your answers into the next world.",
+          ][(a.bossK - 1) % 3],
       ),
       (a.arena = null),
       (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
@@ -15882,6 +15907,82 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ],
     ],
   };
+  const mapAccessoryGifts = {
+    base: [
+      "hat",
+      [
+        "Coordinate Cap",
+        "坐标帽",
+        "#66b7ec",
+        ["...cccc...", "..ccwccc..", ".cccccccc.", "...ww....."],
+      ],
+    ],
+    desert: [
+      "hat",
+      [
+        "Oasis Wrap",
+        "绿洲头巾",
+        "#e7ac65",
+        ["..cccccc..", ".cwwwwccc.", "cccccccccc", "......ccc."],
+      ],
+    ],
+    rainforest: [
+      "hat",
+      [
+        "Canopy Crest",
+        "雨林叶冠",
+        "#65b971",
+        [".c..c..c..", "cccccccccc", ".cwwccwwc.", "..cccccc.."],
+      ],
+    ],
+    snow: [
+      "glasses",
+      [
+        "Aurora Lens",
+        "极光镜片",
+        "#5bd7dd",
+        ["cccccccccc", "cwwccccwwc", "..cc..cc.."],
+      ],
+    ],
+    book: [
+      "glasses",
+      [
+        "Scholar Frames",
+        "书页眼镜",
+        "#c794df",
+        [".ccc..ccc.", "cwwwccwwwc", ".ccc..ccc."],
+      ],
+    ],
+  };
+  const mapGiftSlots = {};
+  for (const [kind, [slot, item]] of Object.entries(mapAccessoryGifts)) {
+    mapGiftSlots[kind] = { slot, index: arenaAccessories[slot].length };
+    arenaAccessories[slot].push(item);
+  }
+
+  function accessoryWallet() {
+    if (!tt.d.accessoryWallet) {
+      const owned = {};
+      for (const [slot, index] of Object.entries(tt.d.accessories || {}))
+        if (arenaAccessories[slot]?.[index]) owned[slot + ":" + index] = 1;
+      tt.d.accessoryWallet = { coins: 1000, owned };
+    }
+    return tt.d.accessoryWallet;
+  }
+
+  function unlockMapAccessory(kind) {
+    const gift = mapGiftSlots[kind];
+    if (!gift || a.testSpeed > 1) return;
+    const wallet = accessoryWallet();
+    const key = gift.slot + ":" + gift.index;
+    if (wallet.owned[key]) return;
+    wallet.owned[key] = 1;
+    tt.save();
+    if (testing) return;
+    const name = arenaAccessories[gift.slot][gift.index][i ? 1 : 0];
+    oe(i ? "地图饰品" : "MAP COSMETIC", s.yellow, name);
+  }
+
   function accessoryThreshold(index) {
     return 250 + index * 500;
   }
@@ -15889,7 +15990,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function drawAccessory(ctx, slot, index, x, y, scale = 1) {
     const item = arenaAccessories[slot][index];
     if (!item) return;
-    re(ctx, item[3], { c: item[2], w: "#fff3db" }, x, y, { scale });
+    const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
+    const color = level >= 3 ? "#e8a4ff" : level === 2 ? "#65e4cc" : item[2];
+    const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
+    re(ctx, item[3], { c: outline, w: outline }, x, y + scale, { scale });
+    re(ctx, item[3], { c: color, w: "#fff3db" }, x, y, { scale });
+    if (level >= 3 && Math.floor(E * 5) % 5 < 2) {
+      ctx.fillStyle = "#fff4b5";
+      ctx.fillRect(x + 10 * scale, y, scale, 3 * scale);
+      ctx.fillRect(x + 9 * scale, y + scale, 3 * scale, scale);
+    }
   }
 
   function drawEquippedAccessories(ctx, x, feet, facing, bob = 0) {
@@ -15913,40 +16023,78 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
 
   function showAccessories() {
+    const wallet = accessoryWallet(),
+      lang = i ? 1 : 0;
     const best = tt.d.best?.score || 0;
-    const lang = i ? 1 : 0;
     const worn = tt.d.accessories || {};
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
         const title =
           slot === "hat" ? (i ? "帽饰" : "Hats") : i ? "眼镜" : "Glasses";
-        return `<section><h3>${title}</h3><div class="accessory-grid"><button data-slot="${slot}" data-index="-1" aria-pressed="${worn[slot] == null}">${i ? "取下" : "Remove"}</button>${items
+        return `<section><h3>${title}</h3><div class="accessory-grid">
+        <button data-slot="${slot}" data-index="-1" data-action="equip">${i ? "取下" : "Remove"}</button>
+        ${items
           .map((item, index) => {
+            const level = wallet.owned[slot + ":" + index] || 0;
+            const mapGift = index >= 10;
+            const price = 150 + index * 50;
             const threshold = accessoryThreshold(index);
-            const unlocked = best >= threshold;
-            return `<button data-slot="${slot}" data-index="${index}" aria-pressed="${worn[slot] === index}" ${unlocked ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${unlocked ? (i ? "已解锁" : "Unlocked") : threshold}</small></button>`;
+            const label = level
+              ? `Lv ${level}`
+              : mapGift
+                ? i
+                  ? "地图奖励"
+                  : "Map reward"
+                : best < threshold
+                  ? `${i ? "分数" : "Score"} ${threshold}`
+                  : `${price} ${i ? "币" : "coins"}`;
+            const canBuy =
+              !mapGift && best >= threshold && wallet.coins >= price;
+            const upgradeCost = level * 200;
+            return `<div class="accessory-item"><button data-slot="${slot}" data-index="${index}" data-action="${level ? "equip" : "buy"}" aria-pressed="${worn[slot] === index}" ${level || canBuy ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${label}</small></button>
+            ${level > 0 && level < 3 ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
+          </div>`;
           })
           .join("")}</div></section>`;
       })
       .join("");
+    const scroll = Bt.el.querySelector(".accessories")?.scrollTop || 0;
     Bt.show(
-      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
+      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "饰品币" : "Cosmetic coins"} ${wallet.coins} · ${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
       "sub",
     );
+    Bt.el.querySelector(".accessories").scrollTop = scroll;
     N("accessoryBack").onclick = () => Bt.menu();
-    Bt.el.querySelectorAll("[data-slot]").forEach((button) => {
-      const { slot, index: value } = button.dataset;
-      const index = Number(value);
+    Bt.el.querySelectorAll("[data-action]").forEach((button) => {
+      const { slot, index: value, action } = button.dataset;
+      const index = Number(value),
+        key = slot + ":" + index;
       const canvas = button.querySelector("canvas");
-      if (canvas) drawAccessory(canvas.getContext("2d"), slot, index, 6, 5, 2);
+      if (canvas) drawAccessory(canvas.getContext("2d"), slot, index, 5, 4, 2);
       button.onclick = () => {
-        if (index >= 0 && best < accessoryThreshold(index)) return;
+        if (action === "buy") {
+          const cost = 150 + index * 50;
+          if (
+            wallet.owned[key] ||
+            index >= 10 ||
+            best < accessoryThreshold(index) ||
+            wallet.coins < cost
+          )
+            return;
+          wallet.coins -= cost;
+          wallet.owned[key] = 1;
+        } else if (action === "upgrade") {
+          const level = wallet.owned[key];
+          const cost = level * 200;
+          if (!level || level >= 3 || wallet.coins < cost) return;
+          wallet.coins -= cost;
+          wallet.owned[key]++;
+        }
         const selection = tt.d.accessories || (tt.d.accessories = {});
         if (index < 0) delete selection[slot];
         else selection[slot] = index;
         tt.save();
-        for (const card of Bt.el.querySelectorAll(`[data-slot="${slot}"]`))
-          card.setAttribute("aria-pressed", String(card === button));
+        showAccessories();
       };
     });
   }
