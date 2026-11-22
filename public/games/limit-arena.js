@@ -16253,6 +16253,223 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     arenaAccessories[slot].push(item);
   }
 
+  // Append new items after map gifts so existing saves keep their item indexes.
+  const mapAccessoryKeys = new Set(
+    Object.values(mapGiftSlots).map(({ slot, index }) => slot + ":" + index),
+  );
+  arenaAccessories.hat.push(
+    ...[
+      [
+        "Toast Crown",
+        "吐司王冠",
+        "#cc8c49",
+        ["..cccccc..", ".ccwwwwcc.", ".cwwwwwwc.", ".cccccccc."],
+      ],
+      [
+        "Traffic Cone",
+        "路锥帽",
+        "#f48c42",
+        ["....cc....", "...cwwc...", "..cccccc..", ".cccccccc."],
+      ],
+      [
+        "Jelly UFO",
+        "果冻飞碟",
+        "#b276df",
+        ["...cccc...", "..cwwccc..", "cccccccccc", ".wcwcwcwc."],
+      ],
+      [
+        "Frog Bucket",
+        "青蛙桶帽",
+        "#5bc883",
+        [".ww....ww.", "cccccccccc", ".cwwccwwc.", ".cccccccc."],
+      ],
+      [
+        "Teapot Topper",
+        "茶壶帽",
+        "#d488ae",
+        ["....cc....", "..cccccc.c", "ccccwwcccc", ".cccccccc."],
+      ],
+      [
+        "Upside-down Bowl",
+        "倒扣饭碗",
+        "#719bdc",
+        ["...cccc...", "..cccccc..", ".cwwwwwwc.", "cccccccccc"],
+      ],
+    ],
+  );
+  arenaAccessories.glasses.push(
+    ...[
+      [
+        "Fried Egg Specs",
+        "煎蛋眼镜",
+        "#ffd26a",
+        [".ww....ww.", "wccwwwwccw", ".ww....ww."],
+      ],
+      [
+        "Window Frames",
+        "窗户眼镜",
+        "#6fb1df",
+        ["cccc..cccc", "cwwccccwwc", "cccc..cccc"],
+      ],
+      [
+        "Googly Eyes",
+        "摇摇眼镜",
+        "#ac83dd",
+        [".ww....ww.", "wwcwwwwwcw", ".ww....ww."],
+      ],
+      [
+        "Question Lenses",
+        "问号眼镜",
+        "#6bdfbc",
+        ["ccc....ccc", ".ccwwww.cc", ".c......c."],
+      ],
+      [
+        "Spiral Spectacles",
+        "旋涡眼镜",
+        "#ec8b88",
+        ["cccc..cccc", "cwcwwwwcwc", "ccww..wwcc"],
+      ],
+      [
+        "Fishbowl Visor",
+        "鱼缸面罩",
+        "#79cee2",
+        ["..cccccc..", ".cwwccwwc.", ".cccccccc."],
+      ],
+    ],
+  );
+  arenaAccessories.outfit = [
+    [
+      "Moon Knight",
+      "月影骑士",
+      "#789de2",
+      [
+        "..h....h..",
+        ".kcccccck.",
+        "hccwwwwcch",
+        "kccchhccck",
+        ".kcccccck.",
+        "..kckkck..",
+      ],
+    ],
+    [
+      "Mushroom Ranger",
+      "蘑菇游侠",
+      "#df736d",
+      [
+        "..cwwwwc..",
+        ".cccccccc.",
+        "kccwhhwcck",
+        ".kcccccck.",
+        ".kchhhcck.",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Mini Meteor",
+      "小陨石",
+      "#ed915d",
+      [
+        ".h......h.",
+        "hhcccccc.h",
+        ".kcwwccck.",
+        "..kcccck..",
+        "...kcck...",
+        "....kk....",
+      ],
+    ],
+    [
+      "Jellyfish Diver",
+      "水母潜水员",
+      "#69d8d9",
+      [
+        "..cccccc..",
+        ".kwwwwwwk.",
+        ".kcwhhcck.",
+        "kcccccccck",
+        "c.kc..ck.c",
+        "h..h..h..h",
+      ],
+    ],
+    [
+      "Origami Pilot",
+      "折纸飞行员",
+      "#ebe0a2",
+      [
+        "w........w",
+        "kw..cc..wk",
+        ".kwwccwwk.",
+        "..kchhck..",
+        "...kcck...",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Clockwork Cat",
+      "发条猫",
+      "#c99c61",
+      [
+        "k.c....c.k",
+        "kchcccchck",
+        ".kcwwccck.",
+        ".kcchhcck.",
+        "..kcccck.c",
+        "..k....kc.",
+      ],
+    ],
+    [
+      "Ghost Courier",
+      "幽灵邮差",
+      "#b6a4e1",
+      [
+        "..cccccc..",
+        ".ccwccwcc.",
+        ".kccwwcck.",
+        "kchcccchck",
+        ".cccccccc.",
+        "k.k.kk.k.k",
+      ],
+    ],
+    [
+      "Cactus Detective",
+      "仙人掌侦探",
+      "#72c580",
+      [
+        ".h......h.",
+        "hc.kcck.ch",
+        ".hccwwcch.",
+        "..kchhck..",
+        "..kcccck..",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Bubble Astronaut",
+      "泡泡宇航员",
+      "#8eb6e8",
+      [
+        "..kwwwwk..",
+        ".kwcwwcwk.",
+        "kcccccccck",
+        "kcchhhccck",
+        ".kcccccck.",
+        "..kh..hk..",
+      ],
+    ],
+    [
+      "Thunder Moth",
+      "雷电蛾",
+      "#dbad63",
+      [
+        "wh......hw",
+        "kch.cc.hck",
+        ".kcwccwck.",
+        "kchhwwhhck",
+        ".kcccccck.",
+        "..k....k..",
+      ],
+    ],
+  ];
+
   function accessoryWallet() {
     if (!tt.d.accessoryWallet) {
       const owned = {};
@@ -16286,8 +16503,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
     const color = level >= 3 ? "#e8a4ff" : level === 2 ? "#65e4cc" : item[2];
     const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
-    re(ctx, item[3], { c: outline, w: outline }, x, y + scale, { scale });
-    re(ctx, item[3], { c: color, w: "#fff3db" }, x, y, { scale });
+    re(
+      ctx,
+      item[3],
+      { c: outline, w: outline, k: outline, h: outline },
+      x,
+      y + scale,
+      { scale },
+    );
+    re(
+      ctx,
+      item[3],
+      { c: color, w: "#fff3db", k: outline, h: "#59617f" },
+      x,
+      y,
+      { scale },
+    );
     if (level >= 3 && Math.floor(E * 5) % 5 < 2) {
       ctx.fillStyle = "#fff4b5";
       ctx.fillRect(x + 10 * scale, y, scale, 3 * scale);
@@ -16298,6 +16529,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function drawEquippedAccessories(ctx, x, feet, facing, bob = 0) {
     const worn = tt.d.accessories;
     if (!worn) return;
+    drawAccessory(
+      ctx,
+      "outfit",
+      worn.outfit,
+      Math.round(x) - 5,
+      Math.round(feet) - 8 + bob,
+    );
     drawAccessory(
       ctx,
       "hat",
@@ -16323,13 +16561,23 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
         const title =
-          slot === "hat" ? (i ? "帽饰" : "Hats") : i ? "眼镜" : "Glasses";
+          slot === "hat"
+            ? i
+              ? "帽饰"
+              : "Hats"
+            : slot === "outfit"
+              ? i
+                ? "套装"
+                : "Outfits"
+              : i
+                ? "眼镜"
+                : "Glasses";
         return `<section><h3>${title}</h3><div class="accessory-grid">
         <button data-slot="${slot}" data-index="-1" data-action="equip">${i ? "取下" : "Remove"}</button>
         ${items
           .map((item, index) => {
             const level = wallet.owned[slot + ":" + index] || 0;
-            const mapGift = index >= 10;
+            const mapGift = mapAccessoryKeys.has(slot + ":" + index);
             const price = 150 + index * 50;
             const threshold = accessoryThreshold(index);
             const label = level
@@ -16369,7 +16617,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           const cost = 150 + index * 50;
           if (
             wallet.owned[key] ||
-            index >= 10 ||
+            mapAccessoryKeys.has(key) ||
             best < accessoryThreshold(index) ||
             wallet.coins < cost
           )
