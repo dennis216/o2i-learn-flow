@@ -8900,18 +8900,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const type = a.spawnQueue.shift(),
         [x, y] = ia();
       ye(type, x, y, { swarm: !!a.waveN });
-      a.nextQueuedSpawn = a.t + 0.22;
+      a.nextQueuedSpawn = a.t + (a.t < 3 ? 0.18 : 0.22);
     }
     const e = runT() / 60,
       o = a.t > a.nextBossT - 9;
-    if (!a.starter && a.t > 0.8) {
+    if (!a.starter && a.t >= 0.35) {
       a.starter = 1;
       a.spawnQueue = Array(5).fill("slime");
     }
     let r =
-      (a.t < 1 ? 0 : 1.3 + 0.75 * e + 0.05 * e * e) *
+      (a.t < 0.7 ? 0 : 1.3 + 0.75 * e + 0.05 * e * e) *
       Jt().spawn *
       knowledge.spawnFactor();
+    if (a.t < 25) r *= 1.1;
     if (a.testSpeed > 1) r = Math.min(r, 4.5);
     o && (r *= 0.3);
     const n = 120 + Math.min(40, e * 7);
@@ -16058,7 +16059,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function drawSmallPlayerBubble(text) {
     R.save();
     R.font = "600 15px system-ui, sans-serif";
-    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 20);
+    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 16);
     const anchor = ((a.p.x - a.cam.x) * G) / A;
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
     const left = Math.round(center - width / 2);
@@ -16114,31 +16115,41 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.fillStyle = "#171828";
     R.textAlign = "center";
     R.textBaseline = "middle";
-    R.fillText(text, center, top + 10, width - 16);
+    R.fillText(text, center, top + 10, width - 12);
     R.restore();
   }
 
   function drawArenaBubble(title, message, y) {
-    const width = Math.min(G - 20, 360);
-    const left = Math.round((G - width) / 2);
-    x(R, left + 4, y + 4, width, 42, "#080b15");
-    x(R, left + 3, y, width - 6, 42, "#151726");
-    x(R, left, y + 3, width, 36, "#151726");
-    x(R, left + 3, y + 3, width - 6, 36, "#f9ead5");
-    x(R, left + 6, y + 35, width - 12, 2, "#e5cfb5");
-    x(R, left + 16, y + 19, width - 32, 1, "#d9bfd0");
-    x(R, G / 2 - 5, y + 39, 11, 6, "#151726");
-    x(R, G / 2 - 3, y + 38, 7, 4, "#f9ead5");
-    x(R, G / 2 - 2, y + 44, 5, 4, "#151726");
     R.save();
+    const titleFont = "700 12px system-ui, sans-serif";
+    const messageFont = "600 14px system-ui, sans-serif";
+    R.font = titleFont;
+    const titleWidth = R.measureText(title).width;
+    R.font = messageFont;
+    const messageWidth = R.measureText(message).width;
+    const width = Math.min(
+      G - 20,
+      320,
+      Math.ceil(Math.max(titleWidth, messageWidth)) + 24,
+    );
+    const center = Math.round(G / 2);
+    const left = Math.round(center - width / 2);
+    x(R, left + 3, y + 3, width, 35, "rgba(8, 11, 21, 0.65)");
+    x(R, left + 3, y, width - 6, 35, "#151726");
+    x(R, left, y + 3, width, 29, "#151726");
+    x(R, left + 2, y + 3, width - 4, 29, "rgba(250, 242, 227, 0.96)");
+    x(R, left + 7, y + 16, width - 14, 1, "#d9bfd0");
+    x(R, center - 4, y + 33, 9, 4, "#151726");
+    x(R, center - 2, y + 31, 5, 5, "#faf2e3");
+    x(R, center - 1, y + 36, 3, 3, "#151726");
     R.textAlign = "center";
     R.textBaseline = "middle";
     R.fillStyle = "#392a53";
-    R.font = "700 13px system-ui, sans-serif";
-    R.fillText(title, G / 2, y + 11, width - 24);
+    R.font = titleFont;
+    R.fillText(title, center, y + 10, width - 14);
     R.fillStyle = "#171828";
-    R.font = "600 15px system-ui, sans-serif";
-    R.fillText(message, G / 2, y + 29, width - 24);
+    R.font = messageFont;
+    R.fillText(message, center, y + 24, width - 14);
     R.restore();
   }
 
@@ -18409,7 +18420,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     qa("rifle");
     a.banner = null;
     a.p.inv = 30;
-    a.nextBossT = 210;
+    a.nextBossT = ARENA_STAGE_SECONDS;
     if (previewMode === "merchant") {
       const requested = previewParams.get("shop");
       const kind = Object.hasOwn(merchantShops, requested)

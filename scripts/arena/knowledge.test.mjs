@@ -489,7 +489,11 @@ test("admin test speed: only admins, only listed speeds, everything runs faster"
     const context = fast(speed),
       a = context.a;
     assert.equal(a.testSpeed, speed);
-    assert.equal(a.nextBossT, 240 / speed, "bosses come sooner");
+    assert.equal(
+      a.nextBossT,
+      210 / speed,
+      "3:30 boss timer scales with test speed",
+    );
     // Tablets light up sooner too.
     context.knowledge._.ensureWorld();
     assert.ok(a.kf.tabletAt <= a.t + PACE.firstTablet / speed + 1e-9);
