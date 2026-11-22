@@ -24,7 +24,10 @@ function ArenaGame({ language, admin, email }: { language: Language; admin: bool
     const bytes = new TextEncoder().encode(email.trim().toLowerCase());
     void crypto.subtle.digest('SHA-256', bytes).then((digest) => {
       const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-      if (active) setTestCoins(fingerprint === '977d71156e66e6481718578647a6c7971906d9d453bd564f7c14d5e5370d539a');
+      if (active) setTestCoins([
+        '977d71156e66e6481718578647a6c7971906d9d453bd564f7c14d5e5370d539a',
+        '8cc7976e576051c7b1243c9fc705bc61ffe933c13da3ee5ff722f8995c833293',
+      ].includes(fingerprint));
     }).catch(() => {});
     return () => { active = false; };
   }, [email]);
