@@ -10568,20 +10568,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
 
   function drawRegionHud() {
-    const active =
-      a.regionState?.active ||
-      (a.regionBuff?.kind === "snow" ? a.regionBuff.source : null);
-    if (active && active.expires > a.t) {
-      drawRegionArrow(active);
-      const rule = REGION_RULES[active.kind];
-      Y(R, regionName(rule) + " " + regionDirection(active), G / 2, mt - 26, {
-        pixel: true,
-        size: 12,
-        col: s.green,
-        align: "center",
-        outline: s.black,
-      });
-    }
     const buff = a.regionBuff;
     if (buff && buff.until > a.t)
       Y(R, regionName(REGION_RULES[buff.kind]), G / 2, 82, {
@@ -15325,7 +15311,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       );
     }
     drawArenaMinimap(e);
-    (knowledge.drawMarkers(e), R.drawImage(Se, 0, 0, G, mt));
+    R.drawImage(Se, 0, 0, G, mt);
     for (const [T, Q, M, S, b] of Bo.splice(0))
       Y(R, T, (Q * G) / A, (M * G) / A - 2, {
         pixel: !0,
@@ -15927,13 +15913,37 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
     const left = Math.round(center - width / 2);
     const top = Math.round(F(((a.p.y - a.cam.y) * mt) / D - 54, 44, mt - 60));
-    x(R, left + 2, top + 3, width, 22, "#101423");
-    x(R, left + 2, top, width - 4, 22, "#151827");
-    x(R, left, top + 2, width, 18, "#151827");
-    x(R, left + 2, top + 2, width - 4, 18, "#fff2dc");
-    x(R, center - 2, top + 21, 5, 4, "#151827");
-    x(R, center - 1, top + 20, 3, 3, "#fff2dc");
-    Y(R, text, center, top + 6, { size, col: "#242238", align: "center" });
+    const right = left + width;
+    const tail = Math.round(center);
+    const edge = [
+      [left + 4, top], [right - 4, top], [right - 4, top + 2],
+      [right - 2, top + 2], [right - 2, top + 4], [right, top + 4],
+      [right, top + 16], [right - 2, top + 16], [right - 2, top + 18],
+      [right - 4, top + 18], [right - 4, top + 20], [tail + 4, top + 20],
+      [tail + 4, top + 22], [tail + 2, top + 22], [tail + 2, top + 24],
+      [tail, top + 24], [tail, top + 22], [tail - 2, top + 22],
+      [tail - 2, top + 20], [left + 4, top + 20], [left + 4, top + 18],
+      [left + 2, top + 18], [left + 2, top + 16], [left, top + 16],
+      [left, top + 4], [left + 2, top + 4], [left + 2, top + 2],
+      [left + 4, top + 2],
+    ];
+    R.save();
+    R.translate(2, 2);
+    // Reuse the stepped silhouette for the shadow and the translucent face.
+    const bubble = new Path2D();
+    bubble.moveTo(...edge[0]);
+    for (const point of edge.slice(1)) bubble.lineTo(...point);
+    bubble.closePath();
+    R.fillStyle = "rgba(8, 11, 21, .28)";
+    R.fill(bubble);
+    R.translate(-2, -2);
+    R.fillStyle = "rgba(245, 246, 255, .9)";
+    R.fill(bubble);
+    R.strokeStyle = "#171a2c";
+    R.lineWidth = 2;
+    R.stroke(bubble);
+    R.restore();
+    Y(R, text, center, top + 2, { size, col: "#242238", align: "center" });
   }
 
   function drawArenaBubble(title, message, y) {
