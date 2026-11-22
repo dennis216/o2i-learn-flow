@@ -7339,10 +7339,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     return a.t * (a.testSpeed || 1);
   }
   function Kn(t) {
+    rewardPet(t * 0.25);
     for (
       a.xp +=
         t *
         a.st.xp *
+        (a.pet?.id === "wisdom" ? 1.15 : 1) *
         (a.testSpeed || 1) *
         (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
       a.xp >= a.need;
@@ -7375,8 +7377,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ? (e.face = o > 0 ? "right" : "left")
         : (e.face = r > 0 ? "down" : "up"));
     const l = a.t < e.dashUntil;
-    let h = o * a.st.speed * terrainMoveFactor(),
-      c = r * a.st.speed * terrainMoveFactor();
+    let h =
+        o *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.pet?.id === "support" ? 1.1 : 1),
+      c =
+        r *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.pet?.id === "support" ? 1.1 : 1);
     l &&
       ((h = e.ddx * 250),
       (c = e.ddy * 250),
@@ -7479,6 +7489,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function ma(t, e = "?") {
     const o = a.p;
     if (a.god || a.t < o.inv || I !== "play" || o.hp <= 0) return !1;
+    if (a.pet?.id === "defense") {
+      if (a.pet.shield) {
+        a.pet.shield = false;
+        return false;
+      }
+      t *= 0.9;
+    }
     prepareEmergencyShell();
     const r = Math.max(
       1,
@@ -8884,6 +8901,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         f = h / u,
         p = c / u,
         k = a.t < n.slowUntil || n.chill > a.t ? 0.6 - 0.05 * H("zero") : 1;
+      if (n.petFreezeUntil > a.t) continue;
       let m = 0,
         y = 0;
       if (n.role === "fuse" && !l && u < 25) {
@@ -8952,7 +8970,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             Pt(n.x, n.y, g + T * 0.32, 50, { dmg: 9, kind: "small", r: 2.5 });
         }
       } else ((m = f * n.sp), (y = p * n.sp));
-      ((n.x += (m * k + n.kx) * t), (n.y += (y * k + n.ky) * t));
+      ((n.x += (m * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.kx) * t),
+        (n.y += (y * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.ky) * t));
       const d = Math.exp(-9 * t);
       if (
         ((n.kx *= d),
@@ -10422,6 +10441,181 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       });
   }
 
+  const arenaPets = [
+    {
+      id: "attack",
+      name: ["Ember Dragon", "烈焰龙"],
+      desc: [
+        "Attacks nearby foes and releases a fire pulse.",
+        "攻击附近敌人，周期性释放火焰。",
+      ],
+      color: "#ff7652",
+    },
+    {
+      id: "heal",
+      name: ["Life Sprite", "生命精灵"],
+      desc: [
+        "Restores HP over time with a low-health burst.",
+        "持续回血，低血量时额外治疗。",
+      ],
+      color: "#8ce38a",
+    },
+    {
+      id: "defense",
+      name: ["Iron Turtle", "钢甲龟"],
+      desc: [
+        "Reduces damage and periodically blocks a hit.",
+        "减轻伤害，定期抵挡一次攻击。",
+      ],
+      color: "#a5b4c7",
+    },
+    {
+      id: "control",
+      name: ["Frost Fox", "寒冰狐"],
+      desc: [
+        "Slows nearby foes and periodically freezes them.",
+        "减速附近敌人，周期性冻结。",
+      ],
+      color: "#89d9ff",
+    },
+    {
+      id: "support",
+      name: ["Storm Bird", "雷鸣鸟"],
+      desc: [
+        "Boosts movement and helps recharge hero skills.",
+        "提升移速，加快英雄技能恢复。",
+      ],
+      color: "#ffe372",
+    },
+    {
+      id: "wisdom",
+      name: ["Sage Owl", "智慧猫头鹰"],
+      desc: [
+        "Boosts XP, with a bonus every three correct answers.",
+        "增加经验，连续答对三题时额外奖励。",
+      ],
+      color: "#cfa8ff",
+    },
+  ];
+
+  function tickPortalMerchant() {
+    const merchant = a.portalMerchant;
+    if (
+      !merchant ||
+      merchant.visited ||
+      a.pendingLv ||
+      I !== "play" ||
+      Math.hypot(merchant.x - X(), merchant.y - _()) > 13
+    )
+      return;
+    merchant.visited = true;
+    I = "pause";
+    const lang = i ? 1 : 0;
+    Bt.show(
+      `<div class="panel pix merchant-panel"><div class="qhd"><b>${i ? "神秘商人" : "Mystery Merchant"}</b><span>${i ? "本局任选一只伙伴" : "Choose one companion for this run"}</span></div>
+      <div class="merchant-pets">${arenaPets.map((pet) => `<button type="button" data-pet="${pet.id}"><b style="color:${pet.color}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
+      <button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
+      "merchant",
+    );
+    const leave = () => {
+      Bt.hide();
+      I = "play";
+    };
+    N("merchantLeave").onclick = leave;
+    for (const button of N("ov").querySelectorAll("[data-pet]")) {
+      button.onclick = () => {
+        a.pet = {
+          id: button.dataset.pet,
+          xp: 0,
+          level: 1,
+          tickAt: a.t,
+          pulseAt: a.t + 20,
+          shield: false,
+        };
+        leave();
+      };
+    }
+  }
+
+  function rewardPet(xp) {
+    if (!a.pet) return;
+    a.pet.xp += xp;
+    a.pet.level = Math.min(10, 1 + Math.floor(a.pet.xp / 12));
+  }
+
+  function tickArenaPet(dt) {
+    const pet = a.pet;
+    if (!pet) return;
+    const player = a.p;
+    const stage = pet.level === 10 ? 2 : pet.level >= 5 ? 1 : 0;
+    if (pet.id === "support")
+      a.skillReady = Math.max(a.t, a.skillReady - dt * 0.1);
+    if (a.t >= pet.tickAt) {
+      pet.tickAt =
+        a.t +
+        (pet.id === "heal" ? 5 : pet.id === "attack" ? 2 - stage * 0.2 : 0.5);
+      if (pet.id === "heal")
+        player.hp = Math.min(player.maxHp, player.hp + 3 + stage);
+      if (pet.id === "attack") {
+        const enemy = a.enemies.find(
+          (enemy) =>
+            !enemy.dead && Math.hypot(enemy.x - X(), enemy.y - _()) < 70,
+        );
+        if (enemy) At(enemy, 10 + stage * 3);
+      }
+      if (pet.id === "control")
+        Rt(X(), _(), 42 + stage * 8, (enemy) => {
+          enemy.petSlowUntil = a.t + 0.65;
+        });
+    }
+    if (a.t < pet.pulseAt) return;
+    pet.pulseAt = a.t + (pet.id === "defense" || pet.id === "heal" ? 30 : 20);
+    if (pet.id === "defense") pet.shield = true;
+    if (pet.id === "heal" && player.hp < player.maxHp * 0.35)
+      player.hp = Math.min(player.maxHp, player.hp + 15);
+    if (pet.id === "control")
+      Rt(X(), _(), 46 + stage * 8, (enemy) => {
+        enemy.petFreezeUntil = a.t + 2;
+      });
+    if (pet.id === "attack")
+      Rt(X(), _(), 55, (enemy) => At(enemy, 16 + stage * 4));
+  }
+
+  function drawArenaCompanions(ctx, camX, camY) {
+    const merchant = a.portalMerchant;
+    if (merchant && !merchant.visited) {
+      const x = Math.round(merchant.x - camX),
+        y = Math.round(merchant.y - camY);
+      ctx.fillStyle = s.black;
+      ctx.fillRect(x - 7, y - 10, 14, 16);
+      ctx.fillStyle = s.lav;
+      ctx.fillRect(x - 5, y - 9, 10, 5);
+      ctx.fillRect(x - 6, y - 2, 12, 7);
+      ctx.fillStyle = s.yellow;
+      ctx.fillRect(x - 3, y - 4, 6, 3);
+      kt(ctx, "?", x, y - 21, s.yellow, { align: "center", outline: s.black });
+    }
+    if (!a.pet) return;
+    const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
+    const px = Math.round(a.p.x - camX - 12),
+      py = Math.round(a.p.y - camY - 10 + Math.sin(E * 6) * 2);
+    const scale = a.pet.level === 10 ? 3 : a.pet.level >= 5 ? 2 : 1;
+    const sprites = [
+      [".x..x.", "xxxx.x", ".xwxx.", "..xxx.", "..x.x."],
+      ["..x...", "..xx..", ".xwx..", "xxxxxx", ".x..x."],
+      ["..xxx.", "xxxxxx", "xxwxxx", ".xxxx.", ".x..x."],
+      ["x....x", "xxxxxx", ".xwwx.", "..xx..", "...xx."],
+      ["x.....", "xxxx.x", ".xwxxx", "..xxx.", "....x."],
+      [".x..x.", ".xxxx.", "xwwwwx", "x.xx.x", ".xxxx."],
+    ];
+    for (const [row, pixels] of sprites[index].entries())
+      for (const [col, pixel] of [...pixels].entries()) {
+        if (pixel === ".") continue;
+        ctx.fillStyle = pixel === "w" ? s.white : arenaPets[index].color;
+        ctx.fillRect(px + col * scale, py + row * scale, scale, scale);
+      }
+  }
+
   function spawnWorldPortal() {
     if (!a.portalOrigin || a.worldPortal) return false;
     const origin = a.portalOrigin;
@@ -10436,6 +10630,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (Math.hypot(x - X(), y - _()) < 32)
       x = F(origin.x - 58, left + 18, right - 18);
     a.worldPortal = { x, y, target, readyAt: a.t + 0.8 };
+    if (a.bossK === 1) {
+      const direction = x + 38 <= right - 18 ? 1 : -1;
+      a.portalMerchant = { x: x + 38 * direction, y, visited: false };
+    }
     oe(
       i ? "黑洞已开启" : "PORTAL OPEN",
       s.lav,
@@ -10457,7 +10655,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     )
       return false;
     if (Math.hypot(X() - portal.x, _() - portal.y) > 15) return false;
+    rewardPet(12);
     a.worldPortal = null;
+    a.portalMerchant = null;
     a.p.x = U + 40;
     a.p.y = ot + 40;
     a.worldStage = (a.worldStage || 1) + 1;
@@ -10560,9 +10760,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Oi(t),
       spawnFieldMagnet(),
       mi(t),
+      tickPortalMerchant(),
       updateWorldPortal(),
       Nn(t),
-      knowledge.update(t));
+      knowledge.update(t),
+      I === "play" && tickArenaPet(t));
     const e = a.later;
     ((a.later = []), e.forEach((h) => h()));
     const o = a.olQ;
@@ -10672,6 +10874,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }));
   }
   function Mi(t) {
+    if (t && a.pet) {
+      rewardPet(6);
+      if (a.pet.id === "wisdom") Kn((a.streak + 1) % 3 === 0 ? 12 : 2);
+    }
     if (t && H("study")) a.studyUntil = a.t + 8;
     return (
       a.answered++,
@@ -12644,6 +12850,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       c.fillRect(0, 0, A, D),
       zn(c, n, l),
       drawWorldPortal(c, n, l),
+      drawArenaCompanions(c, n, l),
       drawSpecialRegions(c, n, l),
       knowledge.drawGround(c, n, l),
       (c.fillStyle = "rgba(4,6,16,0.2)"),
@@ -14103,7 +14310,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     let d = 22 + hudOffset;
     const g = (T, Q) => {
       (kt(e, T, hudRight, d, Q, { outline: s.black, align: "right" }),
-        (d += 8));
+        (d += 11));
     };
     (g(
       i ? `\u51FB\u6740 ${a.kills}` : `KILLS ${a.kills}`,
@@ -15168,6 +15375,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     [i ? "\u4E3B\u6B66\u5668" : "Main gun"]: "wpn",
     [i ? "\u8FDB\u5316" : "Evolution"]: "thm",
   };
+  function syncHeaderAccuracy() {
+    const meter = N("headerAccuracy");
+    meter.hidden = !a.p || !a.answered || I === "title" || I === "select";
+    meter.textContent = a.answered
+      ? Math.round((a.correct / a.answered) * 100) + "%"
+      : "";
+    meter.title = i ? "答题正确率" : "Answer accuracy";
+  }
+
   let Bt = {
     el: null,
     mode: null,
@@ -15179,6 +15395,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       this.el = N("ov");
     },
     show(t, e) {
+      syncHeaderAccuracy();
       Tt.fire = 0;
       ((this.el.innerHTML = t),
         (e === "setup" || e === "pause") &&
@@ -15481,8 +15698,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ),
         (N("mStart").onclick = () => {
           ($.init(), St.start());
-          if (hasArenaTouch() && arenaFullPref() !== "off")
-            void enterArenaFullscreen();
           this.heroSelect();
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
@@ -15796,7 +16011,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -15821,7 +16035,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -16056,8 +16269,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `${le[a.curUnit - 1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`,
       ),
       (document.body.dataset.mode = "run"));
-    if (document.body.classList.contains("touch") && arenaFullPref() !== "off")
-      void enterArenaFullscreen();
     requestAnimationFrame(fitTouchStage);
   }
   let Te = null;
@@ -19682,7 +19893,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Hide touch buttons")),
         ks(),
         us());
-      if (arenaFullPref() !== "off") void enterArenaFullscreen(true);
+      if (!hasArenaTouch() && arenaFullPref() !== "off")
+        void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),
         o = 0;
