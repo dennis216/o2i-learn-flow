@@ -169,6 +169,28 @@ test("boss vacuum collects every gem once and queues all resulting levels withou
   f.ctx.collectBossExperience();
   assert.equal(f.a.pendingLv, 3);
 });
+test("boss combat XP and the final vacuum share a two-question budget", () => {
+  const f = fixture();
+  Object.assign(f.a, {
+    boss: {},
+    testSpeed: 4,
+    xp: 5,
+    need: 20,
+    lv: 3,
+    pendingLv: 0,
+    st: { xp: 1.15 },
+    gems: [{ v: 200 }],
+  });
+  Object.assign(f.ctx, { Go: () => 20, Yn() {}, bt() {} });
+  f.ctx.Kn(4);
+  assert.equal(f.a.pendingLv, 1);
+  f.a.boss = null;
+  f.ctx.collectBossExperience(2);
+  assert.equal(f.a.pendingLv, 2);
+  assert.equal(f.a.lv, 5);
+  assert.equal(f.a.xp, 0);
+  assert.equal(f.a.gems.length, 0);
+});
 test("region arrows persist only while the buff is offscreen and disappear as soon as it becomes visible", () => {
   const f = fixture();
   let pixels = 0;

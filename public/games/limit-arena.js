@@ -7342,19 +7342,35 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function runT() {
     return a.t * (a.testSpeed || 1);
   }
-  function Kn(t) {
+  const BOSS_QUIZ_LIMIT = 2;
+  function Kn(
+    t,
+    maxLevels = a.boss || a.bossFarewell?.until > a.t
+      ? BOSS_QUIZ_LIMIT
+      : Infinity,
+  ) {
     rewardPet(t * 0.25);
-    for (
-      a.xp +=
-        t *
-        a.st.xp *
-        (a.pet?.id === "wisdom" ? 1.15 : 1) *
-        (a.testSpeed || 1) *
-        (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
-      a.xp >= a.need;
-
-    )
-      ((a.xp -= a.need), a.lv++, (a.need = Go(a.lv)), a.pendingLv++);
+    let gained =
+      t *
+      a.st.xp *
+      (a.pet?.id === "wisdom" ? 1.15 : 1) *
+      (a.testSpeed || 1) *
+      (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
+    if (Number.isFinite(maxLevels)) {
+      const slots = maxLevels - a.pendingLv;
+      if (slots <= 0) return;
+      let budget = a.need - a.xp;
+      for (let level = 1; level < slots; level++) budget += Go(a.lv + level);
+      gained = Math.min(gained, budget);
+    }
+    a.xp += gained;
+    while (a.xp + 1e-9 >= a.need) {
+      a.xp = Math.max(0, a.xp - a.need);
+      a.lv++;
+      a.need = Go(a.lv);
+      a.pendingLv++;
+    }
+    return gained;
   }
   let Tt = { up: 0, down: 0, left: 0, right: 0, jx: 0, jy: 0, fire: 0 };
   function Za() {
@@ -11139,6 +11155,58 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ],
     },
   };
+  const mountBody = [
+    "...................kk....",
+    ".................kkak....",
+    "................kagakk...",
+    ".............kkkaggagkk..",
+    "..kkk......kkmmgabwgagk..",
+    ".kgggk.kkkkmgggagbbgvkk..",
+    "kgmmkkkgbbbggggaggbgkgak.",
+    "kgk..kgbbbYbaggaggkgkgak.",
+    ".k...kgbbYbgaggggkk..kk..",
+    ".....kggbbgaggggk........",
+    "......kmmmggmmkk.........",
+    ".......kkkkkkk...........",
+  ];
+  const mountPalette = {
+    k: "#1a1420",
+    a: "#dda36a",
+    g: "#ad714e",
+    m: "#774a3c",
+    b: "#487e8b",
+    Y: "#ebc680",
+    w: "#fff1ce",
+    v: "#653b38",
+  };
+
+  function drawMount(ctx, centerX, groundY, facing, moving, dashing = false) {
+    const flip = facing === "left";
+    const stride = dashing ? 2 : moving ? 1 : 0;
+    const frame = moving ? Math.floor(ae(E, 9) * 9) % 2 : 0;
+    const bounce = frame && stride ? 1 : 0;
+    ctx.save();
+    ctx.translate(Math.round(centerX), Math.round(groundY));
+    if (flip) ctx.scale(-1, 1);
+    x(ctx, -11, 0, 22, 2, "#131321");
+    x(ctx, -14, 1, 28, 1, "rgba(11, 14, 25, 0.55)");
+    for (const [legX, offset] of [
+      [-5, -1],
+      [-2, 1],
+      [4, 1],
+      [7, -1],
+    ]) {
+      const hoof = legX + offset * stride * (frame ? -1 : 1);
+      x(ctx, legX, -6, 3, 4, mountPalette.k);
+      x(ctx, hoof, -4, 3, 4, mountPalette.k);
+      x(ctx, hoof + 1, -4, 1, 2, offset < 0 ? mountPalette.m : mountPalette.g);
+      x(ctx, hoof, -1, 3, 1, offset < 0 ? "#4c3c45" : "#8c7373");
+    }
+    Ct(ctx, "wind-runner-body", mountBody, mountPalette, 1, -9 - bounce);
+    ctx.restore();
+    return bounce;
+  }
+
   function drawStallItem(ctx, id, x, y, scale = 1) {
     const potion = potionBottles[id];
     if (potion) {
@@ -11157,32 +11225,27 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ja(ctx, id, x - 6 * scale, y - 6 * scale, scale, O[id].col || s.yellow);
       return;
     }
+    if (id === "mount") {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      drawMount(ctx, 0, 5, "right", false);
+      ctx.restore();
+      return;
+    }
     const index = arenaPets.findIndex((pet) => pet.id === id);
     const pixels =
       index >= 0
         ? arenaPetSprites[index]
-        : id === "mount"
-          ? [
-              "............kkkk..",
-              "...........kggwwwk",
-              "..kk......kgggxhkk",
-              ".kxxk.kkkkkgghxwk.",
-              "kxgkkkggggggxkkk..",
-              "kgggggghhggggk....",
-              ".kkgggghhgggk.....",
-              "...kggkkgggk......",
-              "...kxk.kgxk.......",
-              "..kwkk.kwwwk......",
-            ]
-          : [
-              "...kkkk...",
-              "...kwwk...",
-              "....kk....",
-              "...kxxk...",
-              "..kxwxxk..",
-              "..kxxxxk..",
-              "...kkkk...",
-            ];
+        : [
+            "...kkkk...",
+            "...kwwk...",
+            "....kk....",
+            "...kxxk...",
+            "..kxwxxk..",
+            "..kxxxxk..",
+            "...kkkk...",
+          ];
     const color =
       arenaPets[index]?.color ||
       {
@@ -11274,13 +11337,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         });
       }
     }
-    if (a.mount && a.p)
-      drawStallItem(
-        ctx,
-        "mount",
-        Math.round(a.p.x - camX),
-        Math.round(a.p.y - camY + 2),
-      );
     if (!a.pet) return;
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
     const px = Math.round((a.pet.x ?? a.p.x - 14) - camX);
@@ -11342,6 +11398,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       a.boss ||
       a.themeTr ||
       a.pendingLv > 0 ||
+      a.bossFarewell?.until > a.t ||
       a.t < portal.readyAt
     )
       return false;
@@ -11522,7 +11579,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             ? "\u62FE\u53D6[b]\u84DD\u8272\u5B9D\u77F3[/]\u83B7\u5F97\u7ECF\u9A8C\u3002\u7ECF\u9A8C\u6761\u6EE1\u540E\uFF0C\u4F1A\u51FA\u73B0\u4E00\u9053[y]\u5FAE\u79EF\u5206\u9898[/]\uFF01"
             : "Pick up [b]blue gems[/] for XP. When the XP bar is full, you get a [y]calculus question[/]!",
         ),
-      I === "play" && !a.boss && a.pendingLv > 0 && a.p.hp > 0 && ns());
+      I === "play" &&
+        !a.boss &&
+        !(a.bossFarewell?.until > a.t) &&
+        a.pendingLv > 0 &&
+        a.p.hp > 0 &&
+        ns());
   }
   function ns() {
     const t = I !== "play";
@@ -12019,7 +12081,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function maybeSayUpgradeReaction() {
     if (a.playerSpeech && a.t < a.playerSpeech.until + 12) return;
     if (Math.random() >= 0.35) return;
-    const reactions = upgradeReactions.filter((line) => line !== a.playerSpeech?.line);
+    const reactions = upgradeReactions.filter(
+      (line) => line !== a.playerSpeech?.line,
+    );
     a.playerSpeech = { line: Gt(reactions), until: a.t + 1.8 };
   }
 
@@ -12816,6 +12880,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (e.charge = null),
         (t.hp = 0),
         (a.lastBossFight = { type: e.type, dur: a.t - e.fightT0, k: e.k }));
+      const farewell = [
+        i ? "你解开了我的难题。" : "You solved my puzzle.",
+        i
+          ? "下一道题在黑洞后等你。"
+          : "Your next challenge waits beyond the portal.",
+        i
+          ? "把你的答案带进下一关吧。"
+          : "Take your answers into the next world.",
+      ][a.bossK % 3];
+      a.bossFarewell = { name: e.def.name, text: farewell, until: a.t + 3.2 };
       for (const o of a.enemies)
         (o.type === "turret" || o.bossMinion) &&
           ((o.dead = !0), _t(o.x, o.y, o.pal, 6, 40));
@@ -12845,14 +12919,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       }, 6500));
     for (let o = 0; o < 24; o++)
       ua(e.x + q(-40, 40), e.y + q(-30, 30), Math.round(4 + a.lv * 0.6));
-    const farewell = [
-      i ? "你解开了我的难题。" : "You solved my puzzle.",
-      i
-        ? "下一道题在黑洞后等你。"
-        : "Your next challenge waits beyond the portal.",
-      i ? "把你的答案带进下一关吧。" : "Take your answers into the next world.",
-    ][(a.bossK - 1) % 3];
-    a.bossFarewell = { name: t.def.name, text: farewell, until: a.t + 4.5 };
     (a.picks.push({ kind: "heart", x: e.x - 24, y: e.y + 14, t0: a.t }),
       (a.arena = null),
       (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
@@ -12863,7 +12929,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.themeAt = a.t + 2.6));
     a.portalOrigin = { x: e.x, y: e.y + 10 };
     a.pendingBossReward = true;
-    collectBossExperience(2);
+    collectBossExperience(BOSS_QUIZ_LIMIT);
     spawnWorldPortal();
   }
   function wt(t) {
@@ -14546,24 +14612,47 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (c.globalAlpha = 1),
           Ht(c, m, y - 7, M, Math.floor(E * 8) % 2 ? s.yellow : s.white, 2));
       }
-      if (
-        (Ja() && (c.globalAlpha = 0.3 + 0.1 * Math.sin(E * 20)),
-        !(g && !(a.t < (a.shieldUntil || 0))))
-      )
-        if (a.t < k.dashUntil) {
-          (c.save(), c.translate(m, y));
-          const M = Math.abs(k.ddx || 0) >= Math.abs(k.ddy || 0);
-          (c.scale(M ? 1.3 : 0.8, M ? 0.8 : 1.25),
-            Qa(c, 0, 0, k.face, k.moving, E, ne().rc, !1),
-            c.restore());
-        } else Qa(c, m, y, k.face, k.moving, E, ne().rc, f - k.hurtT < 0.08);
+      const dashing = a.t < k.dashUntil;
+      if (dashing) {
+        const backX = -(k.ddx || 0);
+        const backY = -(k.ddy || 0);
+        for (let trail = 0; trail < 3; trail++) {
+          const distance = 7 + trail * 5;
+          const dustX = Math.round(m + backX * distance);
+          const dustY = Math.round(y + backY * distance - trail);
+          x(c, dustX - 2, dustY, 5 - trail, 1, trail ? "#6a94aa" : "#b8efff");
+        }
+      }
+      const mountBounce = a.mount
+        ? drawMount(c, m, y, k.face, k.moving || dashing, dashing)
+        : 0;
+      const riderY = a.mount ? y - 8 - mountBounce : y;
+      c.save();
+      c.translate(m, riderY);
+      if (dashing) {
+        const lean = -0.32 * (k.ddx || 0);
+        const vertical = k.ddy || 0;
+        c.transform(1.07, 0, lean, 0.82, 0, vertical * 2);
+      }
+      if (Ja()) c.globalAlpha = 0.3 + 0.1 * Math.sin(E * 20);
+      if (!g || a.t < (a.shieldUntil || 0))
+        Qa(
+          c,
+          0,
+          0,
+          k.face,
+          !a.mount && (k.moving || dashing),
+          E,
+          ne().rc,
+          !dashing && f - k.hurtT < 0.08,
+        );
       c.globalAlpha = 1;
       if (!g) {
-        drawEquippedAccessories(c, m, y, k.face);
+        drawEquippedAccessories(c, 0, 0, k.face);
         if (Ja()) c.globalAlpha = 0.35;
-        drawHeldWeapon(c, m, y);
-        c.globalAlpha = 1;
+        drawHeldWeapon(c, 0, 0);
       }
+      c.restore();
       const Q = (M, S, b, w) => {
         const v = Math.round(18 * M);
         v <= 0 ||
@@ -15864,8 +15953,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   };
 
   function drawArenaMinimap(ctx) {
-    const width = 76,
-      height = 49;
+    const width = 64,
+      height = 42;
     const left = A - width - 5,
       top = 5 + topRightControlOffset();
     const inset = 3;
@@ -15876,10 +15965,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const project = (value, worldSize, mapSize) =>
       inset + Math.round(F(value / worldSize, 0, 1) * (mapSize - 1));
 
-    paint(2, 3, width, height, "#080b18");
-    paint(0, 0, width, height, "#080e21");
-    paint(1, 1, width - 2, height - 2, "#646b83");
-    paint(2, 2, width - 4, height - 4, "#20293d");
+    paint(3, 3, width - 2, height - 1, "#080b18");
+    paint(2, 0, width - 4, height, "#101624");
+    paint(0, 2, width, height - 4, "#101624");
+    paint(2, 1, width - 4, height - 2, "#686481");
+    paint(1, 3, width - 2, height - 6, "#686481");
+    paint(2, 2, width - 4, height - 4, "#262641");
 
     const world = Ze(a.theme || 0);
     let terrain = minimapTerrain.get(world);
@@ -15906,10 +15997,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     paint(viewLeft, viewTop + 1, 1, viewHeight - 2, viewColor);
     paint(viewLeft + viewWidth - 1, viewTop + 1, 1, viewHeight - 2, viewColor);
 
-    for (const dx of [0, width - 7]) {
-      paint(dx, 1, 7, 1, "#d2b384");
-      paint(dx, height - 2, 7, 1, "#d2b384");
+    for (const dx of [2, width - 7]) {
+      paint(dx, 1, 5, 1, "#efcf91");
+      paint(dx, height - 2, 5, 1, "#9c724e");
     }
+    for (const dx of [1, width - 2]) {
+      paint(dx, 3, 1, 3, "#efcf91");
+      paint(dx, height - 6, 1, 3, "#9c724e");
+    }
+    paint(width / 2 - 1, 1, 2, 1, "#9ed4ee");
     const marker = (point, color, kind) => {
       if (!point) return;
       const px = project(point.x, et, mapWidth);
@@ -15942,8 +16038,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
 
   function drawSmallPlayerBubble(text) {
-    const size = 10;
-    const width = Math.ceil(we(text, size, { pixel: true })) + 14;
+    R.save();
+    R.font = "600 15px system-ui, sans-serif";
+    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 20);
     const anchor = ((a.p.x - a.cam.x) * G) / A;
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
     const left = Math.round(center - width / 2);
@@ -15951,15 +16048,33 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const right = left + width;
     const tail = Math.round(center);
     const edge = [
-      [left + 4, top], [right - 4, top], [right - 4, top + 2],
-      [right - 2, top + 2], [right - 2, top + 4], [right, top + 4],
-      [right, top + 16], [right - 2, top + 16], [right - 2, top + 18],
-      [right - 4, top + 18], [right - 4, top + 20], [tail + 4, top + 20],
-      [tail + 4, top + 22], [tail + 2, top + 22], [tail + 2, top + 24],
-      [tail, top + 24], [tail, top + 22], [tail - 2, top + 22],
-      [tail - 2, top + 20], [left + 4, top + 20], [left + 4, top + 18],
-      [left + 2, top + 18], [left + 2, top + 16], [left, top + 16],
-      [left, top + 4], [left + 2, top + 4], [left + 2, top + 2],
+      [left + 4, top],
+      [right - 4, top],
+      [right - 4, top + 2],
+      [right - 2, top + 2],
+      [right - 2, top + 4],
+      [right, top + 4],
+      [right, top + 16],
+      [right - 2, top + 16],
+      [right - 2, top + 18],
+      [right - 4, top + 18],
+      [right - 4, top + 20],
+      [tail + 4, top + 20],
+      [tail + 4, top + 22],
+      [tail + 2, top + 22],
+      [tail + 2, top + 24],
+      [tail, top + 24],
+      [tail, top + 22],
+      [tail - 2, top + 22],
+      [tail - 2, top + 20],
+      [left + 4, top + 20],
+      [left + 4, top + 18],
+      [left + 2, top + 18],
+      [left + 2, top + 16],
+      [left, top + 16],
+      [left, top + 4],
+      [left + 2, top + 4],
+      [left + 2, top + 2],
       [left + 4, top + 2],
     ];
     R.save();
@@ -15978,7 +16093,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.lineWidth = 2;
     R.stroke(bubble);
     R.restore();
-    Y(R, text, center, top + 2, { size, col: "#242238", align: "center" });
+    R.fillStyle = "#171828";
+    R.textAlign = "center";
+    R.textBaseline = "middle";
+    R.fillText(text, center, top + 10, width - 16);
+    R.restore();
   }
 
   function drawArenaBubble(title, message, y) {
@@ -15993,13 +16112,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     x(R, G / 2 - 5, y + 39, 11, 6, "#151726");
     x(R, G / 2 - 3, y + 38, 7, 4, "#f9ead5");
     x(R, G / 2 - 2, y + 44, 5, 4, "#151726");
-    Y(R, title, G / 2, y + 7, {
-      pixel: true,
-      size: 11,
-      col: "#392a53",
-      align: "center",
-    });
-    Y(R, message, G / 2, y + 23, { size: 11, col: "#242238", align: "center" });
+    R.save();
+    R.textAlign = "center";
+    R.textBaseline = "middle";
+    R.fillStyle = "#392a53";
+    R.font = "700 13px system-ui, sans-serif";
+    R.fillText(title, G / 2, y + 11, width - 24);
+    R.fillStyle = "#171828";
+    R.font = "600 15px system-ui, sans-serif";
+    R.fillText(message, G / 2, y + 29, width - 24);
+    R.restore();
   }
 
   function Wi() {
@@ -21164,23 +21286,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     re(ctx, sprite, palette, -5, -4, { scale: 1 });
   }
   function collectBossExperience(maxLevels = Infinity) {
-    let total = a.gems.reduce((sum, gem) => sum + gem.v, 0);
+    const total = a.gems.reduce((sum, gem) => sum + gem.v, 0);
     a.gems = [];
-    if (Number.isFinite(maxLevels) && a.need > 0) {
-      let cap = a.need - a.xp;
-      for (let level = 1; level < maxLevels; level++) cap += Go(a.lv + level);
-      const multiplier =
-        a.st.xp *
-        (a.testSpeed || 1) *
-        (a.pet?.id === "wisdom" ? 1.15 : 1) *
-        (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
-      total = Math.min(total, Math.max(0, Math.ceil(cap / multiplier)));
-    }
-    if (total > 0) {
-      Kn(total);
-      Yn();
-      bt(a.p.x, a.p.y - 24, (i ? "经验 +" : "XP +") + total, s.blue);
-    }
+    if (total <= 0) return;
+    const gained = Kn(total, maxLevels);
+    Yn();
+    if (gained > 0)
+      bt(
+        a.p.x,
+        a.p.y - 24,
+        (i ? "经验 +" : "XP +") + Math.ceil(gained),
+        s.blue,
+      );
   }
   function drawRegionArrow(zone) {
     const cam = a.cam || { x: 0, y: 0 },
