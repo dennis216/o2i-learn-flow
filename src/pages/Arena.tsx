@@ -27,6 +27,7 @@ function ArenaGame({ language, admin, email }: { language: Language; admin: bool
       if (active) setTestCoins([
         '977d71156e66e6481718578647a6c7971906d9d453bd564f7c14d5e5370d539a',
         '8cc7976e576051c7b1243c9fc705bc61ffe933c13da3ee5ff722f8995c833293',
+        "068febbc135164aaf5fab2b8a460cf15d74838db0e9c0988430e2f846b035406",
       ].includes(fingerprint));
     }).catch(() => {});
     return () => { active = false; };
