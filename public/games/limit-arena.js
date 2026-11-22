@@ -7492,6 +7492,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (a.pet?.id === "defense") {
       if (a.pet.shield) {
         a.pet.shield = false;
+        yt(o.x, o.y - 7, 9, 26, 0.4, s.blue);
+        _t(o.x, o.y - 7, [s.blue, s.white], 8, 36);
         return false;
       }
       t *= 0.9;
@@ -10561,7 +10563,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (enemy) =>
             !enemy.dead && Math.hypot(enemy.x - X(), enemy.y - _()) < 70,
         );
-        if (enemy) At(enemy, 10 + stage * 3);
+        if (enemy) {
+          Xa(enemy, "burn", 1.4);
+          At(enemy, 10 + stage * 3);
+          _t(enemy.x, enemy.y, [s.orange, s.yellow], 6, 30);
+        }
       }
       if (pet.id === "control")
         Rt(X(), _(), 42 + stage * 8, (enemy) => {
@@ -10570,50 +10576,148 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     if (a.t < pet.pulseAt) return;
     pet.pulseAt = a.t + (pet.id === "defense" || pet.id === "heal" ? 30 : 20);
-    if (pet.id === "defense") pet.shield = true;
+    if (pet.id === "defense") {
+      pet.shield = true;
+      yt(X(), _(), 4, 16, 0.35, s.blue);
+    }
     if (pet.id === "heal" && player.hp < player.maxHp * 0.35)
       player.hp = Math.min(player.maxHp, player.hp + 15);
     if (pet.id === "control")
       Rt(X(), _(), 46 + stage * 8, (enemy) => {
         enemy.petFreezeUntil = a.t + 2;
+        Xa(enemy, "chill", 2);
       });
-    if (pet.id === "attack")
-      Rt(X(), _(), 55, (enemy) => At(enemy, 16 + stage * 4));
+    if (pet.id === "attack") {
+      yt(X(), _(), 10, 55, 0.4, s.orange);
+      Rt(X(), _(), 55, (enemy) => {
+        Xa(enemy, "burn", 2);
+        At(enemy, 16 + stage * 4);
+      });
+    }
   }
 
+  const arenaPetSprites = [
+    [
+      "..k......k..",
+      "..ok....ko..",
+      ".koxkkkkxok.",
+      "koxxxwwxxk..",
+      "koxxxkwxxokk",
+      ".koxxxxoooxk",
+      "..koxoooxxk.",
+      "...koooxk...",
+      "..kk..kk....",
+    ],
+    [
+      ".....kk.....",
+      "....koxk....",
+      "...koxxok...",
+      "..kxxwxxok..",
+      ".koxwwwxxok.",
+      "koxxxwxxxxok",
+      ".koxxxxxxxk.",
+      "..kkoxokk...",
+      "....kk......",
+    ],
+    [
+      "...kkkkk....",
+      "..koxoxok...",
+      ".koxoxoxok..",
+      "koxoxoxoxokk",
+      "kxoxoxoxkwwk",
+      ".kkxxxxxxk.k",
+      "..kkkkkkokk.",
+      "..ko...ko...",
+      "..kk...kk...",
+    ],
+    [
+      ".k......k...",
+      ".kk....kk...",
+      ".kwkkkkwk...",
+      "koxxxxxxxk..",
+      "kwxkxxkxwk..",
+      ".kwwxwwkk.kk",
+      "..kwwk...kox",
+      "...kxxkkkoxk",
+      "...kk.kkkkk.",
+    ],
+    [
+      "....kk......",
+      "...kxxk.....",
+      "..koxwxkk...",
+      ".koxxkxok...",
+      "koxxxxxk....",
+      ".koxoxxkkkk.",
+      "..koxxxoxok.",
+      "...kxxxkkk..",
+      "....kk.k....",
+    ],
+    [
+      ".k......k...",
+      ".kk.kk.kk...",
+      "koxxxxxxxk..",
+      "kxwwxxwwxk..",
+      "kxwkxxkwxk..",
+      "koxxwwxxok..",
+      ".koxxxxok...",
+      "..koxxok....",
+      "...kk.kk....",
+    ],
+  ];
+  const arenaMerchantSprite = [
+    ".....kkkkk......",
+    "....kxxxxxk.....",
+    "....koxxxxk.....",
+    "....koxxxxk.....",
+    "....koooook.....",
+    "..kkkkkkkkkkk...",
+    "...kwwwwkk......",
+    "...kwkwkk..kk...",
+    "...kwwwwk.kook..",
+    "..kkwwkkk...k...",
+    "..kxooooxk..k...",
+    "..kxxxxxwk..k...",
+    "..koxxxxxkkkk...",
+    "..koxxxxxk..k...",
+    "..kkxkxkk...k...",
+    "...kk.kk....k...",
+  ];
   function drawArenaCompanions(ctx, camX, camY) {
     const merchant = a.portalMerchant;
-    if (merchant && !merchant.visited) {
-      const x = Math.round(merchant.x - camX),
-        y = Math.round(merchant.y - camY);
-      ctx.fillStyle = s.black;
-      ctx.fillRect(x - 7, y - 10, 14, 16);
-      ctx.fillStyle = s.lav;
-      ctx.fillRect(x - 5, y - 9, 10, 5);
-      ctx.fillRect(x - 6, y - 2, 12, 7);
-      ctx.fillStyle = s.yellow;
-      ctx.fillRect(x - 3, y - 4, 6, 3);
-      kt(ctx, "?", x, y - 21, s.yellow, { align: "center", outline: s.black });
+    if (merchant) {
+      const x = Math.round(merchant.x - camX);
+      const y = Math.round(merchant.y - camY);
+      Ct(
+        ctx,
+        "arena-merchant",
+        arenaMerchantSprite,
+        { k: s.black, x: "#594270", o: "#c28a52", w: "#ffc9a5" },
+        x,
+        y + 4,
+        { scale: 1 },
+      );
+      if (!merchant.visited)
+        kt(ctx, "?", x, y - 24, s.yellow, {
+          align: "center",
+          outline: s.black,
+        });
     }
     if (!a.pet) return;
     const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
-    const px = Math.round(a.p.x - camX - 12),
-      py = Math.round(a.p.y - camY - 10 + Math.sin(E * 6) * 2);
-    const scale = a.pet.level === 10 ? 3 : a.pet.level >= 5 ? 2 : 1;
-    const sprites = [
-      [".x..x.", "xxxx.x", ".xwxx.", "..xxx.", "..x.x."],
-      ["..x...", "..xx..", ".xwx..", "xxxxxx", ".x..x."],
-      ["..xxx.", "xxxxxx", "xxwxxx", ".xxxx.", ".x..x."],
-      ["x....x", "xxxxxx", ".xwwx.", "..xx..", "...xx."],
-      ["x.....", "xxxx.x", ".xwxxx", "..xxx.", "....x."],
-      [".x..x.", ".xxxx.", "xwwwwx", "x.xx.x", ".xxxx."],
-    ];
-    for (const [row, pixels] of sprites[index].entries())
-      for (const [col, pixel] of [...pixels].entries()) {
-        if (pixel === ".") continue;
-        ctx.fillStyle = pixel === "w" ? s.white : arenaPets[index].color;
-        ctx.fillRect(px + col * scale, py + row * scale, scale, scale);
-      }
+    const px = Math.round(a.p.x - camX - 14);
+    const py = Math.round(a.p.y - camY - 4 + Math.sin(E * 6) * 2);
+    const level = a.pet.level;
+    const size = level === 10 ? 1.4 : level >= 5 ? 1.2 : 1;
+    Ct(
+      ctx,
+      "arena-pet:" + index,
+      arenaPetSprites[index],
+      { k: s.black, x: arenaPets[index].color, o: "#765577", w: s.white },
+      px,
+      py,
+      { scale: 1, sq: [size, size] },
+    );
+    if (a.pet.shield) Ht(ctx, a.p.x - camX, a.p.y - camY - 7, 12, s.blue);
   }
 
   function spawnWorldPortal() {
@@ -10821,7 +10925,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             ? "\u62FE\u53D6[b]\u84DD\u8272\u5B9D\u77F3[/]\u83B7\u5F97\u7ECF\u9A8C\u3002\u7ECF\u9A8C\u6761\u6EE1\u540E\uFF0C\u4F1A\u51FA\u73B0\u4E00\u9053[y]\u5FAE\u79EF\u5206\u9898[/]\uFF01"
             : "Pick up [b]blue gems[/] for XP. When the XP bar is full, you get a [y]calculus question[/]!",
         ),
-      I === "play" && a.pendingLv > 0 && a.p.hp > 0 && ns());
+      I === "play" && !a.boss && a.pendingLv > 0 && a.p.hp > 0 && ns());
   }
   function ns() {
     const t = I !== "play";
@@ -11352,7 +11456,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.p.hp = Math.min(a.p.hp, a.p.maxHp)));
   }
   function Ei() {
-    if (a.pendingLv > 0) return ns();
+    if (!a.boss && a.pendingLv > 0) return ns();
     if (a.chestQueued) return ((a.chestQueued = !1), ls());
     if (a.bossK >= 3 && !a.stageCleared && !a.boss)
       return ((a.stageCleared = !0), (I = "stage"), Bt.stage());
@@ -14298,44 +14402,24 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     const hudRight = A - 5,
       hudOffset = topRightControlOffset();
-    Y(e, `LV ${a.lv}`, hudRight, 7 + hudOffset, {
+    Y(e, `LV ${a.lv - a.pendingLv}`, hudRight, 7 + hudOffset, {
       pixel: !0,
       size: 12,
       col: s.blue,
       align: "right",
       outline: s.black,
     });
-    const m = a.answered ? Math.round((a.correct / a.answered) * 100) : 100,
-      y = Object.keys(a.thm || {}).length;
-    let d = 22 + hudOffset;
-    const g = (T, Q) => {
-      (kt(e, T, hudRight, d, Q, { outline: s.black, align: "right" }),
-        (d += 11));
-    };
-    (g(
-      i ? `\u51FB\u6740 ${a.kills}` : `KILLS ${a.kills}`,
-      a.t - (a.killT || -9) < 0.08 ? s.yellow : s.white,
-    ),
-      g(
-        i
-          ? `\u7B54\u9898 ${a.correct}/${a.answered}`
-          : `QUIZ ${a.correct}/${a.answered}`,
-        a.answered && m < 50 ? s.coral : s.green,
-      ),
-      a.streak >= 2 &&
-        g(
-          i ? `\u8FDE\u5BF9 \xD7${a.streak}` : `STREAK \xD7${a.streak}`,
-          a.streak >= 3 ? s.yellow : s.white,
-        ),
-      a.rerolls &&
-        g(
-          i ? `\u91CD\u62BD \xD7${a.rerolls}` : `REROLLS \xD7${a.rerolls}`,
-          s.lav,
-        ),
-      y && g(i ? `\u5B9A\u7406 \xD7${y}` : `THEOREMS \xD7${y}`, s.yellow),
-      (d = knowledge.drawHud(e, hudRight, d)),
-      knowledge.drawMarkers(e),
-      R.drawImage(Se, 0, 0, G, mt));
+    const quizColor =
+      a.answered && a.correct / a.answered < 0.5 ? s.coral : s.green;
+    kt(
+      e,
+      i ? `答题 ${a.correct}/${a.answered}` : `QUIZ ${a.correct}/${a.answered}`,
+      hudRight,
+      24 + hudOffset,
+      quizColor,
+      { outline: s.black, align: "right" },
+    );
+    (knowledge.drawMarkers(e), R.drawImage(Se, 0, 0, G, mt));
     for (const [T, Q, M, S, b] of Bo.splice(0))
       Y(R, T, (Q * G) / A, (M * G) / A - 2, {
         pixel: !0,
