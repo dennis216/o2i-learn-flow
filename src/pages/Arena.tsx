@@ -109,7 +109,7 @@ function ArenaGame({ language, admin }: { language: Language; admin: boolean }) 
         const doc = frame.current?.contentDocument;
         if (doc) {
           const style = doc.createElement('style');
-          style.textContent = katexStyles + '.math-content{overflow-x:auto;overflow-wrap:anywhere}.math-content p{margin:.35em 0}.math-content table{border-collapse:collapse}.math-content th,.math-content td{border:1px solid currentColor;padding:.4em}.qz img{max-width:100%;max-height:45vh;object-fit:contain}.qz .katex-display{overflow-x:auto;overflow-y:hidden}';
+          style.textContent = katexStyles + '.math-content{min-width:0;max-width:100%;overflow-wrap:anywhere}.qz .katex:not(.katex-display){overflow:visible;max-width:none}.qz .math-content p{line-height:1.65}.math-content p{margin:.35em 0}.math-content table{border-collapse:collapse}.math-content th,.math-content td{border:1px solid currentColor;padding:.4em}.qz img{max-width:100%;max-height:45vh;object-fit:contain}.qz .katex-display{overflow-x:auto;overflow-y:hidden}';
           doc.head.append(style);
         }
         frame.current?.focus();

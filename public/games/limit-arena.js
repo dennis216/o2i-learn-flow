@@ -1,3 +1,4 @@
+import { ARENA_STAGE_SECONDS } from "./arena-knowledge.js";
 import { createKnowledgeFlow } from "./arena-knowledge.js";
 
 export const mathSvgDefinitions =
@@ -6654,7 +6655,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       wrongStreak: 0,
       boss: null,
       bossK: 0,
-      nextBossT: 180,
+      nextBossT: ARENA_STAGE_SECONDS,
       bossWarned: !1,
       arena: null,
       spawnAcc: 0,
@@ -7338,10 +7339,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     return a.t * (a.testSpeed || 1);
   }
   function Kn(t) {
+    rewardPet(t * 0.25);
     for (
       a.xp +=
         t *
         a.st.xp *
+        (a.pet?.id === "wisdom" ? 1.15 : 1) *
         (a.testSpeed || 1) *
         (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
       a.xp >= a.need;
@@ -7374,8 +7377,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ? (e.face = o > 0 ? "right" : "left")
         : (e.face = r > 0 ? "down" : "up"));
     const l = a.t < e.dashUntil;
-    let h = o * a.st.speed * terrainMoveFactor(),
-      c = r * a.st.speed * terrainMoveFactor();
+    let h =
+        o *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
+        (a.pet?.id === "support" ? 1.1 : 1),
+      c =
+        r *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
+        (a.pet?.id === "support" ? 1.1 : 1);
     l &&
       ((h = e.ddx * 250),
       (c = e.ddy * 250),
@@ -7478,6 +7491,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function ma(t, e = "?") {
     const o = a.p;
     if (a.god || a.t < o.inv || I !== "play" || o.hp <= 0) return !1;
+    if (a.potionWard) {
+      a.potionWard = false;
+      yt(o.x, o.y - 7, 9, 26, 0.4, s.blue);
+      return false;
+    }
+    if (a.pet?.id === "defense") {
+      if (a.pet.shield) {
+        a.pet.shield = false;
+        yt(o.x, o.y - 7, 9, 26, 0.4, s.blue);
+        _t(o.x, o.y - 7, [s.blue, s.white], 8, 36);
+        return false;
+      }
+      t *= 0.9;
+    }
     prepareEmergencyShell();
     const r = Math.max(
       1,
@@ -8883,6 +8910,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         f = h / u,
         p = c / u,
         k = a.t < n.slowUntil || n.chill > a.t ? 0.6 - 0.05 * H("zero") : 1;
+      if (n.petFreezeUntil > a.t) continue;
       let m = 0,
         y = 0;
       if (n.role === "fuse" && !l && u < 25) {
@@ -8951,7 +8979,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             Pt(n.x, n.y, g + T * 0.32, 50, { dmg: 9, kind: "small", r: 2.5 });
         }
       } else ((m = f * n.sp), (y = p * n.sp));
-      ((n.x += (m * k + n.kx) * t), (n.y += (y * k + n.ky) * t));
+      ((n.x += (m * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.kx) * t),
+        (n.y += (y * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.ky) * t));
       const d = Math.exp(-9 * t);
       if (
         ((n.kx *= d),
@@ -10356,7 +10385,34 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const x = active.x - camX,
       y = active.y - camY;
     if (x < -40 || x > A + 40 || y < -40 || y > D + 40) return;
-    Ht(ctx, x, y, active.r + Math.sin(E * 3) * 2, s.green, 1, 3);
+    const colors = {
+      snow: ["#85dcff", "#38668a"],
+      desert: ["#ffd176", "#a7693c"],
+      rainforest: ["#9ce38b", "#315f4e"],
+      book: ["#d8baff", "#554678"],
+    };
+    const [light, dark] = colors[active.kind] || colors.rainforest;
+    const radius = active.r;
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = dark;
+    for (let dy = -radius; dy <= radius; dy += 3) {
+      const half = Math.floor(Math.sqrt(radius * radius - dy * dy));
+      ctx.fillRect(Math.round(x - half), Math.round(y + dy), half * 2, 2);
+    }
+    ctx.restore();
+    Ht(ctx, x, y, radius, dark, 1, 3);
+    Ht(ctx, x, y, radius - 3, light, 1, 3);
+    for (let n = 0; n < 8; n++) {
+      const angle = (n * j) / 8;
+      const px = Math.round(x + Math.cos(angle) * (radius - 3));
+      const py = Math.round(y + Math.sin(angle) * (radius - 3));
+      ctx.fillStyle = dark;
+      ctx.fillRect(px - 2, py - 2, 5, 5);
+      ctx.fillStyle = light;
+      ctx.fillRect(px, py - 1, 1, 3);
+      ctx.fillRect(px - 1, py, 3, 1);
+    }
     for (let n = 0; n < 6; n++) {
       const angle = (n / 6) * j + E * 0.4;
       ctx.fillStyle = n % 2 ? s.yellow : s.white;
@@ -10394,6 +10450,418 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       });
   }
 
+  const arenaPets = [
+    {
+      id: "attack",
+      name: ["Ember Dragon", "烈焰龙"],
+      desc: [
+        "Attacks nearby foes and releases a fire pulse.",
+        "攻击附近敌人，周期性释放火焰。",
+      ],
+      color: "#ff7652",
+    },
+    {
+      id: "heal",
+      name: ["Life Sprite", "生命精灵"],
+      desc: [
+        "Restores HP over time with a low-health burst.",
+        "持续回血，低血量时额外治疗。",
+      ],
+      color: "#8ce38a",
+    },
+    {
+      id: "defense",
+      name: ["Iron Turtle", "钢甲龟"],
+      desc: [
+        "Reduces damage and periodically blocks a hit.",
+        "减轻伤害，定期抵挡一次攻击。",
+      ],
+      color: "#a5b4c7",
+    },
+    {
+      id: "control",
+      name: ["Frost Fox", "寒冰狐"],
+      desc: [
+        "Slows nearby foes and periodically freezes them.",
+        "减速附近敌人，周期性冻结。",
+      ],
+      color: "#89d9ff",
+    },
+    {
+      id: "support",
+      name: ["Storm Bird", "雷鸣鸟"],
+      desc: [
+        "Boosts movement and helps recharge hero skills.",
+        "提升移速，加快英雄技能恢复。",
+      ],
+      color: "#ffe372",
+    },
+    {
+      id: "wisdom",
+      name: ["Sage Owl", "智慧猫头鹰"],
+      desc: [
+        "Boosts XP, with a bonus every three correct answers.",
+        "增加经验，连续答对三题时额外奖励。",
+      ],
+      color: "#cfa8ff",
+    },
+  ];
+
+  const merchantShops = {
+    pet: {
+      name: ["Pet Merchant", "宠物商人"],
+      coat: "#675093",
+      trim: "#f2cd70",
+      items: arenaPets,
+    },
+    mount: {
+      name: ["Mount Merchant", "坐骑商人"],
+      coat: "#38664f",
+      trim: "#dba270",
+      items: [
+        {
+          id: "mount",
+          name: ["Wind Runner", "疾风坐骑"],
+          desc: ["+12% movement speed for this run.", "本局移速提高12%。"],
+        },
+      ],
+    },
+    potion: {
+      name: ["Potion Merchant", "药水商人"],
+      coat: "#2e6382",
+      trim: "#8ce8db",
+      items: [
+        {
+          id: "healPotion",
+          name: ["Healing Potion", "治疗药水"],
+          desc: ["Restore 45 HP now.", "立即恢复45点生命。"],
+        },
+        {
+          id: "guardPotion",
+          name: ["Guard Potion", "护盾药水"],
+          desc: ["Block the next hit.", "抵挡下一次攻击。"],
+        },
+      ],
+    },
+  };
+
+  function tickPortalMerchant() {
+    const merchant = a.portalMerchant;
+    if (
+      !merchant ||
+      merchant.visited ||
+      a.pendingLv ||
+      I !== "play" ||
+      Math.hypot(merchant.x - X(), merchant.y - _()) > 13
+    )
+      return;
+    merchant.visited = true;
+    const shop = merchantShops[merchant.kind || "pet"];
+    I = "pause";
+    const lang = i ? 1 : 0;
+    Bt.show(
+      `<div class="panel pix merchant-panel"><div class="qhd"><b>${shop.name[lang]}</b><span>${i ? "任选一项" : "Choose one"}</span></div>
+      <div class="merchant-pets">${shop.items.map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
+      <button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
+      "merchant",
+    );
+    const leave = () => {
+      Bt.hide();
+      I = "play";
+    };
+    N("merchantLeave").onclick = leave;
+    for (const button of N("ov").querySelectorAll("[data-pet]")) {
+      const id = button.dataset.pet;
+      drawStallItem(
+        button.querySelector("canvas").getContext("2d"),
+        id,
+        20,
+        12,
+        2,
+      );
+      button.onclick = () => {
+        if (id === "mount") a.mount = true;
+        else if (id === "healPotion") a.p.hp = Math.min(a.p.maxHp, a.p.hp + 45);
+        else if (id === "guardPotion") a.potionWard = true;
+        else
+          a.pet = {
+            id,
+            xp: 0,
+            level: 1,
+            tickAt: a.t,
+            pulseAt: a.t + 20,
+            shield: false,
+          };
+        leave();
+      };
+    }
+  }
+
+  function rewardPet(xp) {
+    if (!a.pet) return;
+    a.pet.xp += xp;
+    a.pet.level = Math.min(10, 1 + Math.floor(a.pet.xp / 12));
+  }
+
+  function tickArenaPet(dt) {
+    const pet = a.pet;
+    if (!pet) return;
+    const player = a.p;
+    const stage = pet.level === 10 ? 2 : pet.level >= 5 ? 1 : 0;
+    if (pet.id === "support")
+      a.skillReady = Math.max(a.t, a.skillReady - dt * 0.1);
+    if (a.t >= pet.tickAt) {
+      pet.tickAt =
+        a.t +
+        (pet.id === "heal" ? 5 : pet.id === "attack" ? 2 - stage * 0.2 : 0.5);
+      if (pet.id === "heal")
+        player.hp = Math.min(player.maxHp, player.hp + 3 + stage);
+      if (pet.id === "attack") {
+        const enemy = a.enemies.find(
+          (enemy) =>
+            !enemy.dead && Math.hypot(enemy.x - X(), enemy.y - _()) < 70,
+        );
+        if (enemy) {
+          Xa(enemy, "burn", 1.4);
+          At(enemy, 10 + stage * 3);
+          _t(enemy.x, enemy.y, [s.orange, s.yellow], 6, 30);
+        }
+      }
+      if (pet.id === "control")
+        Rt(X(), _(), 42 + stage * 8, (enemy) => {
+          enemy.petSlowUntil = a.t + 0.65;
+        });
+    }
+    if (a.t < pet.pulseAt) return;
+    pet.pulseAt = a.t + (pet.id === "defense" || pet.id === "heal" ? 30 : 20);
+    if (pet.id === "defense") {
+      pet.shield = true;
+      yt(X(), _(), 4, 16, 0.35, s.blue);
+    }
+    if (pet.id === "heal" && player.hp < player.maxHp * 0.35)
+      player.hp = Math.min(player.maxHp, player.hp + 15);
+    if (pet.id === "control")
+      Rt(X(), _(), 46 + stage * 8, (enemy) => {
+        enemy.petFreezeUntil = a.t + 2;
+        Xa(enemy, "chill", 2);
+      });
+    if (pet.id === "attack") {
+      yt(X(), _(), 10, 55, 0.4, s.orange);
+      Rt(X(), _(), 55, (enemy) => {
+        Xa(enemy, "burn", 2);
+        At(enemy, 16 + stage * 4);
+      });
+    }
+  }
+
+  const arenaPetSprites = [
+    [
+      "..k......k..",
+      "..ok....ko..",
+      ".koxkkkkxok.",
+      "koxxxwwxxk..",
+      "koxxxkwxxokk",
+      ".koxxxxoooxk",
+      "..koxoooxxk.",
+      "...koooxk...",
+      "..kk..kk....",
+    ],
+    [
+      ".....kk.....",
+      "....koxk....",
+      "...koxxok...",
+      "..kxxwxxok..",
+      ".koxwwwxxok.",
+      "koxxxwxxxxok",
+      ".koxxxxxxxk.",
+      "..kkoxokk...",
+      "....kk......",
+    ],
+    [
+      "...kkkkk....",
+      "..koxoxok...",
+      ".koxoxoxok..",
+      "koxoxoxoxokk",
+      "kxoxoxoxkwwk",
+      ".kkxxxxxxk.k",
+      "..kkkkkkokk.",
+      "..ko...ko...",
+      "..kk...kk...",
+    ],
+    [
+      ".k......k...",
+      ".kk....kk...",
+      ".kwkkkkwk...",
+      "koxxxxxxxk..",
+      "kwxkxxkxwk..",
+      ".kwwxwwkk.kk",
+      "..kwwk...kox",
+      "...kxxkkkoxk",
+      "...kk.kkkkk.",
+    ],
+    [
+      "....kk......",
+      "...kxxk.....",
+      "..koxwxkk...",
+      ".koxxkxok...",
+      "koxxxxxk....",
+      ".koxoxxkkkk.",
+      "..koxxxoxok.",
+      "...kxxxkkk..",
+      "....kk.k....",
+    ],
+    [
+      ".k......k...",
+      ".kk.kk.kk...",
+      "koxxxxxxxk..",
+      "kxwwxxwwxk..",
+      "kxwkxxkwxk..",
+      "koxxwwxxok..",
+      ".koxxxxok...",
+      "..koxxok....",
+      "...kk.kk....",
+    ],
+  ];
+  const arenaMerchantSprite = [
+    ".....kkkkk......",
+    "....kxxxxxk.....",
+    "....koxxxxk.....",
+    "....koxxxxk.....",
+    "....koooook.....",
+    "..kkkkkkkkkkk...",
+    "...kwwwwkk......",
+    "...kwkwkk..kk...",
+    "...kwwwwk.kook..",
+    "..kkwwkkk...k...",
+    "..kxooooxk..k...",
+    "..kxxxxxwk..k...",
+    "..koxxxxxkkkk...",
+    "..koxxxxxk..k...",
+    "..kkxkxkk...k...",
+    "...kk.kk....k...",
+  ];
+  const merchantSprites = {
+    pet: arenaMerchantSprite,
+    mount: [
+      ...[
+        "................",
+        "................",
+        ".....kkkkk......",
+        "....kxxxxxk.....",
+        "..kkooooookkk...",
+      ],
+      ...arenaMerchantSprite.slice(5),
+    ],
+    potion: [
+      ...[
+        ".......k........",
+        "......kxk.......",
+        ".....kxxxk......",
+        "....kxxoxxk.....",
+        "...kxxxxxxxk....",
+      ],
+      ...arenaMerchantSprite.slice(5),
+    ],
+  };
+  const petShadows = [
+    "#a42e45",
+    "#3f886c",
+    "#526b87",
+    "#4288a3",
+    "#c58a32",
+    "#7650a0",
+  ];
+  function drawStallItem(ctx, id, x, y, scale = 1) {
+    const index = arenaPets.findIndex((pet) => pet.id === id);
+    const pixels =
+      index >= 0
+        ? arenaPetSprites[index]
+        : id === "mount"
+          ? [
+              "......kk....",
+              ".....kxxk...",
+              "..kkkkxxxk..",
+              ".kxxxxxxwk..",
+              "kkxxxxkkk...",
+              "..kxkxk.....",
+              "..kk.kk.....",
+            ]
+          : [
+              "...kkkk...",
+              "...kwwk...",
+              "....kk....",
+              "...kxxk...",
+              "..kxwxxk..",
+              "..kxxxxk..",
+              "...kkkk...",
+            ];
+    const color =
+      arenaPets[index]?.color || (id === "guardPotion" ? "#7ebcfa" : "#ee7d93");
+    Ct(
+      ctx,
+      "stall-item:" + id + ":" + scale,
+      pixels,
+      { k: s.black, x: color, o: petShadows[index], w: "#fff3de" },
+      x,
+      y,
+      { scale },
+    );
+  }
+
+  function drawArenaCompanions(ctx, camX, camY) {
+    const merchant = a.portalMerchant;
+    if (merchant) {
+      const x = Math.round(merchant.x - camX);
+      const y = Math.round(merchant.y - camY);
+      const kind = merchant.kind || "pet";
+      const shop = merchantShops[kind];
+      Ct(
+        ctx,
+        "arena-merchant:" + kind,
+        merchantSprites[kind],
+        { k: s.black, x: shop.coat, o: shop.trim, w: "#ffc9a5" },
+        x,
+        y + 4,
+        { scale: 1 },
+      );
+      if (!merchant.visited) {
+        const left = x - (shop.items.length - 1) * 8;
+        ctx.fillStyle = "#36243b";
+        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 6);
+        ctx.fillStyle = shop.trim;
+        ctx.fillRect(left - 8, y + 21, shop.items.length * 16, 2);
+        shop.items.forEach((item, index) =>
+          drawStallItem(ctx, item.id, left + index * 16, y + 17),
+        );
+        kt(ctx, "?", x, y - 24, shop.trim, {
+          align: "center",
+          outline: s.black,
+        });
+      }
+    }
+    if (!a.pet) return;
+    const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
+    const px = Math.round(a.p.x - camX - 14);
+    const py = Math.round(a.p.y - camY - 4 + Math.sin(E * 6) * 2);
+    const level = a.pet.level;
+    const size = level === 10 ? 1.4 : level >= 5 ? 1.2 : 1;
+    Ct(
+      ctx,
+      "arena-pet:" + index,
+      arenaPetSprites[index],
+      {
+        k: s.black,
+        x: arenaPets[index].color,
+        o: petShadows[index],
+        w: "#fff3de",
+      },
+      px,
+      py,
+      { scale: 1, sq: [size, size] },
+    );
+    if (a.pet.shield) Ht(ctx, a.p.x - camX, a.p.y - camY - 7, 12, s.blue);
+  }
+
   function spawnWorldPortal() {
     if (!a.portalOrigin || a.worldPortal) return false;
     const origin = a.portalOrigin;
@@ -10408,6 +10876,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (Math.hypot(x - X(), y - _()) < 32)
       x = F(origin.x - 58, left + 18, right - 18);
     a.worldPortal = { x, y, target, readyAt: a.t + 0.8 };
+    if (!a.merchantBag?.length) a.merchantBag = Object.keys(merchantShops);
+    const shopIndex = Math.floor(Math.random() * a.merchantBag.length);
+    const kind = a.merchantBag.splice(shopIndex, 1)[0];
+    const stallY = y + 76 <= bottom - 30 ? y + 76 : y - 76;
+    a.portalMerchant = { x, y: stallY, kind, visited: false };
     oe(
       i ? "黑洞已开启" : "PORTAL OPEN",
       s.lav,
@@ -10419,10 +10892,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function updateWorldPortal() {
     const portal = a.worldPortal;
-    if (!portal || I !== "play" || a.boss || a.themeTr || a.t < portal.readyAt)
+    if (
+      !portal ||
+      I !== "play" ||
+      a.boss ||
+      a.themeTr ||
+      a.pendingLv > 0 ||
+      a.t < portal.readyAt
+    )
       return false;
     if (Math.hypot(X() - portal.x, _() - portal.y) > 15) return false;
+    rewardPet(12);
     a.worldPortal = null;
+    a.portalMerchant = null;
     a.p.x = U + 40;
     a.p.y = ot + 40;
     a.worldStage = (a.worldStage || 1) + 1;
@@ -10438,7 +10920,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.spawnQueue = [];
     a.spawnAcc = 0;
     a.mathPulses = [];
-    a.nextBossT = Math.max(a.nextBossT || 0, a.t + 75 / (a.testSpeed || 1));
+    a.nextBossT = a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1);
     a.bossWarned = false;
     a.p.inv = Math.max(a.p.inv, a.t + 2);
     a.nextWave = Math.max(a.nextWave, a.t + 15);
@@ -10494,7 +10976,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (
       (a.slowUntil > a.t && (t *= a.slow),
       (a.t += t),
-      a.themeAt && a.t >= a.themeAt && ((a.themeAt = 0), Xn()),
+      a.themeAt &&
+        !a.worldPortal &&
+        a.t >= a.themeAt &&
+        ((a.themeAt = 0), Xn()),
       (a.shake = Math.max(0, a.shake - 1.8 * t)),
       a.kick)
     ) {
@@ -10522,9 +11007,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Oi(t),
       spawnFieldMagnet(),
       mi(t),
+      tickPortalMerchant(),
       updateWorldPortal(),
       Nn(t),
-      knowledge.update(t));
+      knowledge.update(t),
+      I === "play" && tickArenaPet(t));
     const e = a.later;
     ((a.later = []), e.forEach((h) => h()));
     const o = a.olQ;
@@ -10581,12 +11068,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             ? "\u62FE\u53D6[b]\u84DD\u8272\u5B9D\u77F3[/]\u83B7\u5F97\u7ECF\u9A8C\u3002\u7ECF\u9A8C\u6761\u6EE1\u540E\uFF0C\u4F1A\u51FA\u73B0\u4E00\u9053[y]\u5FAE\u79EF\u5206\u9898[/]\uFF01"
             : "Pick up [b]blue gems[/] for XP. When the XP bar is full, you get a [y]calculus question[/]!",
         ),
-      I === "play" &&
-        !a.worldPortal &&
-        !a.pendingBossReward &&
-        a.pendingLv > 0 &&
-        a.p.hp > 0 &&
-        ns());
+      I === "play" && !a.boss && a.pendingLv > 0 && a.p.hp > 0 && ns());
   }
   function ns() {
     const t = I !== "play";
@@ -10639,6 +11121,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }));
   }
   function Mi(t) {
+    if (t && a.pet) {
+      rewardPet(6);
+      if (a.pet.id === "wisdom") Kn((a.streak + 1) % 3 === 0 ? 12 : 2);
+    }
     if (t && H("study")) a.studyUntil = a.t + 8;
     return (
       a.answered++,
@@ -11113,7 +11599,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.p.hp = Math.min(a.p.hp, a.p.maxHp)));
   }
   function Ei() {
-    if (a.pendingLv > 0) return ns();
+    if (!a.boss && a.pendingLv > 0) return ns();
     if (a.chestQueued) return ((a.chestQueued = !1), ls());
     if (a.bossK >= 3 && !a.stageCleared && !a.boss)
       return ((a.stageCleared = !0), (I = "stage"), Bt.stage());
@@ -11302,7 +11788,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return e.state === "fight" && a.t > e.invUntil;
     },
     ga = (t) => t.boss.state !== "intro" && t.boss.state !== "dying";
-  function Pi() {
+  function Pi(dt) {
+    if (
+      !a.boss &&
+      a.kf?.world?.lairs.some((lair) => lair.enemy && !lair.enemy.dead)
+    ) {
+      a.nextBossT += dt;
+      return;
+    }
     if (a.worldPortal || a.pendingBossReward || a.transitionReward) return;
     if (!a.boss) {
       if (!a.bossWarned && a.t >= a.nextBossT - 8) {
@@ -11605,10 +12098,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (i ? " \xB7 进入黑洞领取奖励" : " \xB7 enter the black hole"),
       ),
       (a.arena = null),
-      (a.nextBossT = Math.max(
-        (180 * (a.bossK + 1)) / (a.testSpeed || 1),
-        a.t + 75 / (a.testSpeed || 1),
-      )),
+      (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
       (a.bossWarned = !1),
       (a.nextWave = Math.max(a.nextWave, a.t + 30)),
       (a.nextElite = Math.max(a.nextElite, a.t + 40)),
@@ -12607,6 +13097,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       c.fillRect(0, 0, A, D),
       zn(c, n, l),
       drawWorldPortal(c, n, l),
+      drawArenaCompanions(c, n, l),
       drawSpecialRegions(c, n, l),
       knowledge.drawGround(c, n, l),
       (c.fillStyle = "rgba(4,6,16,0.2)"),
@@ -13948,7 +14439,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             { outline: s.black },
           ),
       a.weapons.forEach((T, Q) => Ro(e, T.id, 5 + Q * 15, 43, T.lv, T.evo, 5)));
-    const k = Object.keys(a.passives);
+    const passives = Object.keys(a.passives);
+    const k = passives.slice(0, 8);
+    if (passives.length > k.length)
+      kt(e, "+" + (passives.length - k.length), 128, 65, s.lav, {
+        outline: s.black,
+      });
     if (
       (k.forEach((T, Q) =>
         Ro(
@@ -13961,7 +14457,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           Va(T),
         ),
       ),
-      Yi(k.length > 12 ? 98 : k.length ? 80 : 62),
+      Yi(k.length ? 80 : 62),
       Y(e, Et(a.t), A / 2, 7, {
         pixel: !0,
         size: 12,
@@ -14049,44 +14545,24 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     const hudRight = A - 5,
       hudOffset = topRightControlOffset();
-    Y(e, `LV ${a.lv}`, hudRight, 7 + hudOffset, {
+    Y(e, `LV ${a.lv - a.pendingLv}`, hudRight, 7 + hudOffset, {
       pixel: !0,
       size: 12,
       col: s.blue,
       align: "right",
       outline: s.black,
     });
-    const m = a.answered ? Math.round((a.correct / a.answered) * 100) : 100,
-      y = Object.keys(a.thm || {}).length;
-    let d = 22 + hudOffset;
-    const g = (T, Q) => {
-      (kt(e, T, hudRight, d, Q, { outline: s.black, align: "right" }),
-        (d += 8));
-    };
-    (g(
-      i ? `\u51FB\u6740 ${a.kills}` : `KILLS ${a.kills}`,
-      a.t - (a.killT || -9) < 0.08 ? s.yellow : s.white,
-    ),
-      g(
-        i
-          ? `\u7B54\u9898 ${a.correct}/${a.answered}`
-          : `QUIZ ${a.correct}/${a.answered}`,
-        a.answered && m < 50 ? s.coral : s.green,
-      ),
-      a.streak >= 2 &&
-        g(
-          i ? `\u8FDE\u5BF9 \xD7${a.streak}` : `STREAK \xD7${a.streak}`,
-          a.streak >= 3 ? s.yellow : s.white,
-        ),
-      a.rerolls &&
-        g(
-          i ? `\u91CD\u62BD \xD7${a.rerolls}` : `REROLLS \xD7${a.rerolls}`,
-          s.lav,
-        ),
-      y && g(i ? `\u5B9A\u7406 \xD7${y}` : `THEOREMS \xD7${y}`, s.yellow),
-      (d = knowledge.drawHud(e, hudRight, d)),
-      knowledge.drawMarkers(e),
-      R.drawImage(Se, 0, 0, G, mt));
+    const quizColor =
+      a.answered && a.correct / a.answered < 0.5 ? s.coral : s.green;
+    kt(
+      e,
+      i ? `答题 ${a.correct}/${a.answered}` : `QUIZ ${a.correct}/${a.answered}`,
+      hudRight,
+      24 + hudOffset,
+      quizColor,
+      { outline: s.black, align: "right" },
+    );
+    (knowledge.drawMarkers(e), R.drawImage(Se, 0, 0, G, mt));
     for (const [T, Q, M, S, b] of Bo.splice(0))
       Y(R, T, (Q * G) / A, (M * G) / A - 2, {
         pixel: !0,
@@ -15126,6 +15602,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     [i ? "\u4E3B\u6B66\u5668" : "Main gun"]: "wpn",
     [i ? "\u8FDB\u5316" : "Evolution"]: "thm",
   };
+  function syncHeaderAccuracy() {
+    const meter = N("headerAccuracy");
+    meter.hidden = !a.p || !a.answered || I === "title" || I === "select";
+    meter.textContent = a.answered
+      ? Math.round((a.correct / a.answered) * 100) + "%"
+      : "";
+    meter.title = i ? "答题正确率" : "Answer accuracy";
+  }
+
   let Bt = {
     el: null,
     mode: null,
@@ -15137,6 +15622,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       this.el = N("ov");
     },
     show(t, e) {
+      syncHeaderAccuracy();
       Tt.fire = 0;
       ((this.el.innerHTML = t),
         (e === "setup" || e === "pause") &&
@@ -15439,8 +15925,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ),
         (N("mStart").onclick = () => {
           ($.init(), St.start());
-          if (hasArenaTouch() && arenaFullPref() !== "off")
-            void enterArenaFullscreen();
           this.heroSelect();
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
@@ -15754,7 +16238,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -15779,7 +16262,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -16014,8 +16496,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `${le[a.curUnit - 1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`,
       ),
       (document.body.dataset.mode = "run"));
-    if (document.body.classList.contains("touch") && arenaFullPref() !== "off")
-      void enterArenaFullscreen();
     requestAnimationFrame(fitTouchStage);
   }
   let Te = null;
@@ -16045,6 +16525,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (a.transitionReward) {
         a.transitionReward = false;
         a.pendingBossReward = false;
+        if (a.themeAt) {
+          a.themeAt = 0;
+          Xn();
+        }
         ls();
       } else I = "play";
     }
@@ -16466,6 +16950,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function updateFullscreenLabel() {
     const expanded = document.body.classList.contains("arena-expanded");
     const button = N("tFullscreen");
+    N("headerFullscreen").textContent = expanded
+      ? i
+        ? "退出全屏"
+        : "Exit full screen"
+      : i
+        ? "全屏"
+        : "Full screen";
     setArenaControlLabel(
       button,
       expanded ? (i ? "退出" : "Exit") : i ? "全屏" : "Full",
@@ -16672,11 +17163,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     document.addEventListener("webkitfullscreenchange", arenaFullscreenChanged);
   }
   if (!testing) {
-    N("tFullscreen").addEventListener("click", () => {
+    const toggleFullscreen = () => {
       if (document.body.classList.contains("arena-expanded"))
         leaveFullscreenByChoice();
       else enterFullscreenByChoice();
-    });
+    };
+    N("tFullscreen").addEventListener("click", toggleFullscreen);
+    N("headerFullscreen").addEventListener("click", toggleFullscreen);
   }
   // The player decides: an exit is remembered so later visits stay windowed,
   // an entry turns automatic full screen back on.
@@ -19627,7 +20120,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Hide touch buttons")),
         ks(),
         us());
-      if (arenaFullPref() !== "off") void enterArenaFullscreen(true);
+      if (!hasArenaTouch() && arenaFullPref() !== "off")
+        void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),
         o = 0;
