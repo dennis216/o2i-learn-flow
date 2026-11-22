@@ -10683,6 +10683,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (merchant.lastItem === index) return;
     merchant.lastItem = index;
     const item = shop.items[index];
+    const previousPet =
+      (merchant.kind || "pet") === "pet" && a.pet
+        ? arenaPets.find((pet) => pet.id === a.pet.id)
+        : null;
     cancelArenaPointers();
     for (const key in Tt) Tt[key] = 0;
     I = "pause";
@@ -10690,7 +10694,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     Bt.show(
       `<div class="panel pix merchant-panel"><div class="qhd"><b>${shop.name[lang]}</b><span>${i ? "任选一项" : "Choose one"}</span></div>
       <div class="merchant-pets">${[item].map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
-      <button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
+      <p id="petReplacement" hidden></p><button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
       "merchant",
     );
     const leave = () => {
@@ -10698,6 +10702,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       I = "play";
     };
     N("merchantLeave").onclick = leave;
+    const notice = N("petReplacement");
+    if (previousPet) {
+      notice.hidden = false;
+      notice.textContent = i
+        ? `领取后，${previousPet.name[lang]} 会离开。`
+        : `Taking this pet will release ${previousPet.name[lang]}.`;
+    }
+    let confirmed = false;
     for (const button of N("ov").querySelectorAll("[data-pet]")) {
       const id = button.dataset.pet;
       drawStallItem(
@@ -10708,6 +10720,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         2,
       );
       button.onclick = () => {
+        if (previousPet && !confirmed) {
+          confirmed = true;
+          const label = document.createElement("span");
+          label.textContent = i ? "确认替换" : "Confirm replacement";
+          button.replaceChildren(label);
+          return;
+        }
         merchant.visited = true;
         if (id === "mount") a.mount = true;
         else if (id === "healPotion") a.p.hp = Math.min(a.p.maxHp, a.p.hp + 45);
@@ -11857,41 +11876,65 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   const newBossSprites = [
     [
-      "....kk.......kk....",
-      "...kgkk.....kkgk...",
-      "..kgllkk...kkllgk..",
-      ".kgllggkkkkkggllgk.",
-      "kgllgggggggggllgggk",
-      "kgggkkwgggwkkggggk.",
-      "kgggkkwglgwkkggggk.",
-      ".kggggggwgggggggk..",
-      "..kkgggggggggkk....",
-      "....kkgggggkk......",
-      ".....kkkkkkk.......",
+      ".........k.........",
+      "........klk........",
+      "....k..klwlk..k....",
+      "...klkkllhllkklk...",
+      "..klggglllggggllk..",
+      "..kggkhlllhkggglk..",
+      "...kkkgwwwgkkgkk...",
+      "....kkgwhwgkkk.....",
+      "...kggkhhhkgggk....",
+      "..kgggkklkkggggk...",
+      ".kggghgklkghggggk..",
+      ".kghhggklkggghggk..",
+      "kgggggkklkkggggggk.",
+      "kgggkkgklkgkkggggk.",
+      ".kkkkggklkgggkkkk..",
+      "...kgggklkgggk.....",
+      "..kgggk.k.kgggk....",
+      "..kkgk.....kgkk....",
+      "....k.......k......",
     ],
     [
-      "......kkkkkk.......",
-      ".....kggllggk......",
-      "..kkkkgllllgkkkk...",
-      ".kgggglwwwwlggggk..",
-      "kggkkgglwwlggkkggk.",
-      "kgk..kggllggk..kgk.",
-      "kggkkggllllggkkggk.",
-      ".kggggggggggggggk..",
-      "..kkkkggggggkkkk...",
-      ".....kkkkkkkk......",
+      ".........k.........",
+      "........kwk........",
+      ".......kwhwk.......",
+      "......kwhlhwk......",
+      ".....kwhlllhwk.....",
+      "...kkwhllwllhwkk...",
+      "..kggkhlwwwlhkggk..",
+      ".kghgkglwhwlgkghgk.",
+      "kghggkkhlwlhkkgghgk",
+      "kgggkgkhlllhkgkgggk",
+      ".kgkgggkhlhkgggkgk.",
+      "..kggghgkwkghgggk..",
+      "...kkggggkggggkk...",
+      "....kgghgkgghgk....",
+      "....kggggkggggk....",
+      ".....kkggkggkk.....",
+      "......kgkkkgk......",
+      ".......kk.kk.......",
     ],
     [
-      "..........k........",
-      ".......kkgkk.......",
-      ".....kkgglggkk.....",
-      "...kkgglwwwlggkk...",
-      ".kkggggwwlwwggggkk.",
-      "kggkkgglwwwlggkkgk.",
-      "kgggkkggglgggkkggk.",
-      ".kkgggkgggggkggkk..",
-      "...kkggggggggkk....",
-      ".....kkkkkkkk......",
+      "......kkkkkkk......",
+      "....kkghlhlhgkk....",
+      "...kggglllllgggk...",
+      "..kggkkkglgkkkggk..",
+      ".kggkgwwkwkwwgkggk.",
+      "kggkgwllwwwllwgkggk",
+      "kggkgwlhhhhhlwgkggk",
+      ".kggkgllllllllkggk.",
+      "..kggkkkglgkkkggk..",
+      "..kggghkglgkhgggk..",
+      "...kkkkkglgkkkkk...",
+      "...kglggkwkgglgk...",
+      "..kglgggkwkggglgk..",
+      "..kgkkggkwkggkkgk..",
+      "..kk..kkklkkk..kk..",
+      ".......kglgk.......",
+      ".......kglgk.......",
+      "........kkk........",
     ],
   ];
   function drawNewBoss(
@@ -11899,20 +11942,60 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     color,
     shadow,
     ctx,
-    x,
-    y,
+    centerX,
+    centerY,
     time,
-    { flash = false } = {},
+    { flash = false, cast = false, rage = false } = {},
   ) {
+    const cx = Math.round(centerX);
+    const cy = Math.round(centerY + Math.sin(time * 3) * 2);
+    const energy = flash ? s.white : rage ? s.orange : color;
+    for (const side of [-1, 1]) {
+      const swing = Math.sin(time * 3 + side) * 5;
+      const px = cx + side * (index === 1 ? 32 : 29);
+      const py = Math.round(cy + swing);
+      if (index === 0) {
+        // Paired mirrors on articulated arms.
+        pt(ctx, cx, cy + 6, px, py, shadow, 2);
+        x(ctx, px - 6, py - 12, 13, 24, s.black);
+        x(ctx, px - 4, py - 10, 9, 20, shadow);
+        x(ctx, px - 3, py - 8, 7, 16, energy);
+        x(ctx, px - 2, py - 7, 2, 12, s.white);
+      } else if (index === 1) {
+        // Detached facets lift and brighten while the volley charges.
+        const lift = cast ? 6 : 0;
+        for (let row = -7; row <= 7; row++) {
+          const width = 8 - Math.abs(row);
+          x(ctx, px - width, py + row - lift, width * 2, shadow);
+          if (width > 2)
+            x(ctx, px - width + 2, py + row - lift, width * 2 - 4, energy);
+        }
+      } else {
+        // Rotating weight and a broken orbital rail.
+        if (side < 0) Ht(ctx, cx, cy + 1, 33, shadow, 1, 2);
+        const angle = time * 2 + (side < 0 ? Math.PI : 0);
+        const ox = Math.round(cx + Math.cos(angle) * 34);
+        const oy = Math.round(cy + Math.sin(angle) * 19);
+        x(ctx, ox - 4, oy - 4, 9, 9, s.black);
+        x(ctx, ox - 3, oy - 3, 7, 7, energy);
+        x(ctx, ox - 2, oy - 2, 2, 2, s.white);
+      }
+    }
     Ct(
       ctx,
-      "extended-boss:" + index,
+      "extended-boss:" + index + ":" + (rage ? "rage" : "calm"),
       newBossSprites[index],
-      { k: s.black, g: shadow, l: color, w: s.white },
-      x,
-      y + Math.round(Math.sin(time * 3) * 2),
-      { scale: 3, flash },
+      { k: s.black, g: shadow, l: energy, w: s.white, h: "#8a9bb6" },
+      cx,
+      cy,
+      { scale: 2, flash },
     );
+    if (cast || rage) {
+      const pulse = Math.floor(time * 12) % 4;
+      x(ctx, cx - 2, cy - 8, 5, 4, pulse < 2 ? s.white : energy);
+      Pe(ctx, cx - 18, cy - 15, 0.2, energy);
+      Pe(ctx, cx + 19, cy + 10, 0.2, energy);
+    }
   }
 
   function* patternedBossVolley(boss, pattern) {
