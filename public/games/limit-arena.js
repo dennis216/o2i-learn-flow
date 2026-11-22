@@ -12916,7 +12916,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           ? "把你的答案带进下一关吧。"
           : "Take your answers into the next world.",
       ][a.bossK % 3];
-      a.bossFarewell = { name: e.def.name, text: farewell, until: a.t + 3.2 };
+      a.bossFarewell = {
+        name: e.def.name,
+        text: farewell,
+        def: e.def,
+        aim: e.aim,
+        x: t.x,
+        y: t.y,
+        start: a.t,
+        until: a.t + 3.2,
+      };
       for (const o of a.enemies)
         (o.type === "turret" || o.bossMinion) &&
           ((o.dead = !0), _t(o.x, o.y, o.pal, 6, 40));
@@ -14259,6 +14268,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             rage: d.phase > 1,
             aim: d.aim,
           }));
+    }
+    const fallenBoss = a.bossFarewell;
+    if (!a.boss && fallenBoss?.until > a.t) {
+      const [bossX, bossY] = h(fallenBoss.x, fallenBoss.y);
+      c.save();
+      c.globalAlpha = 0.52 * F((fallenBoss.until - a.t) / 0.32, 0, 1);
+      fallenBoss.def.draw(c, bossX, bossY, E, { aim: fallenBoss.aim });
+      c.restore();
     }
     c.globalAlpha = u ? 0.55 : 1;
     for (const d of a.proj) {
@@ -16131,8 +16148,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.restore();
   }
 
-  function drawArenaBubble(title, message, y) {
+  function drawArenaBubble(
+    title,
+    message,
+    y,
+    { anchor = G / 2, opacity = 1, sideGap = 0 } = {},
+  ) {
     R.save();
+    R.globalAlpha *= opacity;
     const titleFont = "700 12px system-ui, sans-serif";
     const messageFont = "600 14px system-ui, sans-serif";
     R.font = titleFont;
@@ -16144,16 +16167,38 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       320,
       Math.ceil(Math.max(titleWidth, messageWidth)) + 24,
     );
-    const center = Math.round(G / 2);
-    const left = Math.round(center - width / 2);
+    let left = Math.round(F(anchor - width / 2, 5, G - width - 7));
+    let side = 0;
+    if (sideGap) {
+      if (anchor + sideGap + width < G - 7) {
+        side = 1;
+        left = Math.round(anchor + sideGap);
+      } else if (anchor - sideGap - width > 5) {
+        side = -1;
+        left = Math.round(anchor - sideGap - width);
+      } else {
+        y -= 22;
+      }
+      y = Math.round(F(y, 5, mt - 42));
+    }
+    const center = left + width / 2;
+    const tail = Math.round(F(anchor, left + 9, left + width - 9));
     x(R, left + 3, y + 3, width, 35, "rgba(8, 11, 21, 0.65)");
     x(R, left + 3, y, width - 6, 35, "#151726");
     x(R, left, y + 3, width, 29, "#151726");
     x(R, left + 2, y + 3, width - 4, 29, "rgba(250, 242, 227, 0.96)");
     x(R, left + 7, y + 16, width - 14, 1, "#d9bfd0");
-    x(R, center - 4, y + 33, 9, 4, "#151726");
-    x(R, center - 2, y + 31, 5, 5, "#faf2e3");
-    x(R, center - 1, y + 36, 3, 3, "#151726");
+    if (side) {
+      const edge = side > 0 ? left : left + width;
+      const tip = side > 0 ? edge - 6 : edge;
+      x(R, tip, y + 13, 6, 9, "#151726");
+      x(R, side > 0 ? edge - 4 : edge - 2, y + 14, 6, 5, "#faf2e3");
+      x(R, side > 0 ? tip - 2 : edge + 6, y + 16, 2, 3, "#151726");
+    } else {
+      x(R, tail - 4, y + 33, 9, 4, "#151726");
+      x(R, tail - 2, y + 31, 5, 5, "#faf2e3");
+      x(R, tail - 1, y + 36, 3, 3, "#151726");
+    }
     R.textAlign = "center";
     R.textBaseline = "middle";
     R.fillStyle = "#392a53";
@@ -16165,15 +16210,33 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.restore();
   }
 
+  function drawBossFarewell(farewell, headHeight, headHalfWidth) {
+    const x = ((farewell.x - a.cam.x) * G) / A;
+    const y = ((farewell.y - a.cam.y) * mt) / D;
+    if (x < 0 || x > G || y < 0 || y > mt) return;
+    const fadeIn = (a.t - farewell.start) / 0.16;
+    const fadeOut = (farewell.until - a.t) / 0.32;
+    drawArenaBubble(
+      farewell.name,
+      farewell.text,
+      y - (headHeight * mt) / D - 17,
+      {
+        anchor: x,
+        sideGap: (headHalfWidth * G) / A + 8,
+        opacity: F(Math.min(fadeIn, fadeOut), 0, 1),
+      },
+    );
+  }
+
   function Wi() {
     drawRegionHud();
     drawAbilityCooldown();
     drawUnitBadge();
     const farewell = a.bossFarewell;
     if (I === "play" && farewell?.until > a.t)
-      drawArenaBubble(farewell.name, farewell.text, 83);
+      drawBossFarewell(farewell, 24, 23);
     else if (I === "play" && a.miniBossFarewell?.until > a.t)
-      drawArenaBubble(a.miniBossFarewell.name, a.miniBossFarewell.text, 83);
+      drawBossFarewell(a.miniBossFarewell, 9, 15);
     else if (I === "play" && a.playerSpeech?.until > a.t)
       drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
     else if (I === "play" && a.pet?.speechUntil > a.t)
@@ -17277,6 +17340,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     oe(i ? "地图饰品" : "MAP COSMETIC", s.yellow, name);
   }
 
+  function accessoryPrice(index) {
+    return Math.min(1288, 100 + index * 42);
+  }
+
   function accessoryThreshold(index) {
     return 250 + index * 500;
   }
@@ -17479,7 +17546,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           .map(({ item, index }) => {
             const level = wallet.owned[slot + ":" + index] || 0;
             const mapGift = mapAccessoryKeys.has(slot + ":" + index);
-            const price = 150 + index * 50;
+            const price = accessoryPrice(index);
             const threshold = accessoryThreshold(index);
             const label = level
               ? `Lv ${level}`
@@ -17518,7 +17585,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (canvas) drawAccessory(canvas.getContext("2d"), slot, index, 5, 4, 2);
       button.onclick = () => {
         if (action === "buy") {
-          const cost = 150 + index * 50;
+          const cost = accessoryPrice(index);
           if (
             wallet.owned[key] ||
             mapAccessoryKeys.has(key) ||
@@ -18475,7 +18542,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.boss.fightT0 = a.t;
     Xi(a.boss.e);
     if (previewMode === "boss-farewell") {
-      a.bossFarewell.until = a.t + 12;
       return;
     }
     Ii();

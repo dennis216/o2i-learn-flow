@@ -570,10 +570,11 @@ test("themed followers replace the previous squad, use low damage, and ink slows
 test("boss followers move while idle and regroup when the player runs", () => {
   const context = run();
   const { a, knowledge } = context;
-  knowledge.onKill({ kf: { boss: "crab" }, x: 0, y: 0 });
+  knowledge.onKill({ kf: { boss: "crab" }, x: 120, y: 180 });
   const [shrimp, crab] = a.kf.bossFollowers;
   const start = [shrimp.x, shrimp.y];
-  assert.equal(a.miniBossFarewell.until - a.t, 2);
+  assert.equal(a.miniBossFarewell.until - a.t, 1.75);
+  assert.deepEqual([a.miniBossFarewell.x, a.miniBossFarewell.y], [120, 180]);
   for (let frame = 0; frame < 45; frame++) {
     a.t += 1 / 60;
     knowledge.update(1 / 60);

@@ -2724,22 +2724,19 @@ export function createKnowledgeFlow(api) {
   const followerRewards = {
     crab: {
       kinds: ["shrimp", "crab"],
-      line: ["My little squad is yours.", "我的虾兵蟹将，就托付给你了。"],
+      line: ["My squad needs a field trip.", "我这俩兵，正好缺个队长！"],
     },
     yeti: {
       kinds: ["snowman"],
-      line: ["Take my little snowman.", "带上我的小雪人吧。"],
+      line: ["My snowman packs his own frost.", "小雪人送你，自带冷气！"],
     },
     octopus: {
       kinds: ["octopus"],
-      line: [
-        "My little octopus will slow them down.",
-        "小章鱼会用墨水帮你拖住敌人。",
-      ],
+      line: ["Tiny octopus. Big ink spills.", "小章鱼借你，墨水管够！"],
     },
     scorpion: {
       kinds: ["scorpion"],
-      line: ["Take my little rocket scorpion.", "带上这只拿火箭筒的小蝎子吧。"],
+      line: ["Mind the little one’s rockets!", "小蝎子归你，火箭别乱按！"],
     },
   };
 
@@ -2896,6 +2893,21 @@ export function createKnowledgeFlow(api) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return;
+    const fallen = a.miniBossFarewell;
+    if (fallen?.until > a.t) {
+      ctx.save();
+      ctx.globalAlpha = 0.68 * clamp((fallen.until - a.t) / 0.32, 0, 1);
+      blit(
+        ctx,
+        bossSprite(fallen.kind, 0, false),
+        fallen.x - camX,
+        fallen.y - camY + 12,
+        {
+          flip: fallen.flip,
+        },
+      );
+      ctx.restore();
+    }
     drawBossFollowers(ctx, camX, camY);
     // Player-side effects stay a step behind enemies and their bullets.
     const FX = 0.75;
@@ -3403,12 +3415,17 @@ export function createKnowledgeFlow(api) {
         const reward = followerRewards[e.kf.boss];
         a.miniBossFarewell = {
           name: L(def.name),
+          kind: e.kf.boss,
+          flip: e.flip,
           text: reward
             ? L(reward.line)
             : api.zh
-              ? "收下我的激光炮吧。"
-              : "Take my laser cannon.",
-          until: a.t + 2,
+              ? "激光炮给你，别拿来烤面包。"
+              : "Take the laser. It’s not a toaster.",
+          x: e.x,
+          y: e.y,
+          start: a.t,
+          until: a.t + 1.75,
         };
         if (reward) {
           const p = P();
