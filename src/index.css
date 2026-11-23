@@ -9,34 +9,36 @@ All colors MUST be HSL.
 @layer base {
   :root, .dark {
     color-scheme: dark;
-    /* Neutral charcoal surfaces with warm ivory type and champagne accents. */
-    --background: 0 0% 5%;
+    /* Dark (Nov 21 refresh): same forest hue and champagne gold, but a deeper, cleaner
+       base with clear steps between page / card / popover, hairline borders, and warm
+       greys for secondary text so it matches the ivory body text. */
+    --background: 166 18% 8%;
     --foreground: 40 22% 88%;
 
-    --card: 0 0% 8%;
+    --card: 166 15% 11%;
     --card-foreground: 40 22% 88%;
 
-    --popover: 0 0% 11%;
+    --popover: 166 14% 13%;
     --popover-foreground: 40 22% 88%;
 
     --primary: 44 38% 73%;
-    --primary-foreground: 0 0% 7%;
+    --primary-foreground: 166 22% 9%;
 
-    --secondary: 0 0% 15%;
+    --secondary: 166 11% 17%;
     --secondary-foreground: 40 22% 88%;
 
-    --muted: 0 0% 12%;
+    --muted: 166 10% 15%;
     --muted-foreground: 38 10% 68%;
 
     --accent: 44 43% 70%;
     --accent-text: 44 43% 70%;
-    --accent-foreground: 0 0% 7%;
+    --accent-foreground: 166 22% 9%;
 
     --destructive: 0 68% 57%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 27%;
+    --border: 166 9% 20%;
+    --input: 166 9% 27%;
     --ring: 44 43% 70%;
 
     /* Feature colours stay inside the forest / gold family: forest, sage, champagne, bronze. */
@@ -57,33 +59,33 @@ All colors MUST be HSL.
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     --gradient-secondary: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
 
-    --studio-ink: 0 0% 5%;
+    --studio-ink: 166 18% 8%;
     --studio-white: 40 22% 88%;
-    --quest-background: 0 0% 8%;
-    --quest-panel: 0 0% 7%;
+    --quest-background: 166 15% 11%;
+    --quest-panel: 166 18% 9%;
     --detail-sage: 155 18% 69%;
     --detail-bronze: 30 28% 62%;
     --studio-ice: 44 43% 70%;
     --studio-cobalt: 156 32% 42%;
     --studio-muted: 38 10% 68%;
     --glass-white: 0 0% 100%;
-    --glass-edge: 0 0% 20%;
+    --glass-edge: 166 9% 20%;
     --glass-blue: 156 32% 42%;
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 8%;
+    --sidebar-background: 166 15% 11%;
 
     --sidebar-foreground: 40 22% 88%;
 
     --sidebar-primary: 44 38% 73%;
 
-    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-primary-foreground: 166 22% 9%;
 
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent: 166 11% 17%;
 
     --sidebar-accent-foreground: 40 22% 88%;
 
-    --sidebar-border: 0 0% 20%;
+    --sidebar-border: 166 9% 20%;
 
     --sidebar-ring: 44 43% 70%;
   }
