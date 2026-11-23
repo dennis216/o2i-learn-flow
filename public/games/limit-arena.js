@@ -19320,6 +19320,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     } catch {}
     return null;
   }
+  function shouldAutoExpandArena() {
+    const preference = arenaFullPref();
+    if (preference) return preference === "on";
+    if (isArenaIPad()) return false;
+    return !hasArenaTouch() || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent);
+  }
   function enterFullscreenByChoice() {
     arenaFullPref("on");
     void enterArenaFullscreen();
@@ -22379,7 +22385,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (isPreview) {
         startArenaPreview();
         updateFullscreenLabel();
-      } else if (!hasArenaTouch() && arenaFullPref() !== "off")
+      } else if (shouldAutoExpandArena())
         void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),

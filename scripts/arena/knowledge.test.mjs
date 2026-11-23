@@ -471,20 +471,21 @@ test("the HUD shows only unit skills and equipment; the pause list names them", 
   assert.equal(ctx.globalAlpha, 1);
 });
 
-test("admin test speed: only admins, only listed speeds, everything runs faster", (t) => {
-  assert.equal(testSpeedFor({ test: 4 }, true), 4);
-  assert.equal(testSpeedFor({ test: 4 }, false), 1);
-  assert.equal(
-    testSpeedFor({ test: 8 }, false, "brian.o2i-website.pages.dev"),
-    8,
-  );
-  assert.equal(testSpeedFor({ test: 8 }, false, "www.o2iinstitute.org"), 1);
-  assert.equal(testSpeedFor({ test: 3 }, true), 1);
-  assert.equal(testSpeedFor({}, true), 1);
-  const store = new Map([["cq-arena-admin", "1"]]),
-    previous = globalThis.localStorage;
-  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null };
-  t.after(() => (globalThis.localStorage = previous));
+test("accelerated runs are available only in the personal preview", (t) => {
+  const preview = "brian.o2i-website.pages.dev";
+  assert.equal(testSpeedFor({ test: 8 }, preview), 8);
+  assert.equal(testSpeedFor({ test: 8 }, "test-work.o2i-website.pages.dev"), 1);
+  assert.equal(testSpeedFor({ test: 8 }, "www.o2iinstitute.org"), 1);
+  assert.equal(testSpeedFor({ test: 3 }, preview), 1);
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const storage = globalThis.localStorage;
+  globalThis.localStorage = { getItem: () => "1" };
+  Object.defineProperty(globalThis, "location", { configurable: true, value: { hostname: preview } });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, "location", previous);
+    else delete globalThis.location;
+    globalThis.localStorage = storage;
+  });
   const fast = (speed) => {
     const context = arenaContext({ i: false });
     context.tt.d.setup = {
@@ -521,8 +522,7 @@ test("admin test speed: only admins, only listed speeds, everything runs faster"
     const ref = normal.ye("slime", normal.a.p.x + 90, normal.a.p.y);
     assert.ok(Math.abs(foe.hp - ref.hp) < 1e-9, "enemy growth keeps up");
   }
-  // A student who is not an admin gets normal speed even with a saved choice.
-  store.delete("cq-arena-admin");
+  globalThis.location.hostname = "test-work.o2i-website.pages.dev";
   assert.equal(fast(4).a.testSpeed, 1);
 });
 
