@@ -138,7 +138,7 @@ test("compact weapon sprites distinguish sniper, rifle, shotgun and boomerang", 
     "integral",
   ]) {
     const spec = f.ctx.heldWeaponSpec(id);
-    assert(spec.width <= 9);
+    assert(spec.width <= 13);
     assert.equal(spec.pixels.length, 5);
     assert(spec.pixels.every((row) => row.length === spec.width));
     art.add(spec.pixels.join(""));

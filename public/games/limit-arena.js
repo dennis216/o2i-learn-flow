@@ -1,3 +1,4 @@
+import { ARENA_STAGE_SECONDS, MINI_BOSSES } from "./arena-knowledge.js";
 import { createKnowledgeFlow } from "./arena-knowledge.js";
 
 export const mathSvgDefinitions =
@@ -80,9 +81,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     restoreArenaDisplay();
     location.reload();
   };
-  if (!testing) {
-    window.parent === window && location.replace("/arena");
-  }
+  const previewParams =
+    !testing && window.parent === window
+      ? new URLSearchParams(location.search)
+      : null;
+  const previewMode = previewParams?.get("preview");
+  const isPreview = [
+    "merchant",
+    "boss-reward",
+    "boss-farewell",
+    "mini-boss",
+  ].includes(previewMode);
+  if (!testing && window.parent === window && !isPreview)
+    location.replace("/arena");
   let Po = "cq-arena-lang",
     i = Object.prototype.hasOwnProperty.call(overrides, "i")
       ? overrides.i
@@ -117,6 +128,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     seq: 0,
     pending: new Map(),
     call(t, e) {
+      if (isPreview)
+        return Promise.reject(new Error("Preview has no game service"));
       return new Promise((o, r) => {
         const n = ++this.seq,
           l = setTimeout(() => {
@@ -496,6 +509,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       }
     }
   }
+  const heroCollar = "...bBBBBb...";
   let la = {
       r: s.red,
       R: s.crimson,
@@ -519,7 +533,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hsssssks..",
       "..hhsSssss..",
       "...ssssss...",
-      "....bbbb....",
+      heroCollar,
     ],
     Rs = [
       [
@@ -618,10 +632,16 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ((h = As[f]), (c = f));
     }
     const u = Es.concat(h);
-    re(t, u, la, Math.round(e) - 6, Math.round(o) - u.length + c, {
+    if (l.headwear) u.fill("............", 0, 4);
+    const jacket = Es.length + 1;
+    u[jacket] = u[jacket].replace("bb", "Bb");
+    u[u.length - 1] = u[u.length - 1].replace("oo", "ow");
+    const top = Math.round(o) - u.length + (l.steadyBody ? 0 : c);
+    re(t, u, la, Math.round(e) - 6, top, {
       flip: l.flip,
       recolor: l.recolor,
     });
+    if (l.headwear) drawHeroHeadwear(t, e, top + 3, l.flip, true);
   }
   let Io = [
       ".....kkkkkkkkkkk........",
@@ -2004,7 +2024,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hssssssh..",
       "..hskssksh..",
       "...ssSSss...",
-      "....ssss....",
+      "...ssssss...",
     ],
     Ks = [
       "....rrrr....",
@@ -2014,17 +2034,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       "..hhhhhhhh..",
       "..hhhhhhhh..",
       "...hhhhhh...",
-      "....ssss....",
+      "...ssssss...",
     ],
     Ws = [
-      "...bbbbbb...",
+      heroCollar,
       "..sbbBBbbs..",
       "..sbbbbbbs..",
       "...bbbbbb...",
       "...nnnnnn...",
     ],
     tn = [
-      "...bbbbbb...",
+      heroCollar,
       "..sbbbbbbs..",
       "..sbbbbbbs..",
       "...bbbbbb...",
@@ -2036,28 +2056,36 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ["...nn..nn...", "...nn..nn...", "...oo..oo..."],
       ["...nn..nn...", "...oo..nn...", ".......oo..."],
     ];
-  function Qa(t, e, o, r, n, l, h, c) {
+  function Qa(t, e, o, r, n, l, h, c, livePlayer = false) {
     const u = c ? qo : la;
+    const headwear = livePlayer && hasHeroHeadwear();
     if (r === "left" || r === "right") {
       if (c) {
         const m = {};
         for (const y in la) m[y] = s.white;
         return Ve(t, e, o, n ? "run" : "idle", l, {
           flip: r === "left",
+          headwear,
+          steadyBody: livePlayer,
           recolor: m,
         });
       }
       return Ve(t, e, o, n ? "run" : "idle", l, {
         flip: r === "left",
         recolor: h,
+        headwear,
+        steadyBody: livePlayer,
       });
     }
     const f = n ? [1, 2, 3, 2][Math.floor(ae(l, 8) * 8) % 4] : 0,
       p = n ? (f === 2 ? -1 : 0) : Math.floor(ae(l, 2) * 2) % 2,
       k = (r === "up" ? Ks.concat(tn) : Ys.concat(Ws)).concat(en[f]);
-    re(t, k, u, Math.round(e) - 6, Math.round(o) - 16 + p, {
+    if (headwear) k.fill("............", 0, 4);
+    const top = Math.round(o) - 16 + (livePlayer ? 0 : p);
+    re(t, k, u, Math.round(e) - 6, top, {
       recolor: c ? null : h,
     });
+    if (headwear) drawHeroHeadwear(t, e, top + 3, false, false);
   }
   function Xe(t, e, o, r = 8) {
     t.fillStyle = s.black;
@@ -6604,7 +6632,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.shake = Math.min(1, a.shake + 0.3)));
   }
   function _n() {}
-  let Go = (t) => Math.round(26 + 16 * (t - 1) + 2.1 * (t - 1) * (t - 1));
+  let Go = (level) => 68 + 36 * (level - 1) + 5 * (level - 1) ** 2;
   function On(t = "rifle") {
     for (const o in a) delete a[o];
     Object.assign(a, {
@@ -6654,7 +6682,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       wrongStreak: 0,
       boss: null,
       bossK: 0,
-      nextBossT: 180,
+      nextBossT: ARENA_STAGE_SECONDS,
       bossWarned: !1,
       arena: null,
       spawnAcc: 0,
@@ -6671,6 +6699,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       questionPoolExhausted: false,
       nextMagnetAt: 10,
       pendingLv: 0,
+      stageXpUpgrades: 0,
       tips: {},
       banner: null,
       stageCleared: !1,
@@ -6730,6 +6759,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Jo(),
       (a.p.hp = a.p.maxHp));
     knowledge.onRunStart();
+    if (!testing) unlockMapAccessory("base");
   }
   function Fa(t) {
     a.weapons.push({ id: t, lv: 1, evo: !1, t: 0.3, n: 0, a: 0, tick: 0 });
@@ -6743,7 +6773,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const t = xt[a.cls],
       e = (a.st = {
         dmg: 1 + a.basicDmg,
-        cd: 1,
+        cd: 1 - (a.potionRate || 0),
         area: 1,
         proj: 0,
         critC: t.crit,
@@ -7266,10 +7296,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         a.later.push(() =>
           Rt(t.x, t.y, 26 + 10 * (H("heat") - 2), (r) => Xa(r, "burn", 3)),
         ));
-    const e = runT() / 60,
-      o = Math.max(1, Math.round(t.xp * (1 + Math.floor(e / 3) * 0.5)));
+    const bonus =
+      t.elite || t.kf?.boss ? 1 + Math.floor(runT() / 180) * 0.5 : 1;
+    const o = Math.max(1, Math.round(t.xp * bonus));
     if (
-      (ua(t.x, t.y, o * knowledge.xpScale(t)),
+      (ua(t.x, t.y, Math.max(1, Math.round(o * knowledge.xpScale(t)))),
       _t(
         t.x,
         t.y,
@@ -7297,7 +7328,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         spawnMagnetPickup(t.x, t.y, true);
       ($.boom(), (a.shake = Math.min(1, a.shake + 0.4)));
     } else {
-      if (Math.random() < 0.009)
+      const heartChance =
+        a.diff !== "hard" && a.p.hp < a.p.maxHp * 0.35 ? 0.018 : 0.009;
+      if (Math.random() < heartChance)
         a.picks.push({ kind: "heart", x: t.x, y: t.y, t0: a.t });
       if (Math.random() < 0.009 * 0.95 * 0.9 * 0.95)
         spawnMagnetPickup(t.x, t.y, true);
@@ -7337,17 +7370,40 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function runT() {
     return a.t * (a.testSpeed || 1);
   }
-  function Kn(t) {
-    for (
-      a.xp +=
-        t *
-        a.st.xp *
-        (a.testSpeed || 1) *
-        (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1);
-      a.xp >= a.need;
+  const BOSS_XP_LIMIT = 1;
+  function stageXpUpgradeLimit() {
+    // The first map begins at Lv 1, so seven upgrades reach Lv 8.
+    return (a.worldStage || 1) === 1 ? 7 : 8;
+  }
+  function Kn(t, bossExperience = !!a.boss) {
+    rewardPet(t * 0.25);
+    if (!bossExperience && a.pendingBossReward) return 0;
+    const stageUpgrades = a.stageXpUpgrades ?? 0;
+    const remaining = stageXpUpgradeLimit() - stageUpgrades;
+    const slots = bossExperience
+      ? Math.min(remaining, BOSS_XP_LIMIT - a.pendingLv)
+      : remaining;
+    if (slots <= 0) return 0;
 
-    )
-      ((a.xp -= a.need), a.lv++, (a.need = Go(a.lv)), a.pendingLv++);
+    let budget = a.need - a.xp;
+    for (let level = 1; level < slots; level++) budget += Go(a.lv + level);
+    const gained = Math.min(
+      budget,
+      t *
+        a.st.xp *
+        (a.pet?.id === "wisdom" ? 1.15 : 1) *
+        (a.testSpeed || 1) *
+        (a.regionBuff?.kind === "book" && a.regionBuff.until > a.t ? 1.2 : 1),
+    );
+    a.xp += gained;
+    while (a.xp + 1e-9 >= a.need) {
+      a.xp = Math.max(0, a.xp - a.need);
+      a.lv++;
+      a.need = Go(a.lv);
+      a.pendingLv++;
+      a.stageXpUpgrades = (a.stageXpUpgrades ?? 0) + 1;
+    }
+    return gained;
   }
   let Tt = { up: 0, down: 0, left: 0, right: 0, jx: 0, jy: 0, fire: 0 };
   function Za() {
@@ -7374,8 +7430,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ? (e.face = o > 0 ? "right" : "left")
         : (e.face = r > 0 ? "down" : "up"));
     const l = a.t < e.dashUntil;
-    let h = o * a.st.speed * terrainMoveFactor(),
-      c = r * a.st.speed * terrainMoveFactor();
+    let h =
+        o *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
+        (a.pet?.id === "support" ? 1.1 : 1),
+      c =
+        r *
+        a.st.speed *
+        terrainMoveFactor() *
+        (a.mount ? 1.12 : 1) *
+        (a.pet?.id === "support" ? 1.1 : 1);
     l &&
       ((h = e.ddx * 250),
       (c = e.ddy * 250),
@@ -7433,8 +7499,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (r > 0.1
         ? ((t.ddx = e / r), (t.ddy = o / r))
         : ((t.ddx = t.dx), (t.ddy = t.dy)),
-      (t.dashUntil = a.t + 0.16),
-      (t.dashCd = a.t + a.st.dashCd),
+      (t.dashUntil = a.t + 0.16 * (1 + (a.potionDash || 0))),
+      (t.dashCd = a.t + a.st.dashCd * (1 - (a.potionCd || 0))),
       (t.inv = Math.max(t.inv, a.t + 0.3)),
       $.dash(),
       reduceCannonCooldownOnDash(),
@@ -7478,6 +7544,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function ma(t, e = "?") {
     const o = a.p;
     if (a.god || a.t < o.inv || I !== "play" || o.hp <= 0) return !1;
+    if (a.pet?.id === "defense") {
+      if (a.pet.shield) {
+        a.pet.shield = false;
+        yt(o.x, o.y - 7, 9, 26, 0.4, s.blue);
+        _t(o.x, o.y - 7, [s.blue, s.white], 8, 36);
+        return false;
+      }
+      t *= 0.9;
+    }
     prepareEmergencyShell();
     const r = Math.max(
       1,
@@ -7491,7 +7566,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     );
     if (
       ((o.hp -= r),
-      (o.inv = a.t + 0.75),
+      (o.inv =
+        a.t + (a.diff === "hard" ? 0.75 : a.diff === "easy" ? 1.05 : 0.95)),
       ((a.dmgLog || (a.dmgLog = {}))[e] = (a.dmgLog[e] || 0) + r),
       (o.hurtT = a.t),
       (a.shake = Math.min(1, a.shake + 0.45)),
@@ -7556,8 +7632,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           ),
           (a.shake = Math.min(1, a.shake + 0.45)),
           $.snipeFull()),
-          n.main &&
-            a.t < (a.twinUntil || 0) &&
+          (n.main
+            ? a.t < (a.twinUntil || 0)
+            : a.t < (a.auxEchoUntil || 0) &&
+              !["medic", "heal"].includes(r.id)) &&
             a.echo.push({ t: a.t + 0.05, w: r, m: 1, twin: !0 }));
         let c =
           n.cd(r.lv) *
@@ -8662,7 +8740,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         hp: 12,
         sp: 23,
         dmg: 6,
-        xp: 2,
+        xp: 4,
         r: 6,
         pal: [s.peach, s.brown, s.white],
       },
@@ -8670,17 +8748,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         hp: 9,
         sp: 26,
         dmg: 7,
-        xp: 1,
+        xp: 3,
         r: 5,
         pal: [s.green, s.mgreen, s.white],
       },
-      bat: { hp: 5, sp: 43, dmg: 5, xp: 1, r: 4, pal: [s.lav, s.dpurple] },
-      ghost: { hp: 14, sp: 24, dmg: 7, xp: 2, r: 5, pal: [s.lgray, s.lav] },
+      bat: { hp: 5, sp: 43, dmg: 5, xp: 3, r: 4, pal: [s.lav, s.dpurple] },
+      ghost: { hp: 14, sp: 24, dmg: 7, xp: 3, r: 5, pal: [s.lgray, s.lav] },
       charger: {
         hp: 20,
         sp: 20,
         dmg: 13,
-        xp: 2,
+        xp: 4,
         r: 6,
         pal: [s.dorange, s.rust, s.yellow],
       },
@@ -8797,6 +8875,27 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       ["charger", t >= 2.5 ? 0.28 : 0],
       ["golem", t >= 2.2 ? 0.2 + 0.02 * t : 0],
     ];
+    const kind = Yt[a.theme || 0]?.worldKind;
+    const specialties = {
+      desert: [
+        ["charger", 0.34],
+        ["golem", 0.28],
+      ],
+      rainforest: [
+        ["sprout", 0.38],
+        ["bat", 0.32],
+      ],
+      snow: [
+        ["golem", 0.39],
+        ["ghost", 0.25],
+      ],
+      book: [
+        ["ghost", 0.42],
+        ["charger", 0.18],
+      ],
+    };
+    for (const [type, weight] of specialties[kind] || [])
+      e.find((entry) => entry[0] === type)[1] += weight;
     let o = e.reduce((n, l) => n + l[1], 0),
       r = Math.random() * o;
     for (const [n, l] of e) if ((r -= l) <= 0) return n;
@@ -8819,18 +8918,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       const type = a.spawnQueue.shift(),
         [x, y] = ia();
       ye(type, x, y, { swarm: !!a.waveN });
-      a.nextQueuedSpawn = a.t + 0.22;
+      a.nextQueuedSpawn = a.t + (a.t < 3 ? 0.18 : 0.22);
     }
     const e = runT() / 60,
       o = a.t > a.nextBossT - 9;
-    if (!a.starter && a.t > 0.8) {
+    if (!a.starter && a.t >= 0.35) {
       a.starter = 1;
       a.spawnQueue = Array(5).fill("slime");
     }
     let r =
-      (a.t < 1 ? 0 : 1.3 + 0.75 * e + 0.05 * e * e) *
+      (a.t < 0.7 ? 0 : 1.3 + 0.75 * e + 0.05 * e * e) *
       Jt().spawn *
       knowledge.spawnFactor();
+    if (a.t < 25) r *= 1.1;
+    if (a.testSpeed > 1) r = Math.min(r, 4.5);
     o && (r *= 0.3);
     const n = 120 + Math.min(40, e * 7);
     for (
@@ -8883,6 +8984,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         f = h / u,
         p = c / u,
         k = a.t < n.slowUntil || n.chill > a.t ? 0.6 - 0.05 * H("zero") : 1;
+      if (n.petFreezeUntil > a.t) continue;
       let m = 0,
         y = 0;
       if (n.role === "fuse" && !l && u < 25) {
@@ -8951,7 +9053,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             Pt(n.x, n.y, g + T * 0.32, 50, { dmg: 9, kind: "small", r: 2.5 });
         }
       } else ((m = f * n.sp), (y = p * n.sp));
-      ((n.x += (m * k + n.kx) * t), (n.y += (y * k + n.ky) * t));
+      ((n.x += (m * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.kx) * t),
+        (n.y += (y * k * (n.petSlowUntil > a.t ? 0.85 : 1) + n.ky) * t));
       const d = Math.exp(-9 * t);
       if (
         ((n.kx *= d),
@@ -9156,7 +9259,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       showAbilityCooldown("skill", a.skillReady - a.t);
       return;
     }
-    ((a.skillReady = a.t + e.cd * (1 - 0.03 * H("taylorreserve"))),
+    if (["twin", "fan", "vanish"].includes(e.id))
+      a.auxEchoUntil = a.t + Math.min(2.25, e.dur);
+    ((a.skillReady =
+      a.t +
+      e.cd * (1 - (a.potionSkill || 0)) * (1 - 0.03 * H("taylorreserve"))),
       (a.skillT = a.t),
       (a.skillUntil = a.t + e.dur),
       (a.recoveryUntil = H("recovery") ? a.t + 3 : 0),
@@ -10218,15 +10325,18 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function showRegionTutorial(key, title, content) {
     const seen = tt.d.regionSeen || (tt.d.regionSeen = {});
     if (seen[key] || I !== "play") return false;
-    seen[key] = true;
-    tt.save();
+
     for (const key in Tt) Tt[key] = 0;
     I = "terrain";
     Bt.show(
-      `<div class="panel pix terrain-panel"><div class="qhd"><b>${z(title)}</b></div><p class="region-copy">${z(content)}</p><button type="button" class="go" id="terrainGo">${i ? "明白了，继续" : "GOT IT — CONTINUE"}</button></div>`,
+      `<div class="panel pix terrain-panel"><div class="qhd"><b>${z(title)}</b></div><p class="region-copy">${z(content)}</p><label><input type="checkbox" id="regionMute"> ${i ? "不再提醒" : "Do not remind me"}</label><button type="button" class="go" id="terrainGo">${i ? "明白了，继续" : "GOT IT — CONTINUE"}</button></div>`,
       "terrain",
     );
     N("terrainGo").onclick = () => {
+      if (N("regionMute")?.checked) {
+        seen[key] = true;
+        tt.save();
+      }
       Bt.hide();
       I = "play";
       a.p.inv = Math.max(a.p.inv, a.t + 0.5);
@@ -10322,7 +10432,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     const terrain = theme.zones.find((z) => z.role === "terrain"),
       distance = Math.hypot(X() - terrain.x, _() - terrain.y);
-    if (distance < terrain.r + 14) {
+    if (distance >= terrain.r + 14) state.terrainNotified = false;
+    if (distance < terrain.r + 14 && !state.terrainNotified) {
+      state.terrainNotified = true;
       const titles = {
         desert: ["QUICKSAND", "流沙"],
         rainforest: ["SWAMP", "沼泽"],
@@ -10348,6 +10460,70 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.regionBuff?.kind === "snow" && a.regionBuff.until > a.t ? 1.15 : 1)
     );
   }
+  const regionScenery = {
+    desert: {
+      bank: "#9a754f",
+      floor: "#b99a62",
+      fleck: "#e3c78b",
+      prop: [
+        "...ll.ll...",
+        ".llhlllhl..",
+        "llhlhlhllll",
+        ".ll.l.l..ll",
+        "....bb.....",
+        "....bw.....",
+        "....bb.....",
+        "...bbb.....",
+      ],
+      palette: { l: "#346d52", h: "#79aa59", b: "#79533f", w: "#c5945d" },
+    },
+    rainforest: {
+      bank: "#315248",
+      floor: "#3e6756",
+      fleck: "#7d965d",
+      prop: [
+        "....ll.....",
+        "...lhl.ll..",
+        "..lhl.lhl..",
+        ".llllllhll.",
+        "....bb.....",
+        "..b.bb.b...",
+        ".bbbbbwb...",
+      ],
+      palette: { l: "#30634e", h: "#70a765", b: "#463646", w: "#b27977" },
+    },
+    snow: {
+      bank: "#34536e",
+      floor: "#527c95",
+      fleck: "#a1c9d6",
+      prop: [
+        ".....h.....",
+        "....hlh....",
+        "....hllh...",
+        "..h.hllh.h.",
+        ".hlhhllhhll",
+        "hlllhllhllh",
+        ".lllllllll.",
+      ],
+      palette: { l: "#5f9cc3", h: "#c0e9e9", b: "#4d6d93", w: "#f6ffff" },
+    },
+    book: {
+      bank: "#4d3d63",
+      floor: "#625171",
+      fleck: "#a08aaa",
+      prop: [
+        "....h......",
+        ".....h.....",
+        "..bbbbbb...",
+        ".bllllllb..",
+        ".blwwwwlb..",
+        ".blwwwwlb..",
+        ".bllllllb..",
+        "..bbbbbb...",
+      ],
+      palette: { l: "#7667ab", h: "#d8bfe4", b: "#30283f", w: "#453374" },
+    },
+  };
   function drawSpecialRegions(ctx, camX, camY) {
     const active =
       a.regionState?.active ||
@@ -10356,33 +10532,93 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const x = active.x - camX,
       y = active.y - camY;
     if (x < -40 || x > A + 40 || y < -40 || y > D + 40) return;
-    Ht(ctx, x, y, active.r + Math.sin(E * 3) * 2, s.green, 1, 3);
-    for (let n = 0; n < 6; n++) {
-      const angle = (n / 6) * j + E * 0.4;
-      ctx.fillStyle = n % 2 ? s.yellow : s.white;
-      ctx.fillRect(
-        Math.round(x + Math.cos(angle) * 21),
-        Math.round(y + Math.sin(angle) * 12),
-        2,
-        2,
+    const scenery = regionScenery[active.kind];
+    if (!scenery) return;
+    const radius = active.r;
+    const rect = (dx, dy, width, height, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x + dx), Math.round(y + dy), width, height);
+    };
+    // Broken, stepped banks soften the edge while the shape stays readable during combat.
+    for (let row = -7; row <= 7; row++) {
+      const half = Math.round(radius * (1 - Math.abs(row) * 0.075));
+      const offset = (row % 3) * 2;
+      rect(offset - half, row * 3, half * 2, 3, scenery.bank);
+      rect(offset - half + 4, row * 3 + 1, half * 2 - 8, 2, scenery.floor);
+    }
+    for (let n = 0; n < 10; n++) {
+      const dx = ((n * 17) % 37) - 18,
+        dy = ((n * 11) % 29) - 14;
+      rect(dx, dy, 2 + (n % 4), 1, scenery.fleck);
+    }
+    for (const [index, offset] of [
+      [0, -1],
+      [1, 1],
+    ]) {
+      Ct(
+        ctx,
+        "region-prop:" + active.kind,
+        scenery.prop,
+        scenery.palette,
+        Math.round(x + offset * radius * 0.66),
+        Math.round(y + (index ? 10 : -8)),
+        { scale: 1 },
       );
     }
-  }
-  function drawRegionHud() {
-    const active =
-      a.regionState?.active ||
-      (a.regionBuff?.kind === "snow" ? a.regionBuff.source : null);
-    if (active && active.expires > a.t) {
-      drawRegionArrow(active);
-      const rule = REGION_RULES[active.kind];
-      Y(R, regionName(rule) + " " + regionDirection(active), G / 2, mt - 26, {
-        pixel: true,
-        size: 12,
-        col: s.green,
-        align: "center",
-        outline: s.black,
-      });
+    if (active.kind === "desert") {
+      for (let row = -4; row <= 4; row++) {
+        const half = 16 - Math.abs(row) * 2;
+        rect(-half, row * 2, half * 2, 2, row < -1 ? "#287e8c" : "#206277");
+      }
+      for (let n = 0; n < 4; n++) {
+        rect(
+          -10 + n * 5,
+          (n % 3) * 4 - 5,
+          4 + ((Math.floor(E * 4) + n) % 3),
+          1,
+          "#6bc8bc",
+        );
+      }
+    } else if (active.kind === "rainforest") {
+      for (const [dx, dy] of [
+        [-15, 7],
+        [-6, -5],
+        [5, 10],
+        [13, -8],
+        [20, 4],
+      ]) {
+        rect(dx, dy - 1, 1, 5, "#86a661");
+        rect(dx - 2, dy - 3, 5, 2, "#d978b2");
+        rect(dx - 1, dy - 4, 3, 4, "#d978b2");
+        rect(dx, dy - 2, 1, 1, "#fff09f");
+      }
+      rect(-8, 13, 15, 2, "#31463c");
+    } else if (active.kind === "snow") {
+      for (const [dx, dy] of [
+        [-18, 5],
+        [-4, -9],
+        [7, 11],
+        [17, -4],
+      ]) {
+        rect(dx - 4, dy, 10, 2, "#7aadc1");
+        rect(dx - 1, dy - 2, 6, 1, "#bbe5e3");
+      }
+      rect(-13, 2, 23, 1, "#a5dfdb");
+      rect(-8, 3, 17, 1, "#669dc5");
+    } else if (active.kind === "book") {
+      rect(-15, -9, 30, 20, "#332d44");
+      rect(-14, -10, 13, 18, "#c1a783");
+      rect(1, -10, 13, 18, "#e0bc95");
+      rect(-1, -8, 2, 18, "#785b69");
+      for (let line = 0; line < 4; line++) {
+        rect(-11, -6 + line * 3, 7 + (line % 2), 1, "#775979");
+        rect(4, -6 + line * 3, 6 + ((line + 1) % 3), 1, "#775979");
+      }
+      rect(8, 6, 3, 7, "#a65678");
     }
+  }
+
+  function drawRegionHud() {
     const buff = a.regionBuff;
     if (buff && buff.until > a.t)
       Y(R, regionName(REGION_RULES[buff.kind]), G / 2, 82, {
@@ -10392,6 +10628,852 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         align: "center",
         outline: s.black,
       });
+  }
+
+  const arenaPets = [
+    {
+      id: "attack",
+      name: ["Ember Dragon", "烈焰龙"],
+      desc: [
+        "Attacks nearby foes and releases a fire pulse.",
+        "攻击附近敌人，周期性释放火焰。",
+      ],
+      color: "#ff7652",
+    },
+    {
+      id: "heal",
+      name: ["Life Sprite", "生命精灵"],
+      desc: [
+        "Restores HP over time with a low-health burst.",
+        "持续回血，低血量时额外治疗。",
+      ],
+      color: "#8ce38a",
+    },
+    {
+      id: "defense",
+      name: ["Iron Turtle", "钢甲龟"],
+      desc: [
+        "Reduces damage and periodically blocks a hit.",
+        "减轻伤害，定期抵挡一次攻击。",
+      ],
+      color: "#a5b4c7",
+    },
+    {
+      id: "control",
+      name: ["Frost Fox", "寒冰狐"],
+      desc: [
+        "Slows nearby foes and periodically freezes them.",
+        "减速附近敌人，周期性冻结。",
+      ],
+      color: "#89d9ff",
+    },
+    {
+      id: "support",
+      name: ["Storm Bird", "雷鸣鸟"],
+      desc: [
+        "Boosts movement and helps recharge hero skills.",
+        "提升移速，加快英雄技能恢复。",
+      ],
+      color: "#ffe372",
+    },
+    {
+      id: "wisdom",
+      name: ["Sage Owl", "智慧猫头鹰"],
+      desc: [
+        "Boosts XP, with a bonus every three correct answers.",
+        "增加经验，连续答对三题时额外奖励。",
+      ],
+      color: "#cfa8ff",
+    },
+  ];
+
+  const merchantShops = {
+    pet: {
+      name: ["Pet Merchant", "宠物商人"],
+      coat: "#675093",
+      trim: "#f2cd70",
+      items: arenaPets,
+    },
+    mount: {
+      name: ["Mount Merchant", "坐骑商人"],
+      coat: "#38664f",
+      trim: "#dba270",
+      items: [
+        {
+          id: "mount",
+          name: ["Wind Runner", "疾风坐骑"],
+          desc: ["+12% movement speed for this run.", "本局移速提高12%。"],
+        },
+      ],
+    },
+    talent: {
+      name: ["Talent Merchant", "天赋商人"],
+      coat: "#594786",
+      trim: "#dcc17a",
+      items: [
+        {
+          id: "talent",
+          name: ["Talents", "天赋"],
+          desc: ["Choose one of three talents.", "三个随机天赋里选一个。"],
+        },
+      ],
+    },
+    potion: {
+      name: ["Potion Merchant", "药水商人"],
+      coat: "#2e6382",
+      trim: "#8ce8db",
+      items: [
+        {
+          id: "healPotion",
+          name: ["Healing Potion", "治疗药水"],
+          desc: ["Restore 45 HP now.", "立即恢复45点生命。"],
+        },
+        {
+          id: "rate",
+          name: ["Haste Potion", "迅捷药水"],
+          desc: ["6% faster attacks.", "攻击加快6%。"],
+        },
+        {
+          id: "max",
+          name: ["Vitality Potion", "活力药水"],
+          desc: ["+8 maximum HP.", "生命上限加8。"],
+        },
+        {
+          id: "dash",
+          name: ["Stride Potion", "长步药水"],
+          desc: ["+10% dash distance.", "冲刺距离加10%。"],
+        },
+        {
+          id: "cool",
+          name: ["Focus Potion", "专注药水"],
+          desc: ["6% shorter skill cooldown.", "技能冷却缩短6%。"],
+        },
+        {
+          id: "blink",
+          name: ["Blink Potion", "闪步药水"],
+          desc: ["8% shorter dash cooldown.", "冲刺冷却缩短8%。"],
+        },
+        {
+          id: "mix",
+          name: ["Balance Potion", "平衡药水"],
+          desc: [
+            "+4 maximum HP and 3% faster attacks.",
+            "生命上限加4，攻击加快3%。",
+          ],
+        },
+      ],
+    },
+  };
+
+  const potionBonuses = {
+    rate: { potionRate: 0.06 },
+    dash: { potionDash: 0.1 },
+    cool: { potionSkill: 0.06 },
+    blink: { potionCd: 0.08 },
+    max: { basicMaxHp: 8 },
+    mix: { basicMaxHp: 4, potionRate: 0.03 },
+  };
+  function drinkArenaPotion(id) {
+    for (const [field, value] of Object.entries(potionBonuses[id]))
+      a[field] = Math.min(
+        field === "basicMaxHp" ? Infinity : 0.25,
+        (a[field] || 0) + value,
+      );
+    Jo();
+  }
+
+  function stallItemPosition(merchant, index, count) {
+    if (merchant.kind === "mount")
+      return { x: merchant.x + 12, y: merchant.y + 12 };
+    return { x: merchant.x - (count - 1) * 8 + index * 16, y: merchant.y + 18 };
+  }
+
+  function tickPortalMerchant() {
+    const merchant = a.portalMerchant;
+    if (!merchant || merchant.visited || a.pendingLv || I !== "play") return;
+    const shop = merchantShops[merchant.kind || "pet"];
+    const index = shop.items.findIndex((item, index) => {
+      const point = stallItemPosition(merchant, index, shop.items.length);
+      return (
+        Math.abs(X() - point.x) <= 7 && Math.abs(_() - (point.y + 9)) <= 12
+      );
+    });
+    if (index < 0) {
+      merchant.lastItem = null;
+      return;
+    }
+    if (merchant.lastItem === index) return;
+    merchant.lastItem = index;
+    const item = shop.items[index];
+    const talentIds = [
+      "cauchy",
+      "area",
+      "crit",
+      "armor",
+      "neighbor",
+      "velocity",
+      "frostlemma",
+      "continuity",
+    ];
+    if (item.id === "talent" && !merchant.talents) {
+      const available = talentIds.filter((id) => O[id] && H(id) < Va(id));
+      merchant.talents = [];
+      while (available.length && merchant.talents.length < 3)
+        merchant.talents.push(
+          available.splice(Math.floor(Math.random() * available.length), 1)[0],
+        );
+    }
+    const products =
+      item.id === "talent"
+        ? merchant.talents.map((id) => {
+            const card = se(id, "passive");
+            return {
+              id,
+              name: [card.name, card.name],
+              desc: [card.desc, card.desc],
+              color: s.yellow,
+            };
+          })
+        : [item];
+    const previousPet =
+      (merchant.kind || "pet") === "pet" && a.pet
+        ? arenaPets.find((pet) => pet.id === a.pet.id)
+        : null;
+    cancelArenaPointers();
+    for (const key in Tt) Tt[key] = 0;
+    I = "pause";
+    const lang = i ? 1 : 0;
+    Bt.show(
+      `<div class="panel pix merchant-panel"><div class="qhd"><b>${shop.name[lang]}</b><span>${i ? "任选一项" : "Choose one"}</span></div>
+      <div class="merchant-pets">${products.map((pet) => `<button type="button" data-pet="${pet.id}"><canvas width="40" height="24" aria-hidden="true"></canvas><b style="color:${pet.color || shop.trim}">${pet.name[lang]}</b><span>${pet.desc[lang]}</span></button>`).join("")}</div>
+      <p id="petReplacement" hidden></p><button type="button" id="merchantLeave">${i ? "离开" : "Leave"}</button></div>`,
+      "merchant",
+    );
+    const leave = () => {
+      Bt.hide();
+      I = "play";
+    };
+    N("merchantLeave").onclick = leave;
+    const notice = N("petReplacement");
+    if (previousPet) {
+      notice.hidden = false;
+      notice.textContent = i
+        ? `领取后，${previousPet.name[lang]} 会离开。`
+        : `Taking this pet will release ${previousPet.name[lang]}.`;
+    }
+    let confirmed = false;
+    for (const button of N("ov").querySelectorAll("[data-pet]")) {
+      const id = button.dataset.pet;
+      drawStallItem(
+        button.querySelector("canvas").getContext("2d"),
+        id,
+        20,
+        12,
+        2,
+      );
+      button.onclick = () => {
+        if (previousPet && !confirmed) {
+          confirmed = true;
+          const label = document.createElement("span");
+          label.textContent = i ? "确认替换" : "Confirm replacement";
+          button.replaceChildren(label);
+          return;
+        }
+        merchant.visited = true;
+        if (item.id === "talent") Li(se(id, "passive"));
+        else if (id === "mount") a.mount = true;
+        else if (id === "healPotion") a.p.hp = Math.min(a.p.maxHp, a.p.hp + 45);
+        else if (potionBonuses[id]) drinkArenaPotion(id);
+        else
+          a.pet = {
+            id,
+            xp: 0,
+            level: 1,
+            tickAt: a.t,
+            pulseAt: a.t + 20,
+            shield: false,
+          };
+        leave();
+      };
+    }
+  }
+
+  function rewardPet(xp) {
+    if (!a.pet) return;
+    a.pet.xp += xp;
+    a.pet.level = Math.min(10, 1 + Math.floor(a.pet.xp / 12));
+  }
+
+  function tickArenaPet(dt) {
+    const pet = a.pet;
+    if (!pet) return;
+    const player = a.p;
+    if (a.t >= (pet.speechAt ?? (pet.speechAt = a.t + 25))) {
+      pet.speechAt = a.t + 35 + Math.random() * 20;
+      pet.speechUntil = a.t + 0.8;
+      pet.speech = pet.id === "control" ? (i ? "嗷！" : "Awoo!") : "(^_^)";
+    }
+    const phase = a.t * 1.65;
+    const targetX = X() + Math.cos(phase) * 21;
+    const targetY = _() + Math.sin(phase) * 13 + 4;
+    if (pet.x == null || Math.hypot(targetX - pet.x, targetY - pet.y) > 96) {
+      pet.x = targetX;
+      pet.y = targetY;
+    } else {
+      const follow = 1 - Math.exp(-8 * dt);
+      pet.x += (targetX - pet.x) * follow;
+      pet.y += (targetY - pet.y) * follow;
+    }
+    const stage = pet.level === 10 ? 2 : pet.level >= 5 ? 1 : 0;
+    if (pet.id === "support")
+      a.skillReady = Math.max(a.t, a.skillReady - dt * 0.1);
+    if (a.t >= pet.tickAt) {
+      pet.tickAt =
+        a.t +
+        (pet.id === "heal" ? 5 : pet.id === "attack" ? 2 - stage * 0.2 : 0.5);
+      if (pet.id === "heal")
+        player.hp = Math.min(player.maxHp, player.hp + 3 + stage);
+      if (pet.id === "attack") {
+        const enemy = a.enemies.find(
+          (enemy) =>
+            !enemy.dead && Math.hypot(enemy.x - pet.x, enemy.y - pet.y) < 70,
+        );
+        if (enemy) {
+          Xa(enemy, "burn", 1.4);
+          At(enemy, 10 + stage * 3);
+          _t(enemy.x, enemy.y, [s.orange, s.yellow], 6, 30);
+        }
+      }
+      if (pet.id === "control")
+        Rt(pet.x, pet.y, 42 + stage * 8, (enemy) => {
+          enemy.petSlowUntil = a.t + 0.65;
+        });
+    }
+    if (a.t < pet.pulseAt) return;
+    pet.pulseAt = a.t + (pet.id === "defense" || pet.id === "heal" ? 30 : 20);
+    if (pet.id === "defense") {
+      pet.shield = true;
+      yt(X(), _(), 4, 16, 0.35, s.blue);
+    }
+    if (pet.id === "heal" && player.hp < player.maxHp * 0.35)
+      player.hp = Math.min(player.maxHp, player.hp + 15);
+    if (pet.id === "control")
+      Rt(pet.x, pet.y, 46 + stage * 8, (enemy) => {
+        enemy.petFreezeUntil = a.t + 2;
+        Xa(enemy, "chill", 2);
+      });
+    if (pet.id === "attack") {
+      yt(pet.x, pet.y, 10, 55, 0.4, s.orange);
+      Rt(pet.x, pet.y, 55, (enemy) => {
+        Xa(enemy, "burn", 2);
+        At(enemy, 16 + stage * 4);
+      });
+    }
+  }
+
+  const arenaPetSprites = [
+    [
+      "..k.........k...",
+      ".kck.......kck..",
+      "kcock.kkk.kcocc.",
+      "kcoookxwxkoocck.",
+      ".kcooxxwxxocck..",
+      "..kkxkwxwkkk....",
+      "...kxxwwxxkxk...",
+      "..koxxhxxkoxxk..",
+      ".kocxxhxkkoxok..",
+      "..kkkkkkkkkkk...",
+      "....kk...kk.....",
+    ],
+    [
+      "......khk.......",
+      ".....khwhk......",
+      "....khwwwhk.....",
+      "...kxhhwhhxk....",
+      "..khxwwhxwxhk...",
+      "kxkxxhwhxxkxkk..",
+      "koxxwxxwxwxxok..",
+      ".koxxwxwwxxok...",
+      "..kkoxxxxxkk....",
+      "....kkxxkk......",
+      "......kk........",
+    ],
+    [
+      "...kkkkkk.......",
+      "..koxhxoxk......",
+      ".koxhxhxoxk..kk.",
+      "koxhxxhxxoxkkwk.",
+      "koxxhhxhxoxkxwk.",
+      "koxxhxxhxoxxxkk.",
+      ".koxxxhxxokxk...",
+      "..kkkkkkkkkk....",
+      "..kwkk..kwwk....",
+      "...kk....kk.....",
+    ],
+    [
+      "..k......k......",
+      ".kwwk..kwwk.....",
+      ".kwxkkkkxwk.....",
+      ".kxwhwhwwk......",
+      "kxwkwxwkwxk..kk.",
+      ".kxwwwwwwk..kwhk",
+      "..kkwxxkk..kwhwk",
+      "..koxxoxkhkwhwk.",
+      "..kwwwxwwkwwkk..",
+      "...kk..kk.kk....",
+    ],
+    [
+      "k..........k....",
+      "kxk......kkxk...",
+      "khxk....kxhxk...",
+      ".khxk..khwxk....",
+      "..kxkkkxhoxkkk..",
+      "...kxwxhxxkwkk..",
+      "..khxhhxxkkk....",
+      ".koxxhxxk.......",
+      "..kkoxxkk.......",
+      "....kk.kk.......",
+    ],
+    [
+      ".k..........k...",
+      ".kxkk....kkxk...",
+      "..khxkkkkxhk....",
+      ".koxhxxhxxok....",
+      "koxwwwxxwwwxok..",
+      "koxwkhxxhkwxok..",
+      "khxxwwxxwwxxhk..",
+      "koxxxhwwhxxxok..",
+      ".kkoxhxxhxokk...",
+      "...koxxoxk......",
+      "....kk.kk.......",
+    ],
+  ];
+  const petIdleSprites = arenaPetSprites.map((pixels, index) => {
+    // Fold the raised ear or wing tips in alternate frames.
+    const alternate = [...pixels];
+    const tips = [2, 1, 1, 2, 2, 2][index];
+    for (let row = 0; row < tips; row++)
+      alternate[row] = alternate[row].replace(/[kchw]/g, ".");
+    return alternate;
+  });
+
+  const merchantHats = {
+    pet: [
+      "........kkkkkk......",
+      "......kkxxxxxxkk....",
+      ".....kxxxhxxhxxxk...",
+      ".....kxxxxxxxxxk....",
+      ".....koooooooooook..",
+      "...kkkkkkkkkkkkkkk..",
+    ],
+    mount: [
+      "....................",
+      "......kkkkkk........",
+      ".....kxhhhxxk.......",
+      "....kxxxxxxxkk......",
+      "..kkooooooooookkk...",
+      "..kkkkkkkkkkkkkkk...",
+    ],
+    potion: [
+      ".........kk.........",
+      "........kxxk........",
+      ".......kxhxk........",
+      "......kxxxxkk.......",
+      ".....kxohxxxxk......",
+      "...kkkkkkkkkkkkkkk..",
+    ],
+    talent: [
+      ".......kkkkkk.......",
+      "......kxxxxhxk......",
+      "......kxhhxxxk......",
+      "......kxxxxxhk......",
+      "......kooYooook.....",
+      "...kkkkkkkkkkkkkkkk.",
+    ],
+  };
+  const merchantBody = [
+    ".....kwwwwwwwk......",
+    ".....kwtwwwtwk......",
+    ".....kwwwswwwk..kk..",
+    ".....kwzzwzzwk..koYk",
+    "......kzzgzzk...koYk",
+    ".....kxkzgzkxk...ok.",
+    "....kxookgkooxk..ok.",
+    "...kxhxYxxhxk...ok..",
+    "...kxwxoxxwxkk..ok..",
+    "...kxhxoxhxxkk..ok..",
+    "..kxhhxoxhhxxkk.ok..",
+    "..kxxxoYoxxxxxk.ok..",
+    "...kkkkkkkkkkk..ok..",
+    ".....kk...kk....kk..",
+  ];
+  const merchantSprites = Object.fromEntries(
+    Object.entries(merchantHats).map(([kind, hat]) => [
+      kind,
+      [...hat, ...merchantBody],
+    ]),
+  );
+  const merchantBlinkSprites = Object.fromEntries(
+    Object.entries(merchantSprites).map(([kind, sprite]) => {
+      const blinking = [...sprite];
+      blinking[7] = ".....kwsswsswk......";
+      return [kind, blinking];
+    }),
+  );
+
+  const petShadows = [
+    "#a42e45",
+    "#3f886c",
+    "#526b87",
+    "#4288a3",
+    "#c58a32",
+    "#7650a0",
+  ];
+  const potionBottles = {
+    healPotion: {
+      color: "#e34d66",
+      seal: "#ffd5dc",
+      body: [
+        "...kkkk...",
+        "...kwwk...",
+        "....kk....",
+        "..kkxxkk..",
+        ".kxwxxxxk.",
+        ".kxxllxxk.",
+        "..kkkkkk..",
+      ],
+    },
+    rate: {
+      color: "#e3932d",
+      seal: "#fff0ae",
+      body: [
+        "....kk....",
+        "...kwwk...",
+        "....kk....",
+        "...kxxk...",
+        "..kxwxk...",
+        "..kxlxxk..",
+        "..kkkkkk..",
+      ],
+    },
+    max: {
+      color: "#b34879",
+      seal: "#ffe4f0",
+      body: [
+        "...kkkk...",
+        "....kk....",
+        "..kkxxkk..",
+        ".kxxxxxxk.",
+        ".kxwllxxk.",
+        ".kxxxxxxk.",
+        "..kkkkkk..",
+      ],
+    },
+    dash: {
+      color: "#18896d",
+      seal: "#94ffde",
+      body: [
+        ".....kk...",
+        "....kwk...",
+        "....kk....",
+        "...kxxk...",
+        "..kxlxk...",
+        "..kxxk....",
+        "..kkkk....",
+      ],
+    },
+    cool: {
+      color: "#3675d1",
+      seal: "#c7e6ff",
+      body: [
+        "...kkkk...",
+        "...kwwk...",
+        "...kxxk...",
+        "...kwxk...",
+        "...kllk...",
+        "...kxxk...",
+        "...kkkk...",
+      ],
+    },
+    blink: {
+      color: "#8648bf",
+      seal: "#f4cfff",
+      body: [
+        "....kk....",
+        "...kwwk...",
+        "...kxxk...",
+        "..kxlxxk..",
+        ".kxxwxxxk.",
+        "..kxxxxk..",
+        "...kkkk...",
+      ],
+    },
+    mix: {
+      color: "#bda338",
+      seal: "#fff9b0",
+      body: [
+        "..kk..kk..",
+        "..kwkkwk..",
+        "..kxllxk..",
+        "..kxllxk..",
+        ".kxxllxxk.",
+        ".kxxllxxk.",
+        "..kkkkkk..",
+      ],
+    },
+  };
+  const mountBody = [
+    "...................kk....",
+    ".................kkak....",
+    "................kagakk...",
+    ".............kkkaggagkk..",
+    "..kkk......kkmmgabwgagk..",
+    ".kgggk.kkkkmgggagbbgvkk..",
+    "kgmmkkkgbbbggggaggbgkgak.",
+    "kgk..kgbbbYbaggaggkgkgak.",
+    ".k...kgbbYbgaggggkk..kk..",
+    ".....kggbbgaggggk........",
+    "......kmmmggmmkk.........",
+    ".......kkkkkkk...........",
+  ];
+  const mountNodBody = mountBody.map(
+    (row, index) =>
+      row.slice(0, 16) + (index ? mountBody[index - 1].slice(16) : "........."),
+  );
+  const mountPalette = {
+    k: "#1a1420",
+    a: "#dda36a",
+    g: "#ad714e",
+    m: "#774a3c",
+    b: "#487e8b",
+    Y: "#ebc680",
+    w: "#fff1ce",
+    v: "#653b38",
+  };
+
+  function drawMount(ctx, centerX, groundY, facing, moving, dashing = false) {
+    const flip = facing === "left";
+    const stride = dashing ? 2 : moving ? 1 : 0;
+    const frame = moving ? Math.floor(ae(E, 9) * 9) % 2 : 0;
+    const bounce = frame && stride ? 1 : 0;
+    ctx.save();
+    ctx.translate(Math.round(centerX), Math.round(groundY));
+    if (flip) ctx.scale(-1, 1);
+    x(ctx, -11, 0, 22, 2, "#131321");
+    x(ctx, -14, 1, 28, 1, "rgba(11, 14, 25, 0.55)");
+    for (const [legX, offset] of [
+      [-5, -1],
+      [-2, 1],
+      [4, 1],
+      [7, -1],
+    ]) {
+      const hoof = legX + offset * stride * (frame ? -1 : 1);
+      x(ctx, legX, -6, 3, 4, mountPalette.k);
+      x(ctx, hoof, -4, 3, 4, mountPalette.k);
+      x(ctx, hoof + 1, -4, 1, 2, offset < 0 ? mountPalette.m : mountPalette.g);
+      x(ctx, hoof, -1, 3, 1, offset < 0 ? "#4c3c45" : "#8c7373");
+    }
+    const nod = !moving && (E + 0.35) % 3.2 < 0.32;
+    Ct(
+      ctx,
+      nod ? "wind-runner-nod" : "wind-runner-body",
+      nod ? mountNodBody : mountBody,
+      mountPalette,
+      1,
+      -9 - bounce,
+    );
+    ctx.restore();
+    return bounce;
+  }
+
+  function drawStallItem(ctx, id, x, y, scale = 1) {
+    const potion = potionBottles[id];
+    if (potion) {
+      Ct(
+        ctx,
+        "potion:" + id + ":" + scale,
+        potion.body,
+        { k: "#171628", x: potion.color, w: "#fff9e3", l: potion.seal },
+        x,
+        y,
+        { scale },
+      );
+      return;
+    }
+    if (O[id]) {
+      ja(ctx, id, x - 6 * scale, y - 6 * scale, scale, O[id].col || s.yellow);
+      return;
+    }
+    if (id === "mount") {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+      drawMount(ctx, 0, 5, "right", false);
+      ctx.restore();
+      return;
+    }
+    const index = arenaPets.findIndex((pet) => pet.id === id);
+    const petMoves = index >= 0 && (E + index * 0.24) % 1.7 < 0.46;
+    const pixels =
+      index >= 0
+        ? (petMoves ? petIdleSprites : arenaPetSprites)[index]
+        : [
+            "...kkkk...",
+            "...kwwk...",
+            "....kk....",
+            "...kxxk...",
+            "..kxwxxk..",
+            "..kxxxxk..",
+            "...kkkk...",
+          ];
+    const color =
+      arenaPets[index]?.color ||
+      {
+        rate: "#f5b556",
+        max: "#ec6688",
+        dash: "#62d3ac",
+        cool: "#83abed",
+        blink: "#bd95ee",
+        mix: "#f0db8c",
+        talent: "#e6bd65",
+      }[id] ||
+      "#ee7d93";
+    Ct(
+      ctx,
+      "stall-item:" + id + ":" + scale + (petMoves ? ":idle" : ""),
+      pixels,
+      {
+        k: s.black,
+        x: color,
+        o: petShadows[index],
+        c: "#f88c4f",
+        g: "#966846",
+        h: "#467e83",
+        w: "#fff3de",
+      },
+      x,
+      y,
+      { scale },
+    );
+  }
+
+  function drawMerchantFurniture(ctx, x, y, kind, shop) {
+    const width = kind === "mount" ? 58 : Math.max(46, shop.items.length * 17);
+    const left = x - Math.floor(width / 2);
+    const block = (dx, dy, w, h, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(left + dx, y + dy, w, h);
+    };
+    block(2, 28, width, 6, "rgba(20, 13, 28, 0.54)");
+    if (kind === "mount") {
+      block(0, -16, width, 38, "#34273a");
+      block(3, -12, width - 6, 31, "#795440");
+      block(8, -7, width - 16, 26, "#403039");
+      block(0, -20, width, 7, shop.coat);
+      block(3, -19, width - 6, 2, shop.trim);
+      for (const dx of [3, width - 8]) block(dx, -12, 5, 44, "#a37452");
+      block(2, 23, width - 4, 3, "#a37452");
+      block(10, 22, 13, 1, "#dbb06a");
+      return;
+    }
+    for (const dx of [4, width - 8]) {
+      block(dx, 20, 4, 13, "#513245");
+      block(dx, 27, 2, 5, "#a86850");
+    }
+    block(0, 17, width, 10, "#372238");
+    block(1, 16, width - 2, 6, "#986047");
+    block(2, 16, width - 4, 2, "#d79767");
+    block(0, 21, width, 2, "#e4ad74");
+    block(2, 23, width - 4, 4, "#704638");
+    block(9, 24, width - 18, 3, shop.coat);
+    for (const dx of [4, width - 5]) block(dx, 24, 1, 2, "#e5c389");
+    if (kind === "talent") {
+      block(width / 2 - 16, 17, 32, 3, "#644267");
+      block(width / 2 - 13, 20, 26, 1, shop.trim);
+      block(width / 2 - 2, 23, 4, 4, shop.trim);
+      block(width / 2 - 1, 24, 2, 2, "#5a3a61");
+    }
+  }
+
+  function drawArenaCompanions(ctx, camX, camY) {
+    const merchant = a.portalMerchant;
+    if (merchant) {
+      const x = Math.round(merchant.x - camX);
+      const y = Math.round(merchant.y - camY);
+      const kind = merchant.kind || "pet";
+      const shop = merchantShops[kind];
+      drawMerchantFurniture(ctx, x, y, kind, shop);
+      const blink = (E + 0.48) % 3.4 < 0.13;
+      const breath = Math.sin(E * 2.5) > 0.35 ? 1 : 0;
+      Ct(
+        ctx,
+        "arena-merchant:" + kind + (blink ? ":blink" : ""),
+        (blink ? merchantBlinkSprites : merchantSprites)[kind],
+        {
+          k: "#1a1428",
+          x: shop.coat,
+          h: "#332e53",
+          o: shop.trim,
+          Y: "#fff1ba",
+          w: "#ffc9a5",
+          s: "#bc765e",
+          g: "#b0b6c5",
+          z: "#f5e3ce",
+          t: "#28192b",
+        },
+        x,
+        y + 1 - breath,
+        { scale: 1.5 },
+      );
+      if (!merchant.visited && kind === "talent") {
+        drawStallItem(ctx, "blink", x - 10, y + 15);
+        drawStallItem(ctx, "rate", x, y + 15);
+        drawStallItem(ctx, "cool", x + 10, y + 15);
+      }
+      if (!merchant.visited) {
+        const displayedItems = kind === "talent" ? [] : shop.items;
+        displayedItems.forEach((item, index) => {
+          const point = stallItemPosition(merchant, index, shop.items.length);
+          drawStallItem(
+            ctx,
+            item.id,
+            Math.round(point.x - camX),
+            Math.round(point.y - camY),
+            kind === "mount" ? 2 : 1,
+          );
+        });
+        kt(ctx, "?", x, y - 24, shop.trim, {
+          align: "center",
+          outline: s.black,
+        });
+      }
+    }
+    if (!a.pet) return;
+    const index = arenaPets.findIndex((pet) => pet.id === a.pet.id);
+    const px = Math.round((a.pet.x ?? a.p.x - 14) - camX);
+    const flying = a.pet.id === "support" || a.pet.id === "attack";
+    const motion = (E + index * 0.24) % 1.7 < 0.46;
+    const hover = flying ? Math.sin(E * 7) * 2 : motion ? 1 : 0;
+    const py = Math.round((a.pet.y ?? a.p.y - 4) - camY - hover);
+    const level = a.pet.level;
+    const size = level === 10 ? 1.4 : level >= 5 ? 1.2 : 1;
+    Ct(
+      ctx,
+      "arena-pet:" + index + (motion ? ":idle" : ""),
+      (motion ? petIdleSprites : arenaPetSprites)[index],
+      {
+        k: s.black,
+        x: arenaPets[index].color,
+        o: petShadows[index],
+        h: "#9cb3cb",
+        c: "#f88c4f",
+        w: "#fff3de",
+      },
+      px,
+      py,
+      { scale: 1, sq: [size, size] },
+    );
+    if (a.pet.shield) Ht(ctx, a.p.x - camX, a.p.y - camY - 7, 12, s.blue);
   }
 
   function spawnWorldPortal() {
@@ -10408,6 +11490,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (Math.hypot(x - X(), y - _()) < 32)
       x = F(origin.x - 58, left + 18, right - 18);
     a.worldPortal = { x, y, target, readyAt: a.t + 0.8 };
+    if (!a.merchantBag?.length) a.merchantBag = Object.keys(merchantShops);
+    const shopIndex = Math.floor(Math.random() * a.merchantBag.length);
+    const kind = a.merchantBag.splice(shopIndex, 1)[0];
+    const stallY = y + 76 <= bottom - 30 ? y + 76 : y - 76;
+    a.portalMerchant = { x, y: stallY, kind, visited: false };
     oe(
       i ? "黑洞已开启" : "PORTAL OPEN",
       s.lav,
@@ -10419,13 +11506,26 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function updateWorldPortal() {
     const portal = a.worldPortal;
-    if (!portal || I !== "play" || a.boss || a.themeTr || a.t < portal.readyAt)
+    if (
+      !portal ||
+      I !== "play" ||
+      a.boss ||
+      a.themeTr ||
+      a.pendingLv > 0 ||
+      a.bossFarewell?.until > a.t ||
+      a.t < portal.readyAt
+    )
       return false;
     if (Math.hypot(X() - portal.x, _() - portal.y) > 15) return false;
+    rewardPet(12);
     a.worldPortal = null;
+    a.portalMerchant = null;
+    a.bossFarewell = null;
+    a.miniBossFarewell = null;
     a.p.x = U + 40;
     a.p.y = ot + 40;
     a.worldStage = (a.worldStage || 1) + 1;
+    a.stageXpUpgrades = 0;
     a.regionState = null;
     a.regionBuff = null;
     a.regionSlow = false;
@@ -10438,7 +11538,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     a.spawnQueue = [];
     a.spawnAcc = 0;
     a.mathPulses = [];
-    a.nextBossT = Math.max(a.nextBossT || 0, a.t + 75 / (a.testSpeed || 1));
+    a.nextBossT = a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1);
     a.bossWarned = false;
     a.p.inv = Math.max(a.p.inv, a.t + 2);
     a.nextWave = Math.max(a.nextWave, a.t + 15);
@@ -10446,6 +11546,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     // Preserve the player's build, health, XP and question-unit progress.
     In(portal.target, Yt[portal.target].name, Yt[portal.target].sub);
     a.transitionReward = !!a.pendingBossReward;
+    if (!testing) unlockMapAccessory(Yt[portal.target].worldKind);
     return true;
   }
   function drawWorldPortal(ctx, camX, camY) {
@@ -10494,7 +11595,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (
       (a.slowUntil > a.t && (t *= a.slow),
       (a.t += t),
-      a.themeAt && a.t >= a.themeAt && ((a.themeAt = 0), Xn()),
+      a.themeAt &&
+        !a.worldPortal &&
+        a.t >= a.themeAt &&
+        ((a.themeAt = 0), Xn()),
       (a.shake = Math.max(0, a.shake - 1.8 * t)),
       a.kick)
     ) {
@@ -10522,9 +11626,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       Oi(t),
       spawnFieldMagnet(),
       mi(t),
+      tickPortalMerchant(),
       updateWorldPortal(),
       Nn(t),
-      knowledge.update(t));
+      knowledge.update(t),
+      I === "play" &&
+        tt.d.autoSkill === true &&
+        a.t >= a.skillReady &&
+        a.enemies.some(
+          (enemy) =>
+            !enemy.dead && Math.hypot(enemy.x - X(), enemy.y - _()) < 87,
+        ) &&
+        ss(),
+      I === "play" && tickArenaPet(t));
     const e = a.later;
     ((a.later = []), e.forEach((h) => h()));
     const o = a.olQ;
@@ -10582,8 +11696,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Pick up [b]blue gems[/] for XP. When the XP bar is full, you get a [y]calculus question[/]!",
         ),
       I === "play" &&
-        !a.worldPortal &&
-        !a.pendingBossReward &&
+        !a.boss &&
+        !(a.bossFarewell?.until > a.t) &&
         a.pendingLv > 0 &&
         a.p.hp > 0 &&
         ns());
@@ -10639,6 +11753,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }));
   }
   function Mi(t) {
+    if (t && a.pet) {
+      rewardPet(6);
+      if (a.pet.id === "wisdom") Kn((a.streak + 1) % 3 === 0 ? 12 : 2);
+    }
     if (t && H("study")) a.studyUntil = a.t + 8;
     return (
       a.answered++,
@@ -11067,7 +12185,26 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       r.push(o.splice(Math.floor(Math.random() * o.length), 1)[0]);
     return r;
   }
+  const upgradeReactions = [
+    ["I like this one!", "我喜欢这个！"],
+    ["Now we're talking!", "这才像话！"],
+    ["Time to test it!", "试试看！"],
+    ["The slimes won't see it coming.", "史莱姆可猜不到！"],
+    ["That adds up!", "这笔账算对了！"],
+    ["Worth the math.", "这题没白算！"],
+  ];
+
+  function maybeSayUpgradeReaction() {
+    if (a.playerSpeech && a.t < a.playerSpeech.until + 12) return;
+    if (Math.random() >= 0.35) return;
+    const reactions = upgradeReactions.filter(
+      (line) => line !== a.playerSpeech?.line,
+    );
+    a.playerSpeech = { line: Gt(reactions), until: a.t + 1.15 };
+  }
+
   function Li(t) {
+    maybeSayUpgradeReaction();
     if (t.type === "weapon") {
       const e = zt(t.id);
       e ? e.lv++ : Fa(t.id);
@@ -11113,7 +12250,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (a.p.hp = Math.min(a.p.hp, a.p.maxHp)));
   }
   function Ei() {
-    if (a.pendingLv > 0) return ns();
+    if (!a.boss && a.pendingLv > 0) return ns();
     if (a.chestQueued) return ((a.chestQueued = !1), ls());
     if (a.bossK >= 3 && !a.stageCleared && !a.boss)
       return ((a.stageCleared = !0), (I = "stage"), Bt.stage());
@@ -11163,25 +12300,243 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function _a(t) {
     I = "results";
-    const e = Ri(),
-      o =
-        a.testSpeed > 1
-          ? { newBest: !1, rank: 0 }
-          : tt.record({
-              score: e.total,
-              t: Math.floor(a.t),
-              kills: a.kills,
-              bosses: a.bosses,
-              acc: e.acc,
-              lv: a.lv,
-              reason: t,
-              build: a.weapons
-                .map((r) => r.id + (r.evo ? "*" : "") + r.lv)
-                .join(","),
-              cls: a.cls,
-              thm: Object.keys(a.thm).join(","),
-            });
+    a.shake = 0;
+    a.kick = { x: 0, y: 0 };
+    const e = Ri();
+    if (!isPreview && !a.cosmeticCoinsPaid && !(a.testSpeed > 1)) {
+      a.cosmeticCoinsPaid = true;
+      e.cosmeticCoins = Math.max(0, Math.floor(e.total / 10));
+      accessoryWallet().coins += e.cosmeticCoins;
+      tt.save();
+    }
+    const o =
+      isPreview || a.testSpeed > 1
+        ? { newBest: !1, rank: 0 }
+        : tt.record({
+            score: e.total,
+            t: Math.floor(a.t),
+            kills: a.kills,
+            bosses: a.bosses,
+            acc: e.acc,
+            lv: a.lv,
+            reason: t,
+            build: a.weapons
+              .map((r) => r.id + (r.evo ? "*" : "") + r.lv)
+              .join(","),
+            cls: a.cls,
+            thm: Object.keys(a.thm).join(","),
+          });
     (St.play("title"), Bt.results(e, o, t), knowledge.onResults(e));
+    if (!testing && e.cosmeticCoins != null) {
+      const heading = N("ov").querySelector(".qhd");
+      const reward = document.createElement("span");
+      reward.textContent =
+        (i ? "饰品币 +" : "Cosmetic coins +") + e.cosmeticCoins;
+      heading?.append(reward);
+    }
+  }
+  const calculusBossBodies = [
+    [
+      "........kkk.kkk........",
+      ".......kllkklllk.......",
+      "......klhllllhllk......",
+      ".....klhwwhhwwhllk.....",
+      ".....kggggggggggk......",
+      "....kkghkggkgghgkk.....",
+      "...kggghwggwhhggggk....",
+      "..khggggghhgggggghk....",
+      "..klkkgglhhlggkkllk....",
+      "...kkgkgllllgkgkkk.....",
+      "...kgggklwwlkgghgk.....",
+      "..kghgggkllkggghggk....",
+      "..kgggghgkkghgggggk....",
+      ".kggghhggllgghhggggk...",
+      ".kggggggkllkgggggggk...",
+      "kggghgggkllkgggghgggk..",
+      "kgggggkkgllgkkggggggk..",
+      ".kkggk.kgllgk.kgggkk...",
+      "...kk..kgllgk..kkk.....",
+      "......kkgllgkk.........",
+      "......kggkkggk.........",
+      "......kkkkkkkk.........",
+    ],
+    [
+      "..........kkk..........",
+      "........kkwlhkk........",
+      ".......khhhllhgk.......",
+      "......khlhllhhggk......",
+      "......khkkkkkkhgk......",
+      "......kkwllllwkkk......",
+      ".......kgggggggk.......",
+      ".....kkkhhllhhkkk......",
+      "....klhhkkggkkhhlk.....",
+      "...klghgkgwwgkghglk....",
+      "..klkkggkghhgkggkklk...",
+      "..khkkgghkllkhggkkhk...",
+      "..khlkggggkkggggklhk...",
+      "...kk.kghllllhgk.kk....",
+      "......kggllllggk.......",
+      "......kggkkggggk.......",
+      ".....kgghkkhgggk.......",
+      ".....kghkk.kkhgk.......",
+      "....khggk...kgghk......",
+      "....kllkk...kkllk......",
+      "....kkkk.....kkkk......",
+    ],
+    [
+      ".........kkk...........",
+      ".......kklhlkk.........",
+      "......klhhwhhlk........",
+      ".....klhwwwwhhlk.......",
+      ".....kghggggghgk.......",
+      "....kkggwggwgggkk......",
+      "...kggghgllghggggk.....",
+      "..kghggllhhllgggghk....",
+      "..klkkgkkggkkgkkllk....",
+      "..kllkgkhllhkgklllk....",
+      "...kkwkkkkkkkkkwkk.....",
+      "....klkhwwkkwwhklk.....",
+      "....klkhlhkkhlhklk.....",
+      "....klkhhlkkhhlklk.....",
+      "....klkkkkkkkkkklk.....",
+      "...kllgggllgggggllk....",
+      "..kllgghgllghgggllk....",
+      "..klgggggllggggggllk...",
+      ".klggghggllggghgggllk..",
+      ".kllgggggllgggggglllk..",
+      "..kkkgggkllkgggkkkk....",
+      ".....kkkkkkkkkk........",
+    ],
+  ];
+  function drawCalculusBoss(
+    theme,
+    color,
+    shadow,
+    ctx,
+    centerX,
+    centerY,
+    time,
+    { flash = false, cast = false, rage = false } = {},
+  ) {
+    const cx = Math.round(centerX);
+    const cy = Math.round(centerY + Math.sin(time * 3) * 2);
+    const energy = flash ? s.white : rage ? s.orange : color;
+    const pixel = (dx, dy, w, h, col) =>
+      x(
+        ctx,
+        cx + Math.round(dx),
+        cy + Math.round(dy),
+        w,
+        h,
+        flash ? s.white : col,
+      );
+    const bodyIndex = theme === "squeeze" ? 0 : theme === "slope" ? 1 : 2;
+    Ct(
+      ctx,
+      "calculus-boss:" + theme + ":" + rage,
+      calculusBossBodies[bodyIndex],
+      { k: s.black, g: shadow, l: energy, h: "#899bb3", w: "#fff3dc" },
+      cx,
+      cy + 5,
+      { scale: 2, flash },
+    );
+    if (theme === "squeeze") {
+      for (let dx = -39; dx <= 39; dx++) {
+        const bound = (dx * dx) / (cast ? 84 : 72);
+        pixel(dx, 5 - bound, 2, 2, "#91d8ff");
+        pixel(dx, 5 + bound, 2, 2, "#50b8a5");
+      }
+      pixel(-2, 3, 5, 5, s.white);
+    } else if (theme === "slope") {
+      for (let dx = -37; dx <= 37; dx++)
+        pixel(dx, 25 - (dx * dx) / 68, 2, 2, "#847fb3");
+      const point = Math.round(Math.sin(time * 2.6) * 19);
+      const tangentY = 25 - (point * point) / 68;
+      for (let dx = -18; dx <= 18; dx++)
+        pixel(
+          point + dx,
+          tangentY - (dx * 2 * point) / 68,
+          2,
+          cast ? 3 : 2,
+          energy,
+        );
+      pixel(point - 2, tangentY - 2, 5, 5, s.white);
+      pixel(-21, -17, 3, 13, "#ad7b66");
+      pixel(18, -18, 3, 14, "#ad7b66");
+    } else {
+      for (const side of [-1, 1]) {
+        const pageX = side * 34 - 7;
+        const pageY = Math.sin(time * 4 + side) * 3 - 15;
+        pixel(pageX, pageY, 15, 25, s.black);
+        pixel(pageX + 2, pageY + 2, 11, 21, "#e2c49a");
+        for (let line = 0; line < 4; line++)
+          pixel(
+            pageX + 4,
+            pageY + 6 + line * 4,
+            4 + ((line + 1) % 3),
+            1,
+            shadow,
+          );
+        pixel(pageX + 8, pageY + 19, 2, 5, "#a64b61");
+      }
+      pixel(-5, 0, 11, 1, energy);
+      pixel(-5, 10, 11, 1, energy);
+      for (let row = 0; row < 10; row++)
+        pixel(-5 + Math.min(row, 9 - row), 1 + row, 1, 1, energy);
+    }
+    if (cast || rage) {
+      Pe(ctx, cx - 23, cy - 20, 0.2, energy);
+      Pe(ctx, cx + 24, cy + 12, 0.2, energy);
+    }
+  }
+
+  function* patternedBossVolley(boss, pattern) {
+    const aim = _e(boss);
+    const spread = pattern === "prism" ? 1.25 : 0.88;
+    const warning = 0.65;
+    wt({
+      kind: "cone",
+      visual: true,
+      follow: boss.e,
+      a: aim,
+      spread: spread + (pattern === "prism" ? 0.3 : 0),
+      len: 130,
+      warnFrom: a.t,
+      fire: a.t + warning,
+      end: a.t + warning,
+    });
+    boss.cast = true;
+    $.tele();
+    yield warning;
+    const waves = boss.phase > 1 ? 4 : 3;
+    for (let wave = 0; wave < waves; wave++) {
+      const count = pattern === "prism" ? 7 : 5;
+      for (let shot = 0; shot < count; shot++) {
+        const normalized = shot / (count - 1) - 0.5;
+        const lane =
+          normalized * spread * (pattern === "mirror" ? 1 - wave * 0.15 : 1);
+        if (pattern === "orbit" && shot === (wave + 1) % count) continue;
+        const offset = pattern === "prism" ? (wave - 1.5) * 0.095 : 0;
+        const speed =
+          (pattern === "orbit"
+            ? 55 +
+              9 * (wave > 0 ? normalized : 0) +
+              12 * (wave > 1 ? normalized ** 2 : 0) +
+              18 * (wave > 2 ? normalized ** 3 : 0)
+            : pattern === "prism"
+              ? 62 + normalized * 13 * (wave - 1.5)
+              : 64) * boss.spd;
+        Pt(qt(boss), Dt(boss), aim + lane + offset, speed, {
+          kind: "dot",
+          r: 3,
+          dmg: Ot,
+        });
+      }
+      $.shot();
+      yield 0.24;
+    }
+    boss.cast = false;
+    yield 0.45;
   }
   let Oa = {
       dne: {
@@ -11273,8 +12628,74 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           ? "\u4E00\u4E2A\u77E9\u5F62\u63A5\u4E00\u4E2A\u77E9\u5F62\u2026\u2026\u76F4\u5230\u4F60\u7684\u9762\u79EF\u5F52\u96F6\u3002"
           : "Rectangle by rectangle... until your area is zero.",
       },
+      mirror: {
+        name: i ? "夹逼守门人" : "Squeeze Sentinel",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.teal,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) =>
+          drawCalculusBoss("squeeze", s.teal, "#32557b", ...args),
+        kit: ["mirrorFan", "holeRing", "homingDots"],
+        p2kit: ["mirrorFan", "fanBurst", "sineStreams"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i
+          ? "上界和下界正向中间收拢。"
+          : "The upper and lower bounds squeeze inward.",
+        p2msg: i
+          ? "上界和下界正向中间收拢。"
+          : "The upper and lower bounds squeeze inward.",
+      },
+      prism: {
+        name: i ? "斜率测绘师" : "Slope Surveyor",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.pink,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) =>
+          drawCalculusBoss("slope", s.pink, "#713d7c", ...args),
+        kit: ["prismRain", "sineStreams", "crossLanes"],
+        p2kit: ["prismRain", "holeRing", "crossLanes"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i
+          ? "切点在动，斜率也在变。"
+          : "As the point moves, the slope changes.",
+        p2msg: i
+          ? "切点在动，斜率也在变。"
+          : "As the point moves, the slope changes.",
+      },
+      orbit: {
+        name: i ? "泰勒藏书官" : "Taylor Archivist",
+        sub: i ? "弹幕首领" : "Bullet hell boss",
+        col: s.orange,
+        r: 16,
+        hp: 1,
+        oy: 27,
+        move: "hover",
+        draw: (...args) =>
+          drawCalculusBoss("series", s.orange, "#7d4d45", ...args),
+        kit: ["orbitSweep", "areaBomb", "accSpiral"],
+        p2kit: ["orbitSweep", "accSpiral", "areaBomb"],
+        gap2: 0.65,
+        p2dr: 0.1,
+        capK: 0.026,
+        quote: i
+          ? "近似式每一波都多一项。"
+          : "Each approximation adds another term.",
+        p2msg: i
+          ? "近似式每一波都多一项。"
+          : "Each approximation adds another term.",
+      },
     },
-    vo = ["dne", "knight", "riemann"],
+    vo = ["dne", "knight", "riemann", "mirror", "prism", "orbit"],
     Mo = [1100, 3400, 6e3];
   function Ai(t, e) {
     t.phase > 1 && t.def.p2dr && (e *= 1 - t.def.p2dr);
@@ -11302,7 +12723,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       return e.state === "fight" && a.t > e.invUntil;
     },
     ga = (t) => t.boss.state !== "intro" && t.boss.state !== "dying";
-  function Pi() {
+  function Pi(dt) {
+    if (
+      !a.boss &&
+      a.kf?.world?.lairs.some((lair) => lair.enemy && !lair.enemy.dead)
+    ) {
+      a.nextBossT += dt;
+      return;
+    }
     if (a.worldPortal || a.pendingBossReward || a.transitionReward) return;
     if (!a.boss) {
       if (!a.bossWarned && a.t >= a.nextBossT - 8) {
@@ -11368,7 +12796,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       f = Object.values(Oa)
         .flatMap((k) => k.kit)
         .filter((k) => !u.includes(k) && !["summonDx"].includes(k));
-    for (let k = 0; k < r; k++)
+    for (let k = 0; k < r && f.length; k++)
       u.push(f.splice(Math.floor(Math.random() * f.length), 1)[0]);
     const p = {
       def: e,
@@ -11433,8 +12861,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           3,
           50,
         ),
-        Math.floor(n * 10) !== Math.floor((n - t) * 10) &&
-          (K("pop", 0), (a.shake = Math.min(1, a.shake + 0.2))),
+        Math.floor(n * 10) !== Math.floor((n - t) * 10) && K("pop", 0),
         n > 1.7 && Ii());
       return;
     }
@@ -11559,6 +12986,14 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             (e.phase > 1 ? e.def.gap2 || 0.7 : 1) * (1 - 0.08 * e.tier),
           )));
   }
+  const bossFarewellLines = {
+    dne: ["My patience has a limit, too.", "看来我的耐心也有极限。"],
+    knight: ["A fine cut. Right on the tangent.", "这一剑，切得正好。"],
+    riemann: ["Well, that about sums me up.", "这一回，算你把我加完了。"],
+    mirror: ["Your proof squeezed right through.", "两边一夹，我认输了。"],
+    prism: ["My slope is all downhill now.", "这下我的斜率全是负的了。"],
+    orbit: ["File this under: close enough.", "这场就归档为：近似正确。"],
+  };
   function Xi(t) {
     const e = t.boss;
     if (e.state !== "dying") {
@@ -11568,6 +13003,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (e.charge = null),
         (t.hp = 0),
         (a.lastBossFight = { type: e.type, dur: a.t - e.fightT0, k: e.k }));
+      const farewell = bossFarewellLines[e.type] || bossFarewellLines.dne;
+      a.bossFarewell = {
+        name: e.def.name,
+        text: farewell[i ? 1 : 0],
+        def: e.def,
+        aim: e.aim,
+        x: t.x,
+        y: t.y,
+        start: a.t,
+        until: a.t + 2.1,
+      };
       for (const o of a.enemies)
         (o.type === "turret" || o.bossMinion) &&
           ((o.dead = !0), _t(o.x, o.y, o.pal, 6, 40));
@@ -11575,7 +13021,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       for (const o of a.haz) o.end = Math.min(o.end, a.t);
       ((a.slow = 0.35),
         (a.slowUntil = a.t + 0.7),
-        (a.shake = 1),
+        (a.shake = 0.46),
+        (a.kick = { x: 0, y: 0 }),
         $.boom(),
         $.roar());
     }
@@ -11598,17 +13045,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     for (let o = 0; o < 24; o++)
       ua(e.x + q(-40, 40), e.y + q(-30, 30), Math.round(4 + a.lv * 0.6));
     (a.picks.push({ kind: "heart", x: e.x - 24, y: e.y + 14, t0: a.t }),
-      oe(
-        i ? "\u9996\u9886\u88AB\u51FB\u8D25\uFF01" : "BOSS DOWN!",
-        s.yellow,
-        t.def.name +
-          (i ? " \xB7 进入黑洞领取奖励" : " \xB7 enter the black hole"),
-      ),
       (a.arena = null),
-      (a.nextBossT = Math.max(
-        (180 * (a.bossK + 1)) / (a.testSpeed || 1),
-        a.t + 75 / (a.testSpeed || 1),
-      )),
+      (a.nextBossT = Math.max(a.t + ARENA_STAGE_SECONDS / (a.testSpeed || 1))),
       (a.bossWarned = !1),
       (a.nextWave = Math.max(a.nextWave, a.t + 30)),
       (a.nextElite = Math.max(a.nextElite, a.t + 40)),
@@ -11752,6 +13190,15 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             });
           ($.shot(), (t.cast = !1), yield 0.32);
         }
+      },
+      *mirrorFan(boss) {
+        yield* patternedBossVolley(boss, "mirror");
+      },
+      *prismRain(boss) {
+        yield* patternedBossVolley(boss, "prism");
+      },
+      *orbitSweep(boss) {
+        yield* patternedBossVolley(boss, "orbit");
       },
       *asymLasers(t) {
         const e = a.arena,
@@ -12595,10 +14042,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     });
   }
   function ji() {
-    const t = a.shake * a.shake,
+    const dying = a.boss?.state === "dying";
+    const shake = dying ? Math.min(a.shake, 0.46) : a.shake;
+    const t = I === "results" ? 0 : shake * shake,
       e = Math.round(3 * t * Math.sin(E * 47)),
       o = Math.round(2 * t * Math.sin(E * 61)),
-      r = a.kick || { x: 0, y: 0 },
+      r = I === "results" || dying ? { x: 0, y: 0 } : a.kick || { x: 0, y: 0 },
       n = Math.round(a.cam.x + r.x) - e,
       l = Math.round(a.cam.y + r.y) - o,
       h = (d, g) => [Math.round(d - n), Math.round(g - l)],
@@ -12607,6 +14056,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       c.fillRect(0, 0, A, D),
       zn(c, n, l),
       drawWorldPortal(c, n, l),
+      drawArenaCompanions(c, n, l),
       drawSpecialRegions(c, n, l),
       knowledge.drawGround(c, n, l),
       (c.fillStyle = "rgba(4,6,16,0.2)"),
@@ -12899,13 +14349,19 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ),
         (!(M && Math.floor(E * 16) % 2 === 0) || S) &&
           d.def.draw(c, T, Q, E, {
-            flash:
-              (f - g.hitT < 0.04 && Math.floor(E * 12) % 4 === 0) ||
-              (S && Math.floor(E * 14) % 2 === 0),
+            flash: !S && f - g.hitT < 0.04 && Math.floor(E * 12) % 4 === 0,
             cast: d.cast,
             rage: d.phase > 1,
             aim: d.aim,
           }));
+    }
+    const fallenBoss = a.bossFarewell;
+    if (!a.boss && fallenBoss?.until > a.t) {
+      const [bossX, bossY] = h(fallenBoss.x, fallenBoss.y);
+      c.save();
+      c.globalAlpha = 0.52 * F((fallenBoss.until - a.t) / 0.32, 0, 1);
+      fallenBoss.def.draw(c, bossX, bossY, E, { aim: fallenBoss.aim });
+      c.restore();
     }
     c.globalAlpha = u ? 0.55 : 1;
     for (const d of a.proj) {
@@ -13289,23 +14745,48 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           (c.globalAlpha = 1),
           Ht(c, m, y - 7, M, Math.floor(E * 8) % 2 ? s.yellow : s.white, 2));
       }
-      if (
-        (Ja() && (c.globalAlpha = 0.3 + 0.1 * Math.sin(E * 20)),
-        !(g && !(a.t < (a.shieldUntil || 0))))
-      )
-        if (a.t < k.dashUntil) {
-          (c.save(), c.translate(m, y));
-          const M = Math.abs(k.ddx || 0) >= Math.abs(k.ddy || 0);
-          (c.scale(M ? 1.3 : 0.8, M ? 0.8 : 1.25),
-            Qa(c, 0, 0, k.face, k.moving, E, ne().rc, !1),
-            c.restore());
-        } else Qa(c, m, y, k.face, k.moving, E, ne().rc, f - k.hurtT < 0.08);
+      const dashing = a.t < k.dashUntil;
+      if (dashing) {
+        const backX = -(k.ddx || 0);
+        const backY = -(k.ddy || 0);
+        for (let trail = 0; trail < 3; trail++) {
+          const distance = 7 + trail * 5;
+          const dustX = Math.round(m + backX * distance);
+          const dustY = Math.round(y + backY * distance - trail);
+          x(c, dustX - 2, dustY, 5 - trail, 1, trail ? "#6a94aa" : "#b8efff");
+        }
+      }
+      const mountBounce = a.mount
+        ? drawMount(c, m, y, k.face, k.moving || dashing, dashing)
+        : 0;
+      const riderY = a.mount ? y - 8 - mountBounce : y;
+      c.save();
+      c.translate(m, riderY);
+      if (dashing) {
+        const lean = -0.32 * (k.ddx || 0);
+        const vertical = k.ddy || 0;
+        c.transform(1.07, 0, lean, 0.82, 0, vertical * 2);
+      }
+      if (Ja()) c.globalAlpha = 0.3 + 0.1 * Math.sin(E * 20);
+      if (!g || a.t < (a.shieldUntil || 0))
+        Qa(
+          c,
+          0,
+          0,
+          k.face,
+          !a.mount && (k.moving || dashing),
+          E,
+          ne().rc,
+          !dashing && f - k.hurtT < 0.08,
+          true,
+        );
       c.globalAlpha = 1;
       if (!g) {
+        drawEquippedAccessories(c, 0, 0, k.face);
         if (Ja()) c.globalAlpha = 0.35;
-        drawHeldWeapon(c, m, y);
-        c.globalAlpha = 1;
+        drawHeldWeapon(c, 0, 0);
       }
+      c.restore();
       const Q = (M, S, b, w) => {
         const v = Math.round(18 * M);
         v <= 0 ||
@@ -13914,7 +15395,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         ne().icon,
         s.yellow,
         p,
-        "E",
+        heroSkillKey().slice(3),
         f > 0 ? Math.ceil(f) : 0,
         a.t - (a.skillT || -9) < 0.25,
       ),
@@ -13948,7 +15429,12 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             { outline: s.black },
           ),
       a.weapons.forEach((T, Q) => Ro(e, T.id, 5 + Q * 15, 43, T.lv, T.evo, 5)));
-    const k = Object.keys(a.passives);
+    const passives = Object.keys(a.passives);
+    const k = passives.slice(0, 8);
+    if (passives.length > k.length)
+      kt(e, "+" + (passives.length - k.length), 128, 65, s.lav, {
+        outline: s.black,
+      });
     if (
       (k.forEach((T, Q) =>
         Ro(
@@ -13961,7 +15447,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           Va(T),
         ),
       ),
-      Yi(k.length > 12 ? 98 : k.length ? 80 : 62),
+      Yi(k.length ? 80 : 62),
       Y(e, Et(a.t), A / 2, 7, {
         pixel: !0,
         size: 12,
@@ -14047,46 +15533,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { outline: s.black, align: "center" },
       );
     }
-    const hudRight = A - 5,
-      hudOffset = topRightControlOffset();
-    Y(e, `LV ${a.lv}`, hudRight, 7 + hudOffset, {
-      pixel: !0,
-      size: 12,
-      col: s.blue,
-      align: "right",
-      outline: s.black,
-    });
-    const m = a.answered ? Math.round((a.correct / a.answered) * 100) : 100,
-      y = Object.keys(a.thm || {}).length;
-    let d = 22 + hudOffset;
-    const g = (T, Q) => {
-      (kt(e, T, hudRight, d, Q, { outline: s.black, align: "right" }),
-        (d += 8));
-    };
-    (g(
-      i ? `\u51FB\u6740 ${a.kills}` : `KILLS ${a.kills}`,
-      a.t - (a.killT || -9) < 0.08 ? s.yellow : s.white,
-    ),
-      g(
-        i
-          ? `\u7B54\u9898 ${a.correct}/${a.answered}`
-          : `QUIZ ${a.correct}/${a.answered}`,
-        a.answered && m < 50 ? s.coral : s.green,
-      ),
-      a.streak >= 2 &&
-        g(
-          i ? `\u8FDE\u5BF9 \xD7${a.streak}` : `STREAK \xD7${a.streak}`,
-          a.streak >= 3 ? s.yellow : s.white,
-        ),
-      a.rerolls &&
-        g(
-          i ? `\u91CD\u62BD \xD7${a.rerolls}` : `REROLLS \xD7${a.rerolls}`,
-          s.lav,
-        ),
-      y && g(i ? `\u5B9A\u7406 \xD7${y}` : `THEOREMS \xD7${y}`, s.yellow),
-      (d = knowledge.drawHud(e, hudRight, d)),
-      knowledge.drawMarkers(e),
-      R.drawImage(Se, 0, 0, G, mt));
+    drawArenaMinimap(e);
+    R.drawImage(Se, 0, 0, G, mt);
     for (const [T, Q, M, S, b] of Bo.splice(0))
       Y(R, T, (Q * G) / A, (M * G) / A - 2, {
         pixel: !0,
@@ -14628,10 +16076,261 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       badge.append(item);
     }
   }
+  const minimapTerrain = new WeakMap();
+  const minimapIcons = {
+    tablet: [" .++ ", " .#+ ", " .#+ ", " .++ ", " .++."],
+    region: ["  +  ", " +#+ ", "++#++", " +#+ ", "  +  "],
+    boss: ["++ ++", "+++++", "+#+#+", " +++ ", "  +  "],
+    portal: [" +++ ", "+...+", "+.+.+", "+...+", " +++ "],
+    merchant: [" +++ ", "++#++", ".....", " +++ ", " + + "],
+    player: ["  +  ", " +#+ ", "+###+", " +++ ", "  +  "],
+  };
+
+  function drawArenaMinimap(ctx) {
+    const width = 64,
+      height = 42;
+    const left = A - width - 5,
+      top = 5 + topRightControlOffset();
+    const inset = 3;
+    const mapWidth = width - inset * 2;
+    const mapHeight = height - inset * 2;
+    const paint = (dx, dy, w, h, color) =>
+      x(ctx, left + dx, top + dy, w, h, color);
+    const project = (value, worldSize, mapSize) =>
+      inset + Math.round(F(value / worldSize, 0, 1) * (mapSize - 1));
+
+    paint(3, 3, width - 2, height - 1, "#080b18");
+    paint(2, 0, width - 4, height, "#101624");
+    paint(0, 2, width, height - 4, "#101624");
+    paint(2, 1, width - 4, height - 2, "#686481");
+    paint(1, 3, width - 2, height - 6, "#686481");
+    paint(2, 2, width - 4, height - 4, "#262641");
+
+    const world = Ze(a.theme || 0);
+    let terrain = minimapTerrain.get(world);
+    if (!terrain) {
+      terrain = document.createElement("canvas");
+      terrain.width = mapWidth;
+      terrain.height = mapHeight;
+      const terrainCtx = terrain.getContext("2d");
+      terrainCtx.drawImage(world, 0, 0, mapWidth, mapHeight);
+      terrainCtx.fillStyle = "rgba(11, 16, 28, 0.28)";
+      terrainCtx.fillRect(0, 0, mapWidth, mapHeight);
+      minimapTerrain.set(world, terrain);
+    }
+    ctx.drawImage(terrain, left + inset, top + inset);
+
+    // The outline tracks the part of the map currently visible in the arena.
+    const viewLeft = project(a.cam.x, et, mapWidth);
+    const viewTop = project(a.cam.y, dt, mapHeight);
+    const viewWidth = project(a.cam.x + A, et, mapWidth) - viewLeft + 1;
+    const viewHeight = project(a.cam.y + D, dt, mapHeight) - viewTop + 1;
+    const viewColor = "rgba(224, 237, 252, 0.32)";
+    paint(viewLeft, viewTop, viewWidth, 1, viewColor);
+    paint(viewLeft, viewTop + viewHeight - 1, viewWidth, 1, viewColor);
+    paint(viewLeft, viewTop + 1, 1, viewHeight - 2, viewColor);
+    paint(viewLeft + viewWidth - 1, viewTop + 1, 1, viewHeight - 2, viewColor);
+
+    for (const dx of [2, width - 7]) {
+      paint(dx, 1, 5, 1, "#efcf91");
+      paint(dx, height - 2, 5, 1, "#9c724e");
+    }
+    for (const dx of [1, width - 2]) {
+      paint(dx, 3, 1, 3, "#efcf91");
+      paint(dx, height - 6, 1, 3, "#9c724e");
+    }
+    paint(width / 2 - 1, 1, 2, 1, "#9ed4ee");
+    const marker = (point, color, kind) => {
+      if (!point) return;
+      const px = project(point.x, et, mapWidth);
+      const py = project(point.y, dt, mapHeight);
+      const ink = { ".": "#111626", "+": color, "#": "#fff4dc" };
+      const icon = minimapIcons[kind];
+      for (let row = 0; row < icon.length; row++)
+        for (let col = 0; col < icon[row].length; col++) {
+          const tint = ink[icon[row][col]];
+          if (tint) paint(px + col - 2, py + row - 2, 1, 1, tint);
+        }
+    };
+    const knowledgeState = a.kf;
+    for (const tablet of knowledgeState?.world?.tablets || [])
+      if (
+        tablet.tier &&
+        !tablet.used &&
+        a.t >= Math.max(knowledgeState.tabletAt, knowledgeState.restUntil)
+      )
+        marker(tablet, "#ffcf65", "tablet");
+    for (const lair of knowledgeState?.world?.lairs || [])
+      if (lair.state === "awake" || lair.state === "sleep")
+        marker(lair.enemy || lair, "#ff7d8e", "boss");
+    const region = a.regionState?.active;
+    if (region?.expires > a.t) marker(region, "#76efac", "region");
+    if (!a.portalMerchant?.visited)
+      marker(a.portalMerchant, "#b9e8ff", "merchant");
+    marker(a.worldPortal, "#c29aff", "portal");
+    marker(a.p, "#85dcff", "player");
+  }
+
+  function drawSmallPlayerBubble(text) {
+    R.save();
+    R.font = "600 12px system-ui, sans-serif";
+    const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 12);
+    const anchor = ((a.p.x - a.cam.x) * G) / A;
+    const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
+    const left = Math.round(center - width / 2);
+    const top = Math.round(F(((a.p.y - a.cam.y) * mt) / D - 44, 35, mt - 48));
+    const right = left + width;
+    const tail = Math.round(center);
+    const edge = [
+      [left + 4, top],
+      [right - 4, top],
+      [right - 4, top + 2],
+      [right - 2, top + 2],
+      [right - 2, top + 4],
+      [right, top + 4],
+      [right, top + 12],
+      [right - 2, top + 12],
+      [right - 2, top + 14],
+      [right - 4, top + 14],
+      [right - 4, top + 16],
+      [tail + 4, top + 16],
+      [tail + 4, top + 18],
+      [tail + 2, top + 18],
+      [tail + 2, top + 20],
+      [tail, top + 20],
+      [tail, top + 18],
+      [tail - 2, top + 18],
+      [tail - 2, top + 16],
+      [left + 4, top + 16],
+      [left + 4, top + 14],
+      [left + 2, top + 14],
+      [left + 2, top + 12],
+      [left, top + 12],
+      [left, top + 4],
+      [left + 2, top + 4],
+      [left + 2, top + 2],
+      [left + 4, top + 2],
+    ];
+    R.save();
+    R.translate(2, 2);
+    // Reuse the stepped silhouette for the shadow and the translucent face.
+    const bubble = new Path2D();
+    bubble.moveTo(...edge[0]);
+    for (const point of edge.slice(1)) bubble.lineTo(...point);
+    bubble.closePath();
+    R.fillStyle = "rgba(8, 11, 21, .28)";
+    R.fill(bubble);
+    R.translate(-2, -2);
+    R.fillStyle = "rgba(245, 246, 255, .9)";
+    R.fill(bubble);
+    R.strokeStyle = "#171a2c";
+    R.lineWidth = 2;
+    R.stroke(bubble);
+    R.restore();
+    R.fillStyle = "#171828";
+    R.textAlign = "center";
+    R.textBaseline = "middle";
+    R.fillText(text, center, top + 8, width - 8);
+    R.restore();
+  }
+
+  function drawArenaBubble(
+    title,
+    message,
+    y,
+    { anchor = G / 2, opacity = 1, sideGap = 0 } = {},
+  ) {
+    R.save();
+    R.globalAlpha *= opacity;
+    const titleFont = "700 12px system-ui, sans-serif";
+    const messageFont = "600 14px system-ui, sans-serif";
+    R.font = titleFont;
+    const titleWidth = R.measureText(title).width;
+    R.font = messageFont;
+    const messageWidth = R.measureText(message).width;
+    const width = Math.min(
+      G - 20,
+      320,
+      Math.ceil(Math.max(titleWidth, messageWidth)) + 24,
+    );
+    let left = Math.round(F(anchor - width / 2, 5, G - width - 7));
+    let side = 0;
+    if (sideGap) {
+      if (anchor + sideGap + width < G - 7) {
+        side = 1;
+        left = Math.round(anchor + sideGap);
+      } else if (anchor - sideGap - width > 5) {
+        side = -1;
+        left = Math.round(anchor - sideGap - width);
+      } else {
+        y -= 22;
+      }
+      y = Math.round(F(y, 5, mt - 42));
+    }
+    const center = left + width / 2;
+    const tail = Math.round(F(anchor, left + 9, left + width - 9));
+    x(R, left + 3, y + 3, width, 35, "rgba(8, 11, 21, 0.65)");
+    x(R, left + 3, y, width - 6, 35, "#151726");
+    x(R, left, y + 3, width, 29, "#151726");
+    x(R, left + 2, y + 3, width - 4, 29, "rgba(250, 242, 227, 0.96)");
+    x(R, left + 7, y + 16, width - 14, 1, "#d9bfd0");
+    if (side) {
+      const edge = side > 0 ? left : left + width;
+      const tip = side > 0 ? edge - 6 : edge;
+      x(R, tip, y + 13, 6, 9, "#151726");
+      x(R, side > 0 ? edge - 4 : edge - 2, y + 14, 6, 5, "#faf2e3");
+      x(R, side > 0 ? tip - 2 : edge + 6, y + 16, 2, 3, "#151726");
+    } else {
+      x(R, tail - 4, y + 33, 9, 4, "#151726");
+      x(R, tail - 2, y + 31, 5, 5, "#faf2e3");
+      x(R, tail - 1, y + 36, 3, 3, "#151726");
+    }
+    R.textAlign = "center";
+    R.textBaseline = "middle";
+    R.fillStyle = "#392a53";
+    R.font = titleFont;
+    R.fillText(title, center, y + 10, width - 14);
+    R.fillStyle = "#171828";
+    R.font = messageFont;
+    R.fillText(message, center, y + 24, width - 14);
+    R.restore();
+  }
+
+  function drawBossFarewell(farewell, headHeight, headHalfWidth) {
+    const x = ((farewell.x - a.cam.x) * G) / A;
+    const y = ((farewell.y - a.cam.y) * mt) / D;
+    if (x < 0 || x > G || y < 0 || y > mt) return;
+    const fadeIn = (a.t - farewell.start) / 0.16;
+    const fadeOut = (farewell.until - a.t) / 0.32;
+    drawArenaBubble(
+      farewell.name,
+      farewell.text,
+      y - (headHeight * mt) / D - 17,
+      {
+        anchor: x,
+        sideGap: (headHalfWidth * G) / A + 8,
+        opacity: F(Math.min(fadeIn, fadeOut), 0, 1),
+      },
+    );
+  }
+
   function Wi() {
     drawRegionHud();
     drawAbilityCooldown();
     drawUnitBadge();
+    const farewell = a.bossFarewell;
+    if (I === "play" && farewell?.until > a.t)
+      drawBossFarewell(farewell, 24, 23);
+    else if (I === "play" && a.miniBossFarewell?.until > a.t)
+      drawBossFarewell(a.miniBossFarewell, 9, 15);
+    else if (I === "play" && a.playerSpeech?.until > a.t)
+      drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
+    else if (I === "play" && a.pet?.speechUntil > a.t)
+      drawArenaBubble(
+        arenaPets.find((pet) => pet.id === a.pet.id).name[i ? 1 : 0],
+        a.pet.speech,
+        83,
+      );
     const t = a.banner;
     if (t && E - t.t0 < 2.4) {
       const r = E - t.t0;
@@ -14967,6 +16666,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         } catch {}
       },
       save() {
+        if (isPreview) return;
         try {
           localStorage.setItem("cq-arena-en", JSON.stringify(this.d));
         } catch {}
@@ -15126,6 +16826,883 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     [i ? "\u4E3B\u6B66\u5668" : "Main gun"]: "wpn",
     [i ? "\u8FDB\u5316" : "Evolution"]: "thm",
   };
+  function syncHeaderAccuracy() {
+    const meter = N("headerAccuracy");
+    meter.hidden = !a.p || !a.answered || I === "title" || I === "select";
+    meter.textContent = a.answered
+      ? Math.round((a.correct / a.answered) * 100) + "%"
+      : "";
+    meter.title = i ? "答题正确率" : "Answer accuracy";
+  }
+
+  const arenaAccessories = {
+    hat: [
+      [
+        "Santa Hat",
+        "圣诞帽",
+        "#dc405b",
+        ["....ccc...", "...ccccc.w", "..ccccccww", ".wwwwwwww."],
+      ],
+      [
+        "Moto Helmet",
+        "摩托车头盔",
+        "#557dca",
+        ["..cccccc..", ".cccccccc.", ".wwwwccccc", "..wwcccccc"],
+      ],
+      [
+        "Dino Hood",
+        "恐龙头帽饰",
+        "#63bb72",
+        [".c..c..c..", "cccccccc..", "ccccwcccc.", "..ccccwwc."],
+      ],
+      [
+        "Wizard Hat",
+        "魔法帽",
+        "#9563bc",
+        ["...cc.....", "...ccc....", "..ccwcc...", ".ccccccccc"],
+      ],
+      [
+        "Captain Cap",
+        "船长帽",
+        "#425f83",
+        ["..cccccc..", ".cccccccc.", ".wwwwwwww.", "..ccccccc."],
+      ],
+      [
+        "Crown",
+        "王冠",
+        "#e5a844",
+        ["c...c...c.", "cw.cwc.wc.", "cccccccccc", ".wwwwwwww."],
+      ],
+      [
+        "Viking Helmet",
+        "角盔",
+        "#9aacc2",
+        ["w........w", "ww.cccc.ww", ".wccccccw.", "..ccwwcc.."],
+      ],
+      [
+        "Forest Hood",
+        "森林兜帽",
+        "#379585",
+        ["...cccc...", "..cccccc..", ".ccccwccc.", ".ccc..ccc."],
+      ],
+      [
+        "Space Helmet",
+        "太空头盔",
+        "#669ed0",
+        ["..wwwwww..", ".wccccccw.", "wccccccccw", "wwwwwwwwww"],
+      ],
+      [
+        "Dragon Crest",
+        "龙冠",
+        "#ed7651",
+        ["c........c", "cc..ww..cc", ".cccccccc.", "..cwcwcc.."],
+      ],
+    ],
+    glasses: [
+      [
+        "Sunglasses",
+        "墨镜",
+        "#383d63",
+        ["cccc..cccc", "cwwccccwwc", ".cc....cc."],
+      ],
+      [
+        "Round Glasses",
+        "圆框眼镜",
+        "#cba65d",
+        [".cc....cc.", "cwwccccwwc", ".cc....cc."],
+      ],
+      [
+        "Heart Glasses",
+        "爱心眼镜",
+        "#ef719a",
+        ["cc.cccc.cc", "cccccccccc", ".cc....cc."],
+      ],
+      [
+        "Star Glasses",
+        "星星眼镜",
+        "#ffcb60",
+        [".w......w.", "cccc..cccc", ".cc....cc."],
+      ],
+      [
+        "Frost Goggles",
+        "冰晶护目镜",
+        "#8bd8ee",
+        [".cccccccc.", "cwwccccwwc", ".cccccccc."],
+      ],
+      [
+        "Neon Visor",
+        "荧光面罩",
+        "#67d5a0",
+        ["cccccccccc", ".wwwwwwww.", "..cccccc.."],
+      ],
+      [
+        "Pilot Goggles",
+        "飞行护目镜",
+        "#ad774d",
+        [".ccc..ccc.", "cwwwccwwwc", ".ccc..ccc."],
+      ],
+      [
+        "Tinted Lens",
+        "彩色镜片",
+        "#b47ed7",
+        ["cccccccccc", "cwwccccwwc", "..cc..cc.."],
+      ],
+      [
+        "Monocle",
+        "单片眼镜",
+        "#e7c566",
+        [".....ccc..", "....cwwwc.", ".....cccc."],
+      ],
+      [
+        "Pixel Shades",
+        "像素墨镜",
+        "#6878ac",
+        ["cccccccccc", "ccc..wcccc", "..c....cc."],
+      ],
+    ],
+  };
+  const mapAccessoryGifts = {
+    base: [
+      "hat",
+      [
+        "Coordinate Cap",
+        "坐标帽",
+        "#66b7ec",
+        ["...cccc...", "..ccwccc..", ".cccccccc.", "...ww....."],
+      ],
+    ],
+    desert: [
+      "hat",
+      [
+        "Oasis Wrap",
+        "绿洲头巾",
+        "#e7ac65",
+        ["..cccccc..", ".cwwwwccc.", "cccccccccc", "......ccc."],
+      ],
+    ],
+    rainforest: [
+      "hat",
+      [
+        "Canopy Crest",
+        "雨林叶冠",
+        "#65b971",
+        [".c..c..c..", "cccccccccc", ".cwwccwwc.", "..cccccc.."],
+      ],
+    ],
+    snow: [
+      "glasses",
+      [
+        "Aurora Lens",
+        "极光镜片",
+        "#5bd7dd",
+        ["cccccccccc", "cwwccccwwc", "..cc..cc.."],
+      ],
+    ],
+    book: [
+      "glasses",
+      [
+        "Scholar Frames",
+        "书页眼镜",
+        "#c794df",
+        [".ccc..ccc.", "cwwwccwwwc", ".ccc..ccc."],
+      ],
+    ],
+  };
+  const mapGiftSlots = {};
+  for (const [kind, [slot, item]] of Object.entries(mapAccessoryGifts)) {
+    mapGiftSlots[kind] = { slot, index: arenaAccessories[slot].length };
+    arenaAccessories[slot].push(item);
+  }
+
+  // Append new items after map gifts so existing saves keep their item indexes.
+  const mapAccessoryKeys = new Set(
+    Object.values(mapGiftSlots).map(({ slot, index }) => slot + ":" + index),
+  );
+  arenaAccessories.hat.push(
+    ...[
+      [
+        "Toast Crown",
+        "吐司王冠",
+        "#cc8c49",
+        ["..cccccc..", ".ccwwwwcc.", ".cwwwwwwc.", ".cccccccc."],
+      ],
+      [
+        "Traffic Cone",
+        "路锥帽",
+        "#f48c42",
+        ["....cc....", "...cwwc...", "..cccccc..", ".cccccccc."],
+      ],
+      [
+        "Jelly UFO",
+        "果冻飞碟",
+        "#b276df",
+        ["...cccc...", "..cwwccc..", "cccccccccc", ".wcwcwcwc."],
+      ],
+      [
+        "Frog Bucket",
+        "青蛙桶帽",
+        "#5bc883",
+        [".ww....ww.", "cccccccccc", ".cwwccwwc.", ".cccccccc."],
+      ],
+      [
+        "Teapot Topper",
+        "茶壶帽",
+        "#d488ae",
+        ["....cc....", "..cccccc.c", "ccccwwcccc", ".cccccccc."],
+      ],
+      [
+        "Upside-down Bowl",
+        "倒扣饭碗",
+        "#719bdc",
+        ["...cccc...", "..cccccc..", ".cwwwwwwc.", "cccccccccc"],
+      ],
+    ],
+  );
+  arenaAccessories.glasses.push(
+    ...[
+      [
+        "Fried Egg Specs",
+        "煎蛋眼镜",
+        "#ffd26a",
+        [".ww....ww.", "wccwwwwccw", ".ww....ww."],
+      ],
+      [
+        "Window Frames",
+        "窗户眼镜",
+        "#6fb1df",
+        ["cccc..cccc", "cwwccccwwc", "cccc..cccc"],
+      ],
+      [
+        "Googly Eyes",
+        "摇摇眼镜",
+        "#ac83dd",
+        [".ww....ww.", "wwcwwwwwcw", ".ww....ww."],
+      ],
+      [
+        "Question Lenses",
+        "问号眼镜",
+        "#6bdfbc",
+        ["ccc....ccc", ".ccwwww.cc", ".c......c."],
+      ],
+      [
+        "Spiral Spectacles",
+        "旋涡眼镜",
+        "#ec8b88",
+        ["cccc..cccc", "cwcwwwwcwc", "ccww..wwcc"],
+      ],
+      [
+        "Fishbowl Visor",
+        "鱼缸面罩",
+        "#79cee2",
+        ["..cccccc..", ".cwwccwwc.", ".cccccccc."],
+      ],
+    ],
+  );
+  arenaAccessories.outfit = [
+    [
+      "Moon Knight",
+      "月影骑士",
+      "#789de2",
+      [
+        "..h....h..",
+        ".kcccccck.",
+        "hccwwwwcch",
+        "kccchhccck",
+        ".kcccccck.",
+        "..kckkck..",
+      ],
+    ],
+    [
+      "Mushroom Ranger",
+      "蘑菇游侠",
+      "#df736d",
+      [
+        "..cwwwwc..",
+        ".cccccccc.",
+        "kccwhhwcck",
+        ".kcccccck.",
+        ".kchhhcck.",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Mini Meteor",
+      "小陨石",
+      "#ed915d",
+      [
+        ".h......h.",
+        "hhcccccc.h",
+        ".kcwwccck.",
+        "..kcccck..",
+        "...kcck...",
+        "....kk....",
+      ],
+    ],
+    [
+      "Jellyfish Diver",
+      "水母潜水员",
+      "#69d8d9",
+      [
+        "..cccccc..",
+        ".kwwwwwwk.",
+        ".kcwhhcck.",
+        "kcccccccck",
+        "c.kc..ck.c",
+        "h..h..h..h",
+      ],
+    ],
+    [
+      "Origami Pilot",
+      "折纸飞行员",
+      "#ebe0a2",
+      [
+        "w........w",
+        "kw..cc..wk",
+        ".kwwccwwk.",
+        "..kchhck..",
+        "...kcck...",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Clockwork Cat",
+      "发条猫",
+      "#c99c61",
+      [
+        "k.c....c.k",
+        "kchcccchck",
+        ".kcwwccck.",
+        ".kcchhcck.",
+        "..kcccck.c",
+        "..k....kc.",
+      ],
+    ],
+    [
+      "Ghost Courier",
+      "幽灵邮差",
+      "#b6a4e1",
+      [
+        "..cccccc..",
+        ".ccwccwcc.",
+        ".kccwwcck.",
+        "kchcccchck",
+        ".cccccccc.",
+        "k.k.kk.k.k",
+      ],
+    ],
+    [
+      "Cactus Detective",
+      "仙人掌侦探",
+      "#72c580",
+      [
+        ".h......h.",
+        "hc.kcck.ch",
+        ".hccwwcch.",
+        "..kchhck..",
+        "..kcccck..",
+        "..k....k..",
+      ],
+    ],
+    [
+      "Bubble Astronaut",
+      "泡泡宇航员",
+      "#8eb6e8",
+      [
+        "..kwwwwk..",
+        ".kwcwwcwk.",
+        "kcccccccck",
+        "kcchhhccck",
+        ".kcccccck.",
+        "..kh..hk..",
+      ],
+    ],
+    [
+      "Thunder Moth",
+      "雷电蛾",
+      "#dbad63",
+      [
+        "wh......hw",
+        "kch.cc.hck",
+        ".kcwccwck.",
+        "kchhwwhhck",
+        ".kcccccck.",
+        "..k....k..",
+      ],
+    ],
+  ];
+
+  // Classic team palettes, drawn as original pixel jerseys.
+  const jerseyTeams = [
+    ["Arsenal", "阿森纳", "#d83246", "#f6eee0", "#b81935", "sleeves"],
+    ["Bayern Munich", "拜仁慕尼黑", "#d82c49", "#f7eee8", "#a52039", "solid"],
+    ["Real Madrid", "皇家马德里", "#ece9df", "#d8ad55", "#283354", "solid"],
+    ["Barcelona", "巴塞罗那", "#29499f", "#b53052", "#f3ce65", "stripes"],
+    [
+      "Paris Saint-Germain",
+      "巴黎圣日耳曼",
+      "#24376f",
+      "#eb4a57",
+      "#fff0e1",
+      "center",
+    ],
+    ["Manchester United", "曼联", "#cd3542", "#292738", "#f6eee0", "sleeves"],
+    ["Manchester City", "曼城", "#80c1ed", "#f4eee1", "#263451", "sleeves"],
+    [
+      "San Francisco 49ers",
+      "旧金山49人",
+      "#c53342",
+      "#e0b778",
+      "#fff3e5",
+      "sleeves",
+    ],
+    [
+      "San Francisco Giants",
+      "旧金山巨人",
+      "#f1dec2",
+      "#f77b43",
+      "#29232e",
+      "center",
+    ],
+    [
+      "Golden State Warriors",
+      "金州勇士",
+      "#3b68d6",
+      "#f9cb55",
+      "#fff1bd",
+      "sleeves",
+    ],
+    [
+      "Los Angeles Lakers",
+      "洛城湖人",
+      "#efc24c",
+      "#814ca9",
+      "#402254",
+      "sleeves",
+    ],
+    [
+      "Boston Celtics",
+      "波士顿凯尔特人",
+      "#16985e",
+      "#dff8ea",
+      "#fff9e5",
+      "tank",
+    ],
+    ["Chicago Bulls", "芝加哥公牛", "#d32046", "#201524", "#fff1db", "tank"],
+    ["Phoenix Suns", "菲尼克斯太阳", "#522d87", "#f38942", "#fff3e0", "sun"],
+    ["AC Milan", "AC 米兰", "#29202a", "#df3246", "#fff1e1", "stripes"],
+    ["Inter Milan", "国际米兰", "#20233d", "#397aed", "#f0c369", "stripes"],
+    [
+      "Borussia Dortmund",
+      "多特蒙德",
+      "#f5d41c",
+      "#202027",
+      "#201921",
+      "sleeves",
+    ],
+    [
+      "Kansas City Chiefs",
+      "堪萨斯城酋长",
+      "#da3148",
+      "#f0b846",
+      "#fff4df",
+      "pads",
+    ],
+    [
+      "Philadelphia Eagles",
+      "费城老鹰",
+      "#186e70",
+      "#a9c6cb",
+      "#fff4df",
+      "pads",
+    ],
+    [
+      "Minnesota Vikings",
+      "明尼苏达维京人",
+      "#643da0",
+      "#fabf37",
+      "#fff3de",
+      "pads",
+    ],
+  ];
+  const jerseyPatterns = {
+    tank: [
+      "..kw..wk..",
+      "..kcwwck..",
+      "..kcccck..",
+      "..kcccck..",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    sun: [
+      "..kh..hk..",
+      "..kcwwck..",
+      "..kcccck..",
+      "..khhhck..",
+      "..kchhhk..",
+      "..kwwwwk..",
+    ],
+    pads: [
+      ".khw..whk.",
+      "khhcccchhk",
+      "khcccccchk",
+      "kwccccccwk",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    solid: [
+      "..kw..wk..",
+      ".kcccccck.",
+      "kcccccccck",
+      "kcccccccck",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    sleeves: [
+      "..kw..wk..",
+      ".khcccchk.",
+      "khcccccchk",
+      "kcccccccck",
+      "..kcccck..",
+      "..kwwwwk..",
+    ],
+    stripes: [
+      "..kw..wk..",
+      ".khchchck.",
+      "khchchchck",
+      "kchchchchk",
+      "..khchck..",
+      "..kchchk..",
+    ],
+    center: [
+      "..kw..wk..",
+      ".kchhhck..",
+      "kcchhhccck",
+      "kcchhhccck",
+      "..kchhck..",
+      "..kwwwwk..",
+    ],
+  };
+  for (const [en, zh, color, trim, number, style] of jerseyTeams) {
+    const art = jerseyPatterns[style].slice();
+    art[2] = art[2].slice(0, 4) + "nnn" + art[2].slice(7);
+    art[3] = art[3].slice(0, 5) + "n" + art[3].slice(6);
+    art[4] = art[4].slice(0, 5) + "n" + art[4].slice(6);
+    arenaAccessories.outfit.push([en, zh, color, art, { trim, number }]);
+  }
+
+  const outfitHeadpieces = [
+    ["..kkkkkk..", ".khhhhhhk.", "khhwwwhhkk", "khhchcchhk", ".kcccccck."],
+    ["..kkkkkk..", ".kcccccck.", "kccwccwcck", "cccccccccc", ".wwwwwwww."],
+    ["w.....c...", "ww...ccc..", ".hcccccch.", "..cwwccc..", "...cccc..."],
+    ["..kwwwwk..", ".kcccccck.", "kwhhhhhhwk", "kwhhhhhhwk", ".kwwwwwwk."],
+    [".........w", "w..kkkk.ww", "wwcwwwwcww", ".kcccccck.", "..kwwwwk.."],
+    ["kk......kk", "kck....kck", "kcccccccck", "kcwwccwwck", ".kcccccck."],
+    ["..kkkkkk..", ".kcccccck.", "kccwccwcck", ".kcwwwwck.", "..kcccck.."],
+    ["...kcck...", "..kcccck..", "..kchhck..", "kcccccccck", ".kwwwwwwk."],
+    ["..kwwwwk..", ".wccccccw.", "wchhhhhhcw", "wccccccwcw", ".kwwwwwwk."],
+    ["h........h", ".h......h.", "..kcccck..", "whcwwwcchw", "..kcccck.."],
+  ];
+
+  function accessoryWallet() {
+    if (!tt.d.accessoryWallet) {
+      const owned = {};
+      for (const [slot, index] of Object.entries(tt.d.accessories || {}))
+        if (arenaAccessories[slot]?.[index]) owned[slot + ":" + index] = 1;
+      tt.d.accessoryWallet = { coins: 1000, owned };
+    }
+    return tt.d.accessoryWallet;
+  }
+
+  function unlockMapAccessory(kind) {
+    const gift = mapGiftSlots[kind];
+    if (!gift || a.testSpeed > 1) return;
+    const wallet = accessoryWallet();
+    const key = gift.slot + ":" + gift.index;
+    if (wallet.owned[key]) return;
+    wallet.owned[key] = 1;
+    tt.save();
+    if (testing) return;
+    const name = arenaAccessories[gift.slot][gift.index][i ? 1 : 0];
+    oe(i ? "地图饰品" : "MAP COSMETIC", s.yellow, name);
+  }
+
+  function accessoryPrice(index) {
+    return Math.min(1288, 100 + index * 42);
+  }
+
+  function accessoryThreshold(index) {
+    return 250 + index * 500;
+  }
+
+  function isPremiumAccessory(slot, index) {
+    const item = arenaAccessories[slot][index];
+    return (
+      !!item &&
+      index >= 6 &&
+      !item[4]?.number &&
+      !mapAccessoryKeys.has(slot + ":" + index)
+    );
+  }
+
+  function accessoryUpgradeColor(color, level) {
+    if (level < 2) return color;
+    const amount = level >= 3 ? 0.34 : 0.18;
+    return (
+      "#" +
+      color
+        .slice(1)
+        .match(/../g)
+        .map((pair) => {
+          const channel = Number.parseInt(pair, 16);
+          return Math.round(channel + (255 - channel) * amount)
+            .toString(16)
+            .padStart(2, "0");
+        })
+        .join("")
+    );
+  }
+
+  const wornGlasses = arenaAccessories.glasses.map((item) =>
+    item[3].map((row) => row[0] + row.slice(2, 8) + row[9]),
+  );
+
+  function drawAccessory(ctx, slot, index, x, y, scale = 1, compact = false) {
+    const item = arenaAccessories[slot][index];
+    if (!item) return;
+    const pixels = compact ? wornGlasses[index] : item[3];
+    const lensRight = compact ? 5 : 7;
+    const level = tt.d.accessoryWallet?.owned[slot + ":" + index] || 1;
+    const color = item[4]?.number
+      ? item[2]
+      : accessoryUpgradeColor(item[2], level);
+    const outline = slot === "glasses" ? "#18213c" : "#1e1a32";
+    re(
+      ctx,
+      pixels,
+      { c: outline, w: outline, k: outline, h: outline, n: outline },
+      x,
+      y + scale,
+      { scale },
+    );
+    re(
+      ctx,
+      pixels,
+      {
+        c: color,
+        w: "#fff3db",
+        k: outline,
+        h: item[4]?.trim || "#59617f",
+        n: item[4]?.number || "#fff3db",
+      },
+      x,
+      y,
+      { scale },
+    );
+    if (slot === "glasses") {
+      const mono = index === 8;
+      const wide = [4, 5, 15, 17].includes(index);
+      const mirror = index === 0 || index === 9 || index === 12;
+      const lensColor = mirror ? "#203052" : wide ? "#a8dbf6" : "#eaf7fa";
+      ctx.fillStyle = lensColor;
+      if (!mono)
+        ctx.fillRect(x + 2 * scale, y + scale, (wide ? 2 : 1) * scale, scale);
+      ctx.fillRect(
+        x + lensRight * scale,
+        y + scale,
+        (wide ? 2 : 1) * scale,
+        scale,
+      );
+      ctx.fillStyle = "#fff6e0";
+      if (mirror || wide) ctx.fillRect(x + lensRight * scale, y, scale, scale);
+    } else if (slot === "hat" || !item[4]?.number) {
+      // Place the highlight inside the first solid patch of the item itself.
+      const row = item[3].findIndex((line) => /ccc/.test(line));
+      if (row >= 0) {
+        ctx.fillStyle = accessoryUpgradeColor(color, 3);
+        ctx.fillRect(
+          x + (item[3][row].indexOf("ccc") + 1) * scale,
+          y + row * scale,
+          2 * scale,
+          scale,
+        );
+      }
+    }
+    if (
+      !compact &&
+      !item[4]?.number &&
+      level >= 3 &&
+      Math.floor(E * 5) % 5 < 2
+    ) {
+      ctx.fillStyle = "#fff4b5";
+      ctx.fillRect(x + 10 * scale, y, scale, 3 * scale);
+      ctx.fillRect(x + 9 * scale, y + scale, 3 * scale, scale);
+    }
+  }
+
+  function hasHeroHeadwear() {
+    const worn = tt.d.accessories;
+    return !!(
+      arenaAccessories.hat[worn?.hat] || outfitHeadpieces[worn?.outfit]
+    );
+  }
+
+  function drawHeroHeadwear(ctx, x, brimY, flip, profile) {
+    const worn = tt.d.accessories;
+    const hat = arenaAccessories.hat[worn.hat];
+    ctx.save();
+    ctx.translate(Math.round(x), brimY);
+    if (flip) ctx.scale(-1, 1);
+    const offset = profile ? -4 : -5;
+    if (hat) {
+      drawAccessory(ctx, "hat", worn.hat, offset, 1 - hat[3].length);
+    } else {
+      const pixels = outfitHeadpieces[worn.outfit];
+      const outfit = arenaAccessories.outfit[worn.outfit];
+      const level = tt.d.accessoryWallet?.owned["outfit:" + worn.outfit] || 1;
+      re(
+        ctx,
+        pixels,
+        {
+          k: "#172138",
+          w: "#fff2d9",
+          h: "#6d8ea5",
+          c: accessoryUpgradeColor(outfit[2], level),
+        },
+        offset,
+        1 - pixels.length,
+      );
+    }
+    ctx.restore();
+  }
+
+  function drawEquippedAccessories(ctx, x, feet, facing, bob = 0) {
+    const worn = tt.d.accessories;
+    if (!worn) return;
+    drawAccessory(
+      ctx,
+      "outfit",
+      worn.outfit,
+      Math.round(x) - 5,
+      Math.round(feet) - 8 + bob,
+    );
+    if (facing !== "up")
+      drawAccessory(
+        ctx,
+        "glasses",
+        worn.glasses,
+        Math.round(x) - 4,
+        Math.round(feet) - 13 + bob,
+        1,
+        true,
+      );
+  }
+
+  function showAccessories() {
+    const wallet = accessoryWallet(),
+      lang = i ? 1 : 0;
+    const best = tt.d.best?.score || 0;
+    const testCoins =
+      location.hostname === "brian.o2i-website.pages.dev" &&
+      window.frameElement?.dataset.arenaTestCoins === "true";
+    const worn = tt.d.accessories || {};
+    const sections = Object.entries(arenaAccessories)
+      .map(([slot, items]) => {
+        const entries = items.map((item, index) => ({ item, index }));
+        if (slot !== "outfit")
+          entries.sort(
+            (left, right) =>
+              Number((wallet.owned[slot + ":" + left.index] || 0) > 1) -
+              Number((wallet.owned[slot + ":" + right.index] || 0) > 1),
+          );
+        const title =
+          slot === "hat"
+            ? i
+              ? "帽饰"
+              : "Hats"
+            : slot === "outfit"
+              ? i
+                ? "套装"
+                : "Outfits"
+              : i
+                ? "眼镜"
+                : "Glasses";
+        return `<section><h3>${title}</h3><div class="accessory-grid">
+        <button data-slot="${slot}" data-index="-1" data-action="equip">${i ? "取下" : "Remove"}</button>
+        ${entries
+          .map(({ item, index }) => {
+            const level = wallet.owned[slot + ":" + index] || 0;
+            const mapGift = mapAccessoryKeys.has(slot + ":" + index);
+            const price = accessoryPrice(index);
+            const threshold = accessoryThreshold(index);
+            const label = level
+              ? `Lv ${level}`
+              : mapGift
+                ? i
+                  ? "地图奖励"
+                  : "Map reward"
+                : !testCoins && best < threshold
+                  ? `${i ? "分数" : "Score"} ${threshold}`
+                  : `${price} ${i ? "币" : "coins"}`;
+            const canBuy =
+              !mapGift &&
+              (testCoins || (best >= threshold && wallet.coins >= price));
+            const upgradeCost = level * 200;
+            const canUpgrade =
+              isPremiumAccessory(slot, index) && level > 0 && level < 3;
+            return `<div class="accessory-item"><button data-slot="${slot}" data-index="${index}" data-action="${level ? "equip" : "buy"}" aria-pressed="${worn[slot] === index}" ${level || canBuy ? "" : "disabled"}><canvas width="32" height="18" aria-hidden="true"></canvas><span>${item[lang]}</span><small>${label}</small></button>
+            ${canUpgrade ? `<button data-slot="${slot}" data-index="${index}" data-action="upgrade" ${!testCoins && wallet.coins < upgradeCost ? "disabled" : ""}>${i ? "升级" : "Upgrade"} · ${upgradeCost}</button>` : ""}
+          </div>`;
+          })
+          .join("")}</div></section>`;
+      })
+      .join("");
+    const scroll = Bt.el.querySelector(".accessories")?.scrollTop || 0;
+    Bt.show(
+      `<div class="panel sz pix accessories"><div class="qhd"><b>${i ? "饰品" : "Accessories"}</b><span>${i ? "饰品币" : "Cosmetic coins"} ${testCoins ? "∞" : wallet.coins} · ${i ? "最高分" : "Best score"} ${best}</span><button type="button" id="accessoryBack">${i ? "返回" : "Back"}</button></div>${sections}</div>`,
+      "sub",
+    );
+    Bt.el.querySelector(".accessories").scrollTop = scroll;
+    N("accessoryBack").onclick = () => Bt.menu();
+    Bt.el.querySelectorAll("[data-action]").forEach((button) => {
+      const { slot, index: value, action } = button.dataset;
+      const index = Number(value),
+        key = slot + ":" + index;
+      const canvas = button.querySelector("canvas");
+      if (canvas) drawAccessory(canvas.getContext("2d"), slot, index, 5, 4, 2);
+      button.onclick = () => {
+        if (action === "buy") {
+          const cost = accessoryPrice(index);
+          if (
+            wallet.owned[key] ||
+            mapAccessoryKeys.has(key) ||
+            (!testCoins &&
+              (best < accessoryThreshold(index) || wallet.coins < cost))
+          )
+            return;
+          if (!testCoins) wallet.coins -= cost;
+          wallet.owned[key] = 1;
+        } else if (action === "upgrade") {
+          const level = wallet.owned[key];
+          const cost = level * 200;
+          if (
+            !level ||
+            level >= 3 ||
+            (!testCoins && wallet.coins < cost) ||
+            !isPremiumAccessory(slot, index)
+          )
+            return;
+          if (!testCoins) wallet.coins -= cost;
+          wallet.owned[key]++;
+        }
+        const selection = tt.d.accessories || (tt.d.accessories = {});
+        if (index < 0) delete selection[slot];
+        else selection[slot] = index;
+        tt.save();
+        showAccessories();
+      };
+    });
+  }
+
   let Bt = {
     el: null,
     mode: null,
@@ -15137,6 +17714,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       this.el = N("ov");
     },
     show(t, e) {
+      syncHeaderAccuracy();
       Tt.fire = 0;
       ((this.el.innerHTML = t),
         (e === "setup" || e === "pause") &&
@@ -15430,21 +18008,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (this.show(
         i
           ? `<div class="panel mz pix"><button type="button" class="go big" id="mStart">\u25B6 \u5F00\u59CB\u6E38\u620F <kbd>Enter</kbd></button>
-      <div class="mrow"><button type="button" id="mGuide">\u6280\u80FD\u56FE\u9274</button><button type="button" id="mHow">\u73A9\u6CD5\u8BF4\u660E</button><button type="button" id="mRec">\u6211\u7684\u8BB0\u5F55</button></div>
+      <div class="mrow"><button type="button" id="mGuide">\u6280\u80FD\u56FE\u9274</button><button type="button" id="mHow">\u73A9\u6CD5\u8BF4\u660E</button><button type="button" id="mAccessories">${i ? "饰品" : "Accessories"}</button><button type="button" id="mRec">\u6211\u7684\u8BB0\u5F55</button></div>
       <div class="msub">\u4E0A\u4E00\u5C40\uFF1A${z(e.name)} + ${z(o.name)} \xB7 \u5355\u5143 ${z((t.units && t.units.length ? t.units : [1]).join(", "))} \xB7 ${z((Zt[t.diff] || Zt.normal).name)}\u654C\u4EBA \xB7 ${z((Ut[t.qdiff] || Ut.mixed).name)}\u9898\u76EE</div></div>`
           : `<div class="panel mz pix"><button type="button" class="go big" id="mStart">\u25B6 Start run <kbd>Enter</kbd></button>
-      <div class="mrow"><button type="button" id="mGuide">Skill guide</button><button type="button" id="mHow">How to play</button><button type="button" id="mRec">Records</button></div>
+      <div class="mrow"><button type="button" id="mGuide">Skill guide</button><button type="button" id="mHow">How to play</button><button type="button" id="mAccessories">${i ? "饰品" : "Accessories"}</button><button type="button" id="mRec">Records</button></div>
       <div class="msub">Last run: ${z(e.name)} + ${z(o.name)} \xB7 Units ${z((t.units && t.units.length ? t.units : [1]).join(", "))} \xB7 ${z((Zt[t.diff] || Zt.normal).name)} enemies \xB7 ${z((Ut[t.qdiff] || Ut.mixed).name)} questions</div></div>`,
         "menu",
       ),
         (N("mStart").onclick = () => {
           ($.init(), St.start());
-          if (hasArenaTouch() && arenaFullPref() !== "off")
-            void enterArenaFullscreen();
           this.heroSelect();
         }),
         (N("mGuide").onclick = () => this.sub("guide")),
         (N("mHow").onclick = () => this.sub("howto")),
+        (N("mAccessories").onclick = showAccessories),
         (N("mRec").onclick = () => this.sub("records")));
     },
     sub(t) {
@@ -15467,6 +18044,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `<div class="panel sz pix"><div class="qhd"><b>${e}</b><span class="sp"></span><button type="button" id="sBack">\u2190 Back (Esc)</button></div>${o}</div>`,
         "sub",
       ),
+        t === "howto" && appendSkillKeySetting(this.el.querySelector(".sz")),
         t === "guide" && ms(),
         t === "records" && ka(),
         (N("sBack").onclick = () => {
@@ -15738,8 +18316,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         : "\u2014";
       (this.show(
         i
-          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span></div>
+          ? `<div class="panel pz pix"><div class="qhd"><b>\u5DF2\u6682\u505C</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>本关经验升级 ${a.stageXpUpgrades ?? 0}/${stageXpUpgradeLimit()}</span></div>
       <div class="stats">${[
+        [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
         [i ? "\u51FB\u6740" : "Kills", a.kills],
         [i ? "\u66B4\u51FB" : "Crits", a.crits || 0],
@@ -15754,7 +18333,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -15763,8 +18341,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         .join("")}</div>
       ${this.buildHTML()}
       <div class="row2"><button type="button" id="pzGo" class="go">\u7EE7\u7EED<span class="kbd-hint"> (Esc)</span></button><button type="button" id="pzEnd">\u7ED3\u675F\u672C\u5C40</button></div></div>`
-          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span></div>
+          : `<div class="panel pz pix"><div class="qhd"><b>PAUSED</b><span>${Et(a.t)} \xB7 Lv ${a.lv}</span><span>Stage XP upgrades ${a.stageXpUpgrades ?? 0}/${stageXpUpgradeLimit()}</span></div>
       <div class="stats">${[
+        [i ? "答题" : "Quiz", `${a.correct}/${a.answered} · ${t}`],
         [i ? "\u65F6\u95F4" : "Time", Et(a.t)],
         [i ? "\u51FB\u6740" : "Kills", a.kills],
         [i ? "\u66B4\u51FB" : "Crits", a.crits || 0],
@@ -15779,7 +18358,6 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           a.autoLock ? (i ? "\u5F00" : "On") : i ? "\u5173" : "Off",
         ],
         [i ? "\u9996\u9886" : "Bosses", a.bosses],
-        [i ? "\u6B63\u786E\u7387" : "Accuracy", t],
         [i ? "\u654C\u4EBA" : "Enemies", Jt().name],
         [i ? "\u9898\u76EE" : "Questions", fe().name],
         [i ? "\u5355\u5143" : "Units", a.units.join(", ")],
@@ -16014,9 +18592,51 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           : `${le[a.curUnit - 1].name} \xB7 Enemies ${Jt().name} \xB7 Questions ${fe().name}`,
       ),
       (document.body.dataset.mode = "run"));
-    if (document.body.classList.contains("touch") && arenaFullPref() !== "off")
-      void enterArenaFullscreen();
     requestAnimationFrame(fitTouchStage);
+  }
+  function startArenaPreview() {
+    qa("rifle");
+    a.banner = null;
+    a.p.inv = 30;
+    a.nextBossT = ARENA_STAGE_SECONDS;
+    if (previewMode === "merchant") {
+      const requested = previewParams.get("shop");
+      const kind = Object.hasOwn(merchantShops, requested)
+        ? requested
+        : "talent";
+      const origin = stallItemPosition(
+        { x: 0, y: 0, kind },
+        0,
+        merchantShops[kind].items.length,
+      );
+      a.portalMerchant = { kind, x: X() - origin.x, y: _() - origin.y - 9 };
+      a.worldPortal = { x: X() + 70, y: _() - 65, target: 6, readyAt: 0 };
+      tickPortalMerchant();
+      return;
+    }
+    if (previewMode === "mini-boss") {
+      const requested = previewParams.get("boss");
+      const boss = Object.hasOwn(MINI_BOSSES, requested) ? requested : "crab";
+      a.theme = { scorpion: 6, crab: 5, yeti: 7, octopus: 4 }[boss] || 0;
+      knowledge.onKill({ kf: { boss }, x: X() + 24, y: _() - 12 });
+      return;
+    }
+    Bi();
+    a.bossCard = null;
+    a.boss.e.x = X() + 28;
+    a.boss.e.y = _() - 36;
+    a.boss.fightT0 = a.t;
+    Xi(a.boss.e);
+    if (previewMode === "boss-farewell") {
+      return;
+    }
+    Ii();
+    a.pendingLv = 0;
+    a.bossFarewell = null;
+    a.worldPortal.readyAt = a.t;
+    a.p.x = a.worldPortal.x;
+    a.p.y = a.worldPortal.y;
+    updateWorldPortal();
   }
   let Te = null;
   let ds = () => {
@@ -16045,6 +18665,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (a.transitionReward) {
         a.transitionReward = false;
         a.pendingBossReward = false;
+        if (a.themeAt) {
+          a.themeAt = 0;
+          Xn();
+        }
         ls();
       } else I = "play";
     }
@@ -16177,7 +18801,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             e === "KeyK") &&
             !t.repeat &&
             ts(),
-          (e === "KeyE" || e === "KeyQ" || e === "KeyJ") && !t.repeat && ss(),
+          e === heroSkillKey() && !t.repeat && ss(),
           (e === "Escape" || e === "KeyP") && !t.repeat && Bt.pause(),
           e === "KeyL" && !t.repeat && Ko());
       }
@@ -16466,6 +19090,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function updateFullscreenLabel() {
     const expanded = document.body.classList.contains("arena-expanded");
     const button = N("tFullscreen");
+    N("headerFullscreen").textContent = expanded
+      ? i
+        ? "退出全屏"
+        : "Exit full screen"
+      : i
+        ? "全屏"
+        : "Full screen";
     setArenaControlLabel(
       button,
       expanded ? (i ? "退出" : "Exit") : i ? "全屏" : "Full",
@@ -16672,11 +19303,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     document.addEventListener("webkitfullscreenchange", arenaFullscreenChanged);
   }
   if (!testing) {
-    N("tFullscreen").addEventListener("click", () => {
+    const toggleFullscreen = () => {
       if (document.body.classList.contains("arena-expanded"))
         leaveFullscreenByChoice();
       else enterFullscreenByChoice();
-    });
+    };
+    N("tFullscreen").addEventListener("click", toggleFullscreen);
+    N("headerFullscreen").addEventListener("click", toggleFullscreen);
   }
   // The player decides: an exit is remembered so later visits stay windowed,
   // an entry turns automatic full screen back on.
@@ -16782,6 +19415,46 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       button.setAttribute("aria-pressed", String(automatic));
     }
   }
+  const skillKeyChoices = [
+    "E",
+    "B",
+    "G",
+    "H",
+    "I",
+    "J",
+    "M",
+    "N",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "X",
+    "Y",
+    "Z",
+  ];
+  function heroSkillKey() {
+    return (
+      "Key" + (skillKeyChoices.includes(tt.d.skillKey) ? tt.d.skillKey : "E")
+    );
+  }
+
+  function appendSkillKeySetting(panel) {
+    if (!panel) return;
+    const label = document.createElement("label");
+    label.className = "arena-skill-key";
+    label.textContent = i ? "技能键 " : "Skill key ";
+    const select = document.createElement("select");
+    for (const key of skillKeyChoices) select.add(new Option(key, key));
+    select.value = heroSkillKey().slice(3);
+    select.onchange = () => {
+      tt.d.skillKey = select.value;
+      tt.save();
+    };
+    label.append(select);
+    panel.querySelector(".qhd")?.after(label);
+  }
+
   function appendAttackSetting(panel) {
     if (!panel) return;
     const row = document.createElement("div");
@@ -16798,7 +19471,26 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     help.textContent = i
       ? "手动模式：按住攻击按钮、鼠标左键或 F 连发；辅助武器保持自动。"
       : "Manual: hold Attack, left mouse, or F to fire. Companion weapons stay automatic.";
-    row.append(button, help);
+    const auto = document.createElement("button");
+    auto.type = "button";
+    const sync = () => {
+      const on = tt.d.autoSkill === true;
+      auto.textContent = i
+        ? on
+          ? "技能：自动"
+          : "技能：手动"
+        : on
+          ? "Skill: Auto"
+          : "Skill: Manual";
+      auto.setAttribute("aria-pressed", String(on));
+    };
+    auto.onclick = () => {
+      tt.d.autoSkill = tt.d.autoSkill !== true;
+      tt.save();
+      sync();
+    };
+    sync();
+    row.append(button, auto, help);
     panel.insertBefore(row, panel.querySelector(":scope > .row2"));
     syncAttackMode();
   }
@@ -18936,11 +21628,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   function collectBossExperience() {
     const total = a.gems.reduce((sum, gem) => sum + gem.v, 0);
     a.gems = [];
-    if (total > 0) {
-      Kn(total);
-      Yn();
-      bt(a.p.x, a.p.y - 24, (i ? "经验 +" : "XP +") + total, s.blue);
-    }
+    if (total <= 0) return;
+    Kn(total, true);
+    Yn();
   }
   function drawRegionArrow(zone) {
     const cam = a.cam || { x: 0, y: 0 },
@@ -18980,7 +21670,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   }
   function heldWeaponSpec(id = a.cls) {
     const art = {
-      sniper: ["...bsk...", "...k.k.kk", "rrgsssssk", "rk.k.k...", ".p..k...."],
+      sniper: [
+        "...bsk.......",
+        "...k.k..kkkk.",
+        "rrgsssssssssk",
+        "rk.k.k.kk....",
+        ".p..k........",
+      ],
       rifle: ["...ks...", "rrggk.sk", "rkgssssk", ".pkmg...", "...mk..."],
       shotgun: ["....kkk", "rrssssk", "rksoosk", ".p.kk..", "......."],
       vectorbow: ["..g.g..", ".kg.gk.", "ggsssgg", ".kg.gk.", "..g.g.."],
@@ -19189,13 +21885,24 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             ? 2
             : 3;
     if (variant === 1) {
-      body[3] = "kkaawaaawaakk";
-      body[4] = "kaakaaakaakak";
+      body[1] = "kk........kk";
+      body[2] = "kabk....kbak";
+      body[3] = "kaabkkkkbaak";
+      body[4] = ".kkkaawaak..";
+      body[5] = "...kaakak...";
     }
-    if (variant === 2) body[8] = "..kakakak...";
+    if (variant === 2) {
+      body[2] = "...kkkkkk...";
+      body[3] = "..kawaawak..";
+      body[4] = "..kaabbaak..";
+      body[6] = ".kkaaaaakk..";
+      body[8] = "..k.k.k.kk..";
+    }
     if (variant === 3) {
       body[0] = "..kk....kk..";
-      body[6] = "kkaaaaaaaakk";
+      body[1] = ".kbkkkkkkbk.";
+      body[5] = "kbbkaaaakbbk";
+      body[6] = "kbbkaaaakbbk";
     }
     const accent = { toxic: s.green, fuse: s.orange, armor: s.lgray }[
       enemy.role
@@ -19552,6 +22259,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     hazard: (hazard) => wt(hazard),
     bullet: (x, y, angle, speed, options) => Pt(x, y, angle, speed, options),
     banner: (title, color, sub) => oe(title, color, sub),
+    encounterHelp: (key, title, body) =>
+      !testing && showRegionTutorial(key, title, body),
     cards: (count) => rs(count),
     bossCards: () => $i(),
     clearInput: () => {
@@ -19627,7 +22336,11 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             : "Hide touch buttons")),
         ks(),
         us());
-      if (arenaFullPref() !== "off") void enterArenaFullscreen(true);
+      if (isPreview) {
+        startArenaPreview();
+        updateFullscreenLabel();
+      } else if (!hasArenaTouch() && arenaFullPref() !== "off")
+        void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),
         o = 0;

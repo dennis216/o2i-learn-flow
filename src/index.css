@@ -9,71 +9,83 @@ All colors MUST be HSL.
 @layer base {
   :root, .dark {
     color-scheme: dark;
-    --background: 166 19% 11%;
-    --foreground: 42 18% 89%;
+    /* Dark (Nov 21 refresh): same forest hue and champagne gold, but a deeper, cleaner
+       base with clear steps between page / card / popover, hairline borders, and warm
+       greys for secondary text so it matches the ivory body text. */
+    --background: 166 18% 8%;
+    --foreground: 40 22% 88%;
 
-    --card: 166 17% 14%;
-    --card-foreground: 42 18% 89%;
+    --card: 166 15% 11%;
+    --card-foreground: 40 22% 88%;
 
-    --popover: 166 16% 17%;
-    --popover-foreground: 42 18% 89%;
+    --popover: 166 14% 13%;
+    --popover-foreground: 40 22% 88%;
 
     --primary: 44 38% 73%;
-    --primary-foreground: 166 22% 11%;
+    --primary-foreground: 166 22% 9%;
 
-    --secondary: 166 14% 21%;
-    --secondary-foreground: 42 18% 89%;
+    --secondary: 166 11% 17%;
+    --secondary-foreground: 40 22% 88%;
 
-    --muted: 166 13% 18%;
-    --muted-foreground: 155 9% 72%;
+    --muted: 166 10% 15%;
+    --muted-foreground: 38 10% 68%;
 
     --accent: 44 43% 70%;
     --accent-text: 44 43% 70%;
-    --accent-foreground: 166 22% 11%;
+    --accent-foreground: 166 22% 9%;
 
     --destructive: 0 68% 57%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 166 12% 29%;
-    --input: 166 12% 37%;
+    --border: 166 9% 20%;
+    --input: 166 9% 27%;
     --ring: 44 43% 70%;
 
-    /* Math tutoring theme colors */
-    --education-blue: 157 40% 24%;
-    --education-orange: 43 96% 56%;
+    /* Feature colours stay inside the forest / gold family: forest, sage, champagne, bronze. */
+    --education-blue: 157 30% 26%;
+    --education-orange: 42 52% 62%;
     --education-green: 145 40% 64%;
-    --education-purple: 259 86% 40%;
-    --education-teal: 174 82% 29%;
+    --education-purple: 26 30% 52%;
+    --education-teal: 155 22% 62%;
+    /* Quiet feature tones (src/lib/tones.ts): a tint for surfaces and an ink for icons/text. */
+    --tone-forest: 157 30% 42%;
+    --tone-forest-ink: 150 24% 72%;
+    --tone-sage: 160 18% 52%;
+    --tone-sage-ink: 155 22% 70%;
+    --tone-gold: 44 43% 70%;
+    --tone-gold-ink: 44 45% 74%;
+    --tone-bronze: 28 30% 56%;
+    --tone-bronze-ink: 28 34% 72%;
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     --gradient-secondary: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
 
-    --studio-ink: 166 19% 11%;
-    --studio-white: 42 18% 89%;
-    --quest-background: 166 17% 15%;
-    --quest-panel: 166 18% 12%;
+    --studio-ink: 166 18% 8%;
+    --studio-white: 40 22% 88%;
+    --quest-background: 166 15% 11%;
+    --quest-panel: 166 18% 9%;
     --detail-sage: 155 18% 69%;
     --detail-bronze: 30 28% 62%;
     --studio-ice: 44 43% 70%;
     --studio-cobalt: 156 32% 42%;
-    --studio-muted: 155 9% 72%;
+    --studio-muted: 38 10% 68%;
     --glass-white: 0 0% 100%;
-    --glass-edge: 166 12% 29%;
+    --glass-edge: 166 9% 20%;
     --glass-blue: 156 32% 42%;
     --radius: 0.75rem;
 
-    --sidebar-background: 166 17% 14%;
+    --sidebar-background: 166 15% 11%;
 
-    --sidebar-foreground: 42 18% 89%;
+    --sidebar-foreground: 40 22% 88%;
 
     --sidebar-primary: 44 38% 73%;
 
-    --sidebar-primary-foreground: 166 22% 11%;
+    --sidebar-primary-foreground: 166 22% 9%;
 
-    --sidebar-accent: 166 14% 21%;
+    --sidebar-accent: 166 11% 17%;
 
-    --sidebar-accent-foreground: 42 18% 89%;
+    --sidebar-accent-foreground: 40 22% 88%;
 
-    --sidebar-border: 166 12% 29%;
+    --sidebar-border: 166 9% 20%;
 
     --sidebar-ring: 44 43% 70%;
   }
@@ -93,9 +105,21 @@ All colors MUST be HSL.
     --muted: 145 14% 91%;
     --muted-foreground: 158 10% 35%;
     --accent: 44 48% 62%;
-    --accent-text: 44 47% 35%;
+    --accent-text: 44 50% 30%;
     --accent-foreground: 164 24% 15%;
     --education-green: 145 48% 29%;
+    --education-blue: 157 36% 25%;
+    --education-orange: 40 48% 46%;
+    --education-purple: 26 34% 38%;
+    --education-teal: 160 32% 28%;
+    --tone-forest: 157 36% 25%;
+    --tone-forest-ink: 157 38% 24%;
+    --tone-sage: 160 22% 38%;
+    --tone-sage-ink: 160 32% 26%;
+    --tone-gold: 44 48% 55%;
+    --tone-gold-ink: 44 50% 29%;
+    --tone-bronze: 26 30% 45%;
+    --tone-bronze-ink: 26 40% 31%;
     --destructive: 0 68% 43%;
     --border: 145 15% 80%;
     --input: 145 15% 73%;
@@ -233,6 +257,15 @@ p > span {
 @keyframes owl-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
+}
+/* Desk pet idle moods (DeskPet.tsx): a small preening sway and a slow waddle, both stepped. */
+@keyframes owl-preen {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(3deg) translateY(1px); }
+}
+@keyframes owl-waddle {
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(3deg) translateY(-2px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -505,4 +538,18 @@ html.arena-expanded .glass-nav-wrap { visibility: hidden; }
 @media (max-width: 399px) { .glass-nav a > .brand-mark img { height: 2rem; } }
 /* "O2I" inside headings and the auth wordmark: one serif face for O, 2 and I (no Inter digit). */
 .o2i-name { font-family: 'Cormorant Garamond', 'Noto Serif SC', Georgia, serif; }
+
+/* Nov 21 readability pass (#57).
+   Cormorant, Noto Serif SC and Noto Sans SC are loaded at 400–600 only (index.html), so
+   "font-bold" (700) made the browser fake a bold that smears Chinese and Cormorant strokes.
+   Headings, and all Chinese text, use the real 600 instead. */
+:is(h1, h2, h3, h4).font-bold, :is(h1, h2, h3, h4) .font-bold { font-weight: 600; }
+:lang(zh-CN) .font-bold { font-weight: 600; }
+/* Negative tracking is for Latin display type; Chinese reads cramped with it. */
+:lang(zh-CN) :is(.tracking-tight, .tracking-tighter) { letter-spacing: .01em; }
+/* Small labels: never under 12px; Chinese at 13px without wide capitals tracking. */
+.section-kicker, .glass-eyebrow, .calc-quest-label { font-size: .75rem; }
+:lang(zh-CN) :is(.section-kicker, .glass-eyebrow, .calc-quest-label) { font-size: .8125rem; letter-spacing: .08em; }
+.hero-layout .community-tutor-credentials { font-size: .75rem; }
+.trait-number { color: hsl(var(--primary) / .8); }
 

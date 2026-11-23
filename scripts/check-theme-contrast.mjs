@@ -20,6 +20,9 @@ const pairs = [
   ['primary-foreground', 'primary'], ['secondary-foreground', 'secondary'], ['accent-foreground', 'accent'],
   ['accent-text', 'background'], ['studio-white', 'studio-ink'], ['studio-muted', 'studio-ink'],
   ['foreground', 'quest-background'], ['education-green', 'background'],
+  // Quiet tone tiles and status pills (src/lib/tones.ts): the ink is used for icons and pill text.
+  ['tone-forest-ink', 'background'], ['tone-sage-ink', 'background'], ['tone-gold-ink', 'background'],
+  ['tone-bronze-ink', 'background'], ['tone-sage-ink', 'card'], ['education-teal', 'background'],
 ];
 let failed = false;
 for (const [mode, palette] of Object.entries({ light, dark })) {
