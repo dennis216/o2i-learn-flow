@@ -17,6 +17,8 @@ const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
 function ArenaGame({ language, email }: { language: Language; email?: string }) {
+  const isIPad = /iPad/i.test(navigator.userAgent)
+    || (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
   const [testCoins, setTestCoins] = useState(false);
   useEffect(() => {
     if (!email || location.hostname !== 'brian.o2i-website.pages.dev' || !crypto.subtle) return;
@@ -108,6 +110,7 @@ function ArenaGame({ language, email }: { language: Language; email?: string }) 
   return (
     <iframe
       ref={frame}
+      data-arena-ipad={isIPad ? '' : undefined}
       data-arena-test-coins={testCoins ? "true" : undefined}
       src="/games/limit-arena.html"
       title="CALC QUEST Limit Arena"
