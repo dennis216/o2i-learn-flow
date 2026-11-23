@@ -19455,6 +19455,43 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     panel.querySelector(".qhd")?.after(label);
   }
 
+  const touchButtonSizes = [80, 100, 120];
+  function isArenaIPad() {
+    return (
+      /iPad/i.test(navigator.userAgent) ||
+      (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints > 1)
+    );
+  }
+  function syncTabletButtonSize() {
+    if (!isArenaIPad()) return;
+    const size = tt.d.touchButtonSize;
+    document.body.dataset.tabletButtonSize = touchButtonSizes.includes(size)
+      ? String(size)
+      : "100";
+  }
+
+  function appendTabletButtonSize(row) {
+    if (!isArenaIPad()) return;
+    const label = document.createElement("label");
+    label.className = "tablet-button-size";
+    label.textContent = i ? "按钮大小" : "Button size";
+    const select = document.createElement("select");
+    for (const size of touchButtonSizes) {
+      const option = document.createElement("option");
+      option.value = String(size);
+      option.textContent = size + "%";
+      select.append(option);
+    }
+    select.value = document.body.dataset.tabletButtonSize || "100";
+    select.onchange = () => {
+      tt.d.touchButtonSize = Number(select.value);
+      syncTabletButtonSize();
+      tt.save();
+    };
+    label.append(select);
+    row.append(label);
+  }
+
   function appendAttackSetting(panel) {
     if (!panel) return;
     const row = document.createElement("div");
@@ -19490,7 +19527,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       sync();
     };
     sync();
-    row.append(button, auto, help);
+    row.append(button, auto);
+    appendTabletButtonSize(row);
+    row.append(help);
     panel.insertBefore(row, panel.querySelector(":scope > .row2"));
     syncAttackMode();
   }
@@ -22316,6 +22355,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }),
         Y(t, "o2i", 50, 4, { pixel: !0, size: 12, col: s.white }),
         tt.load(),
+        syncTabletButtonSize(),
         syncAttackMode(),
         An(),
         _n(),

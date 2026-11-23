@@ -462,4 +462,50 @@ body[data-ov=menu] #ov>.mz{background:linear-gradient(165deg,#263353,#141d35 65%
 .merchant-pets button:focus-visible{outline:2px solid #f6cd81}
 .merchant-pets canvas{width:48px;height:29px}
 .merchant-pets span{color:#eadacb}
+/* iPad combat-button sizing. 100% uses the normal layout. */
+.tablet-button-size{display:inline-flex;align-items:center;gap:8px;color:var(--text)}
+.tablet-button-size select{font:inherit;color:var(--text);background:var(--panel2);padding:5px;border:2px solid var(--muted)}
+body[data-tablet-button-size="80"]{--tablet-button-scale:.8}
+body[data-tablet-button-size="120"]{--tablet-button-scale:1.2}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+ --tablet-action:68px;--tablet-attack:84px;--tablet-icon:34px;--tablet-gap:14px;
+ --tablet-scaled-action:calc(var(--tablet-action) * var(--tablet-button-scale));
+ --tablet-scaled-attack:calc(var(--tablet-attack) * var(--tablet-button-scale));
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad :is(#tDash,#tSkill){
+ width:var(--tablet-scaled-action);height:var(--tablet-scaled-action)
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad #tAttack{
+ width:var(--tablet-scaled-attack);height:var(--tablet-scaled-attack)
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad :is(#tDash,#tSkill,#tAttack) .control-icon{
+ width:calc(var(--tablet-icon) * var(--tablet-button-scale));height:calc(var(--tablet-icon) * var(--tablet-button-scale))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad #tDash{
+ right:calc(var(--control-right) + var(--tablet-scaled-action) + var(--tablet-gap))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"])[data-attack-mode=manual] .tpad :is(#tDash,#tSkill){
+ right:calc(var(--control-right) + var(--tablet-scaled-attack) + var(--tablet-gap))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"])[data-attack-mode=manual] .tpad #tSkill{
+ bottom:calc(var(--control-bottom) + var(--tablet-scaled-action) + var(--tablet-gap))
+}
+@media(min-width:700px) and (min-height:540px){
+ body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+  --tablet-action:100px;--tablet-attack:100px;--tablet-icon:48px;--tablet-gap:16px
+ }
+}
+@media(max-width:600px){
+ body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+  --tablet-action:58px;--tablet-attack:72px;--tablet-icon:28px;--tablet-gap:12px
+ }
+}
+/* Keep the title and its choices together near the top on portrait phones. */
+@media (orientation:portrait) and (max-width:560px) and (pointer:coarse){
+ body.arena-expanded[data-ov=menu]{--portrait-title-top:calc(clamp(64px,10dvh,90px) + env(safe-area-inset-top,0px))}
+ body.arena-expanded[data-ov=menu] canvas#c{position:absolute;top:var(--portrait-title-top);left:50%;transform:translateX(-50%)}
+ body.arena-expanded[data-ov=menu] #ov>.mz{
+  top:calc(var(--portrait-title-top) + clamp(60px,19vw,100px));transform:translateX(-50%)
+ }
+}
 </style></body></html>
