@@ -16173,7 +16173,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
 
   function drawSmallPlayerBubble(text) {
     R.save();
-    R.font = "600 12px system-ui, sans-serif";
+    R.font = isArenaIPad()
+      ? "600 14px system-ui, sans-serif"
+      : "600 12px system-ui, sans-serif";
     const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 12);
     const anchor = ((a.p.x - a.cam.x) * G) / A;
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
@@ -16242,8 +16244,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
   ) {
     R.save();
     R.globalAlpha *= opacity;
-    const titleFont = "700 12px system-ui, sans-serif";
-    const messageFont = "600 14px system-ui, sans-serif";
+    const tablet = isArenaIPad();
+    const titleFont = `700 ${tablet ? 14 : 12}px system-ui, sans-serif`;
+    const messageFont = `600 ${tablet ? 16 : 14}px system-ui, sans-serif`;
     R.font = titleFont;
     const titleWidth = R.measureText(title).width;
     R.font = messageFont;
