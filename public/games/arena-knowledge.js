@@ -1,3 +1,4 @@
+export const ARENA_STAGE_SECONDS = 210;
 // Knowledge flow for Limit Arena (#55), from Dennis's 2026-11-18 playtest notes.
 //
 // One idea: fight → answer → get stronger, and harder questions give stronger
@@ -38,9 +39,10 @@ export const PACE = {
   hintGap: 3,
 };
 
-// Admin test speeds (setup screen, admins only). The run clock, XP, bosses
+// Test speeds for admins and the Brian preview. The run clock, XP, bosses
 // and the timings above all run this many times faster; runs are not recorded.
-export const TEST_SPEEDS = [1, 2, 4];
+export const TEST_SPEEDS = [1, 2, 4, 8];
+const BRIAN_PREVIEW_HOST = "brian.o2i-website.pages.dev";
 export const ADMIN_KEY = "cq-arena-admin";
 // The site (src/pages/Arena.tsx) sets ADMIN_KEY for admins. A student who sets
 // it by hand only speeds up their own local run, which is never recorded.
@@ -51,9 +53,16 @@ export function isArenaAdmin() {
     return false;
   }
 }
-export function testSpeedFor(setup, admin = isArenaAdmin()) {
+export function testSpeedFor(
+  setup,
+  admin = isArenaAdmin(),
+  hostname = globalThis.location?.hostname,
+) {
   const value = Number(setup?.test);
-  return admin && TEST_SPEEDS.includes(value) ? value : 1;
+  return (admin || hostname === BRIAN_PREVIEW_HOST) &&
+    TEST_SPEEDS.includes(value)
+    ? value
+    : 1;
 }
 const TEST_INFO = {
   1: ["Normal speed.", "正常速度。"],
@@ -64,6 +73,10 @@ const TEST_INFO = {
   4: [
     "XP ×4; enemy growth, spawns, bosses and tablets ×4. Not recorded.",
     "经验 ×4；敌人成长、刷怪、首领、题碑都 ×4。不计入记录。",
+  ],
+  8: [
+    "XP ×8; enemy growth, boss and tablet timers are accelerated. Not recorded.",
+    "经验 ×8；敌人成长、首领和题碑加速。不计入记录。",
   ],
 };
 
@@ -95,7 +108,7 @@ export const HINTS = {
     "装备会自动开火，再捡到同一件就会升级。",
   ],
 };
-export const SMALL_ENEMY_XP = 0.6;
+const SPECIAL_ENEMY_XP = 0.6;
 
 // Offsets from the world centre; flipped per world so maps differ. They stay
 // outside the ring where Brian's special regions and landmarks live.
@@ -597,6 +610,8 @@ export const BOSS_FOR_UNIT = {
   6: "riemann",
   7: "riemann",
   8: "riemann",
+  9: "prism",
+  10: "orbit",
 };
 export const WORLD_PREFIX = {
   desert: ["Dune ", "沙海·"],
@@ -637,7 +652,14 @@ export function worldLayout(world, zones = [], variant = 0) {
 
 export function bossTypeFor(unit, lastType) {
   const mapped = BOSS_FOR_UNIT[unit] || null;
-  return mapped && mapped !== lastType ? mapped : null;
+  const alternates = {
+    dne: "mirror",
+    knight: "prism",
+    riemann: "orbit",
+    prism: "knight",
+    orbit: "riemann",
+  };
+  return mapped === lastType ? alternates[mapped] || null : mapped;
 }
 
 // ---------------------------------------------------------------- runtime
@@ -1475,11 +1497,11 @@ export function createKnowledgeFlow(api) {
     for (const c of source)
       if (out.length < size && !out.some((o) => sameCard(o, c))) out.push(c);
   }
-  // Every tablet offers this unit's skills; harder ones offer more, and ★★★
+  // Every tablet offers at most one unit skill, and ★★★
   // skills jump two levels. ★★★ also adds one rare card.
   function tabletCards(tier) {
     const out = [];
-    for (const id of shuffle(unitChoices()).slice(0, tier === 1 ? 1 : 2))
+    for (const id of shuffle(unitChoices()).slice(0, 1))
       out.push(unitCard(id, tier === 3 ? 2 : 1));
     if (tier === 3) {
       const rare = api.bossCards();
@@ -1684,7 +1706,8 @@ export function createKnowledgeFlow(api) {
       first: kf.stats.worlds++ === 0,
       tablets: layout.tablets.map((p, n) => ({
         ...p,
-        tier: n + 1,
+        tier:
+          n === 0 ? 1 + Math.floor(api.Math.random() * TABLETS.length) : null,
       })),
       // The lair starts hidden (see unlockLairs).
       lairs: layout.lairs.map((p) => ({
@@ -1711,10 +1734,8 @@ export function createKnowledgeFlow(api) {
     );
   };
 
-  // Tier n opens after n − 1 tablets this run, so a new run starts with ★ only.
-  const tabletOpen = (tab) => tab.tier <= 1 + (kfOf().stats.tablets || 0);
-  // All open tablets share one cooldown, and none lights up right after a
-  // question or a panel closes.
+  // Each authored location is used once. Only the current site has a tier.
+  const tabletOpen = (tab) => tab.tier != null && !tab.used;
   const tabletsReady = () => {
     const kf = kfOf(),
       t = api.a.t;
@@ -1727,6 +1748,9 @@ export function createKnowledgeFlow(api) {
       rule = TABLETS[tab.tier - 1];
     kf.tabletWait = fast(rule.cd);
     kf.tabletAt = a.t + kf.tabletWait;
+    tab.used = true;
+    const next = kf.world.tablets.find((site) => !site.used);
+    if (next) next.tier = 1 + Math.floor(api.Math.random() * TABLETS.length);
     kf.stats.tablets++;
     api.clearInput();
     api.mode = "lvup";
@@ -1785,7 +1809,7 @@ export function createKnowledgeFlow(api) {
   };
   function wake(lair) {
     const def = MINI_BOSSES[lair.boss],
-      hp = enemyHp(def.hp);
+      hp = enemyHp(def.hp) * 0.9;
     const e = api.spawnEnemy("elite", lair.x, lair.y, {
       type: "kfboss",
       kf: { boss: lair.boss },
@@ -1988,7 +2012,24 @@ export function createKnowledgeFlow(api) {
       if (lair.state === "done" || lair.state === "hidden") continue;
       const d = Math.hypot(p.x - lair.x, p.y - lair.y);
       if (lair.state === "sleep") {
-        if (calm() && d < 105) wake(lair);
+        if (d >= 105) lair.approachHelp = false;
+        if (calm() && d < 105) {
+          if (!lair.approachHelp) {
+            lair.approachHelp = true;
+            const def = MINI_BOSSES[lair.boss];
+            if (
+              api.encounterHelp?.(
+                "mini:" + lair.boss,
+                L(def.name),
+                api.zh
+                  ? "小首领就在附近。留意弹幕预警，击败后可获得奖励。"
+                  : "A mini-boss is nearby. Watch its attack warnings and defeat it for a reward.",
+              )
+            )
+              return true;
+          }
+          wake(lair);
+        }
         continue;
       }
       const e = lair.enemy;
@@ -2550,7 +2591,7 @@ export function createKnowledgeFlow(api) {
       left = Math.max(kf.tabletAt, kf.restUntil) - a.t,
       wait = Math.max(kf.tabletWait || 1, left);
     for (const tab of kf.world.tablets) {
-      if (!tabletOpen(tab)) continue;
+      if (!ready || !tabletOpen(tab)) continue;
       const x = Math.round(tab.x - camX),
         y = Math.round(tab.y - camY);
       if (!on(x, y)) continue;
@@ -2692,10 +2733,208 @@ export function createKnowledgeFlow(api) {
     }
   }
 
+  const followerRewards = {
+    crab: {
+      kinds: ["shrimp", "crab"],
+      line: ["My squad needs a field trip.", "我这俩兵，正好缺个队长！"],
+    },
+    yeti: {
+      kinds: ["snowman"],
+      line: ["My snowman packs his own frost.", "小雪人送你，自带冷气！"],
+    },
+    octopus: {
+      kinds: ["octopus"],
+      line: ["Tiny octopus. Big ink spills.", "小章鱼借你，墨水管够！"],
+    },
+    scorpion: {
+      kinds: ["scorpion"],
+      line: ["Mind the little one’s rockets!", "小蝎子归你，火箭别乱按！"],
+    },
+  };
+
+  function tickBossFollowers(dt) {
+    const a = api.a;
+    const followers = a.kf.bossFollowers;
+    if (!followers?.length) return;
+    const p = P();
+    a.kf.bossFollowers = followers.filter((follower, index) => {
+      const gap = Math.hypot(p.x - follower.x, p.y - follower.y);
+      const side = index === 0 ? -1 : 1;
+      const random = api.Math.random;
+      follower.following = gap > (follower.following ? 26 : 42);
+      if (follower.following) {
+        const player = a.p;
+        const moving = player.moving;
+        follower.goal = {
+          x: p.x + side * 14 - (moving ? (player.dx || 0) * 10 : 0),
+          y: p.y + 8 - (moving ? (player.dy || 0) * 10 : 0),
+        };
+      } else if (!follower.goal && a.t >= (follower.restUntil ?? 0)) {
+        follower.goal = {
+          x: p.x + side * (12 + random() * 12),
+          y: p.y - 11 + random() * 32,
+        };
+      }
+
+      follower.walking = false;
+      if (follower.goal) {
+        const tx = clamp(follower.goal.x, 8, api.world.w - 8);
+        const ty = clamp(follower.goal.y, 18, api.world.h - 8);
+        const dx = tx - follower.x;
+        const dy = ty - follower.y;
+        const distance = Math.hypot(dx, dy);
+        const travel = Math.min(distance, (follower.following ? 112 : 33) * dt);
+        if (gap > 140) {
+          follower.x = tx;
+          follower.y = ty;
+        } else if (travel > 0) {
+          follower.x += (dx / distance) * travel;
+          follower.y += (dy / distance) * travel;
+          follower.stride = (follower.stride || 0) + travel;
+          follower.walking = distance - travel > 0.25;
+          if (Math.abs(dx) > 1) follower.face = dx < 0 ? -1 : 1;
+        }
+        if (!follower.following && distance - travel <= 0.25) {
+          follower.goal = null;
+          follower.restUntil = a.t + 0.5 + random() * 0.65;
+        }
+      }
+      let target;
+      let range = 60;
+      let touching = false;
+      for (const enemy of a.enemies) {
+        if (enemy.dead) continue;
+        const gap = Math.hypot(enemy.x - follower.x, enemy.y - follower.y);
+        if (gap < (enemy.r || 5) + 5) touching = true;
+        if (gap < range) {
+          target = enemy;
+          range = gap;
+        }
+      }
+      if (touching && a.t >= follower.hurtAt) {
+        follower.hurtAt = a.t + 0.75;
+        follower.hp -= 4;
+        if (follower.hp <= 0) return false;
+      }
+      if (target && a.t >= follower.fireAt) {
+        follower.fireAt = a.t + 1.7;
+        follower.shot = { x: target.x, y: target.y, until: a.t + 0.28 };
+        if (follower.kind === "octopus" && !target.boss && !target.kf?.boss)
+          target.slowUntil = Math.max(target.slowUntil || 0, a.t + 1.15);
+        const damage =
+          follower.kind === "scorpion"
+            ? 5
+            : ["crab", "shrimp"].includes(follower.kind)
+              ? 2
+              : 3;
+        api.damage(target, damage, { nocrit: true, quiet: true });
+      }
+      return true;
+    });
+  }
+
+  function drawBossFollowers(ctx, cameraX, cameraY) {
+    const a = api.a;
+    for (const follower of a.kf.bossFollowers || []) {
+      const x = Math.round(follower.x - cameraX);
+      const ground = Math.round(follower.y - cameraY);
+      const step = follower.walking
+        ? Math.floor((follower.stride || 0) / 4) % 4
+        : 0;
+      const y = ground - (step === 1 || step === 3 ? 1 : 0);
+      const face = follower.face || 1;
+      const kind = follower.kind;
+      const rect = (dx, dy, w, h, color) =>
+        api.drawRect(ctx, x + dx, y + dy, w, h, color);
+      if (follower.shot?.until > a.t) {
+        const sx = Math.round(follower.shot.x - cameraX),
+          sy = Math.round(follower.shot.y - cameraY);
+        const progress = clamp(1 - (follower.shot.until - a.t) / 0.28, 0, 1);
+        const px = Math.round(x + (sx - x) * progress);
+        const py = Math.round(y + (sy - y) * progress);
+        const dot = (dx, dy, w, h, color) =>
+          api.drawRect(ctx, px + dx, py + dy, w, h, color);
+        if (kind === "octopus") {
+          dot(-2, -2, 5, 4, "#492660");
+          dot(-1, -3, 3, 5, "#8a50c5");
+          dot(0, -2, 2, 2, "#db9fee");
+          dot(-5, 2, 2, 2, "#66418b");
+          if (progress > 0.8)
+            api.drawRect(ctx, sx - 4, sy + 2, 9, 3, "#633482");
+        } else if (kind === "scorpion") {
+          dot(-2, -1, 5, 3, "#26273b");
+          dot(-1, -1, 3, 2, "#e4b38a");
+          dot(-3, 0, 2, 1, "#ff8d53");
+        } else if (kind === "snowman") {
+          dot(-2, -1, 5, 3, "#acdcef");
+          dot(-1, -2, 3, 4, "#effcff");
+        } else {
+          dot(-2, -1, 5, 3, "#e18d82");
+          dot(-1, -2, 3, 2, "#ffe0a6");
+        }
+      }
+      api.drawRect(ctx, x - 4, ground + 5, 9, 1, "rgba(12, 15, 26, 0.6)");
+      if (kind === "snowman") {
+        rect(-5, -3, 11, 9, "#accbdc");
+        rect(-4, -4, 9, 9, "#ecf9ff");
+        rect(-4, -10, 9, 7, "#ecf9ff");
+        rect(-3, -8, 2, 2, "#23324d");
+        rect(2, -8, 2, 2, "#23324d");
+        rect(face < 0 ? -4 : 0, -6, 4, 1, "#f28a51");
+        rect(-4, -3, 9, 2, "#4e8bba");
+      } else {
+        const sprite = bossSprite(kind, step % 2, false);
+        const width = Math.max(1, Math.round(sprite.width * 0.57));
+        const height = Math.max(1, Math.round(sprite.height * 0.57));
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(face, 1);
+        ctx.drawImage(
+          sprite,
+          -Math.floor(width / 2),
+          -Math.floor(height / 2),
+          width,
+          height,
+        );
+        ctx.restore();
+        if (kind === "scorpion") {
+          rect(face < 0 ? -11 : 2, -6, 9, 4, "#392938");
+          rect(face < 0 ? -10 : 3, -5, 7, 2, "#c1b3a4");
+          rect(face < 0 ? -10 : 8, -5, 2, 2, "#f2884d");
+        }
+      }
+      api.drawRect(ctx, x - 6, ground + 8, 12, 3, "#24253c");
+      api.drawRect(
+        ctx,
+        x - 5,
+        ground + 9,
+        Math.ceil((10 * follower.hp) / 30),
+        1,
+        "#7adba4",
+      );
+    }
+  }
+
   function drawEffects(ctx, camX, camY) {
     const a = api.a,
       kf = a?.kf;
     if (!kf) return;
+    const fallen = a.miniBossFarewell;
+    if (fallen?.until > a.t) {
+      ctx.save();
+      ctx.globalAlpha = 0.68 * clamp((fallen.until - a.t) / 0.32, 0, 1);
+      blit(
+        ctx,
+        bossSprite(fallen.kind, 0, false),
+        fallen.x - camX,
+        fallen.y - camY + 12,
+        {
+          flip: fallen.flip,
+        },
+      );
+      ctx.restore();
+    }
+    drawBossFollowers(ctx, camX, camY);
     // Player-side effects stay a step behind enemies and their bullets.
     const FX = 0.75;
     ctx.globalAlpha = FX;
@@ -2985,17 +3224,6 @@ export function createKnowledgeFlow(api) {
       kf = a?.kf;
     if (!kf) return y;
     const pal = api.pal;
-    if (speed() > 1) {
-      api.hudText(
-        ctx,
-        (api.zh ? "测试 ×" : "TEST ×") + speed(),
-        right,
-        y,
-        pal.yellow,
-        { outline: pal.black, align: "right" },
-      );
-      y += 9;
-    }
     y += 3;
     const row = [];
     for (const [id, s] of Object.entries(kf.unit))
@@ -3155,7 +3383,7 @@ export function createKnowledgeFlow(api) {
       const a = api.a;
       a.kf = freshState();
       a.testSpeed = testSpeedFor(api.save.d.setup);
-      a.nextBossT = 180 / a.testSpeed;
+      a.nextBossT = ARENA_STAGE_SECONDS / a.testSpeed;
       a.kf.tabletAt = fast(PACE.firstTablet);
     },
     update(dt) {
@@ -3191,6 +3419,7 @@ export function createKnowledgeFlow(api) {
       }
       tickGear(dt);
       tickShots(dt);
+      tickBossFollowers(dt);
       if (a.themeTr) return;
       ensureWorld();
       if (tickLairs(dt)) return;
@@ -3209,20 +3438,42 @@ export function createKnowledgeFlow(api) {
           lair.enemy = null;
         }
         kf.stats.miniBosses++;
-        a.picks.push({
-          kind: "kfgear",
-          kf: true,
-          persist: true,
-          gear: def.gear,
+        const reward = followerRewards[e.kf.boss];
+        a.miniBossFarewell = {
+          name: L(def.name),
+          kind: e.kf.boss,
+          flip: e.flip,
+          text: reward
+            ? L(reward.line)
+            : api.zh
+              ? "激光炮给你，别拿来烤面包。"
+              : "Take the laser. It’s not a toaster.",
           x: e.x,
           y: e.y,
-          t0: a.t,
-        });
-        say(
-          api.zh ? "小首领被击败！" : "MINI-BOSS DOWN!",
-          def.col,
-          (api.zh ? "掉落：" : "Dropped: ") + L(EQUIPMENT[def.gear].name),
-        );
+          start: a.t,
+          until: a.t + 1.25,
+        };
+        if (reward) {
+          const p = P();
+          kf.bossFollowers = reward.kinds.map((kind, index) => ({
+            kind,
+            x: p.x + (index ? 17 : -17),
+            y: p.y + 7,
+            hp: 30,
+            hurtAt: a.t,
+            fireAt: a.t + 1,
+          }));
+        } else {
+          a.picks.push({
+            kind: "kfgear",
+            kf: true,
+            persist: true,
+            gear: def.gear,
+            x: e.x,
+            y: e.y,
+            t0: a.t,
+          });
+        }
         return;
       }
       const growth = kf.unit.u7_growth;
@@ -3323,7 +3574,11 @@ export function createKnowledgeFlow(api) {
       return f;
     },
     xpScale(e) {
-      return kfOf() && !e?.elite && !e?.boss ? SMALL_ENEMY_XP : 1;
+      return kfOf() &&
+        !e?.elite &&
+        (e?.kf?.boss || e?.kf?.minion || e?.bossMinion)
+        ? SPECIAL_ENEMY_XP
+        : 1;
     },
     bossType() {
       const a = api.a,
@@ -3343,16 +3598,22 @@ export function createKnowledgeFlow(api) {
       const prefix = WORLD_PREFIX[worldKind()];
       return prefix ? { ...def, name: L(prefix) + def.name } : def;
     },
-    // Admin-only test speed row on the units & difficulty screen.
+    // Test speed row on the units & difficulty screen.
     decorateSetup(root, setup) {
       const panel = root?.querySelector(".panel"),
         row = panel?.querySelector(".urow");
-      if (!row || !isArenaAdmin() || panel.querySelector(".kf-test")) return;
+      const preview = globalThis.location?.hostname === BRIAN_PREVIEW_HOST;
+      if (
+        !row ||
+        (!preview && !isArenaAdmin()) ||
+        panel.querySelector(".kf-test")
+      )
+        return;
       const box = (api.doc() || document).createElement("div");
       box.className = "kf-test";
-      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
+      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${preview ? (api.zh ? "试玩站" : "Preview") : api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
         (v, n) =>
-          `<button type="button" class="dchip d-${["easy", "normal", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
+          `<button type="button" class="dchip d-${["easy", "normal", "hard", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
       ).join(
         "",
       )}<span>${api.zh ? "经验、敌人成长、刷怪、首领和题碑一起加速；测试局不计入记录。" : "XP, enemy growth, spawns, bosses and tablets all speed up; test runs are not recorded."}</span>`;

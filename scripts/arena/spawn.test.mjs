@@ -60,10 +60,13 @@ test("spawns enter outside the viewport and away from the player, including worl
 });
 test("opening enemies and waves arrive gradually rather than an instant ring", () => {
   const f = fixture();
+  f.a.t = 0.34;
   f.context.fi(0.01);
   assert.equal(f.spawned.length, 0);
+  f.a.t = 0.35;
+  f.context.fi(0.01);
   assert.equal(f.a.spawnQueue.length, 5);
-  f.a.t = 1.1;
+  f.a.t = 0.37;
   f.context.fi(0.01);
   assert.equal(f.spawned.length, 1);
   f.context.fi(0.01);

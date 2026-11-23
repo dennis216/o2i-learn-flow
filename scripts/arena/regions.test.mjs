@@ -54,10 +54,12 @@ test("first benefit explains itself before play resumes and records the type as 
   f.a.t = 9;
   f.ctx.updateSpecialRegions(0);
   assert.equal(f.ctx.I, "terrain");
-  assert(f.ctx.tt.d.regionSeen["buff:desert"]);
+  assert(!f.ctx.tt.d.regionSeen["buff:desert"]);
+  f.buttons.regionMute = { checked: true };
   assert.equal(f.ctx.Tt.fire, 0);
   f.buttons.terrainGo.onclick();
   assert.equal(f.ctx.I, "play");
+  assert(f.ctx.tt.d.regionSeen["buff:desert"]);
 });
 test("a benefit is consumed once, expires and cannot be extended by camping", () => {
   const f = fixture();

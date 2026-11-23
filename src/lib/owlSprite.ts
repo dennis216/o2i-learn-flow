@@ -22,8 +22,27 @@ export const OWL = [
 ];
 
 const withPrefix = (row: string, prefix: string) => prefix + row.slice(prefix.length);
-export const OWL_BLINK = OWL.map((row, i) =>
-  i === 9 ? withPrefix(row, '.kttttttkkttttttk') : i === 10 ? withPrefix(row, '.ktkkkkkkkkkkkktk') : row);
+// Replace some rows (by index) with new left-hand pixels; the rest of each row is kept.
+const edit = (base: string[], rows: Record<number, string>) => base.map((row, i) => (rows[i] ? withPrefix(row, rows[i]) : row));
+
+export const OWL_BLINK = edit(OWL, { 9: '.kttttttkkttttttk', 10: '.ktkkkkkkkkkkkktk' });
+
+// Idle frames for the desk pet (src/components/DeskPet.tsx). Eyes: rows 8–11, belly: 13–17, feet: 18.
+export const OWL_LOOK_LEFT = edit(OWL, { 9: '.ktwkwwwkkwkwwwtk', 10: '.ktwkwwwkkwkwwwtk' });
+export const OWL_LOOK_RIGHT = edit(OWL, { 9: '.ktwwwkwkkwwwkwtk', 10: '.ktwwwkwkkwwwkwtk' });
+// Content "^ ^" eyes.
+export const OWL_HAPPY = edit(OWL, {
+  8: '..kttttkttkttttk', 9: '.ktttkttkkttktttk', 10: '.kttktktkktktkttk', 11: '.kttttttyyttttttk',
+});
+// Heavy lids: the top half of each eye is shut.
+export const OWL_SLEEPY = edit(OWL, { 8: '..kttttkttkttttk', 9: '.ktkkkkkkkkkkkktk' });
+// Preening: eyes shut, beak tucked to the chest, belly feathers ruffled two ways.
+const PREEN_FACE = { 9: '.kttttttkkttttttk', 10: '.ktkkkkkkkkkkkktk', 11: '.kttwwwttttwwwttk', 13: '.kttccccyyccccttk' };
+export const OWL_PREEN_A = edit(OWL, { ...PREEN_FACE, 14: '.kttccTccccTccttk', 16: '..kttTccTccTcttk' });
+export const OWL_PREEN_B = edit(OWL, { ...PREEN_FACE, 14: '.kttTccccccccTttk', 15: '.ktttcTccccTcttt', 16: '..kttccTTccccttk' });
+// Two steps of a slow waddle.
+export const OWL_STEP_A = edit(OWL, { 18: '...kkooookk.ooo.' });
+export const OWL_STEP_B = edit(OWL, { 18: '...kooo.kkkookk.' });
 
 export const OWL_COLS = OWL[0].length;
 export const OWL_ROWS = OWL.length;

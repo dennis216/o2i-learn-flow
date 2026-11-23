@@ -73,37 +73,45 @@ test("world layout stays on the map and away from special regions", () => {
 test("big bosses follow the unit being studied", () => {
   assert.equal(bossTypeFor(1, null), "dne");
   assert.equal(bossTypeFor(6, null), "riemann");
-  assert.equal(bossTypeFor(6, "riemann"), null);
-  assert.equal(bossTypeFor(10, null), null);
+  assert.equal(bossTypeFor(6, "riemann"), "orbit");
+  assert.equal(bossTypeFor(10, null), "orbit");
   const context = run();
   context.a.curUnit = 3;
   assert.equal(context.cs(), BOSS_FOR_UNIT[3]);
   context.knowledge.bossDef({ name: "Sir Tangent" }, "knight");
   context.a.bossK = 1;
-  assert.equal(context.cs(), "knight"); // repeat in the same unit: original order
-  assert.equal(context.a.kf.bossPlan.type, null);
+  assert.equal(context.cs(), "prism");
+  assert.equal(context.a.kf.bossPlan.type, "prism");
 });
 
-test("small enemies give less XP while elites keep theirs", () => {
+test("ordinary monsters drop one 3–4 XP gem and the first level needs 68", () => {
   const context = run();
-  const enemy = (elite) => ({
-    x: 300,
-    y: 300,
-    r: 5,
-    xp: 2,
-    hp: 0,
-    maxHp: 10,
-    elite,
-    pal: ["#fff"],
-  });
-  context.Jn(enemy(false));
-  assert.equal(context.a.gems[0].v, 2 * 0.6);
+  assert.equal(context.a.need, 68);
+  assert.equal(context.Go(2), 109);
+  for (const [type, xp] of [
+    ["slime", 3],
+    ["bat", 3],
+    ["ghost", 3],
+    ["sprout", 4],
+    ["charger", 4],
+    ["golem", 4],
+  ]) {
+    context.a.gems = [];
+    context.Jn(context.ye(type, 300, 300));
+    assert.deepEqual(
+      context.a.gems.map((gem) => gem.v),
+      [xp],
+    );
+  }
+  context.a.t = 190;
   context.a.gems = [];
-  context.Jn(enemy(true));
-  assert.equal(context.a.gems[0].v, 2);
+  context.Jn(context.ye("slime", 300, 300));
+  assert.deepEqual(
+    context.a.gems.map((gem) => gem.v),
+    [3],
+  );
 });
-
-test("every tablet offers this unit's skills; harder ones offer more and stronger", () => {
+test("tablets offer at most one unit skill; hard tablets grant two levels", () => {
   const context = run(),
     k = context.knowledge,
     offer = (tier) =>
@@ -113,8 +121,8 @@ test("every tablet offers this unit's skills; harder ones offer more and stronge
     medium = offer(2),
     hard = offer(3);
   assert.equal(units(easy).length, 1);
-  assert.equal(units(medium).length, 2);
-  assert.equal(units(hard).length, 2);
+  assert.equal(units(medium).length, 1);
+  assert.equal(units(hard).length, 1);
   for (const card of [...units(easy), ...units(hard)])
     assert.equal(UNIT_SKILLS[card.id].unit, 1);
   assert.ok(units(easy).every((card) => card.step === 1));
@@ -197,8 +205,12 @@ test("a defeated mini-boss leaves its equipment and its lair stays cleared", () 
   assert.equal(lair.state, "awake");
   const boss = lair.enemy;
   assert.equal(boss.type, "kfboss");
+  const minutes = context.a.t / 60;
+  const scale = 1 + 0.12 * minutes + 0.042 * minutes * minutes;
+  assert.ok(Math.abs(boss.hp - MINI_BOSSES.mech.hp * scale * 0.9) < 1e-6);
   context.At(boss, boss.hp + 1, { nocrit: true });
   assert.equal(lair.state, "done");
+  assert.ok(!context.a.kf.bossFollowers?.length);
   const drop = context.a.picks.find((p) => p.kind === "kfgear");
   assert.equal(drop.gear, MINI_BOSSES.mech.gear);
   assert.ok(!context.a.picks.some((p) => p.kind === "kfchest"));
@@ -225,7 +237,8 @@ test("hard tablets bring more enemies only near them", () => {
   context.a.p.y = world.tablets[2].y + 30;
   // Not open yet in a new run, so it changes nothing.
   assert.equal(k.spawnFactor(), 1);
-  context.a.kf.stats.tablets = 2;
+  world.tablets[0].used = true;
+  world.tablets[2].tier = 3;
   assert.equal(k.spawnFactor(), TABLETS[2].spawn);
 });
 
@@ -282,7 +295,7 @@ test("level-up questions keep their usual cards; tablet text only on tablets", (
   assert.equal(k.levelText().title, "TABLET!");
 });
 
-test("tablets open one tier at a time and share one cooldown", () => {
+test("one tablet appears at a time and moves after use", () => {
   const context = run(),
     k = context.knowledge,
     a = context.a,
@@ -302,10 +315,10 @@ test("tablets open one tier at a time and share one cooldown", () => {
   k.update(1 / 60);
   assert.equal(context.I, "lvup");
   assert.equal(a.kf.stats.tablets, 1);
-  assert.deepEqual(world.tablets.map(k._.tabletOpen), [true, true, false]);
+  assert.deepEqual(world.tablets.map(k._.tabletOpen), [false, true, false]);
   // Every tablet dims for the cooldown of the tier that was answered.
   assert.ok(!k._.tabletsReady());
-  a.t += TABLETS[0].cd - 0.1;
+  a.t += TABLETS[easy.tier - 1].cd - 0.1;
   assert.ok(!k._.tabletsReady());
   a.t += 0.1;
   assert.ok(k._.tabletsReady());
@@ -366,14 +379,13 @@ test("at most one objective arrow and one loot arrow", () => {
   let marks = k._.markerTargets();
   assert.equal(marks.length, 1);
   assert.match(marks[0].label, /^\*+$/);
-  // Standing at a tablet, the arrow points to the next one you cannot see.
+  // The only active tablet is on screen, so there is no objective arrow.
   const [first] = world.tablets;
   a.p.x = first.x;
   a.p.y = first.y;
   a.cam = { x: first.x - 200, y: first.y - 120 };
   marks = k._.markerTargets();
-  assert.equal(marks.length, 1);
-  assert.notEqual(marks[0].x, first.x);
+  assert.equal(marks.length, 0);
   a.cam = { x: -5000, y: -5000 };
   for (let n = 0; n < 3; n++)
     a.picks.push({ kind: "kfgear", kf: true, x: 100 + n * 50, y: 100 });
@@ -462,6 +474,11 @@ test("the HUD shows only unit skills and equipment; the pause list names them", 
 test("admin test speed: only admins, only listed speeds, everything runs faster", (t) => {
   assert.equal(testSpeedFor({ test: 4 }, true), 4);
   assert.equal(testSpeedFor({ test: 4 }, false), 1);
+  assert.equal(
+    testSpeedFor({ test: 8 }, false, "brian.o2i-website.pages.dev"),
+    8,
+  );
+  assert.equal(testSpeedFor({ test: 8 }, false, "www.o2iinstitute.org"), 1);
   assert.equal(testSpeedFor({ test: 3 }, true), 1);
   assert.equal(testSpeedFor({}, true), 1);
   const store = new Map([["cq-arena-admin", "1"]]),
@@ -485,7 +502,11 @@ test("admin test speed: only admins, only listed speeds, everything runs faster"
     const context = fast(speed),
       a = context.a;
     assert.equal(a.testSpeed, speed);
-    assert.equal(a.nextBossT, 180 / speed, "bosses come sooner");
+    assert.equal(
+      a.nextBossT,
+      210 / speed,
+      "3:30 boss timer scales with test speed",
+    );
     // Tablets light up sooner too.
     context.knowledge._.ensureWorld();
     assert.ok(a.kf.tabletAt <= a.t + PACE.firstTablet / speed + 1e-9);
@@ -503,4 +524,93 @@ test("admin test speed: only admins, only listed speeds, everything runs faster"
   // A student who is not an admin gets normal speed even with a saved choice.
   store.delete("cq-arena-admin");
   assert.equal(fast(4).a.testSpeed, 1);
+});
+
+test("new bosses warn before firing and add a volley in phase two", () => {
+  const context = run();
+  for (const [id, attack, perWave] of [
+    ["mirror", "mirrorFan", 5],
+    ["prism", "prismRain", 7],
+    ["orbit", "orbitSweep", 4],
+  ]) {
+    assert.ok(context.Oa[id].kit.includes(attack));
+    for (const phase of [1, 2]) {
+      context.a.ebul = [];
+      context.a.haz = [];
+      const boss = { e: { x: 100, y: 100 }, spd: 1, phase };
+      const volley = context.Le[attack](boss);
+      assert.equal(volley.next().value, 0.65);
+      assert.equal(context.a.haz[0].kind, "cone");
+      assert.equal(context.a.ebul.length, 0);
+      for (const step of volley) assert.ok(step > 0);
+      assert.equal(context.a.ebul.length, perWave * (phase === 1 ? 3 : 4));
+      assert.equal(boss.cast, false);
+    }
+  }
+});
+
+test("themed followers replace the previous squad, use low damage, and ink slows", () => {
+  const context = run();
+  const k = context.knowledge,
+    a = context.a;
+  for (const [boss, expected] of [
+    ["crab", ["shrimp", "crab"]],
+    ["yeti", ["snowman"]],
+    ["scorpion", ["scorpion"]],
+    ["octopus", ["octopus"]],
+  ]) {
+    k.onKill({ kf: { boss }, x: 0, y: 0 });
+    assert.deepEqual(
+      a.kf.bossFollowers.map(({ kind, hp }) => [kind, hp]),
+      expected.map((kind) => [kind, 30]),
+    );
+  }
+  const follower = a.kf.bossFollowers[0];
+  const target = context.ye("slime", follower.x, follower.y, { hp: 30 });
+  a.t = follower.fireAt;
+  k.update(0);
+  assert.equal(target.hp, 27);
+  assert.ok(target.slowUntil > a.t);
+  assert.equal(follower.hp, 26);
+  for (let n = 0; n < 7; n++) {
+    a.t = follower.hurtAt;
+    k.update(0);
+  }
+  assert.equal(a.kf.bossFollowers.length, 0);
+  assert.ok(!a.picks.some((item) => item.kind === "kfgear"));
+});
+
+test("boss followers take short walks, pause, and regroup when the player runs", () => {
+  const context = run({
+    Math: Object.assign(Object.create(Math), { random: () => 0.25 }),
+  });
+  const { a, knowledge } = context;
+  knowledge.onKill({ kf: { boss: "crab" }, x: 120, y: 180 });
+  const [shrimp, crab] = a.kf.bossFollowers;
+  const start = [shrimp.x, shrimp.y];
+  assert.equal(a.miniBossFarewell.until - a.t, 1.25);
+  assert.deepEqual([a.miniBossFarewell.x, a.miniBossFarewell.y], [120, 180]);
+  let pauseFrames = 0;
+  let moved = false;
+  for (let frame = 0; frame < 160; frame++) {
+    a.t += 1 / 60;
+    const x = shrimp.x;
+    const y = shrimp.y;
+    knowledge.update(1 / 60);
+    if (shrimp.x === x && shrimp.y === y) pauseFrames++;
+    if (Math.hypot(shrimp.x - start[0], shrimp.y - start[1]) > 4) moved = true;
+  }
+  assert(moved);
+  assert(pauseFrames >= 25);
+  assert(Math.hypot(shrimp.x - crab.x, shrimp.y - crab.y) > 10);
+  Object.assign(a.p, { moving: true, dx: 1, dy: 0 });
+  for (let frame = 0; frame < 90; frame++) {
+    a.t += 1 / 60;
+    a.p.x += 1.25;
+    knowledge.update(1 / 60);
+  }
+  for (const follower of a.kf.bossFollowers) {
+    assert(Math.hypot(follower.x - a.p.x, follower.y - a.p.y) < 55);
+    assert(follower.stride > 30);
+  }
 });
