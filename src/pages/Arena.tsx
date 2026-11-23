@@ -16,7 +16,7 @@ const rpc: ArenaRpc = (name, args) => supabase.rpc(name as never, args as never)
 const SITE_NAV_HEIGHT = '77px';
 
 // The game reads its own same-origin language key on load; keep it on the site's choice.
-function ArenaGame({ language, admin, email }: { language: Language; admin: boolean; email?: string }) {
+function ArenaGame({ language, email }: { language: Language; email?: string }) {
   const [testCoins, setTestCoins] = useState(false);
   useEffect(() => {
     if (!email || location.hostname !== 'brian.o2i-website.pages.dev' || !crypto.subtle) return;
@@ -36,14 +36,6 @@ function ArenaGame({ language, admin, email }: { language: Language; admin: bool
     try { localStorage.setItem('cq-arena-lang', language === 'zh' ? 'zh' : 'en'); } catch { /* the game falls back to the browser language */ }
     return language;
   });
-  // Admins get a test-speed row on the game's setup screen (arena-knowledge.js ADMIN_KEY).
-  // It only speeds up their own local run, and test runs are never recorded.
-  useEffect(() => {
-    try {
-      if (admin) localStorage.setItem('cq-arena-admin', '1');
-      else localStorage.removeItem('cq-arena-admin');
-    } catch { /* no test speed without storage */ }
-  }, [admin]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [viewport, setViewport] = useState<{ width: number; height: number; top: number; left: number } | null>(null);
@@ -139,9 +131,9 @@ function ArenaGame({ language, admin, email }: { language: Language; admin: bool
 }
 
 export default function Arena() {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading } = useAuth();
   const { language, t } = useLanguage();
-  if (user) return <ArenaGame key={user.id + language} language={language} admin={isAdmin} email={user.email} />;
+  if (user) return <ArenaGame key={user.id + language} language={language} email={user.email} />;
   return (
     <main className="text-[#FFF1E8]">
       <Stars className="grid min-h-[calc(100dvh-77px)] place-items-center px-4 py-16">

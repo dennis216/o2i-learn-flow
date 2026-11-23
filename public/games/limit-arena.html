@@ -508,4 +508,12 @@ body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"])[data-att
   top:calc(var(--portrait-title-top) + clamp(96px,32vw,176px));transform:translateX(-50%)
  }
 }
+
+/* Give the embedded iPad player more room without stretching the canvas. */
+@media (orientation:landscape){
+ body[data-tablet-button-size]:not(.arena-expanded) .wrap{padding-block:8px;gap:10px}
+ body[data-tablet-button-size]:not(.arena-expanded) header{padding:8px 12px;gap:10px}
+ body[data-tablet-button-size]:not(.arena-expanded) header .sub,body[data-tablet-button-size]:not(.arena-expanded) footer{display:none}
+ body[data-tablet-button-size]:not(.arena-expanded) .stagewrap{width:min(92%,max(78%,calc(var(--arena-stage-height,70dvh) * 16 / 9)))}
+}
 </style></body></html>

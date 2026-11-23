@@ -39,27 +39,12 @@ export const PACE = {
   hintGap: 3,
 };
 
-// Test speeds for admins and the Brian preview. The run clock, XP, bosses
-// and the timings above all run this many times faster; runs are not recorded.
+// Accelerated runs are limited to the personal preview and never recorded.
 export const TEST_SPEEDS = [1, 2, 4, 8];
 const BRIAN_PREVIEW_HOST = "brian.o2i-website.pages.dev";
-export const ADMIN_KEY = "cq-arena-admin";
-// The site (src/pages/Arena.tsx) sets ADMIN_KEY for admins. A student who sets
-// it by hand only speeds up their own local run, which is never recorded.
-export function isArenaAdmin() {
-  try {
-    return globalThis.localStorage?.getItem(ADMIN_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-export function testSpeedFor(
-  setup,
-  admin = isArenaAdmin(),
-  hostname = globalThis.location?.hostname,
-) {
+export function testSpeedFor(setup, hostname = globalThis.location?.hostname) {
   const value = Number(setup?.test);
-  return (admin || hostname === BRIAN_PREVIEW_HOST) &&
+  return hostname === BRIAN_PREVIEW_HOST &&
     TEST_SPEEDS.includes(value)
     ? value
     : 1;
@@ -3605,13 +3590,13 @@ export function createKnowledgeFlow(api) {
       const preview = globalThis.location?.hostname === BRIAN_PREVIEW_HOST;
       if (
         !row ||
-        (!preview && !isArenaAdmin()) ||
+        !preview ||
         panel.querySelector(".kf-test")
       )
         return;
       const box = (api.doc() || document).createElement("div");
       box.className = "kf-test";
-      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${preview ? (api.zh ? "试玩站" : "Preview") : api.zh ? "仅管理员" : "admins only"}</small>${TEST_SPEEDS.map(
+      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${api.zh ? "试玩站" : "Preview"}</small>${TEST_SPEEDS.map(
         (v, n) =>
           `<button type="button" class="dchip d-${["easy", "normal", "hard", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
       ).join(
