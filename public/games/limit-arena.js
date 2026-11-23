@@ -16240,21 +16240,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     title,
     message,
     y,
-    { anchor = G / 2, opacity = 1, sideGap = 0 } = {},
+    { anchor = G / 2, opacity = 1, sideGap = 0, compact = false } = {},
   ) {
     R.save();
     R.globalAlpha *= opacity;
     const tablet = isArenaIPad();
     const titleFont = `700 ${tablet ? 14 : 12}px system-ui, sans-serif`;
-    const messageFont = `600 ${tablet ? 16 : 14}px system-ui, sans-serif`;
+    const messageFont = `600 ${compact ? (tablet ? 14 : 12) : (tablet ? 16 : 14)}px system-ui, sans-serif`;
+    if (compact) title = "";
     R.font = titleFont;
     const titleWidth = R.measureText(title).width;
     R.font = messageFont;
     const messageWidth = R.measureText(message).width;
     const width = Math.min(
       G - 20,
-      320,
-      Math.ceil(Math.max(titleWidth, messageWidth)) + 24,
+      compact ? 235 : 320,
+      Math.ceil(Math.max(titleWidth, messageWidth)) + (compact ? 14 : 24),
     );
     let left = Math.round(F(anchor - width / 2, 5, G - width - 7));
     let side = 0;
@@ -16272,6 +16273,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     const center = left + width / 2;
     const tail = Math.round(F(anchor, left + 9, left + width - 9));
+    if (compact) {
+      x(R, left + 2, y + 2, width, 22, "rgba(8, 11, 21, 0.55)");
+      x(R, left, y, width, 22, "#151726");
+      x(R, left + 2, y + 2, width - 4, 18, "#faf2e3");
+      const tip = side > 0 ? left - 4 : left + width;
+      if (side) x(R, tip, y + 9, 4, 4, "#faf2e3");
+      else x(R, tail - 2, y + 21, 4, 4, "#faf2e3");
+      R.textAlign = "center";
+      R.textBaseline = "middle";
+      R.fillStyle = "#171828";
+      R.fillText(message, center, y + 11, width - 10);
+      R.restore();
+      return;
+    }
     x(R, left + 3, y + 3, width, 35, "rgba(8, 11, 21, 0.65)");
     x(R, left + 3, y, width - 6, 35, "#151726");
     x(R, left, y + 3, width, 29, "#151726");
@@ -16299,7 +16314,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.restore();
   }
 
-  function drawBossFarewell(farewell, headHeight, headHalfWidth) {
+  function drawBossFarewell(farewell, headHeight, headHalfWidth, compact = false) {
     const x = ((farewell.x - a.cam.x) * G) / A;
     const y = ((farewell.y - a.cam.y) * mt) / D;
     if (x < 0 || x > G || y < 0 || y > mt) return;
@@ -16312,6 +16327,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       {
         anchor: x,
         sideGap: (headHalfWidth * G) / A + 8,
+        compact,
         opacity: F(Math.min(fadeIn, fadeOut), 0, 1),
       },
     );
@@ -16325,7 +16341,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (I === "play" && farewell?.until > a.t)
       drawBossFarewell(farewell, 24, 23);
     else if (I === "play" && a.miniBossFarewell?.until > a.t)
-      drawBossFarewell(a.miniBossFarewell, 9, 15);
+      drawBossFarewell(a.miniBossFarewell, 9, 15, true);
     else if (I === "play" && a.playerSpeech?.until > a.t)
       drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
     else if (I === "play" && a.pet?.speechUntil > a.t)
