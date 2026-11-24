@@ -58,8 +58,10 @@ test("the public game holds no question data or global debug hooks", () => {
   ]) {
     assert.ok(!(html + code).includes(banned), banned);
   }
+  // Size guard against a bundled question bank or build output, not a budget for
+  // features: raised from 1,000,000 when the iPad setup and accessory work landed.
   assert.ok(
-    html.length + code.length < 1_000_000,
+    html.length + code.length < 1_100_000,
     "unexpected artifact growth",
   );
 });

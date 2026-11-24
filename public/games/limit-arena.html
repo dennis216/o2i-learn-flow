@@ -550,6 +550,11 @@ body[data-tablet-button-size][data-ov=menu] .mz .msub{color:#c0b8d0}
  body[data-tablet-button-size][data-ov=gun] #ov .gun .tl{display:flex}
  body[data-tablet-button-size][data-ov=setup] #ov .ugrid{grid-template-columns:repeat(5,minmax(0,1fr))}
  body[data-tablet-button-size][data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ /* English hero picker at the Chinese size. The panel scales to fit its height, and
+    longer English text made it taller, so it showed about 9% smaller. Tighter English
+    text plus one shared card height (the Chinese cards' own) gives both the same scale. */
+ body[data-tablet-button-size][data-ov=select] #ov .hero{min-height:283px}
+ html:not([lang|=zh]) body[data-tablet-button-size][data-ov=select] #ov .hero .hk{letter-spacing:0;line-height:1.45;margin-top:2px;padding-block:3px}
 }
 
 @media (orientation:portrait) and (max-width:560px) and (pointer:coarse){
