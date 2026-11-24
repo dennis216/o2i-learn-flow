@@ -16480,7 +16480,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (R.imageSmoothingEnabled = !1),
       R.drawImage(Oe, 0, 0, pe * so, Fe * so));
     const portrait = innerHeight > innerWidth;
-    const o = portrait
+    const tabletHeroPicker =
+      !testing && !portrait && isArenaIPad() && document.body.dataset.ov === "select";
+    const o = tabletHeroPicker ? 8 : portrait
       ? 6
       : Math.round(
           zo(ae(t, 12), [
@@ -16494,13 +16496,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         20;
     (Y(R, "CALC QUEST", G / 2 + 4, o + 4, {
       pixel: !0,
-      size: portrait ? 32 : 48,
+      size: portrait || tabletHeroPicker ? 32 : 48,
       col: s.black,
       align: "center",
     }),
       Y(R, "CALC QUEST", G / 2, o, {
         pixel: !0,
-        size: portrait ? 32 : 48,
+        size: portrait || tabletHeroPicker ? 32 : 48,
         col: s.yellow,
         align: "center",
         outline: s.plum,
@@ -16510,17 +16512,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           R,
           i ? "\u6781\u9650\u7ADE\u6280\u573A" : "LIMIT ARENA",
           G / 2,
-          portrait ? 50 : 84,
+          tabletHeroPicker ? 48 : portrait ? 50 : 84,
           {
             pixel: !0,
-            size: portrait ? 24 : 36,
+            size: portrait || tabletHeroPicker ? 24 : 36,
             col: s.white,
             align: "center",
             outline: s.navy,
             shadow: s.black,
           },
         ),
-      t > 0.8 &&
+      !tabletHeroPicker && t > 0.8 &&
         drawGameDescription(
           i
             ? "AP \u5FAE\u79EF\u5206 AB & BC \xB7 \u6D3B\u4E0B\u53BB \xB7 \u7B54\u9898\u5347\u7EA7 \xB7 \u51FB\u8D25\u9996\u9886"
