@@ -553,3 +553,12 @@ html.arena-expanded .glass-nav-wrap { visibility: hidden; }
 .hero-layout .community-tutor-credentials { font-size: .75rem; }
 .trait-number { color: hsl(var(--primary) / .8); }
 
+
+/* The embedded iPad arena occupies its own screen below the site navigation. */
+html:has(iframe[data-arena-ipad]),
+body:has(iframe[data-arena-ipad]) {
+  background: #0e1426;
+  overscroll-behavior-y: none;
+}
+#root:has(iframe[data-arena-ipad]) { min-height: 100dvh; background: #0e1426; }
+#root:has(iframe[data-arena-ipad]) footer { display: none; }

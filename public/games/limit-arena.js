@@ -5259,7 +5259,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           dur: 3,
           desc: i
             ? "\u9690\u8EAB 3 \u79D2\uFF1A\u654C\u4EBA\u4E22\u5931\u4F60\u7684\u4F4D\u7F6E\u4E14\u65E0\u6CD5\u78B0\u5230\u4F60\u3002\u67AA\u4F1A\u505C\u706B\uFF0C\u4E4B\u540E\u4E0B\u4E00\u53D1\u9020\u6210 3 \u500D\u4F24\u5BB3\u3002"
-            : "Turn invisible for 3 s: enemies lose track of you and can't touch you. Your gun holds fire, then your next shot does 3\xD7 damage.",
+            : "Invisible for 3 s: enemies lose you and can't touch you. Your gun holds fire; the next shot does 3\xD7 damage.",
         },
       },
     },
@@ -16173,7 +16173,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
 
   function drawSmallPlayerBubble(text) {
     R.save();
-    R.font = "600 12px system-ui, sans-serif";
+    R.font = isArenaIPad()
+      ? "600 14px system-ui, sans-serif"
+      : "600 12px system-ui, sans-serif";
     const width = Math.min(G - 12, Math.ceil(R.measureText(text).width) + 12);
     const anchor = ((a.p.x - a.cam.x) * G) / A;
     const center = F(anchor, width / 2 + 3, G - width / 2 - 3);
@@ -16238,20 +16240,22 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     title,
     message,
     y,
-    { anchor = G / 2, opacity = 1, sideGap = 0 } = {},
+    { anchor = G / 2, opacity = 1, sideGap = 0, compact = false } = {},
   ) {
     R.save();
     R.globalAlpha *= opacity;
-    const titleFont = "700 12px system-ui, sans-serif";
-    const messageFont = "600 14px system-ui, sans-serif";
+    const tablet = isArenaIPad();
+    const titleFont = `700 ${tablet ? 14 : 12}px system-ui, sans-serif`;
+    const messageFont = `600 ${compact ? (tablet ? 14 : 12) : (tablet ? 16 : 14)}px system-ui, sans-serif`;
+    if (compact) title = "";
     R.font = titleFont;
     const titleWidth = R.measureText(title).width;
     R.font = messageFont;
     const messageWidth = R.measureText(message).width;
     const width = Math.min(
       G - 20,
-      320,
-      Math.ceil(Math.max(titleWidth, messageWidth)) + 24,
+      compact ? 235 : 320,
+      Math.ceil(Math.max(titleWidth, messageWidth)) + (compact ? 14 : 24),
     );
     let left = Math.round(F(anchor - width / 2, 5, G - width - 7));
     let side = 0;
@@ -16269,6 +16273,20 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     }
     const center = left + width / 2;
     const tail = Math.round(F(anchor, left + 9, left + width - 9));
+    if (compact) {
+      x(R, left + 2, y + 2, width, 22, "rgba(8, 11, 21, 0.55)");
+      x(R, left, y, width, 22, "#151726");
+      x(R, left + 2, y + 2, width - 4, 18, "#faf2e3");
+      const tip = side > 0 ? left - 4 : left + width;
+      if (side) x(R, tip, y + 9, 4, 4, "#faf2e3");
+      else x(R, tail - 2, y + 21, 4, 4, "#faf2e3");
+      R.textAlign = "center";
+      R.textBaseline = "middle";
+      R.fillStyle = "#171828";
+      R.fillText(message, center, y + 11, width - 10);
+      R.restore();
+      return;
+    }
     x(R, left + 3, y + 3, width, 35, "rgba(8, 11, 21, 0.65)");
     x(R, left + 3, y, width - 6, 35, "#151726");
     x(R, left, y + 3, width, 29, "#151726");
@@ -16296,7 +16314,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     R.restore();
   }
 
-  function drawBossFarewell(farewell, headHeight, headHalfWidth) {
+  function drawBossFarewell(farewell, headHeight, headHalfWidth, compact = false) {
     const x = ((farewell.x - a.cam.x) * G) / A;
     const y = ((farewell.y - a.cam.y) * mt) / D;
     if (x < 0 || x > G || y < 0 || y > mt) return;
@@ -16309,6 +16327,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       {
         anchor: x,
         sideGap: (headHalfWidth * G) / A + 8,
+        compact,
         opacity: F(Math.min(fadeIn, fadeOut), 0, 1),
       },
     );
@@ -16322,7 +16341,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (I === "play" && farewell?.until > a.t)
       drawBossFarewell(farewell, 24, 23);
     else if (I === "play" && a.miniBossFarewell?.until > a.t)
-      drawBossFarewell(a.miniBossFarewell, 9, 15);
+      drawBossFarewell(a.miniBossFarewell, 9, 15, true);
     else if (I === "play" && a.playerSpeech?.until > a.t)
       drawSmallPlayerBubble(a.playerSpeech.line[i ? 1 : 0]);
     else if (I === "play" && a.pet?.speechUntil > a.t)
@@ -16461,7 +16480,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (R.imageSmoothingEnabled = !1),
       R.drawImage(Oe, 0, 0, pe * so, Fe * so));
     const portrait = innerHeight > innerWidth;
-    const o = portrait
+    const tabletHeroPicker =
+      !testing && !portrait && isArenaIPad() && document.body.dataset.ov === "select";
+    const o = tabletHeroPicker ? 8 : portrait
       ? 6
       : Math.round(
           zo(ae(t, 12), [
@@ -16475,13 +16496,13 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         20;
     (Y(R, "CALC QUEST", G / 2 + 4, o + 4, {
       pixel: !0,
-      size: portrait ? 32 : 48,
+      size: portrait || tabletHeroPicker ? 32 : 48,
       col: s.black,
       align: "center",
     }),
       Y(R, "CALC QUEST", G / 2, o, {
         pixel: !0,
-        size: portrait ? 32 : 48,
+        size: portrait || tabletHeroPicker ? 32 : 48,
         col: s.yellow,
         align: "center",
         outline: s.plum,
@@ -16491,17 +16512,17 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           R,
           i ? "\u6781\u9650\u7ADE\u6280\u573A" : "LIMIT ARENA",
           G / 2,
-          portrait ? 50 : 84,
+          tabletHeroPicker ? 48 : portrait ? 50 : 84,
           {
             pixel: !0,
-            size: portrait ? 24 : 36,
+            size: portrait || tabletHeroPicker ? 24 : 36,
             col: s.white,
             align: "center",
             outline: s.navy,
             shadow: s.black,
           },
         ),
-      t > 0.8 &&
+      !tabletHeroPicker && t > 0.8 &&
         drawGameDescription(
           i
             ? "AP \u5FAE\u79EF\u5206 AB & BC \xB7 \u6D3B\u4E0B\u53BB \xB7 \u7B54\u9898\u5347\u7EA7 \xB7 \u51FB\u8D25\u9996\u9886"
@@ -17601,9 +17622,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const wallet = accessoryWallet(),
       lang = i ? 1 : 0;
     const best = tt.d.best?.score || 0;
-    const testCoins =
-      location.hostname === "brian.o2i-website.pages.dev" &&
-      window.frameElement?.dataset.arenaTestCoins === "true";
+    // Unlimited cosmetic coins: only the accounts Arena.tsx allows (Brian,
+    // Reeva and the O2I account) get this flag, on every site.
+    const testCoins = window.frameElement?.dataset.arenaTestCoins === "true";
     const worn = tt.d.accessories || {};
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
@@ -17729,6 +17750,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (this.mode = e),
         (this.el.scrollTop = 0),
         (document.body.dataset.ov = e));
+      if (!testing) requestAnimationFrame(fitTouchSetupPanel);
     },
     hide() {
       ((this.el.hidden = !0),
@@ -18302,8 +18324,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           if (!t.units.length) return;
           ($.coin(), this.hide(), qa(tt.d.cls));
         }),
-        e(),
-        knowledge.decorateSetup(this.el, t));
+        e());
     },
     classSelect() {
       this.heroSelect();
@@ -18946,7 +18967,25 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { passive: false },
       );
   }
+  function fitTouchSetupPanel() {
+    const tabletLandscape = isArenaIPad() && matchMedia("(orientation: landscape)").matches;
+    const phonePortrait = matchMedia("(orientation: portrait) and (max-width: 560px) and (pointer: coarse)").matches;
+    if (!tabletLandscape && !phonePortrait) return;
+    if (!["select", "gun", "setup"].includes(document.body.dataset.ov)) return;
+    const overlay = N("ov");
+    const panel = overlay.querySelector(":scope > .panel");
+    if (!panel) return;
+    panel.style.setProperty("--touch-setup-scale", "1");
+    if (!panel.offsetHeight || !panel.offsetWidth) return;
+    const scale = Math.min(
+      tabletLandscape ? 1.07 : 1,
+      (overlay.clientWidth - (20)) / panel.offsetWidth,
+      (overlay.clientHeight - 20) / panel.offsetHeight,
+    );
+    if (scale > 0) panel.style.setProperty("--touch-setup-scale", String(scale));
+  }
   function fitTouchStage() {
+    requestAnimationFrame(fitTouchSetupPanel);
     const stage = document.querySelector(".stagewrap");
     if (!stage) return;
     requestAnimationFrame(updateControlInsets);
@@ -19320,6 +19359,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     } catch {}
     return null;
   }
+  function shouldAutoExpandArena() {
+    const isPhone = /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent);
+    return isPhone && arenaFullPref() !== "off";
+  }
   function enterFullscreenByChoice() {
     arenaFullPref("on");
     void enterArenaFullscreen();
@@ -19455,6 +19498,43 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     panel.querySelector(".qhd")?.after(label);
   }
 
+  const touchButtonSizes = [80, 100, 120];
+  function isArenaIPad() {
+    return (
+      /iPad/i.test(navigator.userAgent) ||
+      (/Mac/i.test(navigator.platform) && navigator.maxTouchPoints > 1)
+    );
+  }
+  function syncTabletButtonSize() {
+    if (!isArenaIPad()) return;
+    const size = tt.d.touchButtonSize;
+    document.body.dataset.tabletButtonSize = touchButtonSizes.includes(size)
+      ? String(size)
+      : "100";
+  }
+
+  function appendTabletButtonSize(row) {
+    if (!isArenaIPad()) return;
+    const label = document.createElement("label");
+    label.className = "tablet-button-size";
+    label.textContent = i ? "按钮大小" : "Button size";
+    const select = document.createElement("select");
+    for (const size of touchButtonSizes) {
+      const option = document.createElement("option");
+      option.value = String(size);
+      option.textContent = size + "%";
+      select.append(option);
+    }
+    select.value = document.body.dataset.tabletButtonSize || "100";
+    select.onchange = () => {
+      tt.d.touchButtonSize = Number(select.value);
+      syncTabletButtonSize();
+      tt.save();
+    };
+    label.append(select);
+    row.append(label);
+  }
+
   function appendAttackSetting(panel) {
     if (!panel) return;
     const row = document.createElement("div");
@@ -19490,7 +19570,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       sync();
     };
     sync();
-    row.append(button, auto, help);
+    row.append(button, auto);
+    appendTabletButtonSize(row);
+    row.append(help);
     panel.insertBefore(row, panel.querySelector(":scope > .row2"));
     syncAttackMode();
   }
@@ -22316,6 +22398,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         }),
         Y(t, "o2i", 50, 4, { pixel: !0, size: 12, col: s.white }),
         tt.load(),
+        syncTabletButtonSize(),
         syncAttackMode(),
         An(),
         _n(),
@@ -22339,7 +22422,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       if (isPreview) {
         startArenaPreview();
         updateFullscreenLabel();
-      } else if (!hasArenaTouch() && arenaFullPref() !== "off")
+      } else if (shouldAutoExpandArena())
         void enterArenaFullscreen(true);
       else updateFullscreenLabel();
       let e = performance.now(),

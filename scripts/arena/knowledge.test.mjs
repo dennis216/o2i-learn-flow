@@ -11,9 +11,7 @@ import {
   MINI_BOSSES,
   PACE,
   TABLETS,
-  TEST_SPEEDS,
   UNIT_SKILLS,
-  testSpeedFor,
   bossTypeFor,
   worldLayout,
 } from "../../public/games/arena-knowledge.js";
@@ -471,59 +469,13 @@ test("the HUD shows only unit skills and equipment; the pause list names them", 
   assert.equal(ctx.globalAlpha, 1);
 });
 
-test("admin test speed: only admins, only listed speeds, everything runs faster", (t) => {
-  assert.equal(testSpeedFor({ test: 4 }, true), 4);
-  assert.equal(testSpeedFor({ test: 4 }, false), 1);
-  assert.equal(
-    testSpeedFor({ test: 8 }, false, "brian.o2i-website.pages.dev"),
-    8,
-  );
-  assert.equal(testSpeedFor({ test: 8 }, false, "www.o2iinstitute.org"), 1);
-  assert.equal(testSpeedFor({ test: 3 }, true), 1);
-  assert.equal(testSpeedFor({}, true), 1);
-  const store = new Map([["cq-arena-admin", "1"]]),
-    previous = globalThis.localStorage;
-  globalThis.localStorage = { getItem: (k) => store.get(k) ?? null };
-  t.after(() => (globalThis.localStorage = previous));
-  const fast = (speed) => {
-    const context = arenaContext({ i: false });
-    context.tt.d.setup = {
-      units: [1],
-      diff: "normal",
-      qdiff: "mixed",
-      test: speed,
-    };
-    context.Ce = { call: () => Promise.resolve({ status: "error" }) };
-    context.On("rifle");
-    context.I = "play";
-    return context;
-  };
-  for (const speed of TEST_SPEEDS) {
-    const context = fast(speed),
-      a = context.a;
-    assert.equal(a.testSpeed, speed);
-    assert.equal(
-      a.nextBossT,
-      210 / speed,
-      "3:30 boss timer scales with test speed",
-    );
-    // Tablets light up sooner too.
-    context.knowledge._.ensureWorld();
-    assert.ok(a.kf.tabletAt <= a.t + PACE.firstTablet / speed + 1e-9);
-    const xp = a.xp;
-    context.Kn(5);
-    assert.ok(Math.abs(a.xp - xp - 5 * a.st.xp * speed) < 1e-9 || a.lv > 1);
-    // Enemies spawned at 30 s are as strong as at 30 × speed seconds.
-    a.t = 30;
-    const foe = context.ye("slime", a.p.x + 90, a.p.y);
-    const normal = fast(1);
-    normal.a.t = 30 * speed;
-    const ref = normal.ye("slime", normal.a.p.x + 90, normal.a.p.y);
-    assert.ok(Math.abs(foe.hp - ref.hp) < 1e-9, "enemy growth keeps up");
-  }
-  // A student who is not an admin gets normal speed even with a saved choice.
-  store.delete("cq-arena-admin");
-  assert.equal(fast(4).a.testSpeed, 1);
+test("legacy speed preferences cannot accelerate new runs", () => {
+  const context = arenaContext({ i: false });
+  context.tt.d.setup = { units: [1], diff: "normal", qdiff: "mixed", test: 8 };
+  context.Ce = { call: () => Promise.resolve({ status: "error" }) };
+  context.On("rifle");
+  assert.equal(context.a.testSpeed, 1);
+  assert.equal(context.a.nextBossT, 210);
 });
 
 test("new bosses warn before firing and add a volley in phase two", () => {

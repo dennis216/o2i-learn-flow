@@ -462,4 +462,140 @@ body[data-ov=menu] #ov>.mz{background:linear-gradient(165deg,#263353,#141d35 65%
 .merchant-pets button:focus-visible{outline:2px solid #f6cd81}
 .merchant-pets canvas{width:48px;height:29px}
 .merchant-pets span{color:#eadacb}
+/* iPad combat-button sizing. 100% uses the normal layout. */
+.tablet-button-size{display:inline-flex;align-items:center;gap:8px;color:var(--text)}
+.tablet-button-size select{font:inherit;color:var(--text);background:var(--panel2);padding:5px;border:2px solid var(--muted)}
+body[data-tablet-button-size="80"]{--tablet-button-scale:.8}
+body[data-tablet-button-size="120"]{--tablet-button-scale:1.2}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+ --tablet-action:68px;--tablet-attack:84px;--tablet-icon:34px;--tablet-gap:14px;
+ --tablet-scaled-action:calc(var(--tablet-action) * var(--tablet-button-scale));
+ --tablet-scaled-attack:calc(var(--tablet-attack) * var(--tablet-button-scale));
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad :is(#tDash,#tSkill){
+ width:var(--tablet-scaled-action);height:var(--tablet-scaled-action)
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad #tAttack{
+ width:var(--tablet-scaled-attack);height:var(--tablet-scaled-attack)
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad :is(#tDash,#tSkill,#tAttack) .control-icon{
+ width:calc(var(--tablet-icon) * var(--tablet-button-scale));height:calc(var(--tablet-icon) * var(--tablet-button-scale))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad #tDash{
+ right:calc(var(--control-right) + var(--tablet-scaled-action) + var(--tablet-gap))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"])[data-attack-mode=manual] .tpad :is(#tDash,#tSkill){
+ right:calc(var(--control-right) + var(--tablet-scaled-attack) + var(--tablet-gap))
+}
+body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"])[data-attack-mode=manual] .tpad #tSkill{
+ bottom:calc(var(--control-bottom) + var(--tablet-scaled-action) + var(--tablet-gap))
+}
+@media(min-width:700px) and (min-height:540px){
+ body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+  --tablet-action:100px;--tablet-attack:100px;--tablet-icon:48px;--tablet-gap:16px
+ }
+}
+@media(max-width:600px){
+ body:is([data-tablet-button-size="80"],[data-tablet-button-size="120"]) .tpad{
+  --tablet-action:58px;--tablet-attack:72px;--tablet-icon:28px;--tablet-gap:12px
+ }
+}
+/* Keep the title and its choices together near the top on portrait phones. */
+@media (orientation:portrait) and (max-width:560px) and (pointer:coarse){
+ body.arena-expanded[data-ov=menu]{--portrait-title-top:calc(clamp(64px,10dvh,90px) + env(safe-area-inset-top,0px))}
+ body.arena-expanded[data-ov=menu] canvas#c{position:absolute;top:var(--portrait-title-top);left:50%;transform:translateX(-50%)}
+ body.arena-expanded[data-ov=menu] #ov>.mz{
+  top:calc(var(--portrait-title-top) + clamp(96px,32vw,176px));transform:translateX(-50%)
+ }
+}
+
+/* Give the embedded iPad player more room without stretching the canvas. */
+@media (orientation:landscape){
+ body[data-tablet-button-size]:not(.arena-expanded) .wrap{padding-block:8px;gap:10px}
+ body[data-tablet-button-size]:not(.arena-expanded) header{padding:8px 12px;gap:10px}
+ body[data-tablet-button-size]:not(.arena-expanded) header .sub,body[data-tablet-button-size]:not(.arena-expanded) footer{display:none}
+ body[data-tablet-button-size]:not(.arena-expanded) .stagewrap{width:min(96%,max(78%,calc(var(--arena-stage-height,70dvh) * 16 / 9)))}
+}
+
+body[data-tablet-button-size][data-ov=menu] #ov>.mz{width:min(94%,490px)}
+body[data-tablet-button-size][data-ov=menu] .mz .mrow button{font-size:15px}
+body[data-tablet-button-size] .mz :is(.msub,.mbest){font-size:13px;line-height:1.5}
+body[data-tablet-button-size] #mStart{font-size:24px}
+body[data-tablet-button-size] :is(.tablet-button-size,.tablet-button-size select,#touchTog){font-size:15px}
+body[data-tablet-button-size][data-ov=gun] #ov .gun .ct>b{font-size:20px}
+body[data-tablet-button-size][data-ov=gun] #ov :is(.qhd span,.gun .ct>em,.gun .st3,.gun .cd,.gun .tl){font-size:14px}
+body[data-tablet-button-size][data-ov=gun] #ov :is(.qhd span,.gun .st3){color:#c0b8d0}
+body[data-tablet-button-size][data-ov=menu] .mz .msub{color:#c0b8d0}
+
+/* Fit each complete iPad setup panel as a single unit. */
+@media (orientation:landscape){
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  position:absolute;inset:0;width:100%;height:100%;transform:none;
+  padding:8px;place-items:center;align-content:center;overflow:hidden;
+ }
+ body[data-tablet-button-size]:not(.arena-expanded):is([data-ov=select],[data-ov=gun],[data-ov=setup]) .stagewrap{width:min(96%,calc(var(--arena-stage-height,70dvh) * 16 / 9))}
+ body[data-tablet-button-size][data-ov=select] #ov:has(>.panel){
+  inset:23% 0 10%;height:67%;background:transparent;
+ }
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel{
+  width:1080px;max-width:none;height:max-content;max-height:none;overflow:visible;
+  position:absolute;top:50%;left:50%;margin:0;grid-template-rows:none;zoom:1;animation:none; transform:translate(-50%,-50%) scale(var(--touch-setup-scale,1));
+ }
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun]) #ov .cgrid.cls{
+  max-height:none;min-height:0;overflow:visible;
+ }
+ body[data-tablet-button-size][data-ov=select] #ov .cgrid.cls{grid-template-columns:repeat(4,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=gun] #ov .cgrid.cls{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=gun] #ov .gun .cd{display:block;overflow:visible}
+ body[data-tablet-button-size][data-ov=gun] #ov .gun .tl{display:flex}
+ body[data-tablet-button-size][data-ov=setup] #ov .ugrid{grid-template-columns:repeat(5,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ /* English hero picker at the Chinese size. The panel scales to fit its height, and
+    longer English text made it taller, so it showed about 9% smaller. Tighter English
+    text plus one shared card height (the Chinese cards' own) gives both the same scale. */
+ body[data-tablet-button-size][data-ov=select] #ov .hero{min-height:283px}
+ html:not([lang|=zh]) body[data-tablet-button-size][data-ov=select] #ov .hero .hk{letter-spacing:0;line-height:1.45;margin-top:2px;padding-block:3px}
+}
+
+@media (orientation:portrait) and (max-width:560px) and (pointer:coarse){
+ body.touch[data-ov=menu]:not(.arena-expanded) header{position:relative;z-index:201}
+ body.touch:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  position:fixed;inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+  width:100%;height:auto;transform:none;padding:0;overflow:hidden;background:var(--bg);
+ }
+ body.touch:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel{
+  position:absolute;top:50%;left:50%;margin:0;width:520px;max-width:none;
+  height:max-content;max-height:none;grid-template-rows:none;overflow:visible;zoom:1;animation:none;
+  transform:translate(-50%,-50%) scale(var(--touch-setup-scale,1));
+ }
+ body.touch:is([data-ov=select],[data-ov=gun]) #ov .cgrid.cls{
+  grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;max-height:none;overflow:visible;
+ }
+ body.touch[data-ov=gun] #ov .gun .cd{display:block;overflow:visible}
+ body.touch[data-ov=gun] #ov .gun .tl{display:flex}
+ body.touch[data-ov=setup] #ov .ugrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.touch[data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Include the cards and navigation in the same intrinsic height measurement. */
+body:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel[style*="--touch-setup-scale"]{
+ display:flex;flex-direction:column;align-items:stretch;
+}
+body:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel[style*="--touch-setup-scale"]>*{
+ flex:none;position:static;height:auto;max-height:none;
+}
+body:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel[style*="--touch-setup-scale"] .row2{
+ position:static;
+}
+
+@media (orientation:landscape){
+ body[data-tablet-button-size]:not(.arena-expanded):is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  left:50%;right:auto;width:var(--arena-menu-width,100%);transform:translateX(-50%);
+ }
+}
+
+@media (orientation:landscape){
+ body[data-tablet-button-size][data-ov=setup] #ov>.uz{width:1140px}
+ body[data-tablet-button-size][data-ov=setup] #ov .uz :is(.uchip .nm,.dchip span){font-size:14px}
+}
 </style></body></html>
