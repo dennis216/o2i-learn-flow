@@ -16480,9 +16480,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (R.imageSmoothingEnabled = !1),
       R.drawImage(Oe, 0, 0, pe * so, Fe * so));
     const portrait = innerHeight > innerWidth;
-    const tabletHeroPicker =
-      !testing && !portrait && isArenaIPad() && document.body.dataset.ov === "select";
-    const o = tabletHeroPicker ? 8 : portrait
+    const o = portrait
       ? 6
       : Math.round(
           zo(ae(t, 12), [
@@ -16512,7 +16510,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           R,
           i ? "\u6781\u9650\u7ADE\u6280\u573A" : "LIMIT ARENA",
           G / 2,
-          tabletHeroPicker ? 60 : portrait ? 50 : 84,
+          portrait ? 50 : 84,
           {
             pixel: !0,
             size: portrait ? 24 : 36,
@@ -16522,7 +16520,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             shadow: s.black,
           },
         ),
-      !tabletHeroPicker && t > 0.8 &&
+      t > 0.8 &&
         drawGameDescription(
           i
             ? "AP \u5FAE\u79EF\u5206 AB & BC \xB7 \u6D3B\u4E0B\u53BB \xB7 \u7B54\u9898\u5347\u7EA7 \xB7 \u51FB\u8D25\u9996\u9886"
@@ -18975,7 +18973,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     if (!["select", "gun", "setup"].includes(document.body.dataset.ov)) return;
     const overlay = N("ov");
     const panel = overlay.querySelector(":scope > .panel");
-    if (!panel || !panel.offsetHeight || !panel.offsetWidth) return;
+    if (!panel) return;
+    panel.style.setProperty("--touch-setup-scale", "1");
+    if (!panel.offsetHeight || !panel.offsetWidth) return;
     const scale = Math.min(
       1,
       (overlay.clientWidth - 20) / panel.offsetWidth,
