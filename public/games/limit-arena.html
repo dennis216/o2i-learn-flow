@@ -527,31 +527,28 @@ body[data-tablet-button-size][data-ov=gun] #ov :is(.qhd span,.gun .ct>em,.gun .s
 body[data-tablet-button-size][data-ov=gun] #ov :is(.qhd span,.gun .st3){color:#c0b8d0}
 body[data-tablet-button-size][data-ov=menu] .mz .msub{color:#c0b8d0}
 
-/* iPad landscape setup fits the game frame and keeps navigation visible. */
+/* Fit each complete iPad setup panel as a single unit. */
 @media (orientation:landscape){
- body[data-tablet-button-size]:is([data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
-  position:absolute;inset:0;width:100%;height:100%;transform:none;padding:8px;
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  position:absolute;inset:0;width:100%;height:100%;transform:none;
+  padding:8px;place-items:center;align-content:center;overflow:hidden;
  }
- body[data-tablet-button-size]:is([data-ov=gun],[data-ov=setup]) #ov>.panel{
-  width:min(100%,1180px);max-height:100%;zoom:1;
+ body[data-tablet-button-size]:not(.arena-expanded):is([data-ov=select],[data-ov=gun],[data-ov=setup]) .stagewrap{width:min(96%,calc(var(--arena-stage-height,70dvh) * 16 / 9))}
+ body[data-tablet-button-size][data-ov=select] #ov:has(>.panel){
+  inset:39% 0 0;height:61%;background:transparent;
  }
- body[data-tablet-button-size][data-ov=gun] #ov>.cz{
-  grid-template-rows:auto minmax(0,1fr) auto;
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel{
+  width:1080px;max-width:none;height:max-content;max-height:none;overflow:visible;
+  position:absolute;top:50%;left:50%;margin:0;grid-template-rows:none;zoom:1;animation:none; transform:translate(-50%,-50%) scale(var(--ipad-setup-scale,1));
  }
- body[data-tablet-button-size][data-ov=gun] #ov .cgrid.cls{overflow:auto;min-height:0}
- body[data-tablet-button-size][data-ov=setup] #ov .uz :is(.nm,.dchip span,.qhd span){font-size:14px}
- body[data-tablet-button-size][data-ov=select] #ov{
-  position:absolute;inset:39% 0 0;width:100%;height:61%;transform:none;
-  padding:4px 8px 10px;background:transparent;place-items:center;
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun]) #ov .cgrid.cls{
+  max-height:none;min-height:0;overflow:visible;
  }
- body[data-tablet-button-size][data-ov=select] #ov>.cz{
-  width:min(88%,900px);max-height:100%;zoom:1;
-  grid-template-rows:auto minmax(0,1fr) auto;
- }
- body[data-tablet-button-size][data-ov=select] #ov .cgrid.cls{
-  grid-template-columns:repeat(4,minmax(0,1fr));overflow:auto;min-height:0;padding:3px;
- }
- body[data-tablet-button-size][data-ov=select] #ov .hero{grid-template-rows:40px auto;padding:7px}
- body[data-tablet-button-size][data-ov=select] #ov .hero .hsp canvas{width:36px;height:40px}
+ body[data-tablet-button-size][data-ov=select] #ov .cgrid.cls{grid-template-columns:repeat(4,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=gun] #ov .cgrid.cls{grid-template-columns:repeat(3,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=gun] #ov .gun .cd{display:block;overflow:visible}
+ body[data-tablet-button-size][data-ov=gun] #ov .gun .tl{display:flex}
+ body[data-tablet-button-size][data-ov=setup] #ov .ugrid{grid-template-columns:repeat(5,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 </style></body></html>

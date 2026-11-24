@@ -17748,6 +17748,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (this.mode = e),
         (this.el.scrollTop = 0),
         (document.body.dataset.ov = e));
+      if (!testing) requestAnimationFrame(fitIPadSetupPanel);
     },
     hide() {
       ((this.el.hidden = !0),
@@ -18965,7 +18966,21 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { passive: false },
       );
   }
+  function fitIPadSetupPanel() {
+    if (!isArenaIPad() || !matchMedia("(orientation: landscape)").matches) return;
+    if (!["select", "gun", "setup"].includes(document.body.dataset.ov)) return;
+    const overlay = N("ov");
+    const panel = overlay.querySelector(":scope > .panel");
+    if (!panel || !panel.offsetHeight || !panel.offsetWidth) return;
+    const scale = Math.min(
+      1,
+      (overlay.clientWidth - 20) / panel.offsetWidth,
+      (overlay.clientHeight - 20) / panel.offsetHeight,
+    );
+    if (scale > 0) panel.style.setProperty("--ipad-setup-scale", String(scale));
+  }
   function fitTouchStage() {
+    requestAnimationFrame(fitIPadSetupPanel);
     const stage = document.querySelector(".stagewrap");
     if (!stage) return;
     requestAnimationFrame(updateControlInsets);
