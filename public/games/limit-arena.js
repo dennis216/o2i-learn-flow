@@ -19361,10 +19361,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     return null;
   }
   function shouldAutoExpandArena() {
-    const preference = arenaFullPref();
-    if (preference) return preference === "on";
-    if (isArenaIPad()) return false;
-    return !hasArenaTouch() || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent);
+    const isPhone = /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent);
+    return isPhone && arenaFullPref() !== "off";
   }
   function enterFullscreenByChoice() {
     arenaFullPref("on");
