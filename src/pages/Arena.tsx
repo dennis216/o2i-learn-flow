@@ -19,9 +19,12 @@ const SITE_NAV_HEIGHT = '77px';
 function ArenaGame({ language, email }: { language: Language; email?: string }) {
   const isIPad = /iPad/i.test(navigator.userAgent)
     || (/Mac/.test(navigator.platform) && navigator.maxTouchPoints > 1);
+  // Unlimited cosmetic coins for three accounts only (Brian, Reeva, the O2I account),
+  // matched by the SHA-256 of the signed-in email so the addresses are not in the code.
+  // Everyone else plays with normal coins. Cosmetic only: no score or question data.
   const [testCoins, setTestCoins] = useState(false);
   useEffect(() => {
-    if (!email || location.hostname !== 'brian.o2i-website.pages.dev' || !crypto.subtle) return;
+    if (!email || !crypto.subtle) return;
     let active = true;
     const bytes = new TextEncoder().encode(email.trim().toLowerCase());
     void crypto.subtle.digest('SHA-256', bytes).then((digest) => {

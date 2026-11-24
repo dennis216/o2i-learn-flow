@@ -5259,7 +5259,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           dur: 3,
           desc: i
             ? "\u9690\u8EAB 3 \u79D2\uFF1A\u654C\u4EBA\u4E22\u5931\u4F60\u7684\u4F4D\u7F6E\u4E14\u65E0\u6CD5\u78B0\u5230\u4F60\u3002\u67AA\u4F1A\u505C\u706B\uFF0C\u4E4B\u540E\u4E0B\u4E00\u53D1\u9020\u6210 3 \u500D\u4F24\u5BB3\u3002"
-            : "Turn invisible for 3 s: enemies lose track of you and can't touch you. Your gun holds fire, then your next shot does 3\xD7 damage.",
+            : "Invisible for 3 s: enemies lose you and can't touch you. Your gun holds fire; the next shot does 3\xD7 damage.",
         },
       },
     },
@@ -17622,9 +17622,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     const wallet = accessoryWallet(),
       lang = i ? 1 : 0;
     const best = tt.d.best?.score || 0;
-    const testCoins =
-      location.hostname === "brian.o2i-website.pages.dev" &&
-      window.frameElement?.dataset.arenaTestCoins === "true";
+    // Unlimited cosmetic coins: only the accounts Arena.tsx allows (Brian,
+    // Reeva and the O2I account) get this flag, on every site.
+    const testCoins = window.frameElement?.dataset.arenaTestCoins === "true";
     const worn = tt.d.accessories || {};
     const sections = Object.entries(arenaAccessories)
       .map(([slot, items]) => {
