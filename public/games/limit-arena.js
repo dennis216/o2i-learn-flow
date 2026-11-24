@@ -18324,8 +18324,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           if (!t.units.length) return;
           ($.coin(), this.hide(), qa(tt.d.cls));
         }),
-        e(),
-        knowledge.decorateSetup(this.el, t));
+        e());
     },
     classSelect() {
       this.heroSelect();
@@ -18979,8 +18978,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     panel.style.setProperty("--touch-setup-scale", "1");
     if (!panel.offsetHeight || !panel.offsetWidth) return;
     const scale = Math.min(
-      tabletLandscape ? 1.05 : 1,
-      (overlay.clientWidth - (tabletLandscape ? 32 : 20)) / panel.offsetWidth,
+      tabletLandscape ? 1.07 : 1,
+      (overlay.clientWidth - (20)) / panel.offsetWidth,
       (overlay.clientHeight - 20) / panel.offsetHeight,
     );
     if (scale > 0) panel.style.setProperty("--touch-setup-scale", String(scale));

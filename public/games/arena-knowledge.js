@@ -39,32 +39,6 @@ export const PACE = {
   hintGap: 3,
 };
 
-// Accelerated runs are limited to the personal preview and never recorded.
-export const TEST_SPEEDS = [1, 2, 4, 8];
-const BRIAN_PREVIEW_HOST = "brian.o2i-website.pages.dev";
-export function testSpeedFor(setup, hostname = globalThis.location?.hostname) {
-  const value = Number(setup?.test);
-  return hostname === BRIAN_PREVIEW_HOST &&
-    TEST_SPEEDS.includes(value)
-    ? value
-    : 1;
-}
-const TEST_INFO = {
-  1: ["Normal speed.", "正常速度。"],
-  2: [
-    "XP ×2; enemy growth, spawns, bosses and tablets ×2. Not recorded.",
-    "经验 ×2；敌人成长、刷怪、首领、题碑都 ×2。不计入记录。",
-  ],
-  4: [
-    "XP ×4; enemy growth, spawns, bosses and tablets ×4. Not recorded.",
-    "经验 ×4；敌人成长、刷怪、首领、题碑都 ×4。不计入记录。",
-  ],
-  8: [
-    "XP ×8; enemy growth, boss and tablet timers are accelerated. Not recorded.",
-    "经验 ×8；敌人成长、首领和题碑加速。不计入记录。",
-  ],
-};
-
 // First-time help, shown once per device as a short owl hint that never
 // pauses the game. Two sentences at most; {dir} is filled with a direction.
 export const HINTS = {
@@ -3367,7 +3341,7 @@ export function createKnowledgeFlow(api) {
     onRunStart() {
       const a = api.a;
       a.kf = freshState();
-      a.testSpeed = testSpeedFor(api.save.d.setup);
+      a.testSpeed = 1;
       a.nextBossT = ARENA_STAGE_SECONDS / a.testSpeed;
       a.kf.tabletAt = fast(PACE.firstTablet);
     },
@@ -3582,42 +3556,6 @@ export function createKnowledgeFlow(api) {
       if (spawnedType) kf.lastBossType = spawnedType;
       const prefix = WORLD_PREFIX[worldKind()];
       return prefix ? { ...def, name: L(prefix) + def.name } : def;
-    },
-    // Test speed row on the units & difficulty screen.
-    decorateSetup(root, setup) {
-      const panel = root?.querySelector(".panel"),
-        row = panel?.querySelector(".urow");
-      const preview = globalThis.location?.hostname === BRIAN_PREVIEW_HOST;
-      if (
-        !row ||
-        !preview ||
-        panel.querySelector(".kf-test")
-      )
-        return;
-      const box = (api.doc() || document).createElement("div");
-      box.className = "kf-test";
-      box.innerHTML = `<b>${api.zh ? "测试速度" : "Test speed"}</b><small>${api.zh ? "试玩站" : "Preview"}</small>${TEST_SPEEDS.map(
-        (v, n) =>
-          `<button type="button" class="dchip d-${["easy", "normal", "hard", "hard"][n]}" data-test="${v}" title="${api.esc(L(TEST_INFO[v]))}"><b>${v === 1 ? (api.zh ? "关闭" : "Off") : "×" + v}</b></button>`,
-      ).join(
-        "",
-      )}<span>${api.zh ? "经验、敌人成长、刷怪、首领和题碑一起加速；测试局不计入记录。" : "XP, enemy growth, spawns, bosses and tablets all speed up; test runs are not recorded."}</span>`;
-      row.before(box);
-      const sync = () =>
-        box.querySelectorAll("[data-test]").forEach((button) => {
-          const on = testSpeedFor(setup) === Number(button.dataset.test);
-          button.classList.toggle("on", on);
-          button.setAttribute("aria-pressed", String(on));
-        });
-      box.querySelectorAll("[data-test]").forEach(
-        (button) =>
-          (button.onclick = () => {
-            setup.test = Number(button.dataset.test);
-            api.save.save();
-            sync();
-          }),
-      );
-      sync();
     },
     // Test runs say so on the results screen.
     onResults() {
