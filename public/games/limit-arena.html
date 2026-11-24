@@ -582,4 +582,17 @@ body:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel[style*="--tou
 body:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel[style*="--touch-setup-scale"] .row2{
  position:static;
 }
+
+@media (orientation:landscape){
+ body[data-tablet-button-size]:not(.arena-expanded):is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  left:50%;right:auto;width:var(--arena-menu-width,100%);transform:translateX(-50%);
+ }
+ body[data-tablet-button-size][data-ov=select] #ov .hero{grid-template-rows:48px auto;padding:9px}
+ body[data-tablet-button-size][data-ov=select] #ov .hero .hk{font-size:16px;line-height:1.4}
+ body[data-tablet-button-size][data-ov=gun] #ov :is(.gun .cd,.gun .tl,.gun .st3,.gun .ct>em){font-size:16px;line-height:1.4}
+ body[data-tablet-button-size][data-ov=setup] #ov .d2{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body[data-tablet-button-size][data-ov=setup] #ov :is(.uchip,.dchip){padding:7px 9px}
+ body[data-tablet-button-size][data-ov=setup] #ov :is(.uchip .nm,.dchip span){font-size:16px;line-height:1.35}
+ body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov .row2 button{font-size:17px}
+}
 </style></body></html>

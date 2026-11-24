@@ -18979,8 +18979,8 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
     panel.style.setProperty("--touch-setup-scale", "1");
     if (!panel.offsetHeight || !panel.offsetWidth) return;
     const scale = Math.min(
-      1,
-      (overlay.clientWidth - 20) / panel.offsetWidth,
+      tabletLandscape ? 1.08 : 1,
+      (overlay.clientWidth - (tabletLandscape ? 32 : 20)) / panel.offsetWidth,
       (overlay.clientHeight - 20) / panel.offsetHeight,
     );
     if (scale > 0) panel.style.setProperty("--touch-setup-scale", String(scale));
