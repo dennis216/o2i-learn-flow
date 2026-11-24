@@ -17750,7 +17750,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (this.mode = e),
         (this.el.scrollTop = 0),
         (document.body.dataset.ov = e));
-      if (!testing) requestAnimationFrame(fitIPadSetupPanel);
+      if (!testing) requestAnimationFrame(fitTouchSetupPanel);
     },
     hide() {
       ((this.el.hidden = !0),
@@ -18968,8 +18968,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { passive: false },
       );
   }
-  function fitIPadSetupPanel() {
-    if (!isArenaIPad() || !matchMedia("(orientation: landscape)").matches) return;
+  function fitTouchSetupPanel() {
+    const tabletLandscape = isArenaIPad() && matchMedia("(orientation: landscape)").matches;
+    const phonePortrait = matchMedia("(orientation: portrait) and (max-width: 560px) and (pointer: coarse)").matches;
+    if (!tabletLandscape && !phonePortrait) return;
     if (!["select", "gun", "setup"].includes(document.body.dataset.ov)) return;
     const overlay = N("ov");
     const panel = overlay.querySelector(":scope > .panel");
@@ -18979,10 +18981,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (overlay.clientWidth - 20) / panel.offsetWidth,
       (overlay.clientHeight - 20) / panel.offsetHeight,
     );
-    if (scale > 0) panel.style.setProperty("--ipad-setup-scale", String(scale));
+    if (scale > 0) panel.style.setProperty("--touch-setup-scale", String(scale));
   }
   function fitTouchStage() {
-    requestAnimationFrame(fitIPadSetupPanel);
+    requestAnimationFrame(fitTouchSetupPanel);
     const stage = document.querySelector(".stagewrap");
     if (!stage) return;
     requestAnimationFrame(updateControlInsets);
