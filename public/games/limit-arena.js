@@ -16480,7 +16480,9 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (R.imageSmoothingEnabled = !1),
       R.drawImage(Oe, 0, 0, pe * so, Fe * so));
     const portrait = innerHeight > innerWidth;
-    const o = portrait
+    const tabletHeroPicker =
+      !testing && !portrait && isArenaIPad() && document.body.dataset.ov === "select";
+    const o = tabletHeroPicker ? 8 : portrait
       ? 6
       : Math.round(
           zo(ae(t, 12), [
@@ -16510,7 +16512,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
           R,
           i ? "\u6781\u9650\u7ADE\u6280\u573A" : "LIMIT ARENA",
           G / 2,
-          portrait ? 50 : 84,
+          tabletHeroPicker ? 60 : portrait ? 50 : 84,
           {
             pixel: !0,
             size: portrait ? 24 : 36,
@@ -16520,7 +16522,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
             shadow: s.black,
           },
         ),
-      t > 0.8 &&
+      !tabletHeroPicker && t > 0.8 &&
         drawGameDescription(
           i
             ? "AP \u5FAE\u79EF\u5206 AB & BC \xB7 \u6D3B\u4E0B\u53BB \xB7 \u7B54\u9898\u5347\u7EA7 \xB7 \u51FB\u8D25\u9996\u9886"
@@ -17748,7 +17750,7 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         (this.mode = e),
         (this.el.scrollTop = 0),
         (document.body.dataset.ov = e));
-      if (!testing) requestAnimationFrame(fitIPadSetupPanel);
+      if (!testing) requestAnimationFrame(fitTouchSetupPanel);
     },
     hide() {
       ((this.el.hidden = !0),
@@ -18966,8 +18968,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
         { passive: false },
       );
   }
-  function fitIPadSetupPanel() {
-    if (!isArenaIPad() || !matchMedia("(orientation: landscape)").matches) return;
+  function fitTouchSetupPanel() {
+    const tabletLandscape = isArenaIPad() && matchMedia("(orientation: landscape)").matches;
+    const phonePortrait = matchMedia("(orientation: portrait) and (max-width: 560px) and (pointer: coarse)").matches;
+    if (!tabletLandscape && !phonePortrait) return;
     if (!["select", "gun", "setup"].includes(document.body.dataset.ov)) return;
     const overlay = N("ov");
     const panel = overlay.querySelector(":scope > .panel");
@@ -18977,10 +18981,10 @@ function createArenaRuntime({ testing = false, overrides = {} } = {}) {
       (overlay.clientWidth - 20) / panel.offsetWidth,
       (overlay.clientHeight - 20) / panel.offsetHeight,
     );
-    if (scale > 0) panel.style.setProperty("--ipad-setup-scale", String(scale));
+    if (scale > 0) panel.style.setProperty("--touch-setup-scale", String(scale));
   }
   function fitTouchStage() {
-    requestAnimationFrame(fitIPadSetupPanel);
+    requestAnimationFrame(fitTouchSetupPanel);
     const stage = document.querySelector(".stagewrap");
     if (!stage) return;
     requestAnimationFrame(updateControlInsets);

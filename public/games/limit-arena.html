@@ -535,11 +535,11 @@ body[data-tablet-button-size][data-ov=menu] .mz .msub{color:#c0b8d0}
  }
  body[data-tablet-button-size]:not(.arena-expanded):is([data-ov=select],[data-ov=gun],[data-ov=setup]) .stagewrap{width:min(96%,calc(var(--arena-stage-height,70dvh) * 16 / 9))}
  body[data-tablet-button-size][data-ov=select] #ov:has(>.panel){
-  inset:39% 0 0;height:61%;background:transparent;
+  inset:29% 0 0;height:71%;background:transparent;
  }
  body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel{
   width:1080px;max-width:none;height:max-content;max-height:none;overflow:visible;
-  position:absolute;top:50%;left:50%;margin:0;grid-template-rows:none;zoom:1;animation:none; transform:translate(-50%,-50%) scale(var(--ipad-setup-scale,1));
+  position:absolute;top:50%;left:50%;margin:0;grid-template-rows:none;zoom:1;animation:none; transform:translate(-50%,-50%) scale(var(--touch-setup-scale,1));
  }
  body[data-tablet-button-size]:is([data-ov=select],[data-ov=gun]) #ov .cgrid.cls{
   max-height:none;min-height:0;overflow:visible;
@@ -550,5 +550,25 @@ body[data-tablet-button-size][data-ov=menu] .mz .msub{color:#c0b8d0}
  body[data-tablet-button-size][data-ov=gun] #ov .gun .tl{display:flex}
  body[data-tablet-button-size][data-ov=setup] #ov .ugrid{grid-template-columns:repeat(5,minmax(0,1fr))}
  body[data-tablet-button-size][data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+@media (orientation:portrait) and (max-width:560px) and (pointer:coarse){
+ body.touch[data-ov=menu]:not(.arena-expanded) header{position:relative;z-index:201}
+ body.touch:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov:has(>.panel){
+  position:fixed;inset:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);
+  width:100%;height:auto;transform:none;padding:0;overflow:hidden;background:var(--bg);
+ }
+ body.touch:is([data-ov=select],[data-ov=gun],[data-ov=setup]) #ov>.panel{
+  position:absolute;top:50%;left:50%;margin:0;width:520px;max-width:none;
+  height:max-content;max-height:none;grid-template-rows:none;overflow:visible;zoom:1;animation:none;
+  transform:translate(-50%,-50%) scale(var(--touch-setup-scale,1));
+ }
+ body.touch:is([data-ov=select],[data-ov=gun]) #ov .cgrid.cls{
+  grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;max-height:none;overflow:visible;
+ }
+ body.touch[data-ov=gun] #ov .gun .cd{display:block;overflow:visible}
+ body.touch[data-ov=gun] #ov .gun .tl{display:flex}
+ body.touch[data-ov=setup] #ov .ugrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.touch[data-ov=setup] #ov .dgrid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 </style></body></html>
